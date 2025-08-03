@@ -21,7 +21,7 @@ export class AudioEngine {
     this.state = {
       player1: { isPlaying: false, currentTime: 0, duration: 0, volume: 1, source: null, hasEnded: false, error: null },
       player2: { isPlaying: false, currentTime: 0, duration: 0, volume: 1, source: null, hasEnded: false, error: null },
-      master: { volume: 0 }
+      master: { volume: 1 }
     };
     
     this.setupAudioRouting();
