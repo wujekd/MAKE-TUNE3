@@ -138,22 +138,22 @@ export class AudioEngine {
     }
     
     // Update state to notify React about new source
-    // this.updateState({
-    //   [`player${playerId}`]: { 
-    //     ...this.state[`player${playerId}`], 
-    //     source: src,
-    //     isPlaying: false,  // Reset play state for new source
-    //     hasEnded: false,
-    //     currentTime: 0
-    //   },
-    //   // Also update player2's currentTime in state if we reset it
-    //   ...(playerId === 1 && {
-    //     player2: {
-    //       ...this.state.player2,
-    //       currentTime: 0
-    //     }
-    //   })
-    // });
+    this.updateState({
+      [`player${playerId}`]: { 
+        ...this.state[`player${playerId}`], 
+        source: src,
+        isPlaying: false,  // Reset play state for new source
+        hasEnded: false,
+        currentTime: 0
+      },
+      // Also update player2's currentTime in state if we reset it
+      ...(playerId === 1 && {
+        player2: {
+          ...this.state.player2,
+          currentTime: 0
+        }
+      })
+    });
   }
   
   playSubmission(submissionSrc: string, backingSrc: string): void {
