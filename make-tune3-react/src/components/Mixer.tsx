@@ -33,22 +33,29 @@ export function Mixer({ engine, state }: MixerProps) {
           onClick={controller.previousTrack}
           disabled={!controller.canGoBack}
         >
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
-            <path d="M4 12H20M4 12L8 8M4 12L8 16" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path>
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
+            <path d="M8 24H40M8 24L16 16M8 24L16 32" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"></path>
           </svg>
         </button>
         <button id="play-btn" onClick={controller.togglePlayPause}>
-          <svg width="17" height="17" viewBox="-3 0 28 28" fill="#ffffff">
-            <path d="M21.4,13.5L4.4,1.3C3.3,0.7,2,0.8,2,2.9v20.1c0,2,1.4,2.3,2.4,1.6l17-12.2C22.2,11.6,22.2,14.3,21.4,13.5"/>
-          </svg>
+          {state.player2.isPlaying ? (
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
+              <rect x="6" y="4" width="4" height="16" fill="#ffffff"/>
+              <rect x="14" y="4" width="4" height="16" fill="#ffffff"/>
+            </svg>
+          ) : (
+            <svg width="32" height="32" viewBox="-3 0 28 28" fill="#ffffff">
+              <path d="M21.4,13.5L4.4,1.3C3.3,0.7,2,0.8,2,2.9v20.1c0,2,1.4,2.3,2.4,1.6l17-12.2C22.2,11.6,22.2,14.3,21.4,13.5"/>
+            </svg>
+          )}
         </button>
         <button 
           id="fwd-btn" 
           onClick={controller.nextTrack}
           disabled={!controller.canGoForward}
         >
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" transform="rotate(180)">
-            <path d="M4 12H20M4 12L8 8M4 12L8 16" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path>
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" transform="rotate(180)">
+            <path d="M8 24H40M8 24L16 16M8 24L16 32" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"></path>
           </svg>
         </button>
       </div>

@@ -6,6 +6,7 @@ import ProjectHistory from '../components/ProjectHistory';
 import { Mixer } from '../components/Mixer';
 import { useCollabData } from '../hooks/useCollabData';
 import './MainView.css';
+import SubmissionItem from '../components/SubmissionItem';
 
 export function MainView() {
   const audioContext = useContext(AudioEngineContext);
@@ -43,18 +44,17 @@ export function MainView() {
       
       <div className="submissions-section">
         <div className="audio-player-section">
-          <div className="audio-player-title">Audio Player 1</div>
-          <ul className="track-list">
-            {collabData.trackList.map((track, index) => (
-              <li 
-                key={index}
-                className={`track-list-item ${index === controller.currentTrackIndex ? 'active' : ''}`}
-                onClick={() => controller.playSubmission(index)}
-              >
-                {track}
-              </li>
-            ))}
-          </ul>
+          <div className="audio-player-title">Submissions</div>
+            <div style={{ display: 'flex', flexDirection: 'row', gap: '10px', flexWrap: 'wrap' }}>
+              {collabData.trackList.map((track, index) => (
+                <SubmissionItem 
+                  key={index}
+                  index={index}
+                  isCurrentTrack={state.player1.source == track}
+                  isPlaying={state.player1.isPlaying}
+                />
+              ))}
+            </div>
         </div>
       </div>
       

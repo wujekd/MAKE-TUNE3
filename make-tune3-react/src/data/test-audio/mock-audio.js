@@ -12,5 +12,10 @@ export const audioFiles = {
         "test-audio/Rudi demo arr1 acc copy.mp3",
         "test-audio/Kuba.mp3",
         "test-audio/tomas demo1 instrumental.mp3",
+    ],
+
+    listened: [
+        "test-audio/voiceover2.mp3",
+        "test-audio/fuck_me_upppp_mh2bywZ.mp3",
     ]
 };

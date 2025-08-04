@@ -1,0 +1,133 @@
+/* Submission item */
+.submission-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  background-color: var(--primary1-800);
+  border-radius: 1rem;
+  margin: 0.5rem;
+  padding: 0.5rem;
+  width: 160px;
+  height: 100px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease;
+}
+
+.submission-container:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.submission-container.voted-for {
+  border: 2px solid var(--contrast-600);
+  box-shadow: 0 0 10px var(--contrast-700);
+}
+
+.submission-container.marking {
+  border-color: #facc15;
+  box-shadow: 0 0 10px #facc15;
+  animation: pulse 2s infinite;
+}
+
+.submission-container.submitting {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.play-button {
+  position: relative;
+  background-color: var(--secondary);
+  border: none;
+  border-radius: 0.75rem;
+  height: 45px;
+  overflow: hidden;
+  cursor: pointer;
+  margin: 0 0.25rem;
+}
+
+.progress-bar {
+  position: absolute;
+  height: 100%;
+  background-color: var(--primary);
+  width: 0%;
+  top: 0;
+  left: 0;
+  transition: none;
+  will-change: width;
+}
+
+.play-icon {
+  position: relative;
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  font-size: 1.5rem;
+  z-index: 2;
+}
+
+.vote-button {
+  background-color: var(--contrast-600);
+  color: var(--white);
+  border: none;
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  margin-top: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.vote-button:hover:not(:disabled) {
+  background-color: var(--contrast-700);
+}
+
+.vote-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.remove-button {
+  background-color: var(--primary1-700);
+  color: var(--white);
+  border: none;
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  margin-top: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.remove-button:hover:not(:disabled) {
+  background-color: var(--primary1-600);
+}
+
+.remove-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.favorite-button {
+  background-color: transparent;
+  color: var(--white);
+  border: 1px solid var(--contrast-600);
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  margin-top: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.favorite-button:hover:not(:disabled) {
+  background-color: var(--contrast-600);
+}
+
+.favorite-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: var(--gray-500);
+} 
