@@ -4,6 +4,7 @@ import { usePlayerController } from '../hooks/usePlayerController';
 import { DebugInfo } from '../components/DebugInfo';
 import ProjectHistory from '../components/ProjectHistory';
 import { Mixer } from '../components/Mixer';
+import { useCollabData } from '../hooks/useCollabData';
 import './MainView.css';
 
 export function MainView() {
@@ -16,13 +17,14 @@ export function MainView() {
   const controller = usePlayerController(engine);
 
   const [debug, setDebug] = useState(false);
+  const collabData = useCollabData();
 
   return (
     <div className="main-container">
       <button 
         style={{
           position: 'absolute',
-          top: '30px',
+          top: '20px',
           right: '10px',
           zIndex: 1000,
         }}
@@ -43,7 +45,7 @@ export function MainView() {
         <div className="audio-player-section">
           <div className="audio-player-title">Audio Player 1</div>
           <ul className="track-list">
-            {controller.trackList.map((track, index) => (
+            {collabData.trackList.map((track, index) => (
               <li 
                 key={index}
                 className={`track-list-item ${index === controller.currentTrackIndex ? 'active' : ''}`}

@@ -1,14 +1,19 @@
 import { useEffect, useState } from 'react';
 import { AudioEngine } from '../audio-services/audio-engine';
 import { audioFiles } from '../data/mock-audio';
+import { useCollabData } from './useCollabData';
 import type { AudioState } from '../types';
 
-export function usePlayerController(engine: AudioEngine | null) {
-  const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
-  const [pastStagePlayback, setPastStagePlayback] = useState(false);
+export function usePlayerController(engine: AudioEngine | null) { // apparently its better to pass the audio engine even though its alwaqys the same engine ???
+
   const [trackList] = useState(audioFiles.player1Files);
   const [pastStageTracklist] = useState(audioFiles.pastStageFiles);
   const [backingTrackSrc] = useState(audioFiles.player2Files[0]);
+
+  const pastStagePlayback = engine ? engine.getState().playerController.pastStagePlayback : false;
+  const currentTrackIndex = engine ? engine.getState().playerController.currentTrackId : -2;
+
+  const collabData = useCollabData();
 
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
@@ -29,42 +34,42 @@ export function usePlayerController(engine: AudioEngine | null) {
 
   const togglePlayPause = () => {
     if (!engine) return;
-    
-    if (pastStagePlayback) {
-      engine.toggleP2();
-    } else {
-      engine.toggleBoth();
-    }
+    engine.togglePlayback();
   };
 
   const nextTrack = () => {
-    if (currentTrackIndex < trackList.length - 1) {
-      playSubmission(currentTrackIndex + 1);
+    if (pastStagePlayback) {
+      if (currentTrackIndex < pastStageTracklist.length - 1) {
+        playPastSubmission(currentTrackIndex + 1);
+      }
+    } else {
+      if (currentTrackIndex < trackList.length - 1) {
+        playSubmission(currentTrackIndex + 1);
+      }
     }
   };
 
   const previousTrack = () => {
-    if (currentTrackIndex > 0) {
-      playSubmission(currentTrackIndex - 1);
+    if (pastStagePlayback) {
+      if (currentTrackIndex > 0) {
+        playPastSubmission(currentTrackIndex - 1);
+      }
+    } else {
+      if (currentTrackIndex > 0) {
+        playSubmission(currentTrackIndex - 1);
+      }
     }
   };
 
-  const playSubmission = (index: number) => {
+  const playSubmission = (index: number) => { // pastStagePlayback is marked in the audio engine
     if (index >= 0 && index < trackList.length) {
-      if (pastStagePlayback) {
-        setPastStagePlayback(false);
-      }
-      setCurrentTrackIndex(index);
-      const trackPath = trackList[index];
-      engine?.playSubmission(trackPath, backingTrackSrc);
+      const trackPath = collabData.trackList[index];
+      engine?.playSubmission(trackPath, backingTrackSrc, index);
     }
   };
 
   const playPastSubmission = (index: number) => {
-    if (!pastStagePlayback) {
-      setPastStagePlayback(true);
-    }
-    engine?.playPastStage(pastStageTracklist[index]);
+    engine?.playPastStage(collabData.pastStageTracklist[index], index);
   };
 
   const getTimeSliderValue = (state: AudioState): number => {
@@ -88,14 +93,28 @@ export function usePlayerController(engine: AudioEngine | null) {
   };
 
   const canGoBack = currentTrackIndex > 0;
-  const canGoForward = currentTrackIndex < trackList.length - 1;
+  const canGoForward = pastStagePlayback
+    ? currentTrackIndex < collabData.pastStageTracklist.length - 1
+    : currentTrackIndex < collabData.trackList.length - 1;
 
-  // Initialize backing track when engine is available
+  const handleSubmissionVolumeChange = (volume: number) => {
+    if (!engine) return;
+    engine.setVolume(1, volume);
+  };
+
+  const handleMasterVolumeChange = (volume: number) => {
+    if (!engine) return;
+    engine.setMasterVolume(volume);
+  };
+
+  // Backing track init when engine loads
   useEffect(() => {
     if (engine) {
-      engine.loadSource(2, backingTrackSrc);
+      engine.loadSource(2, backingTrackSrc); // TODO : load from useCollabData
     }
   }, [engine, backingTrackSrc]);
+
+
 
   return {
     // State
@@ -113,6 +132,8 @@ export function usePlayerController(engine: AudioEngine | null) {
     playSubmission,
     playPastSubmission,
     handleTimeSliderChange,
+    handleSubmissionVolumeChange,
+    handleMasterVolumeChange,
     
     // Utilities
     formatTime,
