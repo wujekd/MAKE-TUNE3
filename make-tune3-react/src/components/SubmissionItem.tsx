@@ -3,12 +3,12 @@ import './SubmissionItem.css';
 import { usePlayerController } from "../hooks/usePlayerController";
 import { AudioEngineContext } from "../audio-services/AudioEngineContext";
 
-export default ({ index, isPlaying, isCurrentTrack }: { index: number, isPlaying: boolean, isCurrentTrack: boolean }) => {
-  // Temporary variables to make component render
+export default ({ index, isPlaying, isCurrentTrack, listened }:
+    { index: number, isPlaying: boolean, isCurrentTrack: boolean, listened: boolean }) => {
+
   const submission = {
     id: 'temp-1',
     audioUrl: '/test-audio/temp.mp3',
-    listened: false,
     favorited: false,
     markingListened: false,
     final: false,
@@ -26,13 +26,12 @@ export default ({ index, isPlaying, isCurrentTrack }: { index: number, isPlaying
   const isInFavorites = false;
   const isSubmittingVote = false;
   
-  // Calculate progress only for current track
+
   const displayProgress = isCurrentTrack && state.player1.duration > 0 
     ? (state.player1.currentTime / state.player1.duration) * 100 
     : 0;
   
   const handlePlayClick = () => {
-    console.log('Play clicked for submission:', index);
     playerController.playSubmission(index)
   };
   
@@ -49,7 +48,7 @@ export default ({ index, isPlaying, isCurrentTrack }: { index: number, isPlaying
       submission-container
       ${isVotedFor ? 'voted-for' : ''}
       ${submission.markingListened ? 'marking' : ''}
-      ${submission.listened ? 'listened' : ''}
+      ${listened ? 'listened' : ''}
     `}>
       <button 
         className="play-button" 
@@ -71,9 +70,9 @@ export default ({ index, isPlaying, isCurrentTrack }: { index: number, isPlaying
         <button 
           className="favorite-button"
           onClick={() => onAddToFavorites(submission)}
-          disabled={!submission.listened}
+          disabled={!listened}
         >
-          {submission.listened ? 'Add to favorites' : 'Listen to 80% to add'}
+          {listened ? 'Add to favorites' : 'Listen to 80% to add'}
         </button>
       )}
     </div>

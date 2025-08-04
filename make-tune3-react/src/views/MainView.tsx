@@ -4,6 +4,7 @@ import { usePlayerController } from '../hooks/usePlayerController';
 import { DebugInfo } from '../components/DebugInfo';
 import ProjectHistory from '../components/ProjectHistory';
 import { Mixer } from '../components/Mixer';
+import Favorites from '../components/Favorites';
 import { useCollabData } from '../hooks/useCollabData';
 import './MainView.css';
 import SubmissionItem from '../components/SubmissionItem';
@@ -44,14 +45,16 @@ export function MainView() {
       
       <div className="submissions-section">
         <div className="audio-player-section">
+            <Favorites />
           <div className="audio-player-title">Submissions</div>
             <div style={{ display: 'flex', flexDirection: 'row', gap: '10px', flexWrap: 'wrap' }}>
-              {collabData.trackList.map((track, index) => (
+              {collabData.regularSubmissions.map((track, index) => (
                 <SubmissionItem 
                   key={index}
                   index={index}
                   isCurrentTrack={state.player1.source == track}
                   isPlaying={state.player1.isPlaying}
+                  listened={collabData.listened.includes(track)}
                 />
               ))}
             </div>
@@ -59,6 +62,7 @@ export function MainView() {
       </div>
       
       <Mixer engine={engine} state={state} />
+      
     </div>
   );
 }

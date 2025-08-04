@@ -12,5 +12,13 @@ export const audioFiles = {
     '/test-audio/Rudi%20demo%20arr1%20acc%20copy.mp3',
     '/test-audio/Kuba.mp3',
     '/test-audio/tomas%20demo1%20instrumental.mp3'
+  ],
+
+  listened: [
+    "/test-audio/voiceover2.mp3",
+    "/test-audio/fuck_me_upppp_mh2bywZ.mp3",
+  ],
+  favourites: [
+    "/test-audio/voiceover2.mp3",
   ]
 };

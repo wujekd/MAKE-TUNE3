@@ -61,9 +61,9 @@ export function usePlayerController(engine: AudioEngine | null) { // apparently 
     }
   };
 
-  const playSubmission = (index: number) => { // pastStagePlayback is marked in the audio engine
+  const playSubmission = (index: number, favourite?: boolean) => {
     if (index >= 0 && index < trackList.length) {
-      const trackPath = collabData.trackList[index];
+      const trackPath = collabData.regularSubmissions[index];
       engine?.playSubmission(trackPath, backingTrackSrc, index);
     }
   };
@@ -95,7 +95,7 @@ export function usePlayerController(engine: AudioEngine | null) { // apparently 
   const canGoBack = currentTrackIndex > 0;
   const canGoForward = pastStagePlayback
     ? currentTrackIndex < collabData.pastStageTracklist.length - 1
-    : currentTrackIndex < collabData.trackList.length - 1;
+    : currentTrackIndex < collabData.regularSubmissions.length - 1;
 
   const handleSubmissionVolumeChange = (volume: number) => {
     if (!engine) return;
