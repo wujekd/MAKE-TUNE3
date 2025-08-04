@@ -22,16 +22,32 @@ export function useCollabData(collabId?: string) {
     !favourites.includes(submission)
   );
   
-  const favoritedSubmissions = allSubmissions.filter(submission => 
-    favourites.includes(submission)
-  );
+//   const favoritedSubmissions = allSubmissions.filter(submission => 
+//     favourites.includes(submission)
+//   );
+
+  const addToFavourites = (src: string) => {
+    console.log("sub added: ", src)
+    if (src && !favourites.includes(src)) {
+      setFavourites(prev => [...prev, src]);
+    }
+  };
+
+  const removeFromFavourites = (index: number) => {
+    const submission = favourites[index];
+    
+    if (submission) {
+      setFavourites(prev => prev.filter(fav => fav !== submission));
+    }
+  };
 
   return { 
     regularSubmissions, 
-    favoritedSubmissions, 
     pastStageTracklist, 
     backingTrackSrc, 
     listened, 
-    favourites 
+    favourites,
+    addToFavourites,
+    removeFromFavourites
   };
 }

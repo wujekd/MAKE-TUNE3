@@ -1,23 +1,30 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useContext } from 'react';
 import SubmissionItem from './SubmissionItem';
-import { useCollabData } from '../hooks/useCollabData';
+
+import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import './Favorites.css';
 
-const Favorites = () => {
+const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites }: { onRemoveFromFavorites: (index: number) => void, favorites: string[], onAddToFavorites: (src: string) => void }) => {
   const votedFor = null;
   const isSubmittingVote = false;
 
-  // Temporary callback functions
-  const onRemoveFromFavorites = (favorite: any) => {
-    console.log('Remove from favorites:', favorite.id);
+
+  const handleRemoveFromFavorites = (favorite: any, index: number) => {
+    console.log('Remove from favorites:', favorite);
+    onRemoveFromFavorites(index);
   };
 
   const onVote = (favorite: any) => {
     console.log('Vote for favorite:', favorite.id);
   };
 
-  const collabData = useCollabData();
-  const favorites = collabData.favourites;
+  const audioContext = useContext(AudioEngineContext);
+
+  if (!audioContext) {
+    return <div>Loading audio engine...</div>;
+  }
+  const { engine, state } = audioContext;
+
 
   // Reference to the favorites container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -43,9 +50,7 @@ const Favorites = () => {
       };
     }
   }, []);
-
-
-
+  
   return (
     <section className="favorites-section">
       <div className="favorites-header">
@@ -61,19 +66,22 @@ const Favorites = () => {
       >
         {favorites && favorites.length > 0 ? (
           favorites.map((favorite, index) => (
-            <div key={favorite.id} className="favorite-item">
+            <div key={index} className="favorite-item">
               <button
                 className="remove-button"
-                onClick={() => onRemoveFromFavorites(favorite)}
+                onClick={() => handleRemoveFromFavorites(favorite, index)}
               >
                 ×
               </button>
               <SubmissionItem 
                 key={index}
                 index={index}
-                isPlaying={false}
-                isCurrentTrack={false}
+                src={favorite}
+                isCurrentTrack={state.player1.source == favorite}
+                isPlaying={state.player1.isPlaying}
                 listened={true}
+                favorite={true}
+                onAddToFavorites={onAddToFavorites}
               />
             </div>
           ))

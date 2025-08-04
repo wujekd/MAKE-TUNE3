@@ -20,7 +20,7 @@ export class AudioEngine {
     this.audioContext = null as any;
     
     this.state = {
-      playerController: { pastStagePlayback: false, currentTrackId: -1 },
+      playerController: { playingFavourite: false, pastStagePlayback: false, currentTrackId: -1 },
       player1: { isPlaying: false, currentTime: 0, duration: 0, volume: 1, source: null, hasEnded: false, error: null },
       player2: { isPlaying: false, currentTime: 0, duration: 0, volume: 1, source: null, hasEnded: false, error: null },
       master: { volume: 1 }
@@ -286,6 +286,15 @@ export class AudioEngine {
     
     this.updateState({
       master: { volume: volume }
+    });
+  }
+
+  setPlayingFavourite(value: boolean): void {
+    this.updateState({
+      playerController: {
+        ...this.state.playerController,
+        playingFavourite: value
+      }
     });
   }
 

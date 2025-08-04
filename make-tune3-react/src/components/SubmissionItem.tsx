@@ -1,10 +1,11 @@
-import React, { useContext, useEffect, useRef } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import './SubmissionItem.css';
 import { usePlayerController } from "../hooks/usePlayerController";
+
 import { AudioEngineContext } from "../audio-services/AudioEngineContext";
 
-export default ({ index, isPlaying, isCurrentTrack, listened }:
-    { index: number, isPlaying: boolean, isCurrentTrack: boolean, listened: boolean }) => {
+export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onAddToFavorites }:
+    { index: number, src: string, isPlaying: boolean, isCurrentTrack: boolean, listened: boolean, favorite: boolean, onAddToFavorites: (src: string) => void }) => {
 
   const submission = {
     id: 'temp-1',
@@ -15,6 +16,7 @@ export default ({ index, isPlaying, isCurrentTrack, listened }:
     collabId: 'temp-collab'
   };
 
+
   const audioContext = useContext(AudioEngineContext);
   if (!audioContext) {
     return <div>Loading audio engine...</div>;
@@ -23,24 +25,25 @@ export default ({ index, isPlaying, isCurrentTrack, listened }:
   const playerController = usePlayerController(engine);
   
   const isVotedFor = false;
-  const isInFavorites = false;
   const isSubmittingVote = false;
-  
 
+ 
   const displayProgress = isCurrentTrack && state.player1.duration > 0 
     ? (state.player1.currentTime / state.player1.duration) * 100 
     : 0;
   
   const handlePlayClick = () => {
-    playerController.playSubmission(index)
+    // console.log('playSubmission called with:', index, favorite)
+    playerController.playSubmission(index, favorite)
   };
   
   const onVote = (sub: any) => {
     console.log('Vote clicked for submission:', sub.id);
   };
   
-  const onAddToFavorites = (sub: any) => {
-    console.log('Add to favorites clicked for submission:', sub.id);
+  const handleAddToFavorites = () => {
+    console.log('Add to favorites clicked for submission:', src);
+    onAddToFavorites(src);
   };
 
   return (
@@ -58,7 +61,7 @@ export default ({ index, isPlaying, isCurrentTrack, listened }:
         <span className="play-icon">{isCurrentTrack && isPlaying ? '❚❚' : '▶'}</span>
       </button>
       
-      {isInFavorites ? (
+      {favorite ? (
         <button 
           className="vote-button"
           onClick={() => onVote(submission)}
@@ -69,7 +72,7 @@ export default ({ index, isPlaying, isCurrentTrack, listened }:
       ) : (
         <button 
           className="favorite-button"
-          onClick={() => onAddToFavorites(submission)}
+          onClick={handleAddToFavorites}
           disabled={!listened}
         >
           {listened ? 'Add to favorites' : 'Listen to 80% to add'}

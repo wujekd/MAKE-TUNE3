@@ -14,6 +14,7 @@ export interface PlayerState {
 
   export interface PlayerControllerState {
     pastStagePlayback: boolean;
+    playingFavourite: boolean;
     currentTrackId: number;
   }
   

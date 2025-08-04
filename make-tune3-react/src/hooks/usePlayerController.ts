@@ -6,12 +6,12 @@ import type { AudioState } from '../types';
 
 export function usePlayerController(engine: AudioEngine | null) { // apparently its better to pass the audio engine even though its alwaqys the same engine ???
 
-  const [trackList] = useState(audioFiles.player1Files);
-  const [pastStageTracklist] = useState(audioFiles.pastStageFiles);
+
   const [backingTrackSrc] = useState(audioFiles.player2Files[0]);
 
   const pastStagePlayback = engine ? engine.getState().playerController.pastStagePlayback : false;
   const currentTrackIndex = engine ? engine.getState().playerController.currentTrackId : -2;
+  let playingFavourite = engine ? engine.getState().playerController.playingFavourite : false;
 
   const collabData = useCollabData();
 
@@ -39,11 +39,11 @@ export function usePlayerController(engine: AudioEngine | null) { // apparently 
 
   const nextTrack = () => {
     if (pastStagePlayback) {
-      if (currentTrackIndex < pastStageTracklist.length - 1) {
+      if (currentTrackIndex < collabData.pastStageTracklist.length - 1) {
         playPastSubmission(currentTrackIndex + 1);
       }
     } else {
-      if (currentTrackIndex < trackList.length - 1) {
+      if (currentTrackIndex < collabData.regularSubmissions.length - 1) {
         playSubmission(currentTrackIndex + 1);
       }
     }
@@ -62,10 +62,18 @@ export function usePlayerController(engine: AudioEngine | null) { // apparently 
   };
 
   const playSubmission = (index: number, favourite?: boolean) => {
-    if (index >= 0 && index < trackList.length) {
-      const trackPath = collabData.regularSubmissions[index];
-      engine?.playSubmission(trackPath, backingTrackSrc, index);
+    console.log('playSubmission triggered with:', { index, favourite });
+    if (favourite !== null && favourite !== undefined && engine) {
+      engine.setPlayingFavourite(favourite);
+      playingFavourite = favourite;
     }
+    
+    console.log('playing favourite flag: ', playingFavourite);
+    const trackPath = !playingFavourite 
+      ? collabData.regularSubmissions[index]
+      : collabData.favourites[index]; 
+    console.log("track path: ", trackPath)
+    engine?.playSubmission(trackPath, backingTrackSrc, index);
   };
 
   const playPastSubmission = (index: number) => {
@@ -114,18 +122,13 @@ export function usePlayerController(engine: AudioEngine | null) { // apparently 
     }
   }, [engine, backingTrackSrc]);
 
-
-
   return {
-    // State
     currentTrackIndex,
     pastStagePlayback,
-    trackList,
-    pastStageTracklist,
     canGoBack,
     canGoForward,
+    playingFavourite,
     
-    // Actions
     togglePlayPause,
     nextTrack,
     previousTrack,
@@ -135,7 +138,6 @@ export function usePlayerController(engine: AudioEngine | null) { // apparently 
     handleSubmissionVolumeChange,
     handleMasterVolumeChange,
     
-    // Utilities
     formatTime,
     getTimeSliderValue,
     getCurrentTime,

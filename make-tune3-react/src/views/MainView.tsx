@@ -34,6 +34,28 @@ export function MainView() {
       >
         {debug ? 'Show History' : 'Show Debug'}
       </button>
+      <button 
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '140px',
+          zIndex: 1000,
+        }}
+        onClick={() => console.log('playingFavourite:', controller.playingFavourite)}
+      >
+        Log Playback Mode
+      </button>
+      <button 
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '270px',
+          zIndex: 1000,
+        }}
+        onClick={() => console.log('favourites:', collabData.favourites)}
+      >
+        Log Favorites
+      </button>
       <div className="info-top">
         <h2>Audio Engine Test</h2>
         {debug ? (
@@ -45,16 +67,19 @@ export function MainView() {
       
       <div className="submissions-section">
         <div className="audio-player-section">
-            <Favorites />
+            <Favorites onRemoveFromFavorites={collabData.removeFromFavourites} favorites={collabData.favourites} onAddToFavorites={collabData.addToFavourites} />
           <div className="audio-player-title">Submissions</div>
             <div style={{ display: 'flex', flexDirection: 'row', gap: '10px', flexWrap: 'wrap' }}>
               {collabData.regularSubmissions.map((track, index) => (
                 <SubmissionItem 
                   key={index}
+                  src={track}
                   index={index}
                   isCurrentTrack={state.player1.source == track}
                   isPlaying={state.player1.isPlaying}
                   listened={collabData.listened.includes(track)}
+                  favorite={collabData.favourites.includes(track)}
+                  onAddToFavorites={collabData.addToFavourites}
                 />
               ))}
             </div>
