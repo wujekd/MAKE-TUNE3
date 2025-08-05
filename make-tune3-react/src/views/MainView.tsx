@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { usePlayerController } from '../hooks/usePlayerController';
 import { DebugInfo } from '../components/DebugInfo';
@@ -25,6 +25,13 @@ export function MainView() {
     favourites: collabData.favourites,
     backingTrackSrc: collabData.backingTrackSrc
   });
+
+  useEffect(() => {
+    if (engine) {
+        engine.setTrackListenedCallback((trackSrc) => {collabData.markAsListened(trackSrc)},
+        collabData.listenedRatio);
+    }
+  }, [engine, collabData.listenedRatio]);
 
   return (
     <div className="main-container">
@@ -63,36 +70,38 @@ export function MainView() {
       </button>
       <div className="info-top">
         <h2>Audio Engine Test</h2>
-        {debug ? (
           <DebugInfo engine={engine} />
-        ) : (
           <ProjectHistory />
-        )}
       </div>
       
       <div className="submissions-section">
         <div className="audio-player-section">
-            <Favorites onRemoveFromFavorites={collabData.removeFromFavourites} favorites={collabData.favourites} onAddToFavorites={collabData.addToFavourites} onPlay={(src: string, index: number, favorite: boolean) => {controller.playSubmission(src, index, favorite)}} />
+            <Favorites  onRemoveFromFavorites={collabData.removeFromFavourites}
+                        favorites={collabData.favourites}
+                        onAddToFavorites={collabData.addToFavourites}
+                        onPlay={(src: string, index: number, favorite: boolean) => {controller.playSubmission(src, index, favorite)}}
+                        voteFor={collabData.voteFor} />
           <div className="audio-player-title">Submissions</div>
             <div style={{ display: 'flex', flexDirection: 'row', gap: '10px', flexWrap: 'wrap' }}>
               {collabData.regularSubmissions.map((track, index) => (
                 <SubmissionItem 
-                  key={index}
-                  src={track}
-                  index={index}
-                  isCurrentTrack={state.player1.source == track}
-                  isPlaying={state.player1.isPlaying}
-                  listened={collabData.listened.includes(track)}
-                  favorite={collabData.favourites.includes(track)}
-                  onAddToFavorites={collabData.addToFavourites}
-                  onPlay={(src: string, index: number, favorite: boolean) =>
-                     {controller.playSubmission(src, index, favorite)}}
+                    key={index}
+                    src={track}
+                    index={index}
+                    isCurrentTrack={state.player1.source == track}
+                    isPlaying={state.player1.isPlaying}
+                    listened={collabData.listened.includes(track)}
+                    favorite={collabData.favourites.includes(track)}
+                    onAddToFavorites={collabData.addToFavourites}
+                    onPlay={(src: string, index: number, favorite: boolean) =>
+                        {controller.playSubmission(src, index, favorite)}}
+                    voteFor={collabData.voteFor}
+                    listenedRatio={collabData.listenedRatio}
                 />
               ))}
             </div>
         </div>
       </div>
-      
       <Mixer 
         engine={engine} 
         state={state} 
@@ -101,7 +110,6 @@ export function MainView() {
         favourites={collabData.favourites}
         backingTrackSrc={collabData.backingTrackSrc}
       />
-      
     </div>
   );
 }

@@ -7,6 +7,8 @@ export function useCollabData(collabId?: string, engine?: any) {
   const [backingTrackSrc, setBackingTrackSrc] = useState<string>('');
   const [listened, setListened] = useState<string[]>([]);
   const [favourites, setFavourites] = useState<string[]>([]);
+  const [votedFor, setVotedFor] = useState<string>('');
+  const listenedRatio = 5
 
   useEffect(() => {
     // fetch data
@@ -15,17 +17,29 @@ export function useCollabData(collabId?: string, engine?: any) {
     setBackingTrackSrc(audioFiles.player2Files[0]);
     setListened(audioFiles.listened);
     setFavourites(audioFiles.favourites);
+    setVotedFor(audioFiles.votedFor[0]);
   }, [collabId]);
 
   // filter submissions based on favorites
   const regularSubmissions = allSubmissions.filter(submission => 
     !favourites.includes(submission)
-  );
+  )
+
+  const markAsListened = (src: string) => {
+    console.log("Mark as listened triggered: ", src);
+    
+    if (src && !listened.includes(src)) {
+      setListened(prev => [...prev, src]);
+      console.log("Track marked as listened:", src);
+    }
+  }
   
 //   const favoritedSubmissions = allSubmissions.filter(submission => 
 //     favourites.includes(submission)
 //   );
-
+  const voteFor = (src: string) => {
+    console.log("triggered voted for ", src);
+  }
   const addToFavourites = (src: string) => {
     console.log("sub added: ", src)
     if (src && !favourites.includes(src)) {
@@ -73,12 +87,10 @@ export function useCollabData(collabId?: string, engine?: any) {
             }
           }
         }
-        
         return newFavourites;
       });
     }
   };
-
   const removeFromFavourites = (index: number) => {
     const submission = favourites[index];
     
@@ -135,7 +147,6 @@ export function useCollabData(collabId?: string, engine?: any) {
       });
     }
   };
-
   return { 
     regularSubmissions, 
     pastStageTracklist, 
@@ -143,6 +154,9 @@ export function useCollabData(collabId?: string, engine?: any) {
     listened, 
     favourites,
     addToFavourites,
-    removeFromFavourites
+    removeFromFavourites,
+    voteFor,
+    markAsListened,
+    listenedRatio
   };
 }

@@ -25,50 +25,52 @@ export function DebugInfo({ engine }: DebugInfoProps) {
           <p>Playing Favourite: <span className="debug-value">{state.playerController.playingFavourite ? 'Yes' : 'No'}</span></p>
           <p>Current Track ID: <span className="debug-value">{state.playerController.currentTrackId}</span></p>
           <div className="debug-buttons">
-        <button id="test-btn" onClick={() => {
-          const state = engine.getState();
-          console.log('=== AUDIO ENGINE STATE TEST ===');
-          console.log('Full State Object:', state);
-          console.log('Player 1 Details:', {
-            isPlaying: state.player1.isPlaying,
-            currentTime: state.player1.currentTime,
-            duration: state.player1.duration,
-            volume: state.player1.volume,
-            source: state.player1.source,
-            hasEnded: state.player1.hasEnded,
-            error: state.player1.error
-          });
-          console.log('Player 2 Details:', {
-            isPlaying: state.player2.isPlaying,
-            currentTime: state.player2.currentTime,
-            duration: state.player2.duration,
-            volume: state.player2.volume,
-            source: state.player2.source,
-            hasEnded: state.player2.hasEnded,
-            error: state.player2.error
-          });
-          console.log('Player Controller:', {
-            pastStagePlayback: state.playerController.pastStagePlayback,
-            playingFavourite: state.playerController.playingFavourite,
-            currentTrackId: state.playerController.currentTrackId
-          });
-          console.log('Master Volume:', state.master.volume);
-          console.log('Engine Methods Available:', Object.getOwnPropertyNames(Object.getPrototypeOf(engine)));
-          console.log('=== END TEST ===');
-        }}>
-          testy
-        </button>
-        <button id="test-play-btn" onClick={() => {
-          console.log('=== TESTING PLAY SUBMISSION ===');
-          const submissionSrc = '/test-audio/df9a07de-d40c-4e49-ab35-2c94f55e5137_phone%20from%20china.mp3';
-          const backingSrc = '/test-audio/demo2%20instrumental.mp3';
-          console.log('Playing submission:', submissionSrc);
-          console.log('With backing track:', backingSrc);
-          engine.playSubmission(submissionSrc, backingSrc);
-          console.log('=== PLAY SUBMISSION CALLED ===');
-        }}>
-          test play
-        </button>
+          <div>
+            <button id="test-btn" onClick={() => {
+              const state = engine.getState();
+              console.log('=== AUDIO ENGINE STATE TEST ===');
+              console.log('Full State Object:', state);
+              console.log('Player 1 Details:', {
+                isPlaying: state.player1.isPlaying,
+                currentTime: state.player1.currentTime,
+                duration: state.player1.duration,
+                volume: state.player1.volume,
+                source: state.player1.source,
+                hasEnded: state.player1.hasEnded,
+                error: state.player1.error
+              });
+              console.log('Player 2 Details:', {
+                isPlaying: state.player2.isPlaying,
+                currentTime: state.player2.currentTime,
+                duration: state.player2.duration,
+                volume: state.player2.volume,
+                source: state.player2.source,
+                hasEnded: state.player2.hasEnded,
+                error: state.player2.error
+              });
+              console.log('Player Controller:', {
+                pastStagePlayback: state.playerController.pastStagePlayback,
+                playingFavourite: state.playerController.playingFavourite,
+                currentTrackId: state.playerController.currentTrackId
+              });
+              console.log('Master Volume:', state.master.volume);
+              console.log('Engine Methods Available:', Object.getOwnPropertyNames(Object.getPrototypeOf(engine)));
+              console.log('=== END TEST ===');
+            }}>
+              testy
+            </button>
+            <button id="test-btn" onClick={() => {
+              console.log('=== TESTING PLAY SUBMISSION ===');
+              const submissionSrc = '/test-audio/df9a07de-d40c-4e49-ab35-2c94f55e5137_phone%20from%20china.mp3';
+              const backingSrc = '/test-audio/demo2%20instrumental.mp3';
+              console.log('Playing submission:', submissionSrc);
+              console.log('With backing track:', backingSrc);
+              engine.playSubmission(submissionSrc, backingSrc);
+              console.log('=== PLAY SUBMISSION CALLED ===');
+            }}>
+              test play
+            </button>
+          </div>  
       </div>
         </div>
         <div className="debug-column">

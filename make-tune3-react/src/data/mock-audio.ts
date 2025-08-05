@@ -20,5 +20,8 @@ export const audioFiles = {
   ],
   favourites: [
     "/test-audio/voiceover2.mp3",
+  ],
+  votedFor: [
+    "/test-audio/voiceover2.mp3",
   ]
 };

@@ -2,16 +2,17 @@ import React, { useContext } from "react";
 import './SubmissionItem.css';
 import { AudioEngineContext } from "../audio-services/AudioEngineContext";
 
-export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onAddToFavorites, onPlay }:
+export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onAddToFavorites, onPlay, voteFor, listenedRatio }:
     { index: number, src: string, isPlaying: boolean, isCurrentTrack: boolean,
-      listened: boolean, favorite: boolean,
+      listened: boolean,
+      favorite: boolean,
       onAddToFavorites: (src: string) => void,
-      onPlay: (src: string, index: number, favorite: boolean ) => void}) => {
+      onPlay: (src: string, index: number, favorite: boolean ) => void,
+      voteFor: (src: string) => void,
+      listenedRatio: number
+    }) => {
 
   const submission = {
-    id: 'temp-1',
-    audioUrl: '/test-audio/temp.mp3',
-    favorited: false,
     markingListened: false,
     final: false,
     collabId: 'temp-collab'
@@ -34,12 +35,11 @@ export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onA
   
   const handlePlayClick = () => {
     console.log('playSubmission called with:', src, index, favorite)
-    // playerController.playSubmission(src, index, favorite);
     onPlay(src, index, favorite);
   };
   
   const onVote = (sub: any) => {
-    console.log('Vote clicked for submission:', sub.id);
+    voteFor(src);
   };
   
   const handleAddToFavorites = () => {
@@ -79,7 +79,7 @@ export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onA
           onClick={handleAddToFavorites}
           disabled={!listened}
         >
-          {listened ? 'Add to favorites' : 'Listen to 80% to add'}
+          {listened ? 'Add to favorites' : `Listen to ${listenedRatio}% to add`}
         </button>
       )}
     </div>
