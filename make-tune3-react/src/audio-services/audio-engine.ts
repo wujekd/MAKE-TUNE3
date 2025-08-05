@@ -9,12 +9,20 @@ export class AudioEngine {
   private player2Source: MediaElementAudioSourceNode | null = null;
   private player1Gain: GainNode | null = null;
   private player2Gain: GainNode | null = null;
+  // TODO
+  // to add
+  // eq gains
+  // solo
+  // mute
+  // mute master
+  // stop playback tracker and emit state
   private masterGain: GainNode | null = null;
   private state: AudioState;
   private onStateChange?: (state: AudioState) => void;
   private playbackTracker: PlaybackTracker;
   private onTrackListened?: (trackSrc: string)=>void;
   private listenedRatio?: number;
+  private isTrackListened?: (trackSrc: string) => boolean;
 
   constructor(player1: HTMLAudioElement, player2: HTMLAudioElement, ) {
     this.player1 = player1;
@@ -33,7 +41,7 @@ export class AudioEngine {
     );
   }
 
-// AUDIO INIT
+// AUDIO INNIT
   private initAudioContext(): AudioContext {
     if (!this.audioContext) {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -73,7 +81,6 @@ export class AudioEngine {
       this.player2Source = source;
     }
   }
-
 // PLAYBACK METHODS
   loadSource(playerId: 1 | 2, src: string): void {
     const player = playerId === 1 ? this.player1 : this.player2;
@@ -82,7 +89,6 @@ export class AudioEngine {
     if (playerId === 1) {
       this.player2.currentTime = 0;
     }
-    
     this.updateState({
       [`player${playerId}`]: { 
         ...this.state[`player${playerId}`], 
@@ -116,7 +122,12 @@ export class AudioEngine {
         isPlaying: true 
       }
     });
-    this.playbackTracker.startTracking(submissionSrc);
+    if (!this.isTrackListened || !this.isTrackListened(submissionSrc)) {
+      console.log(`AudioEngine: Starting playback tracking for ${submissionSrc} (not yet listened)`);
+      this.playbackTracker.startTracking(submissionSrc);
+    } else {
+      console.log(`AudioEngine: Skipping playback tracking for ${submissionSrc} (already listened)`);
+    }
     this.player1.play();
     this.player2.play();
   } 
@@ -138,14 +149,8 @@ export class AudioEngine {
     this.player1.pause();
     this.player2.pause();
     this.updateState({
-      player1: {
-        ...this.state.player1,
-        isPlaying: false
-      },
-      player2: {
-        ...this.state.player2,
-        isPlaying: false
-      }
+      player1: { ...this.state.player1, isPlaying: false },
+      player2: { ...this.state.player2, isPlaying: false } // is this a better syntax?
     });
     this.playbackTracker.pauseTracking();
   }
@@ -262,14 +267,14 @@ export class AudioEngine {
       this.playbackTracker.stopTracking();
     }
   }
-
 // STATE METHODS
   setCallbacks(onStateChange: (state: AudioState) => void) {
     this.onStateChange = onStateChange;
   }
-  setTrackListenedCallback(callback: (trackSrc: string) => void, listenedRatio: number): void {
+  setTrackListenedCallback(callback: (trackSrc: string) => void, listenedRatio: number, isTrackListened?: (trackSrc: string) => boolean): void {
     this.onTrackListened = callback;
     this.listenedRatio = listenedRatio;
+    this.isTrackListened = isTrackListened;
     this.playbackTracker.setListenRatio(listenedRatio);
   }
   private setupAudioEventListeners() {

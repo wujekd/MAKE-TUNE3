@@ -6,11 +6,17 @@ import ProjectHistory from '../components/ProjectHistory';
 import { Mixer } from '../components/Mixer';
 import Favorites from '../components/Favorites';
 import { useCollabData } from '../hooks/useCollabData';
+import { useAuth } from '../contexts/AuthContext';
 import './MainView.css';
 import SubmissionItem from '../components/SubmissionItem';
 
-export function MainView() {
+interface MainViewProps {
+  onShowAuth: () => void;
+}
+
+export function MainView({ onShowAuth }: MainViewProps) {
   const audioContext = useContext(AudioEngineContext);
+  const { user, signOut } = useAuth();
 
   if (!audioContext) {
     return <div>Loading audio engine...</div>;
@@ -28,10 +34,13 @@ export function MainView() {
 
   useEffect(() => {
     if (engine) {
-        engine.setTrackListenedCallback((trackSrc) => {collabData.markAsListened(trackSrc)},
-        collabData.listenedRatio);
+        engine.setTrackListenedCallback(
+          (trackSrc) => {collabData.markAsListened(trackSrc)},
+          collabData.listenedRatio,
+          (trackSrc) => collabData.listened.includes(trackSrc)
+        );
     }
-  }, [engine, collabData.listenedRatio]);
+  }, [engine, collabData.listenedRatio, collabData.listened]);
 
   return (
     <div className="main-container">
@@ -68,6 +77,31 @@ export function MainView() {
       >
         Log Favorites
       </button>
+      {user ? (
+        <button 
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '400px',
+            zIndex: 1000,
+          }}
+          onClick={signOut}
+        >
+          Logout ({user.email})
+        </button>
+      ) : (
+        <button 
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '400px',
+            zIndex: 1000,
+          }}
+          onClick={onShowAuth}
+        >
+          Login
+        </button>
+      )}
       <div className="info-top">
         <h2>Audio Engine Test</h2>
           <DebugInfo engine={engine} />
