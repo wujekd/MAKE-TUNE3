@@ -1,11 +1,12 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useContext } from "react";
 import './SubmissionItem.css';
-import { usePlayerController } from "../hooks/usePlayerController";
-
 import { AudioEngineContext } from "../audio-services/AudioEngineContext";
 
-export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onAddToFavorites }:
-    { index: number, src: string, isPlaying: boolean, isCurrentTrack: boolean, listened: boolean, favorite: boolean, onAddToFavorites: (src: string) => void }) => {
+export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onAddToFavorites, onPlay }:
+    { index: number, src: string, isPlaying: boolean, isCurrentTrack: boolean,
+      listened: boolean, favorite: boolean,
+      onAddToFavorites: (src: string) => void,
+      onPlay: (src: string, index: number, favorite: boolean ) => void}) => {
 
   const submission = {
     id: 'temp-1',
@@ -22,7 +23,6 @@ export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onA
     return <div>Loading audio engine...</div>;
   }
   const { engine, state } = audioContext;
-  const playerController = usePlayerController(engine);
   
   const isVotedFor = false;
   const isSubmittingVote = false;
@@ -33,8 +33,9 @@ export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onA
     : 0;
   
   const handlePlayClick = () => {
-    // console.log('playSubmission called with:', src, favorite)
-    playerController.playSubmission(src, index, favorite);
+    console.log('playSubmission called with:', src, index, favorite)
+    // playerController.playSubmission(src, index, favorite);
+    onPlay(src, index, favorite);
   };
   
   const onVote = (sub: any) => {
@@ -53,6 +54,9 @@ export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onA
       ${submission.markingListened ? 'marking' : ''}
       ${listened ? 'listened' : ''}
     `}>
+      <div style={{ fontSize: '10px', color: 'white', marginBottom: '4px' }}>
+        Index: {index} | Src: {src.substring(src.lastIndexOf('/') + 1)}
+      </div>
       <button 
         className="play-button" 
         onClick={handlePlayClick}

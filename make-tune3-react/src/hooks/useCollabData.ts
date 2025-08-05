@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { audioFiles } from '../data/mock-audio';
 
-export function useCollabData(collabId?: string) {
+export function useCollabData(collabId?: string, engine?: any) {
   const [allSubmissions, setAllSubmissions] = useState<string[]>([]);
   const [pastStageTracklist, setPastStageTracklist] = useState<string[]>([]);
   const [backingTrackSrc, setBackingTrackSrc] = useState<string>('');
@@ -9,7 +9,7 @@ export function useCollabData(collabId?: string) {
   const [favourites, setFavourites] = useState<string[]>([]);
 
   useEffect(() => {
-    // Fetch all data from database/API
+    // fetch data
     setAllSubmissions(audioFiles.player1Files);
     setPastStageTracklist(audioFiles.pastStageFiles);
     setBackingTrackSrc(audioFiles.player2Files[0]);
@@ -17,7 +17,7 @@ export function useCollabData(collabId?: string) {
     setFavourites(audioFiles.favourites);
   }, [collabId]);
 
-  // Filter submissions based on favorites
+  // filter submissions based on favorites
   const regularSubmissions = allSubmissions.filter(submission => 
     !favourites.includes(submission)
   );
@@ -29,7 +29,53 @@ export function useCollabData(collabId?: string) {
   const addToFavourites = (src: string) => {
     console.log("sub added: ", src)
     if (src && !favourites.includes(src)) {
-      setFavourites(prev => [...prev, src]);
+      setFavourites(prev => {
+        const newFavourites = [...prev, src];
+        
+        if (engine) {
+          const currentState = engine.getState();
+          const currentSource = currentState.player1.source;
+          
+          console.log("addToFavourites - currentSource:", currentSource);
+          console.log("addToFavourites - currentState.playerController:", currentState.playerController);
+          
+          // added track is currently playing
+          if (currentSource === src) {
+            console.log("addToFavourites - updating playing track");
+            engine.setPlayingFavourite(true);
+            // update to the new index in favorites list
+            const newIndex = newFavourites.indexOf(src);
+            console.log("addToFavourites - new index:", newIndex);
+            engine.updateCurrentTrackId(newIndex);
+          }
+          //different track is currently playing and it's in favorites
+          else if (currentSource && currentState.playerController.playingFavourite) {
+            console.log("addToFavourites - updating other track in favorites");
+            const newIndex = newFavourites.indexOf(currentSource);
+            console.log("addToFavourites - new index for current track:", newIndex);
+            if (newIndex !== -1) {
+              // Update to the new index in the updated favorites list
+              engine.updateCurrentTrackId(newIndex);
+            }
+          }
+          // different track is currently playing in regular submissions
+          else if (currentSource && !currentState.playerController.playingFavourite && !currentState.playerController.pastStagePlayback) {
+            console.log("addToFavourites - updating other track in regular submissions");
+            // recalculate regular submissions without the added track
+            const newRegularSubmissions = allSubmissions.filter(submission => 
+              !newFavourites.includes(submission)
+            );
+            const newIndex = newRegularSubmissions.indexOf(currentSource);
+            console.log("addToFavourites - new index for current track in regular:", newIndex);
+            if (newIndex !== -1) {
+              // update to the new index in the updated regular submissions list
+              engine.updateCurrentTrackId(newIndex);
+            }
+          }
+        }
+        
+        return newFavourites;
+      });
     }
   };
 
@@ -37,7 +83,56 @@ export function useCollabData(collabId?: string) {
     const submission = favourites[index];
     
     if (submission) {
-      setFavourites(prev => prev.filter(fav => fav !== submission));
+      setFavourites(prev => {
+        const newFavourites = prev.filter(fav => fav !== submission);
+        
+        if (engine) {
+          const currentState = engine.getState();
+          const currentSource = currentState.player1.source;
+          
+          console.log("removeFromFavourites - removed submission:", submission);
+          console.log("removeFromFavourites - currentSource:", currentSource);
+          console.log("removeFromFavourites - currentState.playerController:", currentState.playerController);
+          
+          // removed track is currently playing
+          if (currentSource === submission) {
+            console.log("removeFromFavourites - updating playing track");
+            engine.setPlayingFavourite(false);
+            // find the track in regular submissions and update index
+            const regularIndex = allSubmissions.indexOf(submission);
+            console.log("removeFromFavourites - regular index:", regularIndex);
+            if (regularIndex !== -1) {
+              engine.updateCurrentTrackId(regularIndex);
+            }
+          }
+          // different track is currently playing and its in favorites
+          else if (currentSource && currentState.playerController.playingFavourite) {
+            console.log("removeFromFavourites - updating other track in favorites");
+            const newIndex = newFavourites.indexOf(currentSource);
+            console.log("removeFromFavourites - new index for current track:", newIndex);
+            if (newIndex !== -1) {
+              // Update to the new index in the updated favorites list
+              engine.updateCurrentTrackId(newIndex);
+            }
+          }
+          // different track is currently playing in regular submissions
+          else if (currentSource && !currentState.playerController.playingFavourite && !currentState.playerController.pastStagePlayback) {
+            console.log("removeFromFavourites - updating other track in regular submissions");
+            // recalculate regular submissions with the removed track back in
+            const newRegularSubmissions = allSubmissions.filter(submission => 
+              !newFavourites.includes(submission)
+            );
+            const newIndex = newRegularSubmissions.indexOf(currentSource);
+            console.log("removeFromFavourites - new index for current track in regular:", newIndex);
+            if (newIndex !== -1) {
+              // update to the new index in the updated regular submissions list
+              engine.updateCurrentTrackId(newIndex);
+            }
+          }
+        }
+        
+        return newFavourites;
+      });
     }
   };
 
