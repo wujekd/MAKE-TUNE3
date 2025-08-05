@@ -35,7 +35,13 @@ export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onA
   
   const handlePlayClick = () => {
     console.log('playSubmission called with:', src, index, favorite)
-    onPlay(src, index, favorite);
+    if (isPlaying && isCurrentTrack){
+      engine.pause();
+    } else {
+      
+      onPlay(src, index, favorite)
+
+    }
   };
   
   const onVote = (sub: any) => {
