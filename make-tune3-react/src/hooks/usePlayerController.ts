@@ -1,21 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { AudioEngine } from '../audio-services/audio-engine';
-import { audioFiles } from '../data/mock-audio';
-import { useCollabData } from './useCollabData';
 import type { AudioState } from '../types';
 
-export function usePlayerController(engine: AudioEngine | null) { // apparently its better to pass the audio engine even though its alwaqys the same engine ???
-
-  const [backingTrackSrc] = useState(audioFiles.player2Files[0]);
+export function usePlayerController(engine: AudioEngine | null, { regularSubmissions, pastStageTracklist, favourites, backingTrackSrc }: { regularSubmissions: string[], pastStageTracklist: string[], favourites: string[], backingTrackSrc: string }) {
 
   const pastStagePlayback = engine ? engine.getState().playerController.pastStagePlayback : false;
   const currentTrackIndex = engine ? engine.getState().playerController.currentTrackId : -2;
   let playingFavourite = engine ? engine.getState().playerController.playingFavourite : false;
 
-  const collabData = useCollabData();
   useEffect(() => {
     console.log("player controller rerender");
-  }, [collabData.favourites]);
+  }, [favourites]);
 
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
@@ -41,18 +36,18 @@ export function usePlayerController(engine: AudioEngine | null) { // apparently 
 
   const nextTrack = () => {
     if (pastStagePlayback) {
-      if (currentTrackIndex < collabData.pastStageTracklist.length - 1) {
+      if (currentTrackIndex < pastStageTracklist.length - 1) {
         playPastSubmission(currentTrackIndex + 1);
       }
     } else if (playingFavourite) {
-      if (currentTrackIndex < collabData.favourites.length - 1) {
-        const nextTrackPath = collabData.favourites[currentTrackIndex + 1];
-        playSubmission(nextTrackPath, true, currentTrackIndex + 1);
+      if (currentTrackIndex < favourites.length - 1) {
+        const nextTrackPath = favourites[currentTrackIndex + 1];
+        playSubmission(nextTrackPath, currentTrackIndex + 1, true);
       }
     } else {
-      if (currentTrackIndex < collabData.regularSubmissions.length - 1) {
-        const nextTrackPath = collabData.regularSubmissions[currentTrackIndex + 1];
-        playSubmission(nextTrackPath, false, currentTrackIndex + 1);
+      if (currentTrackIndex < regularSubmissions.length - 1) {
+        const nextTrackPath = regularSubmissions[currentTrackIndex + 1];
+        playSubmission(nextTrackPath, currentTrackIndex + 1, false);
       }
     }
   };
@@ -64,13 +59,13 @@ export function usePlayerController(engine: AudioEngine | null) { // apparently 
       }
     } else if (playingFavourite) {
       if (currentTrackIndex > 0) {
-        const prevTrackPath = collabData.favourites[currentTrackIndex - 1];
+        const prevTrackPath = favourites[currentTrackIndex - 1];
         playSubmission(prevTrackPath, currentTrackIndex - 1, true);
       }
     } else {
       if (currentTrackIndex > 0) {
-        const prevTrackPath = collabData.regularSubmissions[currentTrackIndex - 1];
-        playSubmission(prevTrackPath, currentTrackIndex -1,  false);
+        const prevTrackPath = regularSubmissions[currentTrackIndex - 1];
+        playSubmission(prevTrackPath, currentTrackIndex - 1, false);
       }
     }
   };
@@ -88,7 +83,7 @@ export function usePlayerController(engine: AudioEngine | null) { // apparently 
   };
 
   const playPastSubmission = (index: number) => {
-    engine?.playPastStage(collabData.pastStageTracklist[index], index);
+    engine?.playPastStage(pastStageTracklist[index], index);
   };
 
   const getTimeSliderValue = (state: AudioState): number => {
@@ -113,10 +108,10 @@ export function usePlayerController(engine: AudioEngine | null) { // apparently 
 
   const canGoBack = currentTrackIndex > 0;
   const canGoForward = pastStagePlayback
-    ? currentTrackIndex < collabData.pastStageTracklist.length - 1
+    ? currentTrackIndex < pastStageTracklist.length - 1
     : playingFavourite
-    ? currentTrackIndex < collabData.favourites.length - 1
-    : currentTrackIndex < collabData.regularSubmissions.length - 1;
+    ? currentTrackIndex < favourites.length - 1
+    : currentTrackIndex < regularSubmissions.length - 1;
 
   const handleSubmissionVolumeChange = (volume: number) => {
     if (!engine) return;
@@ -130,13 +125,13 @@ export function usePlayerController(engine: AudioEngine | null) { // apparently 
 
   // Backing track init when engine loads
   useEffect(() => {
-    if (engine && collabData.backingTrackSrc) {
+    if (engine && backingTrackSrc) {
       const currentState = engine.getState();
-      if (currentState.player2.source !== collabData.backingTrackSrc) {
-        engine.loadSource(2, collabData.backingTrackSrc);
+      if (currentState.player2.source !== backingTrackSrc) {
+        engine.loadSource(2, backingTrackSrc);
       }
     }
-  }, [engine]);
+  }, [engine, backingTrackSrc]);
 
   return {
     currentTrackIndex,

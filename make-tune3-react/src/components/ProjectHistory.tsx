@@ -12,8 +12,13 @@ const ProjectHistory = () => {
   }
   
   const { engine } = audioContext;
-  const controller = usePlayerController(engine);
-  const collabData = useCollabData();
+  const collabData = useCollabData(undefined, engine);
+  const controller = usePlayerController(engine, {
+    regularSubmissions: collabData.regularSubmissions,
+    pastStageTracklist: collabData.pastStageTracklist,
+    favourites: collabData.favourites,
+    backingTrackSrc: collabData.backingTrackSrc
+  });
 
   return (
     <div className="project-history">

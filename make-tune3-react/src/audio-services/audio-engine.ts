@@ -298,6 +298,18 @@ export class AudioEngine {
     });
   }
 
+  updateCurrentTrackId(trackId: number): void {
+    console.log("updateCurrentTrackId called with:", trackId);
+    console.log("updateCurrentTrackId - old currentTrackId:", this.state.playerController.currentTrackId);
+    this.updateState({
+      playerController: {
+        ...this.state.playerController,
+        currentTrackId: trackId
+      }
+    });
+    console.log("updateCurrentTrackId - new currentTrackId:", this.state.playerController.currentTrackId);
+  }
+
   seek(time: number, pastStagePlayback: boolean = false): void {
     if (pastStagePlayback) {
       // seek player2 when in pastStagePlayback mode

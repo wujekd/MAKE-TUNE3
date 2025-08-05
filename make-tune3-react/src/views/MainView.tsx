@@ -16,10 +16,15 @@ export function MainView() {
     return <div>Loading audio engine...</div>;
   }
   const { engine, state } = audioContext;
-  const controller = usePlayerController(engine);
-
   const [debug, setDebug] = useState(false);
-  const collabData = useCollabData();
+  const collabData = useCollabData(undefined, engine);
+  
+  const controller = usePlayerController(engine, {
+    regularSubmissions: collabData.regularSubmissions,
+    pastStageTracklist: collabData.pastStageTracklist,
+    favourites: collabData.favourites,
+    backingTrackSrc: collabData.backingTrackSrc
+  });
 
   return (
     <div className="main-container">
@@ -67,7 +72,7 @@ export function MainView() {
       
       <div className="submissions-section">
         <div className="audio-player-section">
-            <Favorites onRemoveFromFavorites={collabData.removeFromFavourites} favorites={collabData.favourites} onAddToFavorites={collabData.addToFavourites} />
+            <Favorites onRemoveFromFavorites={collabData.removeFromFavourites} favorites={collabData.favourites} onAddToFavorites={collabData.addToFavourites} onPlay={(src: string, index: number, favorite: boolean) => {controller.playSubmission(src, index, favorite)}} />
           <div className="audio-player-title">Submissions</div>
             <div style={{ display: 'flex', flexDirection: 'row', gap: '10px', flexWrap: 'wrap' }}>
               {collabData.regularSubmissions.map((track, index) => (
@@ -80,13 +85,22 @@ export function MainView() {
                   listened={collabData.listened.includes(track)}
                   favorite={collabData.favourites.includes(track)}
                   onAddToFavorites={collabData.addToFavourites}
+                  onPlay={(src: string, index: number, favorite: boolean) =>
+                     {controller.playSubmission(src, index, favorite)}}
                 />
               ))}
             </div>
         </div>
       </div>
       
-      <Mixer engine={engine} state={state} />
+      <Mixer 
+        engine={engine} 
+        state={state} 
+        regularSubmissions={collabData.regularSubmissions}
+        pastStageTracklist={collabData.pastStageTracklist}
+        favourites={collabData.favourites}
+        backingTrackSrc={collabData.backingTrackSrc}
+      />
       
     </div>
   );
