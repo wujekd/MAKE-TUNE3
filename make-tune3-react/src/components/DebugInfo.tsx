@@ -20,8 +20,10 @@ export function DebugInfo({ engine }: DebugInfoProps) {
       <div className="debug-grid">
         <div className="debug-column">
           <h4>Audio Engine</h4>
-          <p>Context: <span className="debug-value">Active</span></p>
           <p>Master Volume: <span className="debug-value">{state.master.volume.toFixed(2)}</span></p>
+          <p>Past Stage: <span className="debug-value">{state.playerController.pastStagePlayback ? 'Yes' : 'No'}</span></p>
+          <p>Playing Favourite: <span className="debug-value">{state.playerController.playingFavourite ? 'Yes' : 'No'}</span></p>
+          <p>Current Track ID: <span className="debug-value">{state.playerController.currentTrackId}</span></p>
           <div className="debug-buttons">
         <button id="test-btn" onClick={() => {
           const state = engine.getState();
@@ -44,6 +46,11 @@ export function DebugInfo({ engine }: DebugInfoProps) {
             source: state.player2.source,
             hasEnded: state.player2.hasEnded,
             error: state.player2.error
+          });
+          console.log('Player Controller:', {
+            pastStagePlayback: state.playerController.pastStagePlayback,
+            playingFavourite: state.playerController.playingFavourite,
+            currentTrackId: state.playerController.currentTrackId
           });
           console.log('Master Volume:', state.master.volume);
           console.log('Engine Methods Available:', Object.getOwnPropertyNames(Object.getPrototypeOf(engine)));

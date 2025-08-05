@@ -33,8 +33,8 @@ export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onA
     : 0;
   
   const handlePlayClick = () => {
-    // console.log('playSubmission called with:', index, favorite)
-    playerController.playSubmission(index, favorite)
+    // console.log('playSubmission called with:', src, favorite)
+    playerController.playSubmission(src, index, favorite);
   };
   
   const onVote = (sub: any) => {
