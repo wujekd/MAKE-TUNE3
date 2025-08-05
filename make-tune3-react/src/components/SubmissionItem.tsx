@@ -2,19 +2,19 @@ import React, { useContext } from "react";
 import './SubmissionItem.css';
 import { AudioEngineContext } from "../audio-services/AudioEngineContext";
 
-export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onAddToFavorites, onPlay, voteFor, listenedRatio }:
+export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onAddToFavorites, onPlay, voteFor, listenedRatio, isFinal}:
     { index: number, src: string, isPlaying: boolean, isCurrentTrack: boolean,
       listened: boolean,
       favorite: boolean,
       onAddToFavorites: (src: string) => void,
       onPlay: (src: string, index: number, favorite: boolean ) => void,
       voteFor: (src: string) => void,
-      listenedRatio: number
+      listenedRatio: number,
+      isFinal: boolean
     }) => {
 
   const submission = {
     markingListened: false,
-    final: false,
     collabId: 'temp-collab'
   };
 
@@ -50,7 +50,7 @@ export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onA
   return (
     <div className={`
       submission-container
-      ${isVotedFor ? 'voted-for' : ''}
+      ${isFinal ? 'voted-for' : ''}
       ${submission.markingListened ? 'marking' : ''}
       ${listened ? 'listened' : ''}
     `}>
@@ -69,9 +69,9 @@ export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onA
         <button 
           className="vote-button"
           onClick={() => onVote(submission)}
-          disabled={isSubmittingVote || isVotedFor}
+          disabled={isSubmittingVote || isFinal}
         >
-          {isVotedFor ? '✓ Voted' : 'Vote'}
+          {isFinal ? '✓ Voted' : 'Vote'}
         </button>
       ) : (
         <button 

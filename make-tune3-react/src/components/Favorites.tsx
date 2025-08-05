@@ -4,10 +4,14 @@ import SubmissionItem from './SubmissionItem';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import './Favorites.css';
 
-const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay }: 
+const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay, voteFor, finalVote, listenedRatio }: 
                 { onRemoveFromFavorites: (index: number) => void, favorites: string[],
                   onAddToFavorites: (src: string) => void,
-                  onPlay: (src: string, index: number, favorite: boolean) => void }) => {
+                  onPlay: (src: string, index: number, favorite: boolean) => void,
+                  voteFor: (src: string) => void,
+                  finalVote: string,
+                  listenedRatio: number
+                }) => {
   const votedFor = null;
   const isSubmittingVote = false;
 
@@ -86,6 +90,10 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay 
                 favorite={true}
                 onAddToFavorites={onAddToFavorites}
                 onPlay={onPlay}
+                voteFor={voteFor}
+                listenedRatio={listenedRatio}
+                isFinal={(finalVote == favorite)}
+                
               />
             </div>
           ))

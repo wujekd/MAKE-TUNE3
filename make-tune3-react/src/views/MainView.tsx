@@ -80,7 +80,10 @@ export function MainView() {
                         favorites={collabData.favourites}
                         onAddToFavorites={collabData.addToFavourites}
                         onPlay={(src: string, index: number, favorite: boolean) => {controller.playSubmission(src, index, favorite)}}
-                        voteFor={collabData.voteFor} />
+                        voteFor={collabData.voteFor}
+                        listenedRatio={collabData.listenedRatio}
+                        finalVote={collabData.finalVote}
+                        />
           <div className="audio-player-title">Submissions</div>
             <div style={{ display: 'flex', flexDirection: 'row', gap: '10px', flexWrap: 'wrap' }}>
               {collabData.regularSubmissions.map((track, index) => (
@@ -97,6 +100,7 @@ export function MainView() {
                         {controller.playSubmission(src, index, favorite)}}
                     voteFor={collabData.voteFor}
                     listenedRatio={collabData.listenedRatio}
+                    isFinal={false}
                 />
               ))}
             </div>

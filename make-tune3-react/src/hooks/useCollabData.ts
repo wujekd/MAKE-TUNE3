@@ -7,7 +7,7 @@ export function useCollabData(collabId?: string, engine?: any) {
   const [backingTrackSrc, setBackingTrackSrc] = useState<string>('');
   const [listened, setListened] = useState<string[]>([]);
   const [favourites, setFavourites] = useState<string[]>([]);
-  const [votedFor, setVotedFor] = useState<string>('');
+  const [finalVote, setFinalVote] = useState<string>('');
   const listenedRatio = 5
 
   useEffect(() => {
@@ -17,7 +17,7 @@ export function useCollabData(collabId?: string, engine?: any) {
     setBackingTrackSrc(audioFiles.player2Files[0]);
     setListened(audioFiles.listened);
     setFavourites(audioFiles.favourites);
-    setVotedFor(audioFiles.votedFor[0]);
+    setFinalVote(audioFiles.votedFor[0]);
   }, [collabId]);
 
   // filter submissions based on favorites
@@ -39,6 +39,7 @@ export function useCollabData(collabId?: string, engine?: any) {
 //   );
   const voteFor = (src: string) => {
     console.log("triggered voted for ", src);
+    setFinalVote(src);
   }
   const addToFavourites = (src: string) => {
     console.log("sub added: ", src)
@@ -157,6 +158,7 @@ export function useCollabData(collabId?: string, engine?: any) {
     removeFromFavourites,
     voteFor,
     markAsListened,
-    listenedRatio
+    listenedRatio,
+    finalVote
   };
 }

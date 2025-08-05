@@ -2,14 +2,14 @@
 .favorites-section {
   background: linear-gradient(to right, var(--primary1-500), var(--primary1-700));
   color: var(--white);
-  padding: 0.5rem 1rem;
+  padding: 0.2rem 1rem;
   display: flex;
   flex-direction: column;
-  min-height: 240px;
+  min-height: 230px;
 }
 
 .favorites-container {
-  margin-top: -15px;
+  margin-top: -10px;
   display: flex;
   overflow-x: auto;
   overflow-y: hidden;
@@ -55,8 +55,7 @@
 .favorites-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 2rem;
 }
 
 .vote-warning {
