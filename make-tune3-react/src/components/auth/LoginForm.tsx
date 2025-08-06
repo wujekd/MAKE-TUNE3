@@ -13,7 +13,7 @@ export function LoginForm({ onSwitchToSignUp, onSwitchToForgotPassword }: LoginF
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { signIn } = useAppStore();
+  const { signIn } = useAppStore(state => state.auth);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

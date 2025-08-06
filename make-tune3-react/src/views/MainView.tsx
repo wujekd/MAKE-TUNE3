@@ -18,23 +18,22 @@ export function MainView({ onShowAuth }: MainViewProps) {
   const [debug, setDebug] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
-  const {
-    user,
-    signOut,
-    regularSubmissions,
-    pastStageTracklist,
-    backingTrackSrc,
-    favourites,
-    listened,
-    finalVote,
-    listenedRatio,
+  // Get data from different slices
+  const { user, signOut } = useAppStore(state => state.auth);
+  const { 
+    regularTracks, 
+    pastStageTracks, 
+    backingTrack,
     markAsListened,
-    addToFavourites,
-    removeFromFavourites,
+    addToFavorites,
+    removeFromFavorites,
     voteFor,
-    playSubmission,
-    playPastSubmission
-  } = useAppStore();
+    isTrackListened,
+    isTrackFavorite,
+    getTrackById
+  } = useAppStore(state => state.collaboration);
+  const { playSubmission, playPastSubmission } = useAppStore(state => state.playback);
+  const { setShowAuth } = useAppStore(state => state.ui);
 
   if (!audioContext) {
     return <div>Audio engine not available</div>;
@@ -45,12 +44,21 @@ export function MainView({ onShowAuth }: MainViewProps) {
   useEffect(() => {
     if (engine) {
         engine.setTrackListenedCallback(
-          (trackSrc) => { markAsListened(trackSrc) },
-          listenedRatio,
-          (trackSrc) => listened.includes(trackSrc)
+          (trackSrc) => { 
+            // Find track by file path and mark as listened
+            const track = regularTracks.find(t => t.filePath === trackSrc);
+            if (track) {
+              markAsListened(track.id);
+            }
+          },
+          7, // listenedRatio
+          (trackSrc) => {
+            const track = regularTracks.find(t => t.filePath === trackSrc);
+            return track ? isTrackListened(track.id) : false;
+          }
         );
     }
-  }, [engine, listenedRatio, markAsListened, listened]);
+  }, [engine, markAsListened, regularTracks, isTrackListened]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -80,17 +88,6 @@ export function MainView({ onShowAuth }: MainViewProps) {
         style={{
           position: 'absolute',
           top: '20px',
-          right: '10px',
-          zIndex: 1000,
-        }}
-        onClick={() => setDebug(!debug)}
-      >
-        {debug ? 'Show History' : 'Show Debug'}
-      </button>
-      <button 
-        style={{
-          position: 'absolute',
-          top: '20px',
           right: '140px',
           zIndex: 1000,
         }}
@@ -105,7 +102,7 @@ export function MainView({ onShowAuth }: MainViewProps) {
           right: '270px',
           zIndex: 1000,
         }}
-        onClick={() => console.log('favourites:', favourites)}
+        onClick={() => console.log('favourites:', regularTracks.filter(t => isTrackFavorite(t.id)))}
       >
         Log Favorites
       </button>
@@ -129,7 +126,7 @@ export function MainView({ onShowAuth }: MainViewProps) {
             right: '400px',
             zIndex: 1000,
           }}
-          onClick={onShowAuth}
+          onClick={() => setShowAuth(true)}
         >
           Login
         </button>
@@ -142,30 +139,30 @@ export function MainView({ onShowAuth }: MainViewProps) {
       
       <div className="submissions-section">
         <div className="audio-player-section">
-            <Favorites  onRemoveFromFavorites={removeFromFavourites}
-                        favorites={favourites}
-                        onAddToFavorites={addToFavourites}
-                        onPlay={(src: string, index: number, favorite: boolean) => {playSubmission(src, index, favorite)}}
-                        voteFor={voteFor}
-                        listenedRatio={listenedRatio}
-                        finalVote={finalVote}
-                        />
+            <Favorites  
+              onRemoveFromFavorites={(trackId) => removeFromFavorites(trackId)}
+              favorites={regularTracks.filter(t => isTrackFavorite(t.id))}
+              onAddToFavorites={(trackId) => addToFavorites(trackId)}
+              onPlay={(trackId, index, favorite) => playSubmission(trackId, index, favorite)}
+              voteFor={voteFor}
+              listenedRatio={7}
+              finalVote={null}
+            />
           <div className="audio-player-title">Submissions</div>
             <div style={{ display: 'flex', flexDirection: 'row', gap: '10px', flexWrap: 'wrap' }}>
-              {regularSubmissions.map((track, index) => (
+              {regularTracks.map((track, index) => (
                 <SubmissionItem 
-                    key={index}
-                    src={track}
+                    key={track.id}
+                    track={track}
                     index={index}
-                    isCurrentTrack={state.player1.source == track}
+                    isCurrentTrack={state.player1.source === track.filePath}
                     isPlaying={state.player1.isPlaying}
-                    listened={listened.includes(track)}
-                    favorite={favourites.includes(track)}
-                    onAddToFavorites={addToFavourites}
-                    onPlay={(src: string, index: number, favorite: boolean) =>
-                        {playSubmission(src, index, favorite)}}
+                    listened={isTrackListened(track.id)}
+                    favorite={isTrackFavorite(track.id)}
+                    onAddToFavorites={() => addToFavorites(track.id)}
+                    onPlay={(trackId, index, favorite) => playSubmission(trackId, index, favorite)}
                     voteFor={voteFor}
-                    listenedRatio={listenedRatio}
+                    listenedRatio={7}
                     isFinal={false}
                 />
               ))}

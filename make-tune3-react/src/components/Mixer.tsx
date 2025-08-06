@@ -17,7 +17,9 @@ export function Mixer({ state }: MixerProps) {
     getCurrentTime,
     getTotalTime,
     getTimeSliderValue
-  } = useAppStore();
+  } = useAppStore(state => state.playback);
+
+  const { regularTracks, pastStageTracks, isTrackFavorite } = useAppStore(state => state.collaboration);
 
   const handleSubmissionVolumeChangeEvent = (e: React.ChangeEvent<HTMLInputElement>) => {
     const volume = parseFloat(e.target.value);
@@ -39,14 +41,12 @@ export function Mixer({ state }: MixerProps) {
   const playingFavourite = state.playerController.playingFavourite;
   const currentTrackIndex = state.playerController.currentTrackId;
   
-  const { regularSubmissions, pastStageTracklist, favourites } = useAppStore();
-  
   const canGoBack = currentTrackIndex > 0;
   const canGoForward = pastStagePlayback
-    ? currentTrackIndex < pastStageTracklist.length - 1
+    ? currentTrackIndex < pastStageTracks.length - 1
     : playingFavourite
-    ? currentTrackIndex < favourites.length - 1
-    : currentTrackIndex < regularSubmissions.length - 1;
+    ? currentTrackIndex < regularTracks.filter(t => isTrackFavorite(t.id)).length - 1
+    : currentTrackIndex < regularTracks.length - 1;
 
   return (
     <section className="mixer-section" id="mixer">

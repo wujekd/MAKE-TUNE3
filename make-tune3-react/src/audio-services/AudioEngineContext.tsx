@@ -22,8 +22,8 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
   const engineRef = useRef<AudioEngine | null>(null);
   const [state, setState] = useState<AudioState | null>(null);
 
-  // Get Zustand actions
-  const { setAudioEngine, setAudioState } = useAppStore();
+  // Get Zustand actions from audio slice
+  const { setEngine, setState: setAudioState } = useAppStore(state => state.audio);
 
   useEffect(() => {
     // Instantiate engine once refs are available and not already created
@@ -38,10 +38,10 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
       
       engineRef.current = audioEngine;
       setState(audioEngine.getState());
-      setAudioEngine(audioEngine); // Store engine reference in Zustand
+      setEngine(audioEngine); // Store engine reference in Zustand
       setAudioState(audioEngine.getState()); // Initial state sync
     }
-  }, [setAudioEngine, setAudioState]); // Only run once - dependencies for Zustand actions
+  }, [setEngine, setAudioState]); // Only run once - dependencies for Zustand actions
 
   return (
     <>

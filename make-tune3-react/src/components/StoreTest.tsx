@@ -2,41 +2,33 @@ import React from 'react';
 import { useAppStore } from '../stores/appStore';
 
 export function StoreTest() {
-  const {
-    user,
-    setUser,
-    regularSubmissions,
-    favourites,
-    isLoading,
-    setLoading,
-    audioState,
-    audioEngine
-  } = useAppStore();
-
-  const handleTestUser = () => {
-    setUser({ uid: 'test', email: 'test@example.com', createdAt: new Date() as any });
-  };
+  const { user } = useAppStore(state => state.auth);
+  const { regularTracks } = useAppStore(state => state.collaboration);
+  const { isLoading, setLoading } = useAppStore(state => state.ui);
+  const { state: audioState, engine: audioEngine } = useAppStore(state => state.audio);
 
   const handleTestLoading = () => {
     setLoading(!isLoading);
   };
 
   return (
-    <div style={{
+    <details style={{
       position: 'absolute',
-      top: '60px',
+      top: '20px',
       right: '10px',
       zIndex: 1000,
       backgroundColor: 'var(--background)',
       padding: '10px',
       border: '1px solid var(--primary)',
       borderRadius: '4px',
-      fontSize: '12px'
+      fontSize: '12px',
+      maxWidth: '300px'
     }}>
-      <h4>Store Test</h4>
+      <summary style={{ cursor: 'pointer', fontWeight: 'bold', marginBottom: '8px' }}>
+        Store Test
+      </summary>
       <div>User: {user?.email || 'None'}</div>
-      <div>Regular Submissions: {regularSubmissions.length}</div>
-      <div>Favourites: {favourites.length}</div>
+      <div>Regular Tracks: {regularTracks.length}</div>
       <div>Loading: {isLoading ? 'Yes' : 'No'}</div>
       <div>AudioEngine: {audioEngine ? 'Loaded' : 'Not loaded'}</div>
       <div>AudioState: {audioState ? 'Synced' : 'Not synced'}</div>
@@ -47,8 +39,7 @@ export function StoreTest() {
           <div>Current Track: {audioState.playerController.currentTrackId}</div>
         </div>
       )}
-      <button onClick={handleTestUser}>Test User</button>
       <button onClick={handleTestLoading}>Toggle Loading</button>
-    </div>
+    </details>
   );
 } 

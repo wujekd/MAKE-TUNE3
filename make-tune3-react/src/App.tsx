@@ -5,12 +5,12 @@ import { AuthView } from './views/auth/AuthView'
 import { useAppStore } from './stores/appStore'
 
 function App() {
-  const { user, authLoading } = useAppStore();
-  const [showAuth, setShowAuth] = useState(false);
+  const { user, loading } = useAppStore(state => state.auth);
+  const { showAuth, setShowAuth } = useAppStore(state => state.ui);
 
   useEffect(() => {
-    console.log('🚀 App render - user:', user?.email, 'authLoading:', authLoading);
-  }, [user, authLoading]);
+    console.log('🚀 App render - user:', user?.email, 'loading:', loading);
+  }, [user, loading]);
 
   // Auto-hide auth view when user logs in successfully
   useEffect(() => {
@@ -18,9 +18,9 @@ function App() {
       console.log('🚀 App: Auto-hiding auth view after successful login');
       setShowAuth(false);
     }
-  }, [user, showAuth]);
+  }, [user, showAuth, setShowAuth]);
 
-  if (authLoading) {
+  if (loading) {
     console.log('🚀 App: Showing loading screen');
     return <div>Loading...</div>;
   }

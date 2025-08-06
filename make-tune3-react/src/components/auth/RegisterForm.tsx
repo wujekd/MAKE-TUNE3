@@ -13,7 +13,7 @@ export function RegisterForm({ onSwitchToSignIn }: RegisterFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { signUp } = useAppStore();
+  const { signUp } = useAppStore(state => state.auth);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
