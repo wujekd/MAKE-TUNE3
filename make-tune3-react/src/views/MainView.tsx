@@ -7,7 +7,7 @@ import { Mixer } from '../components/Mixer';
 import Favorites from '../components/Favorites';
 import { useCollabData } from '../hooks/useCollabData';
 import { useAuth } from '../contexts/AuthContext';
-import { UserDataTest } from '../components/UserDataTest';
+import { StoreTest } from '../components/StoreTest';
 import './MainView.css';
 import SubmissionItem from '../components/SubmissionItem';
 
@@ -70,7 +70,7 @@ export function MainView({ onShowAuth }: MainViewProps) {
 
   return (
     <div className="main-container">
-      <UserDataTest />
+      <StoreTest />
       <button 
         style={{
           position: 'absolute',

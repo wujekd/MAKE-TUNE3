@@ -31,7 +31,7 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
       engineRef.current = audioEngine;
       setState(audioEngine.getState());
     }
-  }, []); // never rerender
+  }, []); // Only run once - no dependencies!
 
   return (
     <>
@@ -40,9 +40,9 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
       <audio ref={player2Ref} controls />
       {/* Only provide context to children when engine and state are ready */}
       {engineRef.current && state && (
-        <AudioEngineContext value={{ engine: engineRef.current, state }}>
+        <AudioEngineContext.Provider value={{ engine: engineRef.current, state }}>
           {children}
-        </AudioEngineContext>
+        </AudioEngineContext.Provider>
       )}
     </>
   );
