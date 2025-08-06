@@ -1,6 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
-import { useAuth } from '../contexts/AuthContext';
 import { StoreTest } from '../components/StoreTest';
 import { useAppStore } from '../stores/appStore';
 import './MainView.css';
@@ -16,11 +15,12 @@ interface MainViewProps {
 
 export function MainView({ onShowAuth }: MainViewProps) {
   const audioContext = useContext(AudioEngineContext);
-  const { user, signOut } = useAuth();
   const [debug, setDebug] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
   const {
+    user,
+    signOut,
     regularSubmissions,
     pastStageTracklist,
     backingTrackSrc,

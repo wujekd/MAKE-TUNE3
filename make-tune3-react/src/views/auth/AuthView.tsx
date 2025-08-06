@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { LoginForm } from '../../components/auth/LoginForm';
 import { RegisterForm } from '../../components/auth/RegisterForm';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAppStore } from '../../stores/appStore';
 import type { AuthMode } from '../../types/auth';
 
 interface AuthViewProps {
@@ -10,7 +10,7 @@ interface AuthViewProps {
 
 export function AuthView({ onBackToMain }: AuthViewProps) {
   const [mode, setMode] = useState<AuthMode>('login');
-  const { user } = useAuth();
+  const { user } = useAppStore();
 
   if (user) {
     return null;
@@ -37,7 +37,7 @@ export function AuthView({ onBackToMain }: AuthViewProps) {
           />
         ) : (
           <RegisterForm 
-            onSwitchToLogin={() => setMode('login')}
+            onSwitchToSignIn={() => setMode('login')}
           />
         )}
       </div>

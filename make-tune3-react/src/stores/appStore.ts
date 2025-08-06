@@ -3,12 +3,29 @@ import type { User } from '../types/auth';
 import type { AudioEngine } from '../audio-services/audio-engine';
 import type { AudioState } from '../types';
 import { audioFiles } from '../data/mock-audio';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  sendPasswordResetEmail
+} from 'firebase/auth';
+import type { User as FirebaseUser } from 'firebase/auth';
+import { auth } from '../services/firebase';
+import { AuthService } from '../services/authService';
 
 // Basic store interfaces for Phase 1
 interface AppState {
   // Auth Slice
   user: User | null;
+  authLoading: boolean;
   setUser: (user: User | null) => void;
+  setAuthLoading: (loading: boolean) => void;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  initializeAuth: () => void;
 
   // Audio Engine Slice
   audioEngine: AudioEngine | null;
@@ -82,6 +99,7 @@ const formatTime = (seconds: number): string => {
 export const useAppStore = create<AppState>((set, get) => ({
   // Initial state
   user: null,
+  authLoading: true,
   audioEngine: null,
   audioState: null,
   currentTrack: null,
@@ -109,6 +127,78 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // Auth actions
   setUser: (user) => set({ user }),
+  setAuthLoading: (loading) => set({ authLoading: loading }),
+
+  initializeAuth: () => {
+    console.log('🔐 Initializing auth...');
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      console.log('🔐 Auth state changed:', firebaseUser ? firebaseUser.email : 'null');
+      if (firebaseUser) {
+        try {
+          console.log('🔐 Fetching user profile for:', firebaseUser.uid);
+          const userProfile = await AuthService.getUserProfile(firebaseUser.uid);
+          console.log('🔐 User profile fetched:', userProfile);
+          set({ user: userProfile, authLoading: false });
+        } catch (error) {
+          console.error('🔐 Error fetching user profile:', error);
+          set({ user: null, authLoading: false });
+        }
+      } else {
+        console.log('🔐 No user, setting authLoading to false');
+        set({ user: null, authLoading: false });
+      }
+    });
+
+    // Return unsubscribe function for cleanup
+    return unsubscribe;
+  },
+
+  signIn: async (email, password) => {
+    try {
+      console.log('🔐 Signing in with email:', email);
+      set({ authLoading: true });
+      const userProfile = await AuthService.loginWithEmail(email, password);
+      console.log('🔐 Sign in successful:', userProfile);
+      set({ user: userProfile, authLoading: false });
+    } catch (error: any) {
+      console.error('🔐 Sign in error:', error);
+      set({ authLoading: false });
+      throw error;
+    }
+  },
+
+  signUp: async (email, password) => {
+    try {
+      set({ authLoading: true });
+      const userProfile = await AuthService.registerWithEmail(email, password);
+      set({ user: userProfile, authLoading: false });
+    } catch (error: any) {
+      set({ authLoading: false });
+      console.error('Sign up error:', error);
+      throw error;
+    }
+  },
+
+  signOut: async () => {
+    try {
+      set({ authLoading: true });
+      await AuthService.signOut();
+      set({ user: null, authLoading: false });
+    } catch (error: any) {
+      set({ authLoading: false });
+      console.error('Sign out error:', error);
+      throw error;
+    }
+  },
+
+  resetPassword: async (email) => {
+    try {
+      await AuthService.resetPassword(email);
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      throw error;
+    }
+  },
 
   // Audio engine
   setAudioEngine: (engine) => set({ audioEngine: engine }),

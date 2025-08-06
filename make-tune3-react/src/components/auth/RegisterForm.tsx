@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAppStore } from '../../stores/appStore';
 import './Auth.css';
 
 interface RegisterFormProps {
-  onSwitchToLogin: () => void;
+  onSwitchToSignIn: () => void;
 }
 
-export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
+export function RegisterForm({ onSwitchToSignIn }: RegisterFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { signUp } = useAuth();
+  const { signUp } = useAppStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,11 +21,6 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('Password should be at least 6 characters');
       return;
     }
 
@@ -42,7 +37,7 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
 
   return (
     <div className="auth-form">
-      <h2>Create Account</h2>
+      <h2>Sign Up</h2>
       {error && <div className="error-message">{error}</div>}
       
       <form onSubmit={handleSubmit}>
@@ -65,10 +60,9 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            minLength={6}
           />
         </div>
-
+        
         <div className="form-group">
           <label htmlFor="confirmPassword">Confirm Password</label>
           <input
@@ -77,17 +71,16 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
-            minLength={6}
           />
         </div>
         
         <button type="submit" disabled={loading}>
-          {loading ? 'Creating Account...' : 'Create Account'}
+          {loading ? 'Creating Account...' : 'Sign Up'}
         </button>
       </form>
       
       <div className="auth-links">
-        <button type="button" onClick={onSwitchToLogin}>
+        <button type="button" onClick={onSwitchToSignIn}>
           Already have an account? Sign In
         </button>
       </div>
