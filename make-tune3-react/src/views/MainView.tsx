@@ -1,15 +1,14 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
-import { usePlayerController } from '../hooks/usePlayerController';
-import { DebugInfo } from '../components/DebugInfo';
-import ProjectHistory from '../components/ProjectHistory';
-import { Mixer } from '../components/Mixer';
-import Favorites from '../components/Favorites';
-import { useCollabData } from '../hooks/useCollabData';
 import { useAuth } from '../contexts/AuthContext';
 import { StoreTest } from '../components/StoreTest';
+import { useAppStore } from '../stores/appStore';
 import './MainView.css';
 import SubmissionItem from '../components/SubmissionItem';
+import Favorites from '../components/Favorites';
+import { Mixer } from '../components/Mixer';
+import { DebugInfo } from '../components/DebugInfo';
+import ProjectHistory from '../components/ProjectHistory';
 
 interface MainViewProps {
   onShowAuth: () => void;
@@ -18,42 +17,48 @@ interface MainViewProps {
 export function MainView({ onShowAuth }: MainViewProps) {
   const audioContext = useContext(AudioEngineContext);
   const { user, signOut } = useAuth();
-
-  console.log('MainView render - user:', user?.email, 'audioContext:', !!audioContext);
-
-  if (!audioContext) {
-    return <div>Loading audio engine...</div>;
-  }
-  const { engine, state } = audioContext;
   const [debug, setDebug] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const collabData = useCollabData(undefined, engine);
+  
+  const {
+    regularSubmissions,
+    pastStageTracklist,
+    backingTrackSrc,
+    favourites,
+    listened,
+    finalVote,
+    listenedRatio,
+    markAsListened,
+    addToFavourites,
+    removeFromFavourites,
+    voteFor,
+    playSubmission,
+    playPastSubmission
+  } = useAppStore();
+
+  if (!audioContext) {
+    return <div>Audio engine not available</div>;
+  }
+
+  const { engine, state } = audioContext;
 
   useEffect(() => {
-    // delay to ensure all components are properly initialized?
+    if (engine) {
+        engine.setTrackListenedCallback(
+          (trackSrc) => { markAsListened(trackSrc) },
+          listenedRatio,
+          (trackSrc) => listened.includes(trackSrc)
+        );
+    }
+  }, [engine, listenedRatio, markAsListened, listened]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 100);
     
     return () => clearTimeout(timer);
   }, [user?.uid]);
-  
-  const controller = usePlayerController(engine, {
-    regularSubmissions: collabData.regularSubmissions,
-    pastStageTracklist: collabData.pastStageTracklist,
-    favourites: collabData.favourites,
-    backingTrackSrc: collabData.backingTrackSrc
-  });
-
-  useEffect(() => {
-    if (engine) {
-        engine.setTrackListenedCallback(
-          (trackSrc) => {collabData.markAsListened(trackSrc)},
-          collabData.listenedRatio,
-          (trackSrc) => collabData.listened.includes(trackSrc)
-        );
-    }
-  }, [engine, collabData.listenedRatio]);
 
   if (isLoading) {
     return <div style={{ 
@@ -89,7 +94,7 @@ export function MainView({ onShowAuth }: MainViewProps) {
           right: '140px',
           zIndex: 1000,
         }}
-        onClick={() => console.log('playingFavourite:', controller.playingFavourite)}
+        onClick={() => console.log('playingFavourite:', state.playerController.playingFavourite)}
       >
         Log Playback Mode
       </button>
@@ -100,7 +105,7 @@ export function MainView({ onShowAuth }: MainViewProps) {
           right: '270px',
           zIndex: 1000,
         }}
-        onClick={() => console.log('favourites:', collabData.favourites)}
+        onClick={() => console.log('favourites:', favourites)}
       >
         Log Favorites
       </button>
@@ -137,30 +142,30 @@ export function MainView({ onShowAuth }: MainViewProps) {
       
       <div className="submissions-section">
         <div className="audio-player-section">
-            <Favorites  onRemoveFromFavorites={collabData.removeFromFavourites}
-                        favorites={collabData.favourites}
-                        onAddToFavorites={collabData.addToFavourites}
-                        onPlay={(src: string, index: number, favorite: boolean) => {controller.playSubmission(src, index, favorite)}}
-                        voteFor={collabData.voteFor}
-                        listenedRatio={collabData.listenedRatio}
-                        finalVote={collabData.finalVote}
+            <Favorites  onRemoveFromFavorites={removeFromFavourites}
+                        favorites={favourites}
+                        onAddToFavorites={addToFavourites}
+                        onPlay={(src: string, index: number, favorite: boolean) => {playSubmission(src, index, favorite)}}
+                        voteFor={voteFor}
+                        listenedRatio={listenedRatio}
+                        finalVote={finalVote}
                         />
           <div className="audio-player-title">Submissions</div>
             <div style={{ display: 'flex', flexDirection: 'row', gap: '10px', flexWrap: 'wrap' }}>
-              {collabData.regularSubmissions.map((track, index) => (
+              {regularSubmissions.map((track, index) => (
                 <SubmissionItem 
                     key={index}
                     src={track}
                     index={index}
                     isCurrentTrack={state.player1.source == track}
                     isPlaying={state.player1.isPlaying}
-                    listened={collabData.listened.includes(track)}
-                    favorite={collabData.favourites.includes(track)}
-                    onAddToFavorites={collabData.addToFavourites}
+                    listened={listened.includes(track)}
+                    favorite={favourites.includes(track)}
+                    onAddToFavorites={addToFavourites}
                     onPlay={(src: string, index: number, favorite: boolean) =>
-                        {controller.playSubmission(src, index, favorite)}}
-                    voteFor={collabData.voteFor}
-                    listenedRatio={collabData.listenedRatio}
+                        {playSubmission(src, index, favorite)}}
+                    voteFor={voteFor}
+                    listenedRatio={listenedRatio}
                     isFinal={false}
                 />
               ))}
@@ -168,9 +173,7 @@ export function MainView({ onShowAuth }: MainViewProps) {
         </div>
       </div>
       <Mixer 
-        engine={engine} 
         state={state} 
-        controller={controller}
       />
     </div>
   );

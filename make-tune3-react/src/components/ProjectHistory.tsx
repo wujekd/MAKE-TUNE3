@@ -1,34 +1,19 @@
-import React, { useContext } from 'react';
-import { AudioEngineContext } from '../audio-services/AudioEngineContext';
-import { usePlayerController } from '../hooks/usePlayerController';
-import { useCollabData } from '../hooks/useCollabData';
+import React from 'react';
+import { useAppStore } from '../stores/appStore';
 import './ProjectHistory.css';
 
 const ProjectHistory = () => {
-  const audioContext = useContext(AudioEngineContext);
-  
-  if (!audioContext) {
-    return <div>Loading audio engine...</div>;
-  }
-  
-  const { engine } = audioContext;
-  const collabData = useCollabData(undefined, engine);
-  const controller = usePlayerController(engine, {
-    regularSubmissions: collabData.regularSubmissions,
-    pastStageTracklist: collabData.pastStageTracklist,
-    favourites: collabData.favourites,
-    backingTrackSrc: collabData.backingTrackSrc
-  });
+  const { pastStageTracklist, playPastSubmission } = useAppStore();
 
   return (
     <div className="project-history">
       <h4 className="project-history-title">Collab History</h4>
       <div className="collab-list">
-        {collabData.pastStageTracklist.map((track, index) => (
+        {pastStageTracklist.map((track, index) => (
           <div 
             key={index}
             className="collab-history-item"
-            onClick={() => controller.playPastSubmission(index)}
+            onClick={() => playPastSubmission(index)}
           >
             <div className="collab-status-indicator">○</div>
             <div className="collab-info">

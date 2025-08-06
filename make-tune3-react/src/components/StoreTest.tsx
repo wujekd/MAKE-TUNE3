@@ -2,13 +2,15 @@ import React from 'react';
 import { useAppStore } from '../stores/appStore';
 
 export function StoreTest() {
-  const { 
-    user, 
-    setUser, 
-    submissions, 
-    favorites, 
-    isLoading, 
-    setLoading 
+  const {
+    user,
+    setUser,
+    regularSubmissions,
+    favourites,
+    isLoading,
+    setLoading,
+    audioState,
+    audioEngine
   } = useAppStore();
 
   const handleTestUser = () => {
@@ -20,10 +22,10 @@ export function StoreTest() {
   };
 
   return (
-    <div style={{ 
-      position: 'absolute', 
-      top: '60px', 
-      right: '10px', 
+    <div style={{
+      position: 'absolute',
+      top: '60px',
+      right: '10px',
       zIndex: 1000,
       backgroundColor: 'var(--background)',
       padding: '10px',
@@ -33,9 +35,18 @@ export function StoreTest() {
     }}>
       <h4>Store Test</h4>
       <div>User: {user?.email || 'None'}</div>
-      <div>Submissions: {submissions.length}</div>
-      <div>Favorites: {favorites.length}</div>
+      <div>Regular Submissions: {regularSubmissions.length}</div>
+      <div>Favourites: {favourites.length}</div>
       <div>Loading: {isLoading ? 'Yes' : 'No'}</div>
+      <div>AudioEngine: {audioEngine ? 'Loaded' : 'Not loaded'}</div>
+      <div>AudioState: {audioState ? 'Synced' : 'Not synced'}</div>
+      {audioState && (
+        <div>
+          <div>Player1 Playing: {audioState.player1.isPlaying ? 'Yes' : 'No'}</div>
+          <div>Player2 Playing: {audioState.player2.isPlaying ? 'Yes' : 'No'}</div>
+          <div>Current Track: {audioState.playerController.currentTrackId}</div>
+        </div>
+      )}
       <button onClick={handleTestUser}>Test User</button>
       <button onClick={handleTestLoading}>Toggle Loading</button>
     </div>
