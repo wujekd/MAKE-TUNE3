@@ -45,10 +45,15 @@ export function MainView({ onShowAuth }: MainViewProps) {
     if (engine) {
         engine.setTrackListenedCallback(
           (trackSrc) => { 
+            console.log('🎧 Track listened callback triggered for:', trackSrc);
             // Find track by file path and mark as listened
             const track = regularTracks.find(t => t.filePath === trackSrc);
+            console.log('🎧 Found track:', track);
             if (track) {
+              console.log('🎧 Marking track as listened:', track.id);
               markAsListened(track.id);
+            } else {
+              console.log('🎧 Track not found for filePath:', trackSrc);
             }
           },
           7, // listenedRatio
@@ -141,7 +146,8 @@ export function MainView({ onShowAuth }: MainViewProps) {
         <div className="audio-player-section">
             <Favorites  
               onRemoveFromFavorites={(trackId) => removeFromFavorites(trackId)}
-              favorites={regularTracks.filter(t => isTrackFavorite(t.id))}
+              allTracks={regularTracks}
+              isTrackFavorite={isTrackFavorite}
               onAddToFavorites={(trackId) => addToFavorites(trackId)}
               onPlay={(trackId, index, favorite) => playSubmission(trackId, index, favorite)}
               voteFor={voteFor}
@@ -150,7 +156,7 @@ export function MainView({ onShowAuth }: MainViewProps) {
             />
           <div className="audio-player-title">Submissions</div>
             <div style={{ display: 'flex', flexDirection: 'row', gap: '10px', flexWrap: 'wrap' }}>
-              {regularTracks.map((track, index) => (
+              {regularTracks.filter(track => !isTrackFavorite(track.id)).map((track, index) => (
                 <SubmissionItem 
                     key={track.id}
                     track={track}
@@ -160,7 +166,7 @@ export function MainView({ onShowAuth }: MainViewProps) {
                     listened={isTrackListened(track.id)}
                     favorite={isTrackFavorite(track.id)}
                     onAddToFavorites={() => addToFavorites(track.id)}
-                    onPlay={(trackId, index, favorite) => playSubmission(trackId, index, favorite)}
+                    onPlay={(trackId, index, favorite) => playSubmission(trackId, index, false)}
                     voteFor={voteFor}
                     listenedRatio={7}
                     isFinal={false}

@@ -222,12 +222,14 @@ export class AudioEngine {
     });
   }
   setPlayingFavourite(value: boolean): void {
+    console.log('🎵 setPlayingFavourite called with:', value);
     this.updateState({
       playerController: {
         ...this.state.playerController,
         playingFavourite: value
       }
     });
+    console.log('🎵 Updated state - playingFavourite:', this.state.playerController.playingFavourite);
   }
   updateCurrentTrackId(trackId: number): void {
     console.log("updateCurrentTrackId called with:", trackId);

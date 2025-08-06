@@ -10,7 +10,7 @@ interface AuthViewProps {
 
 export function AuthView({ onBackToMain }: AuthViewProps) {
   const [mode, setMode] = useState<AuthMode>('login');
-  const { user } = useAppStore();
+  const { user } = useAppStore(state => state.auth);
 
   if (user) {
     return null;

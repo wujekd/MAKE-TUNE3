@@ -164,14 +164,33 @@ export const useAppStore = create<AppState>((set, get) => ({
             console.log('🔐 Fetching user profile for:', firebaseUser.uid);
             const userProfile = await AuthService.getUserProfile(firebaseUser.uid);
             console.log('🔐 User profile fetched:', userProfile);
-            set(state => ({ auth: { ...state.auth, user: userProfile, loading: false } }));
+            set(state => ({ 
+              auth: { ...state.auth, user: userProfile, loading: false },
+              collaboration: { 
+                ...state.collaboration, 
+                userCollaboration: {
+                  userId: firebaseUser.uid,
+                  projectId: 'project1',
+                  listenedTracks: [],
+                  favoriteTracks: [],
+                  finalVote: null,
+                  listenedRatio: 7,
+                  lastInteraction: new Date() as any,
+                  updatedAt: new Date() as any,
+                  createdAt: new Date() as any
+                }
+              }
+            }));
           } catch (error) {
             console.error('🔐 Error fetching user profile:', error);
             set(state => ({ auth: { ...state.auth, user: null, loading: false } }));
           }
         } else {
           console.log('🔐 No user, setting loading to false');
-          set(state => ({ auth: { ...state.auth, user: null, loading: false } }));
+          set(state => ({ 
+            auth: { ...state.auth, user: null, loading: false },
+            collaboration: { ...state.collaboration, userCollaboration: null }
+          }));
         }
       });
       return unsubscribe;
@@ -333,12 +352,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
 
     markAsListened: (trackId) => {
+      console.log('🎧 markAsListened called with trackId:', trackId);
       const { userCollaboration } = get().collaboration;
-      if (!userCollaboration) return;
+      if (!userCollaboration) {
+        console.log('🎧 No userCollaboration found, returning');
+        return;
+      }
 
       const listenedTracks = [...userCollaboration.listenedTracks];
+      console.log('🎧 Current listenedTracks:', listenedTracks);
       if (!listenedTracks.includes(trackId)) {
         listenedTracks.push(trackId);
+        console.log('🎧 Updated listenedTracks:', listenedTracks);
         set(state => ({
           collaboration: {
             ...state.collaboration,
@@ -349,20 +374,27 @@ export const useAppStore = create<AppState>((set, get) => ({
             }
           }
         }));
+        console.log('🎧 Track marked as listened successfully');
+      } else {
+        console.log('🎧 Track already marked as listened');
       }
     },
 
     addToFavorites: (trackId) => {
-      const { userCollaboration, allTracks } = get().collaboration;
-      if (!userCollaboration) return;
+      console.log('⭐ addToFavorites called with trackId:', trackId);
+      const { userCollaboration } = get().collaboration;
+      const { engine, state: audioState } = get().audio;
+      
+      if (!userCollaboration) {
+        console.log('⭐ No userCollaboration found, returning');
+        return;
+      }
 
       const favoriteTracks = [...userCollaboration.favoriteTracks];
+      console.log('⭐ Current favoriteTracks:', favoriteTracks);
       if (!favoriteTracks.includes(trackId)) {
         favoriteTracks.push(trackId);
-        
-        const regularTracks = allTracks.filter(track => 
-          !favoriteTracks.includes(track.id)
-        );
+        console.log('⭐ Updated favoriteTracks:', favoriteTracks);
 
         set(state => ({
           collaboration: {
@@ -371,21 +403,39 @@ export const useAppStore = create<AppState>((set, get) => ({
               ...state.collaboration.userCollaboration!,
               favoriteTracks,
               lastInteraction: new Date() as any
-            },
-            regularTracks
+            }
           }
         }));
+        console.log('⭐ Track added to favorites successfully');
+
+        // Update playingFavourite if this is the currently playing track
+        if (engine && audioState) {
+          const currentTrack = audioState.playerController.currentTrackId;
+          const currentTrackSrc = audioState.player1.source;
+          const track = get().collaboration.getTrackById(trackId);
+          
+          if (track && currentTrackSrc === track.filePath) {
+            console.log('🎵 Updating playingFavourite to true for currently playing track');
+            engine.setPlayingFavourite(true);
+          }
+        }
+      } else {
+        console.log('⭐ Track already in favorites');
       }
     },
 
     removeFromFavorites: (trackId) => {
-      const { userCollaboration, allTracks } = get().collaboration;
-      if (!userCollaboration) return;
+      console.log('⭐ removeFromFavorites called with trackId:', trackId);
+      const { userCollaboration } = get().collaboration;
+      const { engine, state: audioState } = get().audio;
+      
+      if (!userCollaboration) {
+        console.log('⭐ No userCollaboration found, returning');
+        return;
+      }
 
       const favoriteTracks = userCollaboration.favoriteTracks.filter(id => id !== trackId);
-      const regularTracks = allTracks.filter(track => 
-        !favoriteTracks.includes(track.id)
-      );
+      console.log('⭐ Updated favoriteTracks:', favoriteTracks);
 
       set(state => ({
         collaboration: {
@@ -394,10 +444,21 @@ export const useAppStore = create<AppState>((set, get) => ({
             ...state.collaboration.userCollaboration!,
             favoriteTracks,
             lastInteraction: new Date() as any
-          },
-          regularTracks
+          }
         }
       }));
+      console.log('⭐ Track removed from favorites successfully');
+
+      // Update playingFavourite if this is the currently playing track
+      if (engine && audioState) {
+        const currentTrackSrc = audioState.player1.source;
+        const track = get().collaboration.getTrackById(trackId);
+        
+        if (track && currentTrackSrc === track.filePath) {
+          console.log('🎵 Updating playingFavourite to false for currently playing track');
+          engine.setPlayingFavourite(false);
+        }
+      }
     },
 
     voteFor: (trackId) => {
@@ -559,14 +620,21 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
 
     playSubmission: (trackId, index, favorite) => {
+      console.log('🎵 playSubmission called with:', { trackId, index, favorite });
       const engine = get().audio.engine;
       const { backingTrack } = get().collaboration;
       const track = get().collaboration.getTrackById(trackId);
       
-      if (!engine || !track) return;
+      if (!engine || !track) {
+        console.log('🎵 playSubmission - no engine or track found');
+        return;
+      }
 
       if (favorite !== null && favorite !== undefined) {
+        console.log('🎵 playSubmission - setting playingFavourite to:', favorite);
         engine.setPlayingFavourite(favorite);
+      } else {
+        console.log('🎵 playSubmission - favorite parameter is null/undefined');
       }
       
       engine.playSubmission(track.filePath, backingTrack?.filePath || '', index);

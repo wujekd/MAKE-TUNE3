@@ -4,14 +4,16 @@ import type { Track } from '../types/collaboration';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import './Favorites.css';
 
-const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay, voteFor, finalVote, listenedRatio }: 
-                { onRemoveFromFavorites: (trackId: string) => void, favorites: Track[],
+const Favorites = ({ onRemoveFromFavorites, allTracks, isTrackFavorite, onAddToFavorites, onPlay, voteFor, finalVote, listenedRatio }: 
+                { onRemoveFromFavorites: (trackId: string) => void, allTracks: Track[],
+                  isTrackFavorite: (trackId: string) => boolean,
                   onAddToFavorites: (trackId: string) => void,
                   onPlay: (trackId: string, index: number, favorite: boolean) => void,
                   voteFor: (trackId: string) => void,
                   finalVote: string | null,
                   listenedRatio: number
                 }) => {
+  const favorites = allTracks.filter(track => isTrackFavorite(track.id));
   const votedFor = null;
   const isSubmittingVote = false;
 
@@ -81,14 +83,14 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay,
               </button>
               <SubmissionItem 
                 key={track.id}
+                track={track}
                 index={index}
-                src={track.filePath}
                 isCurrentTrack={state.player1.source === track.filePath}
                 isPlaying={state.player1.isPlaying}
                 listened={true}
                 favorite={true}
                 onAddToFavorites={() => onAddToFavorites(track.id)}
-                onPlay={(trackId, index, favorite) => onPlay(trackId, index, favorite)}
+                onPlay={(trackId, index, favorite) => onPlay(trackId, index, true)}
                 voteFor={voteFor}
                 listenedRatio={listenedRatio}
                 isFinal={finalVote === track.id}
