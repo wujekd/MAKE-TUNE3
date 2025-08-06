@@ -1,28 +1,28 @@
 import React, { useRef, useEffect, useContext } from 'react';
 import SubmissionItem from './SubmissionItem';
-
+import type { Track } from '../types/collaboration';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import './Favorites.css';
 
 const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay, voteFor, finalVote, listenedRatio }: 
-                { onRemoveFromFavorites: (index: number) => void, favorites: string[],
-                  onAddToFavorites: (src: string) => void,
-                  onPlay: (src: string, index: number, favorite: boolean) => void,
-                  voteFor: (src: string) => void,
-                  finalVote: string,
+                { onRemoveFromFavorites: (trackId: string) => void, favorites: Track[],
+                  onAddToFavorites: (trackId: string) => void,
+                  onPlay: (trackId: string, index: number, favorite: boolean) => void,
+                  voteFor: (trackId: string) => void,
+                  finalVote: string | null,
                   listenedRatio: number
                 }) => {
   const votedFor = null;
   const isSubmittingVote = false;
 
-
-  const handleRemoveFromFavorites = (favorite: any, index: number) => {
-    console.log('Remove from favorites:', favorite);
-    onRemoveFromFavorites(index);
+  const handleRemoveFromFavorites = (track: Track) => {
+    console.log('Remove from favorites:', track);
+    onRemoveFromFavorites(track.id);
   };
 
-  const onVote = (favorite: any) => {
-    console.log('Vote for favorite:', favorite.id);
+  const onVote = (track: Track) => {
+    console.log('Vote for favorite:', track.id);
+    voteFor(track.id);
   };
 
   const audioContext = useContext(AudioEngineContext);
@@ -31,7 +31,6 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay,
     return <div>Loading audio engine...</div>;
   }
   const { engine, state } = audioContext;
-
 
   // Reference to the favorites container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -72,33 +71,35 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay,
         ref={scrollContainerRef}
       >
         {favorites && favorites.length > 0 ? (
-          favorites.map((favorite, index) => (
-            <div key={index} className="favorite-item">
+          favorites.map((track, index) => (
+            <div key={track.id} className="favorite-item">
               <button
                 className="remove-button"
-                onClick={() => handleRemoveFromFavorites(favorite, index)}
+                onClick={() => handleRemoveFromFavorites(track)}
               >
                 ×
               </button>
               <SubmissionItem 
-                key={index}
+                key={track.id}
                 index={index}
-                src={favorite}
-                isCurrentTrack={state.player1.source == favorite}
+                src={track.filePath}
+                isCurrentTrack={state.player1.source === track.filePath}
                 isPlaying={state.player1.isPlaying}
                 listened={true}
                 favorite={true}
-                onAddToFavorites={onAddToFavorites}
-                onPlay={onPlay}
+                onAddToFavorites={() => onAddToFavorites(track.id)}
+                onPlay={(trackId, index, favorite) => onPlay(trackId, index, favorite)}
                 voteFor={voteFor}
                 listenedRatio={listenedRatio}
-                isFinal={(finalVote == favorite)}
-                
+                isFinal={finalVote === track.id}
               />
             </div>
           ))
         ) : (
-          <div className="favorites-empty">No favorites added yet</div>
+          <div className="no-favorites">
+            <p>No favorites yet</p>
+            <p>Add tracks to your favorites to see them here</p>
+          </div>
         )}
       </div>
     </section>

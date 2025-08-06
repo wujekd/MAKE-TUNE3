@@ -1,42 +1,66 @@
 import React from 'react';
+import { useAppStore } from '../stores/appStore';
 import type { AudioState } from '../types';
 
 interface MixerProps {
-  engine: any;
   state: AudioState;
-  controller: any;
 }
 
-export function Mixer({ engine, state, controller }: MixerProps) {
+export function Mixer({ state }: MixerProps) {
+  const {
+    handleSubmissionVolumeChange,
+    handleMasterVolumeChange,
+    handleTimeSliderChange,
+    previousTrack,
+    nextTrack,
+    togglePlayPause,
+    getCurrentTime,
+    getTotalTime,
+    getTimeSliderValue
+  } = useAppStore(state => state.playback);
 
-  const handleSubmissionVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => { // dw its just a fancy parameter change type
+  const { regularTracks, pastStageTracks, isTrackFavorite } = useAppStore(state => state.collaboration);
+
+  const handleSubmissionVolumeChangeEvent = (e: React.ChangeEvent<HTMLInputElement>) => {
     const volume = parseFloat(e.target.value);
-    controller.handleSubmissionVolumeChange(volume);
+    handleSubmissionVolumeChange(volume);
   };
 
-  const handleMasterVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMasterVolumeChangeEvent = (e: React.ChangeEvent<HTMLInputElement>) => {
     const volume = parseFloat(e.target.value);
-    controller.handleMasterVolumeChange(volume);
+    handleMasterVolumeChange(volume);
   };
 
-  const handleTimeSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTimeSliderChangeEvent = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value);
-    controller.handleTimeSliderChange(value);
+    handleTimeSliderChange(value);
   };
+
+  // Calculate canGoBack and canGoForward from state
+  const pastStagePlayback = state.playerController.pastStagePlayback;
+  const playingFavourite = state.playerController.playingFavourite;
+  const currentTrackIndex = state.playerController.currentTrackId;
+  
+  const canGoBack = currentTrackIndex > 0;
+  const canGoForward = pastStagePlayback
+    ? currentTrackIndex < pastStageTracks.length - 1
+    : playingFavourite
+    ? currentTrackIndex < regularTracks.filter(t => isTrackFavorite(t.id)).length - 1
+    : currentTrackIndex < regularTracks.length - 1;
 
   return (
     <section className="mixer-section" id="mixer">
       <div className="transport">
         <button 
           id="back-btn" 
-          onClick={controller.previousTrack}
-          disabled={!controller.canGoBack}
+          onClick={previousTrack}
+          disabled={!canGoBack}
         >
           <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
             <path d="M8 24H40M8 24L16 16M8 24L16 32" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"></path>
           </svg>
         </button>
-        <button id="play-btn" onClick={controller.togglePlayPause}>
+        <button id="play-btn" onClick={togglePlayPause}>
           {state.player2.isPlaying ? (
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
               <rect x="6" y="4" width="4" height="16" fill="#ffffff"/>
@@ -50,8 +74,8 @@ export function Mixer({ engine, state, controller }: MixerProps) {
         </button>
         <button 
           id="fwd-btn" 
-          onClick={controller.nextTrack}
-          disabled={!controller.canGoForward}
+          onClick={nextTrack}
+          disabled={!canGoForward}
         >
           <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" transform="rotate(180)">
             <path d="M8 24H40M8 24L16 16M8 24L16 32" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"></path>
@@ -61,9 +85,9 @@ export function Mixer({ engine, state, controller }: MixerProps) {
 
       <div className="time-control">
         <div className="time-display">
-          <span id="current-time">{controller.getCurrentTime(state)}</span>
+          <span id="current-time">{getCurrentTime(state)}</span>
           <span>/</span>
-          <span id="total-time">{controller.getTotalTime(state)}</span>
+          <span id="total-time">{getTotalTime(state)}</span>
         </div>
         <input 
           type="range"
@@ -72,8 +96,8 @@ export function Mixer({ engine, state, controller }: MixerProps) {
           min="0" 
           max="100"
           step="0.1"
-          value={controller.getTimeSliderValue(state)}
-          onChange={handleTimeSliderChange}
+          value={getTimeSliderValue(state)}
+          onChange={handleTimeSliderChangeEvent}
         />
       </div>
 
@@ -89,7 +113,7 @@ export function Mixer({ engine, state, controller }: MixerProps) {
             max="2"
             step="0.01"
             value={state.player1.volume}
-            onChange={handleSubmissionVolumeChange}
+            onChange={handleSubmissionVolumeChangeEvent}
           />
         </div>
 
@@ -104,7 +128,7 @@ export function Mixer({ engine, state, controller }: MixerProps) {
             max="1"
             step="0.01"
             value={state.master.volume}
-            onChange={handleMasterVolumeChange}
+            onChange={handleMasterVolumeChangeEvent}
           />
         </div>
       </div>

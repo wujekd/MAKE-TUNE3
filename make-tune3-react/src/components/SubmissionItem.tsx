@@ -1,14 +1,15 @@
 import React, { useContext } from "react";
 import './SubmissionItem.css';
 import { AudioEngineContext } from "../audio-services/AudioEngineContext";
+import type { Track } from "../types/collaboration";
 
-export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onAddToFavorites, onPlay, voteFor, listenedRatio, isFinal}:
-    { index: number, src: string, isPlaying: boolean, isCurrentTrack: boolean,
+export default ({ track, index, isPlaying, isCurrentTrack, listened, favorite, onAddToFavorites, onPlay, voteFor, listenedRatio, isFinal}:
+    { track: Track, index: number, isPlaying: boolean, isCurrentTrack: boolean,
       listened: boolean,
       favorite: boolean,
-      onAddToFavorites: (src: string) => void,
-      onPlay: (src: string, index: number, favorite: boolean ) => void,
-      voteFor: (src: string) => void,
+      onAddToFavorites: (trackId: string) => void,
+      onPlay: (trackId: string, index: number, favorite: boolean ) => void,
+      voteFor: (trackId: string) => void,
       listenedRatio: number,
       isFinal: boolean
     }) => {
@@ -17,7 +18,6 @@ export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onA
     markingListened: false,
     collabId: 'temp-collab'
   };
-
 
   const audioContext = useContext(AudioEngineContext);
   if (!audioContext) {
@@ -28,29 +28,26 @@ export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onA
   const isVotedFor = false;
   const isSubmittingVote = false;
 
- 
   const displayProgress = isCurrentTrack && state.player1.duration > 0 
     ? (state.player1.currentTime / state.player1.duration) * 100 
     : 0;
   
   const handlePlayClick = () => {
-    console.log('playSubmission called with:', src, index, favorite)
+    console.log('playSubmission called with:', track.id, index, favorite)
     if (isPlaying && isCurrentTrack){
       engine.pause();
     } else {
-      
-      onPlay(src, index, favorite)
-
+      onPlay(track.id, index, favorite)
     }
   };
   
   const onVote = (sub: any) => {
-    voteFor(src);
+    voteFor(track.id);
   };
   
   const handleAddToFavorites = () => {
-    console.log('Add to favorites clicked for submission:', src);
-    onAddToFavorites(src);
+    console.log('Add to favorites clicked for track:', track.id);
+    onAddToFavorites(track.id);
   };
 
   return (
@@ -61,7 +58,7 @@ export default ({ index, src, isPlaying, isCurrentTrack, listened, favorite, onA
       ${listened ? 'listened' : ''}
     `}>
       <div style={{ fontSize: '10px', color: 'white', marginBottom: '4px' }}>
-        Index: {index} | Src: {src.substring(src.lastIndexOf('/') + 1)}
+        Index: {index} | Track: {track.title}
       </div>
       <button 
         className="play-button" 

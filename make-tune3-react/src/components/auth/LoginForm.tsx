@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAppStore } from '../../stores/appStore';
 import './Auth.css';
 
 interface LoginFormProps {
@@ -13,7 +13,7 @@ export function LoginForm({ onSwitchToSignUp, onSwitchToForgotPassword }: LoginF
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { signIn } = useAuth();
+  const { signIn } = useAppStore(state => state.auth);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -2,6 +2,7 @@ import React, { createContext, useRef, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { AudioEngine } from './audio-engine';
 import type { AudioState } from '../types';
+import { useAppStore } from '../stores/appStore';
 
 // Context value holds both the engine and its current state
 interface AudioEngineContextValue {
@@ -21,17 +22,26 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
   const engineRef = useRef<AudioEngine | null>(null);
   const [state, setState] = useState<AudioState | null>(null);
 
+  // Get Zustand actions from audio slice
+  const { setEngine, setState: setAudioState } = useAppStore(state => state.audio);
+
   useEffect(() => {
     // Instantiate engine once refs are available and not already created
     if (!engineRef.current && player1Ref.current && player2Ref.current) {
       const audioEngine = new AudioEngine(player1Ref.current, player2Ref.current);
+      
+      // Set up callbacks to sync state to both local state and Zustand
       audioEngine.setCallbacks((newState: AudioState) => {
         setState(newState);
+        setAudioState(newState); // Sync to Zustand
       });
+      
       engineRef.current = audioEngine;
       setState(audioEngine.getState());
+      setEngine(audioEngine); // Store engine reference in Zustand
+      setAudioState(audioEngine.getState()); // Initial state sync
     }
-  }, []); // never rerender
+  }, [setEngine, setAudioState]); // Only run once - dependencies for Zustand actions
 
   return (
     <>
@@ -40,9 +50,9 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
       <audio ref={player2Ref} controls />
       {/* Only provide context to children when engine and state are ready */}
       {engineRef.current && state && (
-        <AudioEngineContext value={{ engine: engineRef.current, state }}>
+        <AudioEngineContext.Provider value={{ engine: engineRef.current, state }}>
           {children}
-        </AudioEngineContext>
+        </AudioEngineContext.Provider>
       )}
     </>
   );
