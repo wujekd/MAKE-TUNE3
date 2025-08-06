@@ -7,6 +7,7 @@ import { Mixer } from '../components/Mixer';
 import Favorites from '../components/Favorites';
 import { useCollabData } from '../hooks/useCollabData';
 import { useAuth } from '../contexts/AuthContext';
+import { UserDataTest } from '../components/UserDataTest';
 import './MainView.css';
 import SubmissionItem from '../components/SubmissionItem';
 
@@ -18,12 +19,24 @@ export function MainView({ onShowAuth }: MainViewProps) {
   const audioContext = useContext(AudioEngineContext);
   const { user, signOut } = useAuth();
 
+  console.log('MainView render - user:', user?.email, 'audioContext:', !!audioContext);
+
   if (!audioContext) {
     return <div>Loading audio engine...</div>;
   }
   const { engine, state } = audioContext;
   const [debug, setDebug] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const collabData = useCollabData(undefined, engine);
+
+  useEffect(() => {
+    // delay to ensure all components are properly initialized?
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [user?.uid]);
   
   const controller = usePlayerController(engine, {
     regularSubmissions: collabData.regularSubmissions,
@@ -40,10 +53,24 @@ export function MainView({ onShowAuth }: MainViewProps) {
           (trackSrc) => collabData.listened.includes(trackSrc)
         );
     }
-  }, [engine, collabData.listenedRatio, collabData.listened]);
+  }, [engine, collabData.listenedRatio]);
+
+  if (isLoading) {
+    return <div style={{ 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      height: '100vh',
+      backgroundColor: 'var(--background)',
+      color: 'var(--white)'
+    }}>
+      Loading...
+    </div>;
+  }
 
   return (
     <div className="main-container">
+      <UserDataTest />
       <button 
         style={{
           position: 'absolute',
@@ -143,10 +170,7 @@ export function MainView({ onShowAuth }: MainViewProps) {
       <Mixer 
         engine={engine} 
         state={state} 
-        regularSubmissions={collabData.regularSubmissions}
-        pastStageTracklist={collabData.pastStageTracklist}
-        favourites={collabData.favourites}
-        backingTrackSrc={collabData.backingTrackSrc}
+        controller={controller}
       />
     </div>
   );

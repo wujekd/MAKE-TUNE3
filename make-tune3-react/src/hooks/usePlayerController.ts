@@ -8,9 +8,10 @@ export function usePlayerController(engine: AudioEngine | null, { regularSubmiss
   const currentTrackIndex = engine ? engine.getState().playerController.currentTrackId : -2;
   let playingFavourite = engine ? engine.getState().playerController.playingFavourite : false;
 
-  useEffect(() => {
-    console.log("player controller rerender");
-  }, [favourites]);
+  
+  // useEffect(() => {
+  //   console.log("player controller rerender");
+  // }, [favourites]);
 
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);

@@ -1,23 +1,13 @@
 import React from 'react';
 import type { AudioState } from '../types';
-import { usePlayerController } from '../hooks/usePlayerController';
 
 interface MixerProps {
   engine: any;
   state: AudioState;
-  regularSubmissions: string[];
-  pastStageTracklist: string[];
-  favourites: string[];
-  backingTrackSrc: string;
+  controller: any;
 }
 
-export function Mixer({ engine, state, regularSubmissions, pastStageTracklist, favourites, backingTrackSrc }: MixerProps) {
-  const controller = usePlayerController(engine, {
-    regularSubmissions,
-    pastStageTracklist,
-    favourites,
-    backingTrackSrc
-  });
+export function Mixer({ engine, state, controller }: MixerProps) {
 
   const handleSubmissionVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => { // dw its just a fancy parameter change type
     const volume = parseFloat(e.target.value);

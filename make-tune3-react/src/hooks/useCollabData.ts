@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { audioFiles } from '../data/mock-audio';
+import { useAuth } from '../contexts/AuthContext';
 
 export function useCollabData(collabId?: string, engine?: any) {
+  const { user } = useAuth();
   const [allSubmissions, setAllSubmissions] = useState<string[]>([]);
   const [pastStageTracklist, setPastStageTracklist] = useState<string[]>([]);
   const [backingTrackSrc, setBackingTrackSrc] = useState<string>('');
@@ -18,7 +20,7 @@ export function useCollabData(collabId?: string, engine?: any) {
     setListened(audioFiles.listened);
     setFavourites(audioFiles.favourites);
     setFinalVote(audioFiles.votedFor[0]);
-  }, [collabId]);
+  }, [collabId, user?.uid]);
 
   // filter submissions based on favorites
   const regularSubmissions = allSubmissions.filter(submission => 
