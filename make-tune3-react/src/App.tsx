@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
-import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MainView } from './views/MainView'
 import { AuthView } from './views/auth/AuthView'
+import { CollabListView } from './views/CollabListView'
+import { ProjectEditView } from './views/ProjectEditView'
 import { useAppStore } from './stores/appStore'
 
 function App() {
@@ -20,18 +22,24 @@ function App() {
     }
   }, [user, showAuth, setShowAuth]);
 
-  if (loading) {
-          // console.log('app: showing loading screen');
-    return <div>Loading...</div>;
-  }
-  
   if (showAuth) {
-          console.log('app: showing auth view');
-    return <AuthView onBackToMain={() => setShowAuth(false)} />;
+    return (
+      <BrowserRouter>
+        <AuthView onBackToMain={() => setShowAuth(false)} />
+      </BrowserRouter>
+    );
   }
-  
-        // console.log('app: showing main view');
-  return <MainView key={user?.uid || 'anonymous'} onShowAuth={() => setShowAuth(true)} />;
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/collabs" element={<CollabListView />} />
+        <Route path="/project/:projectId" element={<ProjectEditView />} />
+        <Route path="/collab/:collaborationId" element={<MainView key={user?.uid || 'anonymous'} onShowAuth={() => setShowAuth(true)} />} />
+        <Route path="*" element={<Navigate to="/collabs" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
 export default App

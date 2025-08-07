@@ -12,7 +12,8 @@ import {
   deleteDoc,
   Timestamp 
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, storage } from './firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { 
   Project, 
   Collaboration,
@@ -25,6 +26,7 @@ import type {
   UserId
 } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
+import { runTransaction, serverTimestamp } from 'firebase/firestore';
 
 export class CollaborationService {
   // Project Management
@@ -73,6 +75,13 @@ export class CollaborationService {
 
     const docRef = await addDoc(collection(db, COLLECTIONS.COLLABORATIONS), collaborationData);
     return { ...collaborationData, id: docRef.id };
+  }
+
+  static async uploadBackingTrack(file: File, projectId: string): Promise<string> {
+    const path = `backing/${projectId}/${Date.now()}-${file.name}`;
+    const r = ref(storage, path);
+    await uploadBytes(r, file);
+    return path; // we store storage path, not URL
   }
 
   static async getCollaboration(collaborationId: CollaborationId): Promise<Collaboration | null> {
@@ -343,5 +352,70 @@ export class CollaborationService {
     
     const doc = querySnapshot.docs[0];
     return { id: doc.id, ...doc.data() } as Collaboration;
+  }
+
+  // list published collaborations
+  static async listPublishedCollaborations(): Promise<Collaboration[]> {
+    const q = query(
+      collection(db, COLLECTIONS.COLLABORATIONS),
+      where('status', 'in', ['submission', 'voting', 'completed'])
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Collaboration));
+  }
+
+  // list projects owned by user
+  static async listUserProjects(userId: string): Promise<Project[]> {
+    const q = query(
+      collection(db, COLLECTIONS.PROJECTS),
+      where('ownerId', '==', userId)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Project));
+  }
+
+  // normalize name to key
+  static buildNameKey(name: string): string {
+    return name
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, ' ')
+      .replace(/[^a-z0-9 ]/g, '')
+      .replace(/\s/g, '-');
+  }
+
+  // create project with unique name enforcement
+  static async createProjectWithUniqueName(params: { name: string; description?: string; ownerId: string }): Promise<Project> {
+    const nameKey = this.buildNameKey(params.name);
+    const projectsCol = collection(db, COLLECTIONS.PROJECTS);
+    const indexDocRef = doc(db, COLLECTIONS.PROJECT_NAME_INDEX, nameKey);
+
+    const result = await runTransaction(db, async (tx) => {
+      const existing = await tx.get(indexDocRef);
+      if (existing.exists()) {
+        throw new Error('name taken');
+      }
+
+      const now = serverTimestamp() as unknown as Timestamp;
+      const projectData: Omit<Project, 'id'> & { nameKey: string } = {
+        name: params.name,
+        description: params.description || '',
+        createdAt: now as any,
+        updatedAt: now as any,
+        ownerId: params.ownerId,
+        isActive: true,
+        pastCollaborations: [],
+        nameKey
+      } as any;
+
+      const projRef = await addDoc(projectsCol, projectData as any);
+      tx.set(indexDocRef, { projectId: projRef.id, ownerId: params.ownerId, createdAt: now });
+
+      return { id: projRef.id, ...(projectData as any) } as Project;
+    });
+
+    return result;
   }
 } 

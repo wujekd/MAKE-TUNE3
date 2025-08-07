@@ -91,7 +91,8 @@ export const COLLECTIONS = {
   COLLABORATIONS: 'collaborations',
   USER_COLLABORATIONS: 'userCollaborations',
   USERS: 'users',
-  SUBMISSION_USERS: 'submissionUsers' // private collection
+  SUBMISSION_USERS: 'submissionUsers', // private collection
+  PROJECT_NAME_INDEX: 'projectNameIndex'
 } as const;
 
 // helper types

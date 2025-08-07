@@ -86,6 +86,7 @@ interface AppState {
     loadUserCollaborations: (userId: string) => Promise<void>;
     loadCollaboration: (userId: string, collaborationId: string) => Promise<void>;
     loadCollaborationAnonymous: () => Promise<void>;
+    loadCollaborationAnonymousById: (collaborationId: string) => Promise<void>;
     loadProject: (projectId: string) => Promise<void>;
     
     // computed
@@ -422,6 +423,38 @@ export const useAppStore = create<AppState>((set, get) => ({
         if (DEBUG_LOGS) console.log('collaboration data loaded successfully for anonymous user');
       } catch (error) {
         if (DEBUG_LOGS) console.error('error loading collaboration data for anonymous user:', error);
+        set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
+      }
+    },
+
+    loadCollaborationAnonymousById: async (collaborationId: string) => {
+      try {
+        if (DEBUG_LOGS) console.log('loading collaboration data for anonymous user by id');
+        set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: true } }));
+        const collaborationData = await CollaborationService.loadCollaborationDataAnonymous(collaborationId);
+        const submissionTracks = collaborationData.collaboration.submissionPaths.map(path => 
+          createTrackFromFilePath(path, 'submission', collaborationData.collaboration.id)
+        );
+        const backingTrack = collaborationData.collaboration.backingTrackPath ? 
+          createTrackFromFilePath(collaborationData.collaboration.backingTrackPath, 'backing', collaborationData.collaboration.id) : null;
+        const regularTracks = submissionTracks;
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            currentCollaboration: collaborationData.collaboration,
+            userCollaboration: null,
+            allTracks: submissionTracks,
+            regularTracks,
+            pastStageTracks: [],
+            backingTrack,
+            isLoadingCollaboration: false
+          }
+        }));
+        if (collaborationData.collaboration.projectId) {
+          get().collaboration.loadProject(collaborationData.collaboration.projectId);
+        }
+      } catch (error) {
+        if (DEBUG_LOGS) console.error('error loading anonymous collab by id:', error);
         set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
       }
     },

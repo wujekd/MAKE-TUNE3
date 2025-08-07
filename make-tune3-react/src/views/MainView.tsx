@@ -1,4 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
+import { useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { StoreTest } from '../components/StoreTest';
 import { useAppStore } from '../stores/appStore';
@@ -21,23 +23,18 @@ export function MainView({ onShowAuth }: MainViewProps) {
   // get data from different slices
   const { user, signOut } = useAppStore(state => state.auth);
   const { 
-    allTracks,
     regularTracks,
     favorites,
-    pastStageTracks, 
-    backingTrack,
-    userCollaborations,
     loadCollaboration,
-    loadCollaborationAnonymous,
+    loadCollaborationAnonymousById,
     markAsListened,
     addToFavorites,
     removeFromFavorites,
     voteFor,
     isTrackListened,
-    isTrackFavorite,
-    getTrackByFilePath
+    isTrackFavorite
   } = useAppStore(state => state.collaboration);
-  const { playSubmission, playPastSubmission } = useAppStore(state => state.playback);
+  const { playSubmission } = useAppStore(state => state.playback);
   const { setShowAuth } = useAppStore(state => state.ui);
 
 
@@ -48,19 +45,22 @@ export function MainView({ onShowAuth }: MainViewProps) {
 
   const { engine, state } = audioContext;
 
-  // load collaboration data regardless of user authentication status
+  // read collabId from url
+  const location = useLocation();
+  const collabId = useMemo(() => {
+    const match = location.pathname.match(/\/collab\/(.+)$/);
+    return match ? decodeURIComponent(match[1]) : null;
+  }, [location.pathname]);
+
+  // load collaboration data based on url and auth
   useEffect(() => {
-    if (user && userCollaborations.length > 0) {
-      // load the first collaboration for logged-in user
-      const firstCollaboration = userCollaborations[0];
-      console.log('loading first collaboration for logged-in user:', firstCollaboration.id);
-      loadCollaboration(user.uid, firstCollaboration.id);
-    } else if (!user) {
-      // load collaboration data for anonymous user
-      console.log('loading collaboration for anonymous user');
-      loadCollaborationAnonymous();
+    if (!collabId) return;
+    if (user) {
+      loadCollaboration(user.uid, collabId);
+    } else {
+      loadCollaborationAnonymousById(collabId);
     }
-  }, [user, userCollaborations, loadCollaboration, loadCollaborationAnonymous]);
+  }, [collabId, user, loadCollaboration, loadCollaborationAnonymousById]);
 
   useEffect(() => {
     if (engine) {
@@ -113,6 +113,20 @@ export function MainView({ onShowAuth }: MainViewProps) {
 
   return (
     <div className="main-container">
+      <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 1000 }}>
+        <button
+          onClick={() => (window.location.href = '/collabs')}
+          style={{
+            padding: '8px 12px',
+            borderRadius: 6,
+            border: '1px solid var(--border-color, #333)',
+            background: 'var(--primary1-700)',
+            color: 'var(--white)'
+          }}
+        >
+          ← back to collabs
+        </button>
+      </div>
       <StoreTest />
       <button 
         style={{
