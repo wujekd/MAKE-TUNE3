@@ -64,6 +64,11 @@ body {
   background-color: var(--primary1-400);
   color: var(--white);
   overflow-y: auto;
+  transition: all 0.3s ease;
+}
+
+.submissions-section.active-playback {
+  background-color: var(--primary1-500);
 }
 
 /* Mixer styling */

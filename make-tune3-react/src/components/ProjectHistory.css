@@ -6,6 +6,12 @@
   max-width: 300px;
   height: auto;
   color: var(--white);
+  transition: all 0.3s ease;
+  border: 3px solid transparent;
+}
+
+.project-history.active-playback {
+  background-color: var(--primary1-800);
 }
 
 .project-history-title {
@@ -64,6 +70,12 @@
 .collab-history-item.active.selected {
   background-color: var(--contrast-600);
   border-color: var(--contrast-700);
+}
+
+.collab-history-item.currently-playing {
+  background-color: var(--primary1-900);
+  border-color: var(--contrast-600);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .collab-status-indicator {

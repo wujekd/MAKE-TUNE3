@@ -9,28 +9,28 @@ function App() {
   const { showAuth, setShowAuth } = useAppStore(state => state.ui);
 
   useEffect(() => {
-    console.log('🚀 App render - user:', user?.email, 'loading:', loading);
+    // console.log('app render - user:', user?.email, 'loading:', loading);
   }, [user, loading]);
 
-  // Auto-hide auth view when user logs in successfully
+  // hide auth view when user logs in successfully
   useEffect(() => {
     if (user && showAuth) {
-      console.log('🚀 App: Auto-hiding auth view after successful login');
+      // console.log('app: hiding auth view after successful login');
       setShowAuth(false);
     }
   }, [user, showAuth, setShowAuth]);
 
   if (loading) {
-    console.log('🚀 App: Showing loading screen');
+          // console.log('app: showing loading screen');
     return <div>Loading...</div>;
   }
   
   if (showAuth) {
-    console.log('🚀 App: Showing auth view');
+          console.log('app: showing auth view');
     return <AuthView onBackToMain={() => setShowAuth(false)} />;
   }
   
-  console.log('🚀 App: Showing main view');
+        // console.log('app: showing main view');
   return <MainView key={user?.uid || 'anonymous'} onShowAuth={() => setShowAuth(true)} />;
 }
 

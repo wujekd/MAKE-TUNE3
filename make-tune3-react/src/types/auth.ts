@@ -4,6 +4,7 @@ export interface User {
   uid: string;
   email: string;
   createdAt: Timestamp;
+  collaborationIds: string[]; // List of collaboration IDs user has interacted with
 }
 
 export interface AuthError {

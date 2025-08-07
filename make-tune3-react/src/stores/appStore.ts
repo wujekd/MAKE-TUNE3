@@ -2,15 +2,21 @@ import { create } from 'zustand';
 import type { User } from '../types/auth';
 import type { AudioEngine } from '../audio-services/audio-engine';
 import type { AudioState } from '../types';
+
+// debug flag for console logs
+const DEBUG_LOGS = false;
 import type { 
   Project, 
+  Collaboration,
   Track, 
   UserCollaboration, 
+  UserProfile,
   CollaborationData,
   TrackId,
-  ProjectId 
+  ProjectId,
+  CollaborationId
 } from '../types/collaboration';
-import { audioFiles } from '../data/mock-audio';
+
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
@@ -21,8 +27,9 @@ import {
 import type { User as FirebaseUser } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { AuthService } from '../services/authService';
+import { CollaborationService } from '../services/collaborationService';
 
-// Properly structured store interface
+// store interface
 interface AppState {
   // Auth Slice
   auth: {
@@ -35,7 +42,7 @@ interface AppState {
     initializeAuth: () => (() => void);
   };
 
-  // Audio Engine Slice
+  // audio engine slice
   audio: {
     engine: AudioEngine | null;
     state: AudioState | null;
@@ -43,32 +50,51 @@ interface AppState {
     setState: (state: AudioState) => void;
   };
 
-  // Collaboration Data Slice
+  // collaboration data slice
   collaboration: {
     currentProject: Project | null;
+    currentCollaboration: Collaboration | null;
     userCollaboration: UserCollaboration | null;
+    userCollaborations: Collaboration[]; // user's collaborations
+    
+    // track data from file paths
     allTracks: Track[];
     regularTracks: Track[];
     pastStageTracks: Track[];
     backingTrack: Track | null;
     
-    // Actions
-    setCurrentProject: (project: Project) => void;
-    setUserCollaboration: (collaboration: UserCollaboration) => void;
-    setTracks: (tracks: Track[]) => void;
-    markAsListened: (trackId: TrackId) => void;
-    addToFavorites: (trackId: TrackId) => void;
-    removeFromFavorites: (trackId: TrackId) => void;
-    voteFor: (trackId: TrackId) => void;
-    setListenedRatio: (ratio: number) => void;
+    // favorites array
+    favorites: Track[];
     
-    // Computed
-    isTrackListened: (trackId: TrackId) => boolean;
-    isTrackFavorite: (trackId: TrackId) => boolean;
-    getTrackById: (trackId: TrackId) => Track | undefined;
+    // loading states
+    isLoadingCollaboration: boolean;
+    isLoadingProject: boolean;
+    isUpdatingFavorites: boolean;
+    isUpdatingListened: boolean;
+    
+    // actions
+    setCurrentProject: (project: Project) => void;
+    setCurrentCollaboration: (collaboration: Collaboration) => void;
+    setUserCollaboration: (collaboration: UserCollaboration) => void;
+    setUserCollaborations: (collaborations: Collaboration[]) => void;
+    setTracks: (tracks: { filePath: string }[]) => void;
+    markAsListened: (filePath: string) => Promise<void>;
+    addToFavorites: (filePath: string) => Promise<void>;
+    removeFromFavorites: (filePath: string) => Promise<void>;
+    voteFor: (filePath: string) => void;
+    setListenedRatio: (ratio: number) => void;
+    loadUserCollaborations: (userId: string) => Promise<void>;
+    loadCollaboration: (userId: string, collaborationId: string) => Promise<void>;
+    loadCollaborationAnonymous: () => Promise<void>;
+    loadProject: (projectId: string) => Promise<void>;
+    
+    // computed
+    isTrackListened: (filePath: string) => boolean;
+    isTrackFavorite: (filePath: string) => boolean;
+    getTrackByFilePath: (filePath: string) => Track | undefined;
   };
 
-  // UI State Slice
+  // ui state slice
   ui: {
     isLoading: boolean;
     showAuth: boolean;
@@ -78,7 +104,7 @@ interface AppState {
     setDebug: (debug: boolean) => void;
   };
 
-  // Playback Actions Slice
+  // playback actions slice
   playback: {
     handleSubmissionVolumeChange: (volume: number) => void;
     handleMasterVolumeChange: (volume: number) => void;
@@ -86,7 +112,7 @@ interface AppState {
     previousTrack: () => void;
     nextTrack: () => void;
     togglePlayPause: () => void;
-    playSubmission: (trackId: TrackId, index: number, favorite?: boolean) => void;
+    playSubmission: (filePath: string, index: number, favorite?: boolean) => void;
     playPastSubmission: (index: number) => void;
     getCurrentTime: (state: AudioState) => string;
     getTotalTime: (state: AudioState) => string;
@@ -94,29 +120,51 @@ interface AppState {
   };
 }
 
-// Helper function to format time
+// format time helper
 const formatTime = (seconds: number): string => {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = Math.floor(seconds % 60);
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
-// Create the store with proper structure
+// create track from file path
+const createTrackFromFilePath = (filePath: string, category: 'backing' | 'submission' | 'pastStage', collaborationId: string): Track => {
+  const fileName = filePath.split('/').pop() || filePath;
+      const title = fileName.replace(/\.[^/.]+$/, ''); // remove extension
+  
+  return {
+    id: filePath, // use filePath as id
+    title,
+    filePath,
+    duration: 0, // set by audioengine
+    createdAt: new Date() as any, // set when real data available
+    collaborationId,
+    category,
+    approved: true // default approved
+  };
+};
+
+// update regular tracks based on favorites
+const updateRegularTracks = (allTracks: Track[], favoriteFilePaths: string[]) => {
+  return allTracks.filter(track => !favoriteFilePaths.includes(track.filePath));
+};
+
+// create store
 export const useAppStore = create<AppState>((set, get) => ({
-  // Auth Slice
+  // auth slice
   auth: {
     user: null,
     loading: true,
 
     signIn: async (email, password) => {
       try {
-        console.log('🔐 Signing in with email:', email);
+        if (DEBUG_LOGS) console.log('signing in with email:', email);
         set(state => ({ auth: { ...state.auth, loading: true } }));
         const userProfile = await AuthService.loginWithEmail(email, password);
-        console.log('🔐 Sign in successful:', userProfile);
+        if (DEBUG_LOGS) console.log('sign in successful:', userProfile);
         set(state => ({ auth: { ...state.auth, user: userProfile, loading: false } }));
       } catch (error: any) {
-        console.error('🔐 Sign in error:', error);
+        if (DEBUG_LOGS) console.error('sign in error:', error);
         set(state => ({ auth: { ...state.auth, loading: false } }));
         throw error;
       }
@@ -129,7 +177,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         set(state => ({ auth: { ...state.auth, user: userProfile, loading: false } }));
       } catch (error: any) {
         set(state => ({ auth: { ...state.auth, loading: false } }));
-        console.error('🔐 Sign up error:', error);
+        if (DEBUG_LOGS) console.error('sign up error:', error);
         throw error;
       }
     },
@@ -138,10 +186,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       try {
         set(state => ({ auth: { ...state.auth, loading: true } }));
         await AuthService.signOut();
-        set(state => ({ auth: { ...state.auth, user: null, loading: false } }));
+        set(state => ({ 
+          auth: { ...state.auth, user: null, loading: false },
+          collaboration: { 
+            ...state.collaboration, 
+            favorites: [],
+            userCollaboration: null
+          }
+        }));
       } catch (error: any) {
         set(state => ({ auth: { ...state.auth, loading: false } }));
-        console.error('🔐 Sign out error:', error);
+        if (DEBUG_LOGS) console.error('sign out error:', error);
         throw error;
       }
     },
@@ -150,46 +205,49 @@ export const useAppStore = create<AppState>((set, get) => ({
       try {
         await AuthService.resetPassword(email);
       } catch (error: any) {
-        console.error('🔐 Password reset error:', error);
+        if (DEBUG_LOGS) console.error('password reset error:', error);
         throw error;
       }
     },
 
     initializeAuth: () => {
-      console.log('🔐 Initializing auth...');
+      if (DEBUG_LOGS) console.log('initializing auth...');
       const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-        console.log('🔐 Auth state changed:', firebaseUser ? firebaseUser.email : 'null');
+        if (DEBUG_LOGS) console.log('auth state changed:', firebaseUser ? firebaseUser.email : 'null');
         if (firebaseUser) {
           try {
-            console.log('🔐 Fetching user profile for:', firebaseUser.uid);
+            if (DEBUG_LOGS) console.log('fetching user profile for:', firebaseUser.uid);
             const userProfile = await AuthService.getUserProfile(firebaseUser.uid);
-            console.log('🔐 User profile fetched:', userProfile);
+            if (DEBUG_LOGS) console.log('user profile fetched:', userProfile);
+            
+            // Load user's collaborations
+            const collaborations = await CollaborationService.getUserCollaborations(firebaseUser.uid);
+            if (DEBUG_LOGS) console.log('user collaborations loaded:', collaborations);
+            
             set(state => ({ 
               auth: { ...state.auth, user: userProfile, loading: false },
               collaboration: { 
                 ...state.collaboration, 
-                userCollaboration: {
-                  userId: firebaseUser.uid,
-                  projectId: 'project1',
-                  listenedTracks: [],
-                  favoriteTracks: [],
-                  finalVote: null,
-                  listenedRatio: 7,
-                  lastInteraction: new Date() as any,
-                  updatedAt: new Date() as any,
-                  createdAt: new Date() as any
-                }
+                userCollaborations: collaborations,
+                userCollaboration: null, // will be set when user selects a collaboration
+                // clear favorites when user logs in
+                favorites: []
               }
             }));
           } catch (error) {
-            console.error('🔐 Error fetching user profile:', error);
+            if (DEBUG_LOGS) console.error('error fetching user profile:', error);
             set(state => ({ auth: { ...state.auth, user: null, loading: false } }));
           }
         } else {
-          console.log('🔐 No user, setting loading to false');
+          if (DEBUG_LOGS) console.log('no user, setting loading to false');
           set(state => ({ 
             auth: { ...state.auth, user: null, loading: false },
-            collaboration: { ...state.collaboration, userCollaboration: null }
+            collaboration: { 
+              ...state.collaboration, 
+              userCollaboration: null,
+              userCollaborations: [],
+              favorites: []
+            }
           }));
         }
       });
@@ -210,258 +268,389 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Collaboration Slice
   collaboration: {
     currentProject: null,
+    currentCollaboration: null,
     userCollaboration: null,
-    allTracks: [
-      {
-        id: 'track1',
-        title: 'Phone from China',
-        artist: 'Demo Artist',
-        filePath: '/test-audio/df9a07de-d40c-4e49-ab35-2c94f55e5137_phone%20from%20china.mp3',
-        duration: 240,
-        createdAt: new Date() as any,
-        projectId: 'project1'
-      },
-      {
-        id: 'track2',
-        title: 'Voiceover 2',
-        artist: 'Demo Artist',
-        filePath: '/test-audio/voiceover2.mp3',
-        duration: 180,
-        createdAt: new Date() as any,
-        projectId: 'project1'
-      },
-      {
-        id: 'track3',
-        title: 'Fuck Me Up',
-        artist: 'Demo Artist',
-        filePath: '/test-audio/fuck_me_upppp_mh2bywZ.mp3',
-        duration: 200,
-        createdAt: new Date() as any,
-        projectId: 'project1'
-      },
-      {
-        id: 'track4',
-        title: 'BB G Ab',
-        artist: 'Demo Artist',
-        filePath: '/test-audio/bb_g_Ab.mp3',
-        duration: 220,
-        createdAt: new Date() as any,
-        projectId: 'project1'
-      }
-    ],
-    regularTracks: [
-      {
-        id: 'track1',
-        title: 'Phone from China',
-        artist: 'Demo Artist',
-        filePath: '/test-audio/df9a07de-d40c-4e49-ab35-2c94f55e5137_phone%20from%20china.mp3',
-        duration: 240,
-        createdAt: new Date() as any,
-        projectId: 'project1'
-      },
-      {
-        id: 'track2',
-        title: 'Voiceover 2',
-        artist: 'Demo Artist',
-        filePath: '/test-audio/voiceover2.mp3',
-        duration: 180,
-        createdAt: new Date() as any,
-        projectId: 'project1'
-      },
-      {
-        id: 'track3',
-        title: 'Fuck Me Up',
-        artist: 'Demo Artist',
-        filePath: '/test-audio/fuck_me_upppp_mh2bywZ.mp3',
-        duration: 200,
-        createdAt: new Date() as any,
-        projectId: 'project1'
-      },
-      {
-        id: 'track4',
-        title: 'BB G Ab',
-        artist: 'Demo Artist',
-        filePath: '/test-audio/bb_g_Ab.mp3',
-        duration: 220,
-        createdAt: new Date() as any,
-        projectId: 'project1'
-      }
-    ],
-    pastStageTracks: [
-      {
-        id: 'past1',
-        title: 'Rudi Demo Arr1',
-        artist: 'Demo Artist',
-        filePath: '/test-audio/Rudi%20demo%20arr1%20acc%20copy.mp3',
-        duration: 240,
-        createdAt: new Date() as any,
-        projectId: 'project1'
-      },
-      {
-        id: 'past2',
-        title: 'Kuba',
-        artist: 'Demo Artist',
-        filePath: '/test-audio/Kuba.mp3',
-        duration: 180,
-        createdAt: new Date() as any,
-        projectId: 'project1'
-      },
-      {
-        id: 'past3',
-        title: 'Tomas Demo1',
-        artist: 'Demo Artist',
-        filePath: '/test-audio/tomas%20demo1%20instrumental.mp3',
-        duration: 200,
-        createdAt: new Date() as any,
-        projectId: 'project1'
-      }
-    ],
-    backingTrack: {
-      id: 'backing1',
-      title: 'Demo 2 Instrumental',
-      artist: 'Demo Artist',
-      filePath: '/test-audio/demo2%20instrumental.mp3',
-      duration: 240,
-      createdAt: new Date() as any,
-      projectId: 'project1'
-    },
+    userCollaborations: [],
+    allTracks: [],
+    regularTracks: [],
+    pastStageTracks: [],
+    backingTrack: null,
+    favorites: [],
+    isLoadingCollaboration: false,
+    isLoadingProject: false,
+    isUpdatingFavorites: false,
+    isUpdatingListened: false,
 
     setCurrentProject: (project) => set(state => ({ 
       collaboration: { ...state.collaboration, currentProject: project } 
+    })),
+
+    setCurrentCollaboration: (collaboration) => set(state => ({ 
+      collaboration: { ...state.collaboration, currentCollaboration: collaboration } 
     })),
 
     setUserCollaboration: (collaboration) => set(state => ({ 
       collaboration: { ...state.collaboration, userCollaboration: collaboration } 
     })),
 
+    setUserCollaborations: (collaborations) => set(state => ({ 
+      collaboration: { ...state.collaboration, userCollaborations: collaborations } 
+    })),
+
     setTracks: (tracks) => {
       const { userCollaboration } = get().collaboration;
-      const favoriteTrackIds = userCollaboration?.favoriteTracks || [];
+      const favoriteFilePaths = userCollaboration?.favoriteTracks || [];
       
-      const regularTracks = tracks.filter(track => 
-        !favoriteTrackIds.includes(track.id)
+      // Convert file paths to Track objects
+      const trackObjects = tracks.map(track => 
+        createTrackFromFilePath(track.filePath, 'submission', get().collaboration.currentCollaboration?.id || '')
       );
+      
+      // For now, all tracks are considered regular submissions
+      // Later we'll implement filtering based on user data
+      const regularTracks = trackObjects.filter(track => 
+        !favoriteFilePaths.includes(track.filePath)
+      );
+      
+      // Past stage tracks will be loaded from project data later
+      const pastStageTracks: Track[] = [];
+      
+      // Backing track will be set separately from collaboration data
+      const backingTrack: Track | null = null;
       
       set(state => ({ 
         collaboration: { 
           ...state.collaboration, 
-          allTracks: tracks, 
-          regularTracks 
+          allTracks: trackObjects, 
+          regularTracks,
+          pastStageTracks,
+          backingTrack
         } 
       }));
     },
 
-    markAsListened: (trackId) => {
-      console.log('🎧 markAsListened called with trackId:', trackId);
-      const { userCollaboration } = get().collaboration;
-      if (!userCollaboration) {
-        console.log('🎧 No userCollaboration found, returning');
-        return;
-      }
-
-      const listenedTracks = [...userCollaboration.listenedTracks];
-      console.log('🎧 Current listenedTracks:', listenedTracks);
-      if (!listenedTracks.includes(trackId)) {
-        listenedTracks.push(trackId);
-        console.log('🎧 Updated listenedTracks:', listenedTracks);
-        set(state => ({
-          collaboration: {
-            ...state.collaboration,
-            userCollaboration: {
-              ...state.collaboration.userCollaboration!,
-              listenedTracks,
-              lastInteraction: new Date() as any
-            }
-          }
-        }));
-        console.log('🎧 Track marked as listened successfully');
-      } else {
-        console.log('🎧 Track already marked as listened');
-      }
-    },
-
-    addToFavorites: (trackId) => {
-      console.log('⭐ addToFavorites called with trackId:', trackId);
-      const { userCollaboration } = get().collaboration;
-      const { engine, state: audioState } = get().audio;
-      
-      if (!userCollaboration) {
-        console.log('⭐ No userCollaboration found, returning');
-        return;
-      }
-
-      const favoriteTracks = [...userCollaboration.favoriteTracks];
-      console.log('⭐ Current favoriteTracks:', favoriteTracks);
-      if (!favoriteTracks.includes(trackId)) {
-        favoriteTracks.push(trackId);
-        console.log('⭐ Updated favoriteTracks:', favoriteTracks);
-
-        set(state => ({
-          collaboration: {
-            ...state.collaboration,
-            userCollaboration: {
-              ...state.collaboration.userCollaboration!,
-              favoriteTracks,
-              lastInteraction: new Date() as any
-            }
-          }
-        }));
-        console.log('⭐ Track added to favorites successfully');
-
-        // Update playingFavourite if this is the currently playing track
-        if (engine && audioState) {
-          const currentTrack = audioState.playerController.currentTrackId;
-          const currentTrackSrc = audioState.player1.source;
-          const track = get().collaboration.getTrackById(trackId);
-          
-          if (track && currentTrackSrc === track.filePath) {
-            console.log('🎵 Updating playingFavourite to true for currently playing track');
-            engine.setPlayingFavourite(true);
-          }
-        }
-      } else {
-        console.log('⭐ Track already in favorites');
-      }
-    },
-
-    removeFromFavorites: (trackId) => {
-      console.log('⭐ removeFromFavorites called with trackId:', trackId);
-      const { userCollaboration } = get().collaboration;
-      const { engine, state: audioState } = get().audio;
-      
-      if (!userCollaboration) {
-        console.log('⭐ No userCollaboration found, returning');
-        return;
-      }
-
-      const favoriteTracks = userCollaboration.favoriteTracks.filter(id => id !== trackId);
-      console.log('⭐ Updated favoriteTracks:', favoriteTracks);
-
-      set(state => ({
-        collaboration: {
-          ...state.collaboration,
-          userCollaboration: {
-            ...state.collaboration.userCollaboration!,
-            favoriteTracks,
-            lastInteraction: new Date() as any
-          }
-        }
-      }));
-      console.log('⭐ Track removed from favorites successfully');
-
-      // Update playingFavourite if this is the currently playing track
-      if (engine && audioState) {
-        const currentTrackSrc = audioState.player1.source;
-        const track = get().collaboration.getTrackById(trackId);
+    loadCollaboration: async (userId: string, collaborationId: string) => {
+      try {
+        if (DEBUG_LOGS) console.log('loading collaboration data for:', collaborationId);
+        set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: true } }));
         
-        if (track && currentTrackSrc === track.filePath) {
-          console.log('🎵 Updating playingFavourite to false for currently playing track');
-          engine.setPlayingFavourite(false);
+        const collaborationData = await CollaborationService.loadCollaborationData(userId, collaborationId);
+        
+        // Construct track objects from file paths
+        const submissionTracks = collaborationData.collaboration.submissionPaths.map(path => 
+          createTrackFromFilePath(path, 'submission', collaborationData.collaboration.id)
+        );
+        const backingTrack = collaborationData.collaboration.backingTrackPath ? 
+          createTrackFromFilePath(collaborationData.collaboration.backingTrackPath, 'backing', collaborationData.collaboration.id) : null;
+        
+        // calculate favorites and regular tracks
+        const favoriteFilePaths = collaborationData.userCollaboration?.favoriteTracks || [];
+        const favorites = submissionTracks.filter(track => 
+          favoriteFilePaths.includes(track.filePath)
+        );
+        const regularTracks = submissionTracks.filter(track => 
+          !favoriteFilePaths.includes(track.filePath)
+        );
+        
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            currentCollaboration: collaborationData.collaboration,
+            userCollaboration: collaborationData.userCollaboration,
+            allTracks: submissionTracks,
+            regularTracks,
+            favorites,
+            pastStageTracks: [], // will be loaded from project data later
+            backingTrack,
+            isLoadingCollaboration: false
+          }
+        }));
+        
+        // Load project data in background
+        if (collaborationData.collaboration.projectId) {
+          get().collaboration.loadProject(collaborationData.collaboration.projectId);
         }
+        
+        if (DEBUG_LOGS) console.log('collaboration data loaded successfully');
+      } catch (error) {
+        if (DEBUG_LOGS) console.error('error loading collaboration data:', error);
+        set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
       }
     },
 
-    voteFor: (trackId) => {
+    loadCollaborationAnonymous: async () => {
+      try {
+        if (DEBUG_LOGS) console.log('loading collaboration data for anonymous user');
+        set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: true } }));
+        
+        // Get the first available collaboration
+        const collaboration = await CollaborationService.getFirstCollaboration();
+        if (!collaboration) {
+          throw new Error('No collaborations found');
+        }
+        
+        const collaborationData = await CollaborationService.loadCollaborationDataAnonymous(collaboration.id);
+        
+        // Construct track objects from file paths
+        const submissionTracks = collaborationData.collaboration.submissionPaths.map(path => 
+          createTrackFromFilePath(path, 'submission', collaborationData.collaboration.id)
+        );
+        const backingTrack = collaborationData.collaboration.backingTrackPath ? 
+          createTrackFromFilePath(collaborationData.collaboration.backingTrackPath, 'backing', collaborationData.collaboration.id) : null;
+        
+        // For anonymous users, all tracks are regular tracks (no favorites)
+        const regularTracks = submissionTracks;
+        
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            currentCollaboration: collaborationData.collaboration,
+            userCollaboration: null, // No user-specific data for anonymous users
+            allTracks: submissionTracks,
+            regularTracks,
+            pastStageTracks: [], // Will be loaded from project data later
+            backingTrack,
+            isLoadingCollaboration: false
+          }
+        }));
+        
+        // Load project data in background
+        if (collaborationData.collaboration.projectId) {
+          get().collaboration.loadProject(collaborationData.collaboration.projectId);
+        }
+        
+        if (DEBUG_LOGS) console.log('collaboration data loaded successfully for anonymous user');
+      } catch (error) {
+        if (DEBUG_LOGS) console.error('error loading collaboration data for anonymous user:', error);
+        set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
+      }
+    },
+
+    loadProject: async (projectId: string) => {
+      try {
+        if (DEBUG_LOGS) console.log('loading project data for:', projectId);
+        set(state => ({ collaboration: { ...state.collaboration, isLoadingProject: true } }));
+        
+        const project = await CollaborationService.getProject(projectId);
+        
+        if (project) {
+          // Extract past stage tracks from project.pastCollaborations
+          const pastStageTracks = project.pastCollaborations.map(pastCollab => 
+            createTrackFromFilePath(pastCollab.pastStageTrackPath, 'pastStage', pastCollab.collaborationId)
+          );
+          
+          set(state => ({
+            collaboration: {
+              ...state.collaboration,
+              currentProject: project,
+              pastStageTracks,
+              isLoadingProject: false
+            }
+          }));
+          
+          if (DEBUG_LOGS) console.log('project data loaded successfully');
+        }
+      } catch (error) {
+        if (DEBUG_LOGS) console.error('error loading project data:', error);
+        set(state => ({ collaboration: { ...state.collaboration, isLoadingProject: false } }));
+      }
+    },
+
+    markAsListened: async (filePath) => {
+      if (DEBUG_LOGS) console.log('markAsListened called with filePath:', filePath);
+      const { user } = get().auth;
+      const { currentCollaboration } = get().collaboration;
+      
+      if (!user) {
+        // anonymous users can't mark as listened
+        if (DEBUG_LOGS) console.log('anonymous user - cannot mark as listened');
+        return;
+      }
+      
+      // authenticated: pessimistic firebase approach
+      if (!currentCollaboration) {
+        if (DEBUG_LOGS) console.log('no collaboration loaded, returning');
+        return;
+      }
+
+      try {
+        if (DEBUG_LOGS) console.log('authenticated user - marking as listened in firebase');
+        set(state => ({ collaboration: { ...state.collaboration, isUpdatingListened: true } }));
+        
+        // firebase call first
+        await CollaborationService.markTrackAsListened(user.uid, currentCollaboration.id, filePath);
+        
+        // update local state only after firebase success
+        const { userCollaboration } = get().collaboration;
+        const updatedListenedTracks = [...(userCollaboration?.listenedTracks || []), filePath];
+        
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            userCollaboration: {
+              ...state.collaboration.userCollaboration!,
+              listenedTracks: updatedListenedTracks,
+              lastInteraction: new Date() as any
+            },
+            isUpdatingListened: false
+          }
+        }));
+        if (DEBUG_LOGS) console.log('track marked as listened in firebase successfully');
+      } catch (error) {
+        if (DEBUG_LOGS) console.error('failed to mark as listened in firebase:', error);
+        set(state => ({ collaboration: { ...state.collaboration, isUpdatingListened: false } }));
+      }
+    },
+
+    addToFavorites: async (filePath) => {
+      if (DEBUG_LOGS) console.log('addToFavorites called with filePath:', filePath);
+      const { user } = get().auth;
+      const { currentCollaboration } = get().collaboration;
+      const { engine, state: audioState } = get().audio;
+      
+      if (DEBUG_LOGS) console.log('user status:', user ? 'authenticated' : 'anonymous');
+      if (DEBUG_LOGS) console.log('current collaboration:', currentCollaboration?.id);
+      
+      if (!user) {
+        // anonymous users can't add to favorites
+        if (DEBUG_LOGS) console.log('anonymous user - cannot add to favorites');
+        return;
+      }
+        
+        // authenticated: pessimistic firebase approach
+        if (!currentCollaboration) {
+          if (DEBUG_LOGS) console.log('no collaboration loaded, returning');
+          return;
+        }
+
+        try {
+          if (DEBUG_LOGS) console.log('authenticated user - adding to firebase favorites');
+          set(state => ({ collaboration: { ...state.collaboration, isUpdatingFavorites: true } }));
+          
+          // firebase call first
+          if (DEBUG_LOGS) console.log('calling firebase addTrackToFavorites...');
+          await CollaborationService.addTrackToFavorites(user.uid, currentCollaboration.id, filePath);
+          if (DEBUG_LOGS) console.log('firebase call successful');
+          
+          // update local state only after firebase success
+          const { userCollaboration } = get().collaboration;
+          const updatedFavorites = [...(userCollaboration?.favoriteTracks || []), filePath];
+          if (DEBUG_LOGS) console.log('updated favorites array:', updatedFavorites);
+          
+          // update favorites array
+          const track = get().collaboration.getTrackByFilePath(filePath);
+          const updatedFavoritesArray = track ? [...get().collaboration.favorites, track] : get().collaboration.favorites;
+          
+          set(state => ({
+            collaboration: {
+              ...state.collaboration,
+              userCollaboration: {
+                ...state.collaboration.userCollaboration!,
+                favoriteTracks: updatedFavorites,
+                lastInteraction: new Date() as any
+              },
+              regularTracks: updateRegularTracks(state.collaboration.allTracks, updatedFavorites),
+              favorites: updatedFavoritesArray,
+              isUpdatingFavorites: false
+            }
+          }));
+          
+          if (DEBUG_LOGS) console.log('track added to firebase favorites successfully');
+
+          // update playingFavourite and currentTrackId if this is the currently playing track
+          if (engine && audioState) {
+            const currentTrackSrc = audioState.player1.source;
+            const track = get().collaboration.getTrackByFilePath(filePath);
+            
+            if (track && currentTrackSrc === `/test-audio/${track.filePath}`) {
+              if (DEBUG_LOGS) console.log('updating playingFavourite to true for currently playing track');
+              engine.setPlayingFavourite(true);
+              
+              // update currentTrackId to reflect the new position in favorites
+              const newFavoriteIndex = get().collaboration.favorites.findIndex(t => t.filePath === track.filePath);
+              if (newFavoriteIndex !== -1) {
+                if (DEBUG_LOGS) console.log('updating currentTrackId to:', newFavoriteIndex);
+                engine.updateCurrentTrackId(newFavoriteIndex);
+              }
+            }
+          }
+        } catch (error) {
+          if (DEBUG_LOGS) console.error('failed to add to firebase favorites:', error);
+          set(state => ({ collaboration: { ...state.collaboration, isUpdatingFavorites: false } }));
+        }
+    },
+
+    removeFromFavorites: async (filePath) => {
+      if (DEBUG_LOGS) console.log('removeFromFavorites called with filePath:', filePath);
+      const { user } = get().auth;
+      const { currentCollaboration } = get().collaboration;
+      const { engine, state: audioState } = get().audio;
+      
+      if (!user) {
+        // anonymous users can't remove from favorites
+        if (DEBUG_LOGS) console.log('anonymous user - cannot remove from favorites');
+        return;
+      }
+      
+      // authenticated: pessimistic firebase approach
+      if (!currentCollaboration) {
+        if (DEBUG_LOGS) console.log('no collaboration loaded, returning');
+        return;
+      }
+
+      try {
+        if (DEBUG_LOGS) console.log('authenticated user - removing from firebase favorites');
+        set(state => ({ collaboration: { ...state.collaboration, isUpdatingFavorites: true } }));
+        
+        // firebase call first
+        await CollaborationService.removeTrackFromFavorites(user.uid, currentCollaboration.id, filePath);
+        
+        // update local state only after firebase success
+        const { userCollaboration } = get().collaboration;
+        const updatedFavorites = userCollaboration?.favoriteTracks.filter(path => path !== filePath) || [];
+        
+        // update favorites array
+        const updatedFavoritesArray = get().collaboration.favorites.filter(track => track.filePath !== filePath);
+        
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            userCollaboration: {
+              ...state.collaboration.userCollaboration!,
+              favoriteTracks: updatedFavorites,
+              lastInteraction: new Date() as any
+            },
+            regularTracks: updateRegularTracks(state.collaboration.allTracks, updatedFavorites),
+            favorites: updatedFavoritesArray,
+            isUpdatingFavorites: false
+          }
+        }));
+        if (DEBUG_LOGS) console.log('track removed from firebase favorites successfully');
+
+        // update playingFavourite and currentTrackId if this is the currently playing track
+        if (engine && audioState) {
+          const currentTrackSrc = audioState.player1.source;
+          const track = get().collaboration.getTrackByFilePath(filePath);
+          
+          if (track && currentTrackSrc === `/test-audio/${track.filePath}`) {
+            if (DEBUG_LOGS) console.log('updating playingFavourite to false for currently playing track');
+            engine.setPlayingFavourite(false);
+            
+            // update currentTrackId to reflect the new position in regular tracks
+            const newRegularIndex = get().collaboration.regularTracks.findIndex(t => t.filePath === track.filePath);
+            if (newRegularIndex !== -1) {
+              if (DEBUG_LOGS) console.log('updating currentTrackId to:', newRegularIndex);
+              engine.updateCurrentTrackId(newRegularIndex);
+            }
+          }
+        }
+      } catch (error) {
+        if (DEBUG_LOGS) console.error('failed to remove from firebase favorites:', error);
+        set(state => ({ collaboration: { ...state.collaboration, isUpdatingFavorites: false } }));
+      }
+    },
+
+    voteFor: (filePath) => {
       const { userCollaboration } = get().collaboration;
       if (!userCollaboration) return;
 
@@ -470,7 +659,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           ...state.collaboration,
           userCollaboration: {
             ...state.collaboration.userCollaboration!,
-            finalVote: trackId,
+            finalVote: filePath,
             lastInteraction: new Date() as any
           }
         }
@@ -492,19 +681,41 @@ export const useAppStore = create<AppState>((set, get) => ({
       }));
     },
 
-    isTrackListened: (trackId) => {
+    isTrackListened: (filePath) => {
+      const { user } = get().auth;
       const { userCollaboration } = get().collaboration;
-      return userCollaboration?.listenedTracks.includes(trackId) || false;
+      
+      if (!user) {
+        // anonymous users can't have listened tracks
+        return false;
+      }
+      
+      // authenticated: check firebase data
+      return userCollaboration?.listenedTracks.includes(filePath) || false;
     },
 
-    isTrackFavorite: (trackId) => {
-      const { userCollaboration } = get().collaboration;
-      return userCollaboration?.favoriteTracks.includes(trackId) || false;
+    isTrackFavorite: (filePath) => {
+      const { favorites } = get().collaboration;
+      return favorites.some(track => track.filePath === filePath);
     },
 
-    getTrackById: (trackId) => {
+    getTrackByFilePath: (filePath) => {
       const { allTracks } = get().collaboration;
-      return allTracks.find(track => track.id === trackId);
+      return allTracks.find(track => track.filePath === filePath);
+    },
+
+    loadUserCollaborations: async (userId) => {
+      try {
+        const collaborations = await CollaborationService.getUserCollaborations(userId);
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            userCollaborations: collaborations
+          }
+        }));
+      } catch (error) {
+        if (DEBUG_LOGS) console.error('Error loading user collaborations:', error);
+      }
     }
   },
 
@@ -550,64 +761,94 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     previousTrack: () => {
       const engine = get().audio.engine;
-      const state = get().audio.state;
-      const { regularTracks, pastStageTracks, backingTrack, isTrackFavorite } = get().collaboration;
+      const audioState = get().audio.state;
+      const { regularTracks, favorites, pastStageTracks, backingTrack, isTrackFavorite } = get().collaboration;
       
-      if (!engine || !state) return;
+      if (!engine || !audioState) return;
 
-      const pastStagePlayback = state.playerController.pastStagePlayback;
-      const playingFavourite = state.playerController.playingFavourite;
-      const currentTrackIndex = state.playerController.currentTrackId;
+      const pastStagePlayback = audioState.playerController.pastStagePlayback;
+      const currentTrackIndex = audioState.playerController.currentTrackId;
 
       if (pastStagePlayback) {
         if (currentTrackIndex > 0) {
           const track = pastStageTracks[currentTrackIndex - 1];
-          engine.playPastStage(track.filePath, currentTrackIndex - 1);
-        }
-      } else if (playingFavourite) {
-        const favoriteTracks = regularTracks.filter(track => isTrackFavorite(track.id));
-        if (currentTrackIndex > 0 && currentTrackIndex < favoriteTracks.length) {
-          const track = favoriteTracks[currentTrackIndex - 1];
-          engine.setPlayingFavourite(true);
-          engine.playSubmission(track.filePath, backingTrack?.filePath || '', currentTrackIndex - 1);
+          const fullPath = `/test-audio/${track.filePath}`;
+          engine.playPastStage(fullPath, currentTrackIndex - 1);
         }
       } else {
-        if (currentTrackIndex > 0) {
-          const track = regularTracks[currentTrackIndex - 1];
-          engine.setPlayingFavourite(false);
-          engine.playSubmission(track.filePath, backingTrack?.filePath || '', currentTrackIndex - 1);
+        // Determine if we're in favorites mode by checking the currently playing track
+        const currentTrackSrc = audioState.player1.source;
+        if (!currentTrackSrc) return;
+        const currentTrackFilePath = currentTrackSrc.replace('/test-audio/', '');
+        const isCurrentTrackFavorite = isTrackFavorite(currentTrackFilePath);
+        
+        if (isCurrentTrackFavorite) {
+          // Navigate through favorites array
+          const favoriteIndex = favorites.findIndex(track => track.filePath === currentTrackFilePath);
+          
+          if (favoriteIndex > 0) {
+            const track = favorites[favoriteIndex - 1];
+            engine.setPlayingFavourite(true);
+            const fullPath = `/test-audio/${track.filePath}`;
+            const backingPath = backingTrack?.filePath ? `/test-audio/${backingTrack.filePath}` : '';
+            engine.playSubmission(fullPath, backingPath, favoriteIndex - 1);
+          }
+        } else {
+          // Navigate through regular tracks
+          if (currentTrackIndex > 0) {
+            const track = regularTracks[currentTrackIndex - 1];
+            engine.setPlayingFavourite(false);
+            const fullPath = `/test-audio/${track.filePath}`;
+            const backingPath = backingTrack?.filePath ? `/test-audio/${backingTrack.filePath}` : '';
+            engine.playSubmission(fullPath, backingPath, currentTrackIndex - 1);
+          }
         }
       }
     },
 
     nextTrack: () => {
       const engine = get().audio.engine;
-      const state = get().audio.state;
-      const { regularTracks, pastStageTracks, backingTrack, isTrackFavorite } = get().collaboration;
+      const audioState = get().audio.state;
+      const { regularTracks, favorites, pastStageTracks, backingTrack, isTrackFavorite } = get().collaboration;
       
-      if (!engine || !state) return;
+      if (!engine || !audioState) return;
 
-      const pastStagePlayback = state.playerController.pastStagePlayback;
-      const playingFavourite = state.playerController.playingFavourite;
-      const currentTrackIndex = state.playerController.currentTrackId;
+      const pastStagePlayback = audioState.playerController.pastStagePlayback;
+      const currentTrackIndex = audioState.playerController.currentTrackId;
 
       if (pastStagePlayback) {
         if (currentTrackIndex < pastStageTracks.length - 1) {
           const track = pastStageTracks[currentTrackIndex + 1];
-          engine.playPastStage(track.filePath, currentTrackIndex + 1);
-        }
-      } else if (playingFavourite) {
-        const favoriteTracks = regularTracks.filter(track => isTrackFavorite(track.id));
-        if (currentTrackIndex < favoriteTracks.length - 1) {
-          const track = favoriteTracks[currentTrackIndex + 1];
-          engine.setPlayingFavourite(true);
-          engine.playSubmission(track.filePath, backingTrack?.filePath || '', currentTrackIndex + 1);
+          const fullPath = `/test-audio/${track.filePath}`;
+          engine.playPastStage(fullPath, currentTrackIndex + 1);
         }
       } else {
-        if (currentTrackIndex < regularTracks.length - 1) {
-          const track = regularTracks[currentTrackIndex + 1];
-          engine.setPlayingFavourite(false);
-          engine.playSubmission(track.filePath, backingTrack?.filePath || '', currentTrackIndex + 1);
+        // Determine if we're in favorites mode by checking the currently playing track
+        const currentTrackSrc = audioState.player1.source;
+        if (!currentTrackSrc) return;
+        const currentTrackFilePath = currentTrackSrc.replace('/test-audio/', '');
+        const isCurrentTrackFavorite = isTrackFavorite(currentTrackFilePath);
+        
+        if (isCurrentTrackFavorite) {
+          // Navigate through favorites array
+          const favoriteIndex = favorites.findIndex(track => track.filePath === currentTrackFilePath);
+          
+          if (favoriteIndex < favorites.length - 1) {
+            const track = favorites[favoriteIndex + 1];
+            engine.setPlayingFavourite(true);
+            const fullPath = `/test-audio/${track.filePath}`;
+            const backingPath = backingTrack?.filePath ? `/test-audio/${backingTrack.filePath}` : '';
+            engine.playSubmission(fullPath, backingPath, favoriteIndex + 1);
+          }
+        } else {
+          // Navigate through regular tracks
+          if (currentTrackIndex < regularTracks.length - 1) {
+            const track = regularTracks[currentTrackIndex + 1];
+            engine.setPlayingFavourite(false);
+            const fullPath = `/test-audio/${track.filePath}`;
+            const backingPath = backingTrack?.filePath ? `/test-audio/${backingTrack.filePath}` : '';
+            engine.playSubmission(fullPath, backingPath, currentTrackIndex + 1);
+          }
         }
       }
     },
@@ -619,25 +860,27 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     },
 
-    playSubmission: (trackId, index, favorite) => {
-      console.log('🎵 playSubmission called with:', { trackId, index, favorite });
+    playSubmission: (filePath, index, favorite) => {
+      if (DEBUG_LOGS) console.log('playSubmission called with:', { filePath, index, favorite });
       const engine = get().audio.engine;
       const { backingTrack } = get().collaboration;
-      const track = get().collaboration.getTrackById(trackId);
+      const track = get().collaboration.getTrackByFilePath(filePath);
       
       if (!engine || !track) {
-        console.log('🎵 playSubmission - no engine or track found');
+        if (DEBUG_LOGS) console.log('playSubmission - no engine or track found');
         return;
       }
 
       if (favorite !== null && favorite !== undefined) {
-        console.log('🎵 playSubmission - setting playingFavourite to:', favorite);
+        if (DEBUG_LOGS) console.log('playSubmission - setting playingFavourite to:', favorite);
         engine.setPlayingFavourite(favorite);
       } else {
-        console.log('🎵 playSubmission - favorite parameter is null/undefined');
+        if (DEBUG_LOGS) console.log('playSubmission - favorite parameter is null/undefined');
       }
       
-      engine.playSubmission(track.filePath, backingTrack?.filePath || '', index);
+      // Construct the full path to the local audio file
+      const fullPath = `/test-audio/${track.filePath}`;
+      engine.playSubmission(fullPath, backingTrack?.filePath ? `/test-audio/${backingTrack.filePath}` : '', index);
     },
 
     playPastSubmission: (index) => {
@@ -646,7 +889,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       
       if (!engine || !pastStageTracks[index]) return;
 
-      engine.playPastStage(pastStageTracks[index].filePath, index);
+      // Construct the full path to the local audio file
+      const fullPath = `/test-audio/${pastStageTracks[index].filePath}`;
+      engine.playPastStage(fullPath, index);
     },
 
     getCurrentTime: (state) => {

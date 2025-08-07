@@ -1,6 +1,7 @@
 import React, { useContext } from "react";
 import './SubmissionItem.css';
 import { AudioEngineContext } from "../audio-services/AudioEngineContext";
+import { useAppStore } from "../stores/appStore";
 import type { Track } from "../types/collaboration";
 
 export default ({ track, index, isPlaying, isCurrentTrack, listened, favorite, onAddToFavorites, onPlay, voteFor, listenedRatio, isFinal}:
@@ -19,6 +20,7 @@ export default ({ track, index, isPlaying, isCurrentTrack, listened, favorite, o
     collabId: 'temp-collab'
   };
 
+  const { user } = useAppStore(state => state.auth);
   const audioContext = useContext(AudioEngineContext);
   if (!audioContext) {
     return <div>Loading audio engine...</div>;
@@ -33,21 +35,21 @@ export default ({ track, index, isPlaying, isCurrentTrack, listened, favorite, o
     : 0;
   
   const handlePlayClick = () => {
-    console.log('playSubmission called with:', track.id, index, favorite)
+    console.log('playSubmission called with:', track.filePath, index, favorite)
     if (isPlaying && isCurrentTrack){
       engine.pause();
     } else {
-      onPlay(track.id, index, favorite)
+      onPlay(track.filePath, index, favorite)
     }
   };
   
   const onVote = (sub: any) => {
-    voteFor(track.id);
+    voteFor(track.filePath);
   };
   
   const handleAddToFavorites = () => {
-    console.log('Add to favorites clicked for track:', track.id);
-    onAddToFavorites(track.id);
+    console.log('Add to favorites clicked for track:', track.filePath);
+    onAddToFavorites(track.filePath);
   };
 
   return (
@@ -56,6 +58,7 @@ export default ({ track, index, isPlaying, isCurrentTrack, listened, favorite, o
       ${isFinal ? 'voted-for' : ''}
       ${submission.markingListened ? 'marking' : ''}
       ${listened ? 'listened' : ''}
+      ${isCurrentTrack ? 'currently-playing' : ''}
     `}>
       <div style={{ fontSize: '10px', color: 'white', marginBottom: '4px' }}>
         Index: {index} | Track: {track.title}
@@ -80,9 +83,9 @@ export default ({ track, index, isPlaying, isCurrentTrack, listened, favorite, o
         <button 
           className="favorite-button"
           onClick={handleAddToFavorites}
-          disabled={!listened}
+          disabled={!listened || !user}
         >
-          {listened ? 'Add to favorites' : `Listen to ${listenedRatio}% to add`}
+          {!user ? 'Login to add' : (listened ? 'Add to favorites' : `Listen to ${listenedRatio}% to add`)}
         </button>
       )}
     </div>

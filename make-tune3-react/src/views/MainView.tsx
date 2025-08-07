@@ -18,22 +18,29 @@ export function MainView({ onShowAuth }: MainViewProps) {
   const [debug, setDebug] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Get data from different slices
+  // get data from different slices
   const { user, signOut } = useAppStore(state => state.auth);
   const { 
-    regularTracks, 
+    allTracks,
+    regularTracks,
+    favorites,
     pastStageTracks, 
     backingTrack,
+    userCollaborations,
+    loadCollaboration,
+    loadCollaborationAnonymous,
     markAsListened,
     addToFavorites,
     removeFromFavorites,
     voteFor,
     isTrackListened,
     isTrackFavorite,
-    getTrackById
+    getTrackByFilePath
   } = useAppStore(state => state.collaboration);
   const { playSubmission, playPastSubmission } = useAppStore(state => state.playback);
   const { setShowAuth } = useAppStore(state => state.ui);
+
+
 
   if (!audioContext) {
     return <div>Audio engine not available</div>;
@@ -41,25 +48,43 @@ export function MainView({ onShowAuth }: MainViewProps) {
 
   const { engine, state } = audioContext;
 
+  // load collaboration data regardless of user authentication status
+  useEffect(() => {
+    if (user && userCollaborations.length > 0) {
+      // load the first collaboration for logged-in user
+      const firstCollaboration = userCollaborations[0];
+      console.log('loading first collaboration for logged-in user:', firstCollaboration.id);
+      loadCollaboration(user.uid, firstCollaboration.id);
+    } else if (!user) {
+      // load collaboration data for anonymous user
+      console.log('loading collaboration for anonymous user');
+      loadCollaborationAnonymous();
+    }
+  }, [user, userCollaborations, loadCollaboration, loadCollaborationAnonymous]);
+
   useEffect(() => {
     if (engine) {
         engine.setTrackListenedCallback(
           (trackSrc) => { 
-            console.log('🎧 Track listened callback triggered for:', trackSrc);
-            // Find track by file path and mark as listened
-            const track = regularTracks.find(t => t.filePath === trackSrc);
-            console.log('🎧 Found track:', track);
+            console.log('track listened callback triggered for:', trackSrc);
+            // find track by file path and mark as listened
+            // remove /test-audio/ prefix for comparison
+            const cleanTrackSrc = trackSrc.replace('/test-audio/', '');
+            const track = regularTracks.find(t => t.filePath === cleanTrackSrc);
+            console.log('found track:', track);
             if (track) {
-              console.log('🎧 Marking track as listened:', track.id);
-              markAsListened(track.id);
+              console.log('marking track as listened:', track.filePath);
+              markAsListened(track.filePath);
             } else {
-              console.log('🎧 Track not found for filePath:', trackSrc);
+              console.log('track not found for filePath:', cleanTrackSrc);
             }
           },
           7, // listenedRatio
           (trackSrc) => {
-            const track = regularTracks.find(t => t.filePath === trackSrc);
-            return track ? isTrackListened(track.id) : false;
+            // remove /test-audio/ prefix for comparison
+            const cleanTrackSrc = trackSrc.replace('/test-audio/', '');
+            const track = regularTracks.find(t => t.filePath === cleanTrackSrc);
+            return track ? isTrackListened(track.filePath) : false;
           }
         );
     }
@@ -107,7 +132,7 @@ export function MainView({ onShowAuth }: MainViewProps) {
           right: '270px',
           zIndex: 1000,
         }}
-        onClick={() => console.log('favourites:', regularTracks.filter(t => isTrackFavorite(t.id)))}
+        onClick={() => console.log('favourites:', regularTracks.filter(t => isTrackFavorite(t.filePath)))}
       >
         Log Favorites
       </button>
@@ -142,12 +167,11 @@ export function MainView({ onShowAuth }: MainViewProps) {
           <ProjectHistory />
       </div>
       
-      <div className="submissions-section">
+      <div className={`submissions-section ${!state.playerController.pastStagePlayback ? 'active-playback' : ''}`}>
         <div className="audio-player-section">
             <Favorites  
               onRemoveFromFavorites={(trackId) => removeFromFavorites(trackId)}
-              allTracks={regularTracks}
-              isTrackFavorite={isTrackFavorite}
+              favorites={favorites}
               onAddToFavorites={(trackId) => addToFavorites(trackId)}
               onPlay={(trackId, index, favorite) => playSubmission(trackId, index, favorite)}
               voteFor={voteFor}
@@ -156,17 +180,17 @@ export function MainView({ onShowAuth }: MainViewProps) {
             />
           <div className="audio-player-title">Submissions</div>
             <div style={{ display: 'flex', flexDirection: 'row', gap: '10px', flexWrap: 'wrap' }}>
-              {regularTracks.filter(track => !isTrackFavorite(track.id)).map((track, index) => (
+              {regularTracks.filter(track => !isTrackFavorite(track.filePath)).map((track, index) => (
                 <SubmissionItem 
                     key={track.id}
                     track={track}
                     index={index}
-                    isCurrentTrack={state.player1.source === track.filePath}
+                    isCurrentTrack={!state.playerController.pastStagePlayback && state.player1.source === `/test-audio/${track.filePath}`}
                     isPlaying={state.player1.isPlaying}
-                    listened={isTrackListened(track.id)}
-                    favorite={isTrackFavorite(track.id)}
-                    onAddToFavorites={() => addToFavorites(track.id)}
-                    onPlay={(trackId, index, favorite) => playSubmission(trackId, index, false)}
+                                          listened={isTrackListened(track.filePath)}
+                                          favorite={isTrackFavorite(track.filePath)}
+                      onAddToFavorites={() => addToFavorites(track.filePath)}
+                    onPlay={(filePath, index, favorite) => playSubmission(filePath, index, false)}
                     voteFor={voteFor}
                     listenedRatio={7}
                     isFinal={false}

@@ -19,7 +19,7 @@ export function Mixer({ state }: MixerProps) {
     getTimeSliderValue
   } = useAppStore(state => state.playback);
 
-  const { regularTracks, pastStageTracks, isTrackFavorite } = useAppStore(state => state.collaboration);
+  const { regularTracks, favorites, pastStageTracks, isTrackFavorite } = useAppStore(state => state.collaboration);
 
   const handleSubmissionVolumeChangeEvent = (e: React.ChangeEvent<HTMLInputElement>) => {
     const volume = parseFloat(e.target.value);
@@ -36,17 +36,44 @@ export function Mixer({ state }: MixerProps) {
     handleTimeSliderChange(value);
   };
 
-  // Calculate canGoBack and canGoForward from state
+  // calculate canGoBack and canGoForward from state
   const pastStagePlayback = state.playerController.pastStagePlayback;
-  const playingFavourite = state.playerController.playingFavourite;
   const currentTrackIndex = state.playerController.currentTrackId;
   
-  const canGoBack = currentTrackIndex > 0;
-  const canGoForward = pastStagePlayback
-    ? currentTrackIndex < pastStageTracks.length - 1
-    : playingFavourite
-    ? currentTrackIndex < regularTracks.filter(t => isTrackFavorite(t.id)).length - 1
-    : currentTrackIndex < regularTracks.length - 1;
+  let canGoBack = false;
+  let canGoForward = false;
+  
+  if (pastStagePlayback) {
+    canGoBack = currentTrackIndex > 0;
+    canGoForward = currentTrackIndex < pastStageTracks.length - 1;
+  } else {
+    // determine if in favorites mode by checking currently playing track
+    const currentTrackSrc = state.player1.source;
+    if (!currentTrackSrc) {
+      canGoBack = false;
+      canGoForward = false;
+    } else {
+      const currentTrackFilePath = currentTrackSrc.replace('/test-audio/', '');
+      const isCurrentTrackFavorite = isTrackFavorite(currentTrackFilePath);
+      
+      if (isCurrentTrackFavorite) {
+        // check navigation within favorites array
+        const favoriteIndex = favorites.findIndex(track => track.filePath === currentTrackFilePath);
+        canGoBack = favoriteIndex > 0;
+        canGoForward = favoriteIndex < favorites.length - 1;
+              } else {
+          // check navigation within regular tracks
+        const currentTrack = regularTracks[currentTrackIndex];
+        if (currentTrack) {
+          canGoBack = currentTrackIndex > 0;
+          canGoForward = currentTrackIndex < regularTracks.length - 1;
+        } else {
+          canGoBack = false;
+          canGoForward = false;
+        }
+      }
+    }
+  }
 
   return (
     <section className="mixer-section" id="mixer">

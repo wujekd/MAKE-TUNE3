@@ -9,13 +9,7 @@ export class AudioEngine {
   private player2Source: MediaElementAudioSourceNode | null = null;
   private player1Gain: GainNode | null = null;
   private player2Gain: GainNode | null = null;
-  // TODO
-  // to add
-  // eq gains
-  // solo
-  // mute
-  // mute master
-  // stop playback tracker and emit state
+  // todo: add eq gains, solo, mute, mute master, stop playback tracker and emit state
   private masterGain: GainNode | null = null;
   private state: AudioState;
   private onStateChange?: (state: AudioState) => void;
@@ -41,7 +35,7 @@ export class AudioEngine {
     );
   }
 
-// AUDIO INNIT
+  // audio init
   private initAudioContext(): AudioContext {
     if (!this.audioContext) {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -81,7 +75,7 @@ export class AudioEngine {
       this.player2Source = source;
     }
   }
-// PLAYBACK METHODS
+  // playback methods
   loadSource(playerId: 1 | 2, src: string): void {
     const player = playerId === 1 ? this.player1 : this.player2;
     player.src = src;
@@ -222,25 +216,21 @@ export class AudioEngine {
     });
   }
   setPlayingFavourite(value: boolean): void {
-    console.log('🎵 setPlayingFavourite called with:', value);
+    console.log('setPlayingFavourite called with:', value);
     this.updateState({
       playerController: {
         ...this.state.playerController,
         playingFavourite: value
       }
     });
-    console.log('🎵 Updated state - playingFavourite:', this.state.playerController.playingFavourite);
   }
   updateCurrentTrackId(trackId: number): void {
-    console.log("updateCurrentTrackId called with:", trackId);
-    console.log("updateCurrentTrackId - old currentTrackId:", this.state.playerController.currentTrackId);
     this.updateState({
       playerController: {
         ...this.state.playerController,
         currentTrackId: trackId
       }
     });
-    console.log("updateCurrentTrackId - new currentTrackId:", this.state.playerController.currentTrackId);
   }
   seek(time: number, pastStagePlayback: boolean = false): void {
     if (pastStagePlayback) {
@@ -269,7 +259,7 @@ export class AudioEngine {
       this.playbackTracker.stopTracking();
     }
   }
-// STATE METHODS
+  // state methods
   setCallbacks(onStateChange: (state: AudioState) => void) {
     this.onStateChange = onStateChange;
   }
@@ -349,4 +339,4 @@ export class AudioEngine {
   getState(): AudioState {
     return this.state;
   }
-} 
+}

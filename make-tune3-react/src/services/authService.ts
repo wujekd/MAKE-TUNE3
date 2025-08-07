@@ -18,7 +18,8 @@ export class AuthService {
       const userProfile: User = {
         uid: user.uid,
         email: user.email!,
-        createdAt: new Date() as any // Will be converted to Timestamp by Firestore
+        createdAt: new Date() as any, // Will be converted to Timestamp by Firestore
+        collaborationIds: [] // Initialize with empty array
       };
       
       await setDoc(doc(db, 'users', user.uid), userProfile);
@@ -71,7 +72,19 @@ export class AuthService {
         return null;
       }
       
-      return userDoc.data() as User;
+      const userData = userDoc.data() as User;
+      
+      // Migrate existing user profiles that don't have collaborationIds
+      if (!userData.collaborationIds) {
+        const updatedUser: User = {
+          ...userData,
+          collaborationIds: []
+        };
+        await setDoc(doc(db, 'users', uid), updatedUser);
+        return updatedUser;
+      }
+      
+      return userData;
     } catch (error: any) {
       throw this.formatError(error);
     }

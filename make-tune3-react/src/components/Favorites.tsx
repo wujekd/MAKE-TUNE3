@@ -4,27 +4,28 @@ import type { Track } from '../types/collaboration';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import './Favorites.css';
 
-const Favorites = ({ onRemoveFromFavorites, allTracks, isTrackFavorite, onAddToFavorites, onPlay, voteFor, finalVote, listenedRatio }: 
-                { onRemoveFromFavorites: (trackId: string) => void, allTracks: Track[],
-                  isTrackFavorite: (trackId: string) => boolean,
+const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay, voteFor, finalVote, listenedRatio }: 
+                                  { onRemoveFromFavorites: (trackId: string) => void,
+                    favorites: Track[],
                   onAddToFavorites: (trackId: string) => void,
                   onPlay: (trackId: string, index: number, favorite: boolean) => void,
                   voteFor: (trackId: string) => void,
                   finalVote: string | null,
                   listenedRatio: number
                 }) => {
-  const favorites = allTracks.filter(track => isTrackFavorite(track.id));
+  // use favorites passed as prop
+
   const votedFor = null;
   const isSubmittingVote = false;
 
   const handleRemoveFromFavorites = (track: Track) => {
     console.log('Remove from favorites:', track);
-    onRemoveFromFavorites(track.id);
+    onRemoveFromFavorites(track.filePath);
   };
 
   const onVote = (track: Track) => {
-    console.log('Vote for favorite:', track.id);
-    voteFor(track.id);
+    console.log('Vote for favorite:', track.filePath);
+    voteFor(track.filePath);
   };
 
   const audioContext = useContext(AudioEngineContext);
@@ -34,25 +35,25 @@ const Favorites = ({ onRemoveFromFavorites, allTracks, isTrackFavorite, onAddToF
   }
   const { engine, state } = audioContext;
 
-  // Reference to the favorites container
+  // reference to favorites container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Add wheel event listener for horizontal scrolling
+      // add wheel event listener for horizontal scrolling
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
     if (scrollContainer) {
       const handleWheel = (event: WheelEvent) => {
-        // Prevent the default vertical scroll
+        // prevent default vertical scroll
         event.preventDefault();
         
-        // Scroll horizontally instead of vertically
+                  // scroll horizontally instead of vertically
         scrollContainer.scrollLeft += event.deltaY;
       };
       
-      // Add the event listener
+              // add event listener
       scrollContainer.addEventListener('wheel', handleWheel, { passive: false });
       
-      // Clean up the event listener when component unmounts
+              // clean up event listener on unmount
       return () => {
         scrollContainer.removeEventListener('wheel', handleWheel);
       };
@@ -85,15 +86,15 @@ const Favorites = ({ onRemoveFromFavorites, allTracks, isTrackFavorite, onAddToF
                 key={track.id}
                 track={track}
                 index={index}
-                isCurrentTrack={state.player1.source === track.filePath}
+                isCurrentTrack={!state.playerController.pastStagePlayback && state.player1.source === `/test-audio/${track.filePath}`}
                 isPlaying={state.player1.isPlaying}
                 listened={true}
                 favorite={true}
-                onAddToFavorites={() => onAddToFavorites(track.id)}
-                onPlay={(trackId, index, favorite) => onPlay(trackId, index, true)}
+                onAddToFavorites={() => onAddToFavorites(track.filePath)}
+                onPlay={(trackId, index, favorite) => onPlay(track.filePath, index, true)}
                 voteFor={voteFor}
                 listenedRatio={listenedRatio}
-                isFinal={finalVote === track.id}
+                isFinal={finalVote === track.filePath}
               />
             </div>
           ))
