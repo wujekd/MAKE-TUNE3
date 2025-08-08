@@ -9,6 +9,7 @@ type Props = {
   colorOn?: string;
   colorOff?: string;
   className?: string;
+  text?: string; // base label text; renders as `${text} on/off`
 };
 
 export function DeskToggle({
@@ -19,7 +20,8 @@ export function DeskToggle({
   disabled = false,
   colorOn = '#22c55e',
   colorOff = '#3a4747',
-  className
+  className,
+  text
 }: Props) {
   const baseStyle: CSSProperties = {
     display: 'inline-flex',
@@ -31,15 +33,20 @@ export function DeskToggle({
   };
 
   const plateStyle: CSSProperties = {
-    padding: 8,
+    padding: 6,
     borderRadius: 8,
     background: 'linear-gradient(180deg, #1e2f2f, #0f1a1a)',
-    boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.6), 0 2px 6px rgba(0,0,0,0.4)'
+    boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.6), 0 2px 6px rgba(0,0,0,0.4)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8
   };
 
+  const innerSize = Math.max(12, Math.floor(size * 0.66));
+
   const buttonStyle: CSSProperties = {
-    width: size,
-    height: size,
+    width: innerSize,
+    height: innerSize,
     borderRadius: '50%',
     background: checked
       ? `radial-gradient(circle at 35% 35%, ${lighten(colorOn, 0.4)}, ${colorOn})`
@@ -67,10 +74,10 @@ export function DeskToggle({
     border: '1px solid #0b1414'
   };
 
-  const labelStyle: CSSProperties = {
+  const inlineTextStyle: CSSProperties = {
     fontSize: 12,
     color: 'var(--white)',
-    opacity: 0.9
+    opacity: 0.9,
   };
 
   const toggle = () => {
@@ -86,6 +93,8 @@ export function DeskToggle({
     }
   };
 
+  const finalLabel = text ? `${text} ${checked ? 'on' : 'off'}` : label;
+
   return (
     <div style={baseStyle} className={className}>
       <div style={plateStyle}>
@@ -99,8 +108,8 @@ export function DeskToggle({
         >
           <div style={indicatorStyle} />
         </div>
+        {finalLabel && <div style={inlineTextStyle}>{finalLabel}</div>}
       </div>
-      {label && <div style={labelStyle}>{label}</div>}
     </div>
   );
 }

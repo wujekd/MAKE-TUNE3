@@ -1,6 +1,7 @@
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 import { Potentiometer } from './Potentiometer';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
+import { DeskToggle } from './DeskToggle';
 
 export function SubmissionEQ() {
   const ctx = useContext(AudioEngineContext);
@@ -9,6 +10,13 @@ export function SubmissionEQ() {
 
   const eq = state?.eq;
   const disabled = !engine || !eq;
+  const [enabled, setEnabled] = useState(true);
+
+  const toggleEq = (next: boolean) => {
+    setEnabled(next);
+    if (!engine) return;
+    engine.setEqEnabled(next);
+  };
 
   const setHighshelfGain = (gain: number) => {
     if (!engine || !eq) return;
@@ -43,20 +51,34 @@ export function SubmissionEQ() {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, 1fr)',
     gridTemplateRows: 'repeat(4, auto)',
-    gap: '6px',
+    // gap: '23px',
+    columnGap: '21px',
     alignItems: 'center',
     justifyItems: 'center'
   } as const;
 
   return (
-    <div style={gridStyle}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <DeskToggle
+          checked={enabled}
+          onChange={toggleEq}
+          size={18}
+          text="eq"
+          disabled={disabled}
+        />
+      </div>
+      <div style={gridStyle}>
       <Potentiometer
         value={eq?.highshelf.gain ?? 0}
         min={-18}
         max={18}
         step={0.1}
-        size={28}
+        size={30}
         showValue={false}
+        middleText="dB"
+        startText="-18"
+        endText="+18"
         onChange={setHighshelfGain}
         onInput={setHighshelfGain}
       />
@@ -67,6 +89,9 @@ export function SubmissionEQ() {
         step={10}
         size={28}
         showValue={false}
+        middleText="Hz"
+        startText="2k"
+        endText="16k"
         onChange={setHighshelfFreq}
         onInput={setHighshelfFreq}
       />
@@ -77,6 +102,9 @@ export function SubmissionEQ() {
         step={0.1}
         size={28}
         showValue={false}
+        middleText="dB"
+        startText="-18"
+        endText="+18"
         onChange={setParam2Gain}
         onInput={setParam2Gain}
       />
@@ -87,6 +115,9 @@ export function SubmissionEQ() {
         step={10}
         size={28}
         showValue={false}
+        middleText="Hz"
+        startText="500"
+        endText="8k"
         onChange={setParam2Freq}
         onInput={setParam2Freq}
       />
@@ -97,6 +128,9 @@ export function SubmissionEQ() {
         step={0.1}
         size={28}
         showValue={false}
+        middleText="dB"
+        startText="-18"
+        endText="+18"
         onChange={setParam1Gain}
         onInput={setParam1Gain}
       />
@@ -107,6 +141,9 @@ export function SubmissionEQ() {
         step={5}
         size={28}
         showValue={false}
+        middleText="Hz"
+        startText="40"
+        endText="1k"
         onChange={setParam1Freq}
         onInput={setParam1Freq}
       />
@@ -118,10 +155,14 @@ export function SubmissionEQ() {
         step={5}
         size={28}
         showValue={false}
+        middleText="Hz"
+        startText="20"
+        endText="1k"
         onChange={setHighpassFreq}
         onInput={setHighpassFreq}
       />
       <div></div>
+      </div>
     </div>
   );
 }

@@ -44,6 +44,8 @@ export interface Collaboration {
   submissionDuration: number; // duration in seconds
   votingDuration: number; // duration in seconds
   status: 'unpublished' | 'submission' | 'voting' | 'completed';
+  requiresModeration?: boolean; // when true, new submissions need approval
+  needsModeration?: boolean; // has pending unmoderated submissions
   createdAt: Timestamp;
   publishedAt: Timestamp | null; // when collaboration becomes active
   updatedAt: Timestamp;

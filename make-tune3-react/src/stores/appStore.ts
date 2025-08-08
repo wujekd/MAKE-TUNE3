@@ -93,6 +93,9 @@ interface AppState {
     isTrackListened: (filePath: string) => boolean;
     isTrackFavorite: (filePath: string) => boolean;
     getTrackByFilePath: (filePath: string) => Track | undefined;
+    // moderation
+    approveSubmission?: (filePath: string) => Promise<void>;
+    rejectSubmission?: (filePath: string) => Promise<void>;
   };
 
   // ui state slice
@@ -735,6 +738,38 @@ export const useAppStore = create<AppState>((set, get) => ({
     getTrackByFilePath: (filePath) => {
       const { allTracks } = get().collaboration;
       return allTracks.find(track => track.filePath === filePath);
+    },
+
+    approveSubmission: async (filePath) => {
+      const collab = get().collaboration.currentCollaboration;
+      if (!collab) return;
+      try {
+        await CollaborationService.setSubmissionApproved(collab.id, filePath, true);
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            allTracks: state.collaboration.allTracks.map(t => t.filePath === filePath ? { ...t, approved: true } : t),
+            regularTracks: state.collaboration.regularTracks.map(t => t.filePath === filePath ? { ...t, approved: true } : t),
+            favorites: state.collaboration.favorites.map(t => t.filePath === filePath ? { ...t, approved: true } : t)
+          }
+        }));
+      } catch {}
+    },
+
+    rejectSubmission: async (filePath) => {
+      const collab = get().collaboration.currentCollaboration;
+      if (!collab) return;
+      try {
+        await CollaborationService.setSubmissionApproved(collab.id, filePath, false);
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            allTracks: state.collaboration.allTracks.map(t => t.filePath === filePath ? { ...t, approved: false } : t),
+            regularTracks: state.collaboration.regularTracks.map(t => t.filePath === filePath ? { ...t, approved: false } : t),
+            favorites: state.collaboration.favorites.map(t => t.filePath === filePath ? { ...t, approved: false } : t)
+          }
+        }));
+      } catch {}
     },
 
     loadUserCollaborations: async (userId) => {

@@ -1,4 +1,6 @@
-import { useMemo, useState, useRef, useEffect, CSSProperties } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import type { CSSProperties } from 'react';
 
 type Props = {
   value: number;
@@ -11,12 +13,18 @@ type Props = {
   onChange: (v: number) => void;
   onInput?: (v: number) => void;
   showValue?: boolean;
+  color?: string;
+  middleText?: string;
+  startText?: string;
+  endText?: string;
 };
 
-export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, label, disabled = false, onChange, onInput, showValue = true }: Props) {
+export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, label, disabled = false, onChange, onInput, showValue = true, color, middleText, startText, endText }: Props) {
   const clamped = Math.min(max, Math.max(min, value));
 
   const [dragValue, setDragValue] = useState<number | null>(null);
+  const [hovered, setHovered] = useState(false);
+  const [popupPos, setPopupPos] = useState<{ x: number; y: number } | null>(null);
   const dragging = dragValue !== null;
   const displayValue = dragging ? (dragValue as number) : clamped;
   const pct = (displayValue - min) / (max - min || 1);
@@ -32,11 +40,15 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
     return start + pct * sweep;
   }, [pct]);
 
+  const knobRef = useRef<HTMLDivElement | null>(null);
+
   const knobStyle: CSSProperties = {
     width: size,
     height: size,
     borderRadius: '50%',
-    background: 'radial-gradient(circle at 30% 30%, #3a6d6e, #1b3031)',
+    background: color
+      ? `radial-gradient(circle at 30% 30%, ${color}, #1b3031)`
+      : 'radial-gradient(circle at 30% 30%, #3a6d6e, #1b3031)',
     border: '2px solid #0f1a1a',
     boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4)',
     position: 'relative',
@@ -52,7 +64,7 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
     position: 'absolute',
     width: 2,
     height: size * 0.35,
-    background: '#e7e7e7',
+    background: color ? '#ffd27f' : '#e7e7e7',
     top: size * 0.15,
     transformOrigin: 'center calc(100% - 2px)',
     transform: `rotate(${angle}deg)`,
@@ -126,11 +138,23 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
     document.body.style.cursor = 'ns-resize';
   };
 
+  useEffect(() => {
+    if (!(dragging || hovered)) {
+      setPopupPos(null);
+      return;
+    }
+    const el = knobRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setPopupPos({ x: rect.right + 8, y: rect.top + rect.height / 2 });
+  }, [dragging, hovered, size]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {label && <div style={{ fontSize: 12, opacity: 0.85, color: 'var(--white)' }}>{label}</div>}
+      {label && <div style={{ fontSize: 13, opacity: 0.9, color: 'var(--white)' }}>{label}</div>}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: size }}>
+          <div
           style={knobStyle}
           aria-valuemin={min}
           aria-valuemax={max}
@@ -138,10 +162,63 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
           role="slider"
           aria-label={label}
           onMouseDown={startDrag}
-        >
+          ref={knobRef}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          onFocus={() => setHovered(true)}
+          onBlur={() => setHovered(false)}
+          >
           <div style={tickContainerStyle} />
           <div style={markerStyle} />
+          </div>
+          {(startText || middleText || endText) && (
+            <div style={{ position: 'relative', width: '100%', height: 12, marginTop: 2, color: 'var(--white)', opacity: 0.8 }}>
+              {startText && (
+                <span style={{ position: 'absolute', left: -3, top: -9, transform: 'translateX(-6px)', fontSize: 9 }}>
+                  {startText}
+                </span>
+              )}
+              {middleText && (
+                <span style={{ position: 'absolute', left: '60%', top: -1, transform: 'translateX(-10px)', fontSize: 10 }}>
+                  {middleText}
+                </span>
+              )}
+              {endText && (
+                <span style={{ position: 'absolute', right: -3, top: -9, transform: 'translateX(6px)', fontSize: 9 }}>
+                  {endText}
+                </span>
+              )}
+            </div>
+          )}
         </div>
+        {!showValue && dragging && popupPos && createPortal(
+          <div
+            style={{
+              position: 'fixed',
+              left: popupPos.x,
+              top: popupPos.y,
+              transform: 'translateY(-50%)',
+              background: 'rgba(15, 26, 26, 0.95)',
+              color: 'var(--white)',
+              border: '1px solid #0b1414',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+              borderRadius: 6,
+              padding: '2px 6px',
+              fontSize: 12,
+              whiteSpace: 'pre',
+              fontFamily: 'monospace',
+              pointerEvents: 'none',
+              zIndex: 9999
+            }}
+          >
+            {(() => {
+              const val = Math.round(displayValue);
+              const fixed = String(val).padStart(5, ' ');
+              return label ? `${label}: ${fixed}` : `${fixed}`;
+            })()}
+          </div>,
+          document.body
+        )}
         {showValue && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
             <input
@@ -171,4 +248,8 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
     </div>
   );
 }
+
+// update popup position when visible
+// eslint-disable-next-line react-hooks/rules-of-hooks
+useEffect.bind(null);
 

@@ -103,6 +103,12 @@ export class CollaborationService {
       artist: '',
       createdAt
     });
+    // if collab requires moderation, set needsModeration true
+    const collab = await this.getCollaboration(collaborationId);
+    if (collab?.requiresModeration) {
+      const collabRef = doc(db, COLLECTIONS.COLLABORATIONS, collaborationId);
+      await updateDoc(collabRef, { needsModeration: true, updatedAt: Timestamp.now() });
+    }
     return { filePath: path };
   }
 
@@ -227,6 +233,14 @@ export class CollaborationService {
       ...updates,
       lastInteraction: Timestamp.now()
     });
+  }
+
+  // moderation
+  static async setSubmissionApproved(collaborationId: CollaborationId, filePath: string, approved: boolean): Promise<void> {
+    // using file paths model: update collaboration submissionPaths is not needed for approval flag.
+    // store approval in a separate collection or embed if we had track docs.
+    // for now, noop placeholder; integrate with real schema later.
+    return;
   }
 
   // Collaboration Actions

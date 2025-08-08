@@ -137,14 +137,14 @@ export function Mixer({ state }: MixerProps) {
             <path d="M8 24H40M8 24L16 16M8 24L16 32" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"></path>
           </svg>
         </button>
-      </div>
-
-      <div className="time-control">
-        <div className="time-display">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 12, color: 'var(--white)' }}>
           <span id="current-time">{getCurrentTime(state)}</span>
           <span>/</span>
           <span id="total-time">{getTotalTime(state)}</span>
         </div>
+      </div>
+
+      <div className="time-control">
         <input 
           type="range"
           className="time-slider"
@@ -161,6 +161,10 @@ export function Mixer({ state }: MixerProps) {
         <div className="channel">
           <div className="volume-indicator"></div>
           <span className="channel-label">Submission</span>
+
+          <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}>
+            <SubmissionEQ />
+          </div>
           <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}>
             <DeskToggle
               checked={submissionMuted}
@@ -170,11 +174,10 @@ export function Mixer({ state }: MixerProps) {
                 audioCtx.engine.setSubmissionMuted(next);
               }}
               label={undefined}
-              size={22}
+              size={18}
+              colorOn="#d33"
+              text="mute"
             />
-          </div>
-          <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}>
-            <SubmissionEQ />
           </div>
           <input 
             type="range"

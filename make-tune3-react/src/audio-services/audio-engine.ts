@@ -16,6 +16,7 @@ export class AudioEngine {
     param2: BiquadFilterNode | null;
     highshelf: BiquadFilterNode | null;
   } = { highpass: null, param1: null, param2: null, highshelf: null };
+  private eqEnabled: boolean = true;
   // todo: add eq gains, solo, mute, mute master, stop playback tracker and emit state
   private masterGain: GainNode | null = null;
   private masterAnalyser: AnalyserNode | null = null;
@@ -119,6 +120,21 @@ export class AudioEngine {
     }
     this.player2Gain.gain.value = this.state.player2.volume;
     this.masterGain.gain.value = this.state.master.volume;
+  }
+
+  private wireEq(enabled: boolean): void {
+    if (!this.audioContext || !this.player1Gain || !this.player1MuteGain) return;
+    try {
+      this.player1Gain.disconnect();
+    } catch {}
+    if (enabled) {
+      if (this.eq.highpass) {
+        this.player1Gain.connect(this.eq.highpass);
+      }
+    } else {
+      this.player1Gain.connect(this.player1MuteGain);
+    }
+    this.eqEnabled = enabled;
   }
   private startLevelLoop() {
     if (!this.audioContext || !this.masterAnalyser) return;
@@ -364,6 +380,11 @@ export class AudioEngine {
       this.eq.highshelf.frequency.value = next.highshelf.frequency;
       this.eq.highshelf.gain.value = next.highshelf.gain;
     }
+  }
+
+  setEqEnabled(enabled: boolean): void {
+    this.initAudioContext();
+    this.wireEq(enabled);
   }
   setMasterVolume(volume: number): void {
     this.initAudioContext();
