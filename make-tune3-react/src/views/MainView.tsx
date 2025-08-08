@@ -8,6 +8,7 @@ import './MainView.css';
 import SubmissionItem from '../components/SubmissionItem';
 import Favorites from '../components/Favorites';
 import { Mixer } from '../components/Mixer';
+import { SubmissionEQ } from '../components/SubmissionEQ';
 import { DebugInfo } from '../components/DebugInfo';
 import ProjectHistory from '../components/ProjectHistory';
 
@@ -63,32 +64,25 @@ export function MainView({ onShowAuth }: MainViewProps) {
   }, [collabId, user, loadCollaboration, loadCollaborationAnonymousById]);
 
   useEffect(() => {
-    if (engine) {
-        engine.setTrackListenedCallback(
-          (trackSrc) => { 
-            console.log('track listened callback triggered for:', trackSrc);
-            // find track by file path and mark as listened
-            // remove /test-audio/ prefix for comparison
-            const cleanTrackSrc = trackSrc.replace('/test-audio/', '');
-            const track = regularTracks.find(t => t.filePath === cleanTrackSrc);
-            console.log('found track:', track);
-            if (track) {
-              console.log('marking track as listened:', track.filePath);
-              markAsListened(track.filePath);
-            } else {
-              console.log('track not found for filePath:', cleanTrackSrc);
-            }
-          },
-          7, // listenedRatio
-          (trackSrc) => {
-            // remove /test-audio/ prefix for comparison
-            const cleanTrackSrc = trackSrc.replace('/test-audio/', '');
-            const track = regularTracks.find(t => t.filePath === cleanTrackSrc);
-            return track ? isTrackListened(track.filePath) : false;
-          }
-        );
-    }
-  }, [engine, markAsListened, regularTracks, isTrackListened]);
+    if (!engine) return;
+    const onListened = (trackSrc: string) => {
+      const clean = trackSrc.replace('/test-audio/', '');
+      const { collaboration } = useAppStore.getState();
+      const track = collaboration.regularTracks.find(t => t.filePath === clean);
+      if (track) {
+        collaboration.markAsListened(track.filePath);
+      }
+    };
+    const isListened = (trackSrc: string) => {
+      const clean = trackSrc.replace('/test-audio/', '');
+      const { collaboration } = useAppStore.getState();
+      return collaboration.isTrackListened(clean);
+    };
+    engine.setTrackListenedCallback(onListened, 7, isListened);
+    return () => {
+      engine.clearTrackListenedCallback();
+    };
+  }, [engine]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

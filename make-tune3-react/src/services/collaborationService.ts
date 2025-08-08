@@ -62,6 +62,11 @@ export class CollaborationService {
     });
   }
 
+  static async deleteProject(projectId: ProjectId): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.PROJECTS, projectId);
+    await deleteDoc(docRef);
+  }
+
   // Collaboration Management
   static async createCollaboration(collaboration: Omit<Collaboration, 'id' | 'createdAt' | 'updatedAt'>): Promise<Collaboration> {
     const now = Timestamp.now();

@@ -12,6 +12,26 @@ export interface PlayerState {
     volume: number;
   }
 
+export interface EqBandHP {
+  frequency: number;
+  Q: number;
+}
+export interface EqBandParam {
+  frequency: number;
+  Q: number;
+  gain: number;
+}
+export interface EqBandShelf {
+  frequency: number;
+  gain: number;
+}
+export interface EqState {
+  highpass: EqBandHP;
+  param1: EqBandParam;
+  param2: EqBandParam;
+  highshelf: EqBandShelf;
+}
+
   export interface PlayerControllerState {
     pastStagePlayback: boolean;
     playingFavourite: boolean;
@@ -23,5 +43,6 @@ export interface PlayerState {
     player1: PlayerState;
     player2: PlayerState;
     master: MasterState;
+  eq: EqState;
   }
   

@@ -4,6 +4,8 @@ import { useAppStore } from '../stores/appStore';
 import { Mixer } from '../components/Mixer';
 import './MainView.css';
 import { AnalogVUMeter } from '../components/AnalogVUMeter';
+import ProjectHistory from '../components/ProjectHistory';
+import '../components/ProjectHistory.css';
 import { CollaborationService } from '../services/collaborationService';
 import { useParams } from 'react-router-dom';
 
@@ -14,6 +16,7 @@ export function SubmissionView() {
   const { collaborationId } = useParams();
 
   const [file, setFile] = useState<File | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const state = useAppStore(s => s.audio.state) as any;
@@ -31,24 +34,32 @@ export function SubmissionView() {
     }
   };
 
+  // manage blob url lifecycle only (no auto-play)
+  useEffect(() => {
+    if (!file) {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    blobUrlRef.current = url;
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, [file]);
+
   useEffect(() => {
     if (!collaborationId) return;
     if (user) loadCollaboration(user.uid, collaborationId);
     else loadCollaborationAnonymousById(collaborationId);
   }, [collaborationId, user, loadCollaboration, loadCollaborationAnonymousById]);
 
-  // load backing track into player2 like in main view (past stage playback)
-  const lastBackingRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!audioContext?.engine) return;
-    const path = currentCollaboration?.backingTrackPath;
-    if (!path) return;
-    // construct local path if needed
-    const full = path.startsWith('/test-audio/') ? path : `/test-audio/${path}`;
-    if (lastBackingRef.current === full) return;
-    lastBackingRef.current = full;
-    audioContext.engine.playPastStage(full, 0);
-  }, [audioContext?.engine, currentCollaboration?.backingTrackPath]);
+  // no auto-load/play; backing will be set on first preview request
 
   if (!audioContext) return <div>audio engine not available</div>;
 
@@ -60,19 +71,47 @@ export function SubmissionView() {
 
       <div className="info-top">
         <h2>submission stage</h2>
-        <div style={{ color: 'var(--white)' }}>{currentCollaboration?.name}</div>
+        <ProjectHistory />
       </div>
 
       <div className="submissions-section active-playback">
-        <div className="audio-player-section">
-          <div className="audio-player-title">upload your submission</div>
-          <div style={{ color: 'var(--white)', opacity: 0.8, marginBottom: 8 }}>choose an audio file to submit to the current collaboration</div>
-          <input type="file" accept="audio/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <button onClick={onUpload} disabled={saving || !file || !user}> {saving ? 'uploading...' : 'upload'} </button>
-            {!user && <div style={{ color: 'var(--white)' }}>login required</div>}
+        <div style={{ padding: '1rem' }}>
+          <div className="project-history" style={{ maxWidth: 560 }}>
+            <h4 className="project-history-title">upload your submission</h4>
+            <div className="collab-list">
+              <div style={{ color: 'var(--white)', opacity: 0.8, marginBottom: 8 }}>choose an audio file to submit to the current collaboration</div>
+              <input type="file" accept="audio/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+              <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+                <button
+                  onClick={() => {
+                    if (!audioContext?.engine || !currentCollaboration || !file) return;
+                    const isPlaying = !!(state && state.player1 && state.player1.isPlaying);
+                    if (isPlaying) {
+                      audioContext.engine.stopPreview();
+                    } else {
+                      let blobUrl = blobUrlRef.current;
+                      if (!blobUrl) {
+                        blobUrl = URL.createObjectURL(file);
+                        blobUrlRef.current = blobUrl;
+                      }
+                      const backing = currentCollaboration.backingTrackPath;
+                      const backingFull = backing.startsWith('/test-audio/') ? backing : `/test-audio/${backing}`;
+                      audioContext.engine.previewSubmission(blobUrl, backingFull);
+                    }
+                  }}
+                  disabled={!file}
+                >
+                  {state?.player1?.isPlaying ? 'pause' : 'play'}
+                </button>
+                <button onClick={onUpload} disabled={saving || !file || !user}> {saving ? 'uploading...' : 'upload'} </button>
+                {!user && <div style={{ color: 'var(--white)' }}>login required</div>}
+              </div>
+              {error && <div style={{ color: 'var(--white)', marginTop: 8 }}>{error}</div>}
+              {file && (
+                <div style={{ marginTop: 8, color: 'var(--white)', opacity: 0.85 }}>selected: {file.name}</div>
+              )}
+            </div>
           </div>
-          {error && <div style={{ color: 'var(--white)', marginTop: 8 }}>{error}</div>}
         </div>
       </div>
 

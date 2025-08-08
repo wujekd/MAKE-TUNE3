@@ -37,6 +37,24 @@ export function ProjectEditView() {
     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button onClick={() => navigate('/collabs')}>← back</button>
+        {project && (
+          <button
+            onClick={async () => {
+              if (!project) return;
+              const ok = window.confirm('delete this project? this cannot be undone');
+              if (!ok) return;
+              try {
+                await CollaborationService.deleteProject(project.id);
+                navigate('/collabs');
+              } catch (e) {
+                alert('failed to delete project');
+              }
+            }}
+            style={{ background: 'var(--danger, #a33)', color: 'white', padding: '8px 12px', borderRadius: 6 }}
+          >
+            delete project
+          </button>
+        )}
       </div>
       <div style={{
         width: '100%',

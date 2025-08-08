@@ -10,9 +10,10 @@ type Props = {
   disabled?: boolean;
   onChange: (v: number) => void;
   onInput?: (v: number) => void;
+  showValue?: boolean;
 };
 
-export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, label, disabled = false, onChange, onInput }: Props) {
+export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, label, disabled = false, onChange, onInput, showValue = true }: Props) {
   const clamped = Math.min(max, Math.max(min, value));
 
   const [dragValue, setDragValue] = useState<number | null>(null);
@@ -141,29 +142,31 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
           <div style={tickContainerStyle} />
           <div style={markerStyle} />
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-          <input
-            type="range"
-            min={min}
-            max={max}
-            step={step}
-            value={displayValue}
-            onChange={handleRange}
-            disabled={disabled}
-            aria-hidden
-            style={{ display: 'none' }}
-          />
-          <input
-            type="number"
-            min={min}
-            max={max}
-            step={step}
-            value={displayValue}
-            onChange={handleNumber}
-            disabled={disabled}
-            style={{ padding: 6, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)' }}
-          />
-        </div>
+        {showValue && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+            <input
+              type="range"
+              min={min}
+              max={max}
+              step={step}
+              value={displayValue}
+              onChange={handleRange}
+              disabled={disabled}
+              aria-hidden
+              style={{ display: 'none' }}
+            />
+            <input
+              type="number"
+              min={min}
+              max={max}
+              step={step}
+              value={displayValue}
+              onChange={handleNumber}
+              disabled={disabled}
+              style={{ padding: 6, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)' }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import type { AudioState } from '../types.ts';
+import type { AudioState, EqState } from '../types.ts';
 import { PlaybackTracker } from './playback-tracker.ts';
 
 export class AudioEngine {
@@ -9,6 +9,13 @@ export class AudioEngine {
   private player2Source: MediaElementAudioSourceNode | null = null;
   private player1Gain: GainNode | null = null;
   private player2Gain: GainNode | null = null;
+  private player1MuteGain: GainNode | null = null;
+  private eq: {
+    highpass: BiquadFilterNode | null;
+    param1: BiquadFilterNode | null;
+    param2: BiquadFilterNode | null;
+    highshelf: BiquadFilterNode | null;
+  } = { highpass: null, param1: null, param2: null, highshelf: null };
   // todo: add eq gains, solo, mute, mute master, stop playback tracker and emit state
   private masterGain: GainNode | null = null;
   private masterAnalyser: AnalyserNode | null = null;
@@ -30,7 +37,13 @@ export class AudioEngine {
       playerController: { playingFavourite: false, pastStagePlayback: false, currentTrackId: -1 },
       player1: { isPlaying: false, currentTime: 0, duration: 0, volume: 1, source: null, hasEnded: false, error: null },
       player2: { isPlaying: false, currentTime: 0, duration: 0, volume: 1, source: null, hasEnded: false, error: null },
-      master: { volume: 1 }
+      master: { volume: 1 },
+      eq: {
+        highpass: { frequency: 20, Q: 0.7 },
+        param1: { frequency: 250, Q: 1, gain: 0 },
+        param2: { frequency: 3000, Q: 1, gain: 0 },
+        highshelf: { frequency: 8000, gain: 0 }
+      }
     };
     this.setupAudioEventListeners();
     this.playbackTracker = new PlaybackTracker(
@@ -45,6 +58,9 @@ export class AudioEngine {
       this.setupAudioRouting();
       this.connectPlayerToAudioContext(1);
       this.connectPlayerToAudioContext(2);
+      if (this.levelListeners.size > 0) {
+        this.startLevelLoop();
+      }
     }
     return this.audioContext;
   }
@@ -53,19 +69,54 @@ export class AudioEngine {
     
     this.player1Gain = this.audioContext.createGain();
     this.player2Gain = this.audioContext.createGain();
+    this.player1MuteGain = this.audioContext.createGain();
+    // eq filters for player1
+    this.eq.highpass = this.audioContext.createBiquadFilter();
+    this.eq.param1 = this.audioContext.createBiquadFilter();
+    this.eq.param2 = this.audioContext.createBiquadFilter();
+    this.eq.highshelf = this.audioContext.createBiquadFilter();
     
     this.masterGain = this.audioContext.createGain();
     this.masterAnalyser = this.audioContext.createAnalyser();
     this.masterAnalyser.fftSize = 1024;
     this.masterAnalyser.smoothingTimeConstant = 0.8;
     
-    this.player1Gain.connect(this.masterGain);
+    // player1 chain: gain -> highpass -> param1 -> param2 -> highshelf -> mute -> master
+    this.player1Gain.connect(this.eq.highpass);
+    this.eq.highpass.connect(this.eq.param1);
+    this.eq.param1.connect(this.eq.param2);
+    this.eq.param2.connect(this.eq.highshelf);
+    this.eq.highshelf.connect(this.player1MuteGain);
+    this.player1MuteGain.connect(this.masterGain);
     this.player2Gain.connect(this.masterGain);
     // split: to destination and to analyser
     this.masterGain.connect(this.audioContext.destination);
     this.masterGain.connect(this.masterAnalyser);
     
     this.player1Gain.gain.value = this.state.player1.volume;
+    this.player1MuteGain.gain.value = 1;
+    if (this.eq.highpass) {
+      this.eq.highpass.type = 'highpass';
+      this.eq.highpass.frequency.value = this.state.eq.highpass.frequency;
+      this.eq.highpass.Q.value = this.state.eq.highpass.Q;
+    }
+    if (this.eq.param1) {
+      this.eq.param1.type = 'peaking';
+      this.eq.param1.frequency.value = this.state.eq.param1.frequency;
+      this.eq.param1.Q.value = this.state.eq.param1.Q;
+      this.eq.param1.gain.value = this.state.eq.param1.gain;
+    }
+    if (this.eq.param2) {
+      this.eq.param2.type = 'peaking';
+      this.eq.param2.frequency.value = this.state.eq.param2.frequency;
+      this.eq.param2.Q.value = this.state.eq.param2.Q;
+      this.eq.param2.gain.value = this.state.eq.param2.gain;
+    }
+    if (this.eq.highshelf) {
+      this.eq.highshelf.type = 'highshelf';
+      this.eq.highshelf.frequency.value = this.state.eq.highshelf.frequency;
+      this.eq.highshelf.gain.value = this.state.eq.highshelf.gain;
+    }
     this.player2Gain.gain.value = this.state.player2.volume;
     this.masterGain.gain.value = this.state.master.volume;
   }
@@ -183,6 +234,32 @@ export class AudioEngine {
       }
     });
   }
+
+  // preview submission with backing without altering track index or listened tracking
+  previewSubmission(submissionSrc: string, backingSrc: string): void {
+    this.initAudioContext();
+    const currentBacking = this.state.player2.source;
+    if (currentBacking !== backingSrc) {
+      this.loadSource(2, backingSrc);
+    }
+    this.loadSource(1, submissionSrc);
+    this.state.playerController.pastStagePlayback = false;
+    this.updateState({
+      player1: { ...this.state.player1, isPlaying: true },
+      player2: { ...this.state.player2, isPlaying: true }
+    });
+    this.player1.play();
+    this.player2.play();
+  }
+
+  stopPreview(): void {
+    this.player1.pause();
+    this.player2.pause();
+    this.updateState({
+      player1: { ...this.state.player1, isPlaying: false },
+      player2: { ...this.state.player2, isPlaying: false }
+    });
+  }
   pause(): void {
     this.player1.pause();
     this.player2.pause();
@@ -250,6 +327,44 @@ export class AudioEngine {
       }
     });
   }
+
+  setSubmissionMuted(muted: boolean): void {
+    this.initAudioContext();
+    if (this.player1MuteGain) {
+      this.player1MuteGain.gain.value = muted ? 0 : 1;
+    }
+  }
+
+  setEq(params: Partial<EqState>): void {
+    this.initAudioContext();
+    const next: EqState = {
+      ...this.state.eq,
+      ...params,
+      highpass: { ...(params.highpass ?? this.state.eq.highpass) },
+      param1: { ...(params.param1 ?? this.state.eq.param1) },
+      param2: { ...(params.param2 ?? this.state.eq.param2) },
+      highshelf: { ...(params.highshelf ?? this.state.eq.highshelf) }
+    };
+    this.updateState({ eq: next as any });
+    if (this.eq.highpass && params.highpass) {
+      this.eq.highpass.frequency.value = next.highpass.frequency;
+      this.eq.highpass.Q.value = next.highpass.Q;
+    }
+    if (this.eq.param1 && params.param1) {
+      this.eq.param1.frequency.value = next.param1.frequency;
+      this.eq.param1.Q.value = next.param1.Q;
+      this.eq.param1.gain.value = next.param1.gain;
+    }
+    if (this.eq.param2 && params.param2) {
+      this.eq.param2.frequency.value = next.param2.frequency;
+      this.eq.param2.Q.value = next.param2.Q;
+      this.eq.param2.gain.value = next.param2.gain;
+    }
+    if (this.eq.highshelf && params.highshelf) {
+      this.eq.highshelf.frequency.value = next.highshelf.frequency;
+      this.eq.highshelf.gain.value = next.highshelf.gain;
+    }
+  }
   setMasterVolume(volume: number): void {
     this.initAudioContext();
     if (this.masterGain) {
@@ -309,9 +424,15 @@ export class AudioEngine {
   }
   setTrackListenedCallback(callback: (trackSrc: string) => void, listenedRatio: number, isTrackListened?: (trackSrc: string) => boolean): void {
     this.onTrackListened = callback;
-    this.listenedRatio = listenedRatio;
     this.isTrackListened = isTrackListened;
-    this.playbackTracker.setListenRatio(listenedRatio);
+    if (this.listenedRatio !== listenedRatio) {
+      this.listenedRatio = listenedRatio;
+      this.playbackTracker.setListenRatio(listenedRatio);
+    }
+  }
+  clearTrackListenedCallback(): void {
+    this.onTrackListened = undefined;
+    this.isTrackListened = undefined;
   }
   private setupAudioEventListeners() {
     // p1 events

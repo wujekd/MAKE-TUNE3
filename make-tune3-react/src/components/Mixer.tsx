@@ -1,9 +1,10 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { DeskToggle } from './DeskToggle';
 import { useAppStore } from '../stores/appStore';
 import type { AudioState } from '../types';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { AnalogVUMeter } from './AnalogVUMeter';
+import { SubmissionEQ } from './SubmissionEQ';
 
 interface MixerProps {
   state: AudioState;
@@ -12,9 +13,27 @@ interface MixerProps {
 export function Mixer({ state }: MixerProps) {
   const audioCtx = useContext(AudioEngineContext);
   const [masterLevel, setMasterLevel] = useState(0);
+  const [submissionMuted, setSubmissionMuted] = useState(false);
+  const levelRef = useRef(0);
+  const lastTsRef = useRef<number | null>(null);
   useEffect(() => {
     if (!audioCtx?.engine) return;
-    const unsubscribe = audioCtx.engine.onMasterLevel(({ peak }) => setMasterLevel(peak));
+    const releasePerSec =1.3;
+    const unsubscribe = audioCtx.engine.onMasterLevel(({ peak }) => {
+      const now = performance.now();
+      const last = lastTsRef.current ?? now;
+      const dt = (now - last) / 1000;
+      lastTsRef.current = now;
+      let d = levelRef.current;
+      const target = Math.max(0, Math.min(1, peak));
+      if (target >= d) {
+        d = target;
+      } else {
+        d = Math.max(target, d - releasePerSec * dt);
+      }
+      levelRef.current = d;
+      setMasterLevel(d);
+    });
     return unsubscribe;
   }, [audioCtx?.engine]);
   const {
@@ -144,11 +163,18 @@ export function Mixer({ state }: MixerProps) {
           <span className="channel-label">Submission</span>
           <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}>
             <DeskToggle
-              checked={false}
-              onChange={(next) => console.log('submission toggle:', next)}
+              checked={submissionMuted}
+              onChange={(next) => {
+                if (!audioCtx?.engine) return;
+                setSubmissionMuted(next);
+                audioCtx.engine.setSubmissionMuted(next);
+              }}
               label={undefined}
-              size={28}
+              size={22}
             />
+          </div>
+          <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}>
+            <SubmissionEQ />
           </div>
           <input 
             type="range"
@@ -163,9 +189,10 @@ export function Mixer({ state }: MixerProps) {
         </div>
 
         <div className="channel">
-          <div className="volume-indicator" style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
             <AnalogVUMeter value={masterLevel} min={0} max={1} size={100} />
           </div>
+          <div className="volume-indicator"></div>
           <span className="channel-label">Master</span>
           <input 
             type="range"

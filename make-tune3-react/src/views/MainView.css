@@ -96,7 +96,7 @@ body {
   background-color: var(--primary1-800);
   position: relative;
   width: 33%;
-  height: 85%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
