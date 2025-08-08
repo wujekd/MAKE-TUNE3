@@ -37,7 +37,7 @@ function App() {
         <Route path="/collabs" element={<CollabListView />} />
         <Route path="/project/:projectId" element={<ProjectEditView />} />
         <Route path="/collab/:collaborationId" element={<MainView key={user?.uid || 'anonymous'} onShowAuth={() => setShowAuth(true)} />} />
-        <Route path="/submit" element={<SubmissionView />} />
+        <Route path="/collab/:collaborationId/submit" element={<SubmissionView />} />
         <Route path="*" element={<Navigate to="/collabs" replace />} />
       </Routes>
     </BrowserRouter>

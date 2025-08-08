@@ -48,7 +48,7 @@ export function CollabListView() {
             <div 
               key={c.id}
               className="collab-history-item"
-              onClick={() => navigateTo(`/collab/${c.id}`)}
+              onClick={() => navigateTo(c.status === 'submission' ? `/collab/${c.id}/submit` : `/collab/${c.id}`)}
             >
               <div className="collab-status-indicator">○</div>
               <div className="collab-info">

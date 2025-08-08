@@ -12,7 +12,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "setup-firebase": "node setup-firebase.js",
-    "clear-firebase": "node clear-firebase-data.js"
+    "clear-firebase": "node clear-firebase-data.js",
+    "create-submission-project": "node create-submission-project.js"
   },
   "dependencies": {
     "firebase": "^12.0.0",

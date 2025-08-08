@@ -84,6 +84,23 @@ export class CollaborationService {
     return path; // we store storage path, not URL
   }
 
+  static async uploadSubmission(file: File, collaborationId: CollaborationId, userId: UserId): Promise<{ filePath: string }> {
+    const path = `submissions/${collaborationId}/${Date.now()}-${file.name}`;
+    const r = ref(storage, path);
+    await uploadBytes(r, file);
+
+    // record private mapping
+    const createdAt = Timestamp.now();
+    await addDoc(collection(db, COLLECTIONS.SUBMISSION_USERS), {
+      filePath: path,
+      userId,
+      collaborationId,
+      artist: '',
+      createdAt
+    });
+    return { filePath: path };
+  }
+
   static async getCollaboration(collaborationId: CollaborationId): Promise<Collaboration | null> {
     const docRef = doc(db, COLLECTIONS.COLLABORATIONS, collaborationId);
     const docSnap = await getDoc(docRef);
