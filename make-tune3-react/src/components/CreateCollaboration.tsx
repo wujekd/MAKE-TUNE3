@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { Collaboration } from '../types/collaboration';
 import { CollaborationService } from '../services/collaborationService';
+import { Potentiometer } from './Potentiometer';
+import { AnalogVUMeter } from './AnalogVUMeter';
 
 export function CreateCollaboration({ projectId, onCreated }: { projectId: string; onCreated: (c: Collaboration) => void }) {
   const [name, setName] = useState('');
@@ -61,14 +63,30 @@ export function CreateCollaboration({ projectId, onCreated }: { projectId: strin
         rows={3}
         style={{ padding: 8, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)', resize: 'vertical' }}
       />
-      <div style={{ display: 'flex', gap: 8 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
-          <label style={{ fontSize: 12, opacity: 0.8, color: 'var(--white)' }}>submission duration (s)</label>
-          <input type="number" value={submissionDuration} onChange={e => setSubmissionDuration(Number(e.target.value))} disabled={saving} style={{ padding: 8, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)' }} />
+      <div style={{ display: 'flex', gap: 16 }}>
+        <div style={{ flex: 1 }}>
+          <Potentiometer
+            label="submission duration (s)"
+            value={submissionDuration}
+            min={60}
+            max={60 * 60 * 24 * 14}
+            step={60}
+            onChange={setSubmissionDuration}
+          />
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
-          <label style={{ fontSize: 12, opacity: 0.8, color: 'var(--white)' }}>voting duration (s)</label>
-          <input type="number" value={votingDuration} onChange={e => setVotingDuration(Number(e.target.value))} disabled={saving} style={{ padding: 8, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)' }} />
+        <div style={{ flex: 1 }}>
+          <Potentiometer
+            label="voting duration (s)"
+            value={votingDuration}
+            min={60}
+            max={60 * 60 * 24 * 14}
+            step={60}
+            onChange={setVotingDuration}
+            onInput={setVotingDuration}
+          />
+          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center' }}>
+            <AnalogVUMeter value={votingDuration} min={60} max={60 * 60 * 24 * 14} label="voting duration" />
+          </div>
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

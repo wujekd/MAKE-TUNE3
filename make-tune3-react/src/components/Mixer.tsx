@@ -1,12 +1,22 @@
-import React from 'react';
+import React, { useContext, useEffect, useState } from 'react';
+import { DeskToggle } from './DeskToggle';
 import { useAppStore } from '../stores/appStore';
 import type { AudioState } from '../types';
+import { AudioEngineContext } from '../audio-services/AudioEngineContext';
+import { AnalogVUMeter } from './AnalogVUMeter';
 
 interface MixerProps {
   state: AudioState;
 }
 
 export function Mixer({ state }: MixerProps) {
+  const audioCtx = useContext(AudioEngineContext);
+  const [masterLevel, setMasterLevel] = useState(0);
+  useEffect(() => {
+    if (!audioCtx?.engine) return;
+    const unsubscribe = audioCtx.engine.onMasterLevel(({ peak }) => setMasterLevel(peak));
+    return unsubscribe;
+  }, [audioCtx?.engine]);
   const {
     handleSubmissionVolumeChange,
     handleMasterVolumeChange,
@@ -132,6 +142,14 @@ export function Mixer({ state }: MixerProps) {
         <div className="channel">
           <div className="volume-indicator"></div>
           <span className="channel-label">Submission</span>
+          <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}>
+            <DeskToggle
+              checked={false}
+              onChange={(next) => console.log('submission toggle:', next)}
+              label={undefined}
+              size={28}
+            />
+          </div>
           <input 
             type="range"
             className="vertical-slider"
@@ -145,7 +163,9 @@ export function Mixer({ state }: MixerProps) {
         </div>
 
         <div className="channel">
-          <div className="volume-indicator"></div>
+          <div className="volume-indicator" style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+            <AnalogVUMeter value={masterLevel} min={0} max={1} size={100} />
+          </div>
           <span className="channel-label">Master</span>
           <input 
             type="range"
