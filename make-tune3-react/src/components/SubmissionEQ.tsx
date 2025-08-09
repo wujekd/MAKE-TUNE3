@@ -64,7 +64,8 @@ export function SubmissionEQ() {
           checked={enabled}
           onChange={toggleEq}
           size={18}
-          text="eq"
+          onText="eq on"
+          offText="eq off"
           disabled={disabled}
         />
       </div>

@@ -18,21 +18,22 @@ export function CreateCollaboration({ projectId, onCreated }: { projectId: strin
     if (!trimmed) { setError('name required'); return; }
     setSaving(true); setError(null);
     try {
-      let backingPath = '';
-      if (backingFile) {
-        backingPath = await CollaborationService.uploadBackingTrack(backingFile, projectId);
-      }
+      // Create the collaboration first to get its id for backing path
       const collab = await CollaborationService.createCollaboration({
         projectId,
         name: trimmed,
         description,
-        backingTrackPath: backingPath,
+        backingTrackPath: '',
         submissionPaths: [],
         submissionDuration,
         votingDuration,
         status: 'unpublished',
         publishedAt: null
       });
+      if (backingFile) {
+        const backingPath = await CollaborationService.uploadBackingTrack(backingFile, collab.id);
+        await CollaborationService.updateCollaboration(collab.id, { backingTrackPath: backingPath });
+      }
       onCreated(collab);
       setName('');
       setDescription('');

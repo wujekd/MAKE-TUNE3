@@ -40,6 +40,7 @@ export interface Collaboration {
   description: string;
   backingTrackPath: string; // direct file path
   submissionPaths: string[]; // submission file paths
+  participantIds?: string[]; // user ids who submitted
   // pastStageTrackPaths removed - now in Project.pastCollaborations
   submissionDuration: number; // duration in seconds
   votingDuration: number; // duration in seconds
@@ -68,6 +69,7 @@ export interface UserCollaboration {
   favoriteTracks: string[]; // file paths
   finalVote: string | null; // file path
   listenedRatio: number;
+  hasSubmitted?: boolean;
   lastInteraction: Timestamp;
   createdAt: Timestamp;
 }

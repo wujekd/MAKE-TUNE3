@@ -16,6 +16,7 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
+const storageBucketUrl = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ? `gs://${import.meta.env.VITE_FIREBASE_STORAGE_BUCKET}` : undefined;
+export const storage = storageBucketUrl ? getStorage(app, storageBucketUrl) : getStorage(app);
 
 export default app; 

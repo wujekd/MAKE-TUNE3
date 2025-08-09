@@ -62,6 +62,13 @@ body {
   width: 100%;
 }
 
+/* design system */
+@import './styles/variables.css';
+@import './styles/utils.css';
+@import './styles/view-shell.css';
+@import './styles/card.css';
+@import './styles/list.css';
+
 h1 {
   font-size: 3.2em;
   line-height: 1.1;

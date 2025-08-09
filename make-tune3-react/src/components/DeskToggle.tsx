@@ -9,7 +9,8 @@ type Props = {
   colorOn?: string;
   colorOff?: string;
   className?: string;
-  text?: string; // base label text; renders as `${text} on/off`
+  onText?: string;
+  offText?: string;
 };
 
 export function DeskToggle({
@@ -21,7 +22,8 @@ export function DeskToggle({
   colorOn = '#22c55e',
   colorOff = '#3a4747',
   className,
-  text
+  onText,
+  offText
 }: Props) {
   const baseStyle: CSSProperties = {
     display: 'inline-flex',
@@ -38,8 +40,9 @@ export function DeskToggle({
     background: 'linear-gradient(180deg, #1e2f2f, #0f1a1a)',
     boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.6), 0 2px 6px rgba(0,0,0,0.4)',
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
-    gap: 8
+    gap: 6
   };
 
   const innerSize = Math.max(12, Math.floor(size * 0.66));
@@ -75,7 +78,7 @@ export function DeskToggle({
   };
 
   const inlineTextStyle: CSSProperties = {
-    fontSize: 12,
+    fontSize: 11,
     color: 'var(--white)',
     opacity: 0.9,
   };
@@ -93,18 +96,20 @@ export function DeskToggle({
     }
   };
 
-  const finalLabel = text ? `${text} ${checked ? 'on' : 'off'}` : label;
+  const finalLabel = checked ? (onText ?? label) : (offText ?? label);
 
   return (
     <div style={baseStyle} className={className}>
-      <div style={plateStyle}>
+      <div
+        style={plateStyle}
+        role="switch"
+        aria-checked={checked}
+        tabIndex={disabled ? -1 : 0}
+        onClick={toggle}
+        onKeyDown={onKey}
+      >
         <div
-          role="switch"
-          aria-checked={checked}
-          tabIndex={disabled ? -1 : 0}
           style={buttonStyle}
-          onClick={toggle}
-          onKeyDown={onKey}
         >
           <div style={indicatorStyle} />
         </div>

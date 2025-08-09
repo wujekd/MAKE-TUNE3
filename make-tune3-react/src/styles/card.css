@@ -1,0 +1,4 @@
+.card { background: var(--color-panel); color: var(--color-text); border-radius: var(--radius-md); padding: var(--space-3); box-shadow: var(--shadow-inset); border: 3px solid transparent; }
+.card__title { font-size: 0.875rem; font-weight: 600; margin: 0 0 var(--space-2); color: var(--bone); text-transform: uppercase; letter-spacing: 0.05em; text-align: center; background: var(--primary1-800); padding: 0.5rem; border-radius: var(--radius-sm); box-shadow: var(--shadow-soft); }
+.card__body { padding: var(--space-3); background: var(--primary1-700); border-radius: var(--radius-sm); }
+

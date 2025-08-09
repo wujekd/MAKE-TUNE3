@@ -72,6 +72,11 @@
   margin: 0.5rem;
 }
 
+.favorite-placeholder {
+  background: var(--primary1-900);
+  border-radius: 6px;
+}
+
 .remove-button {
   position: absolute;
   top: 0;

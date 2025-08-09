@@ -151,7 +151,7 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {label && <div style={{ fontSize: 13, opacity: 0.9, color: 'var(--white)' }}>{label}</div>}
+      {label && <div style={{ fontSize: 17, opacity: 0.1, color: 'var(--white)' }}>{label}</div>}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: size }}>
           <div

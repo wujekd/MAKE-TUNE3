@@ -51,10 +51,13 @@
   background-color: rgba(255, 255, 255, 0.05);
   border: 1px solid transparent;
   margin-bottom: 0.25rem;
+  color: var(--white);
+  text-decoration: none;
 }
 
 .collab-history-item:hover {
   background-color: rgba(255, 255, 255, 0.1);
+  text-decoration: none;
 }
 
 .collab-history-item.selected {
@@ -107,12 +110,14 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: inherit;
 }
 
 .collab-stage {
   font-size: 0.625rem;
   opacity: 0.7;
   text-transform: capitalize;
+  color: inherit;
 }
 
 .active-badge {

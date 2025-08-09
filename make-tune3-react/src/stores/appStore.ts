@@ -9,25 +9,18 @@ import type {
   Project, 
   Collaboration,
   Track, 
-  UserCollaboration, 
-  UserProfile,
-  CollaborationData,
-  TrackId,
-  ProjectId,
-  CollaborationId
+  UserCollaboration
 } from '../types/collaboration';
 
 import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-  sendPasswordResetEmail
+  onAuthStateChanged
 } from 'firebase/auth';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { AuthService } from '../services/authService';
 import { CollaborationService } from '../services/collaborationService';
+import { storage } from '../services/firebase';
+import { ref, getDownloadURL } from 'firebase/storage';
 
 // store interface
 interface AppState {
@@ -146,6 +139,20 @@ const createTrackFromFilePath = (filePath: string, category: 'backing' | 'submis
     category,
     approved: true // default approved
   };
+};
+
+// resolve audio src helper
+const urlCache = new Map<string, string>();
+const resolveAudioUrl = async (path: string): Promise<string> => {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/test-audio/')) return path;
+  if (!path.startsWith('collabs/')) return `/test-audio/${path}`;
+  const cached = urlCache.get(path);
+  if (cached) return cached;
+  const url = await getDownloadURL(ref(storage, path));
+  urlCache.set(path, url);
+  return url;
 };
 
 // update regular tracks based on favorites
@@ -686,20 +693,25 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     },
 
-    voteFor: (filePath) => {
-      const { userCollaboration } = get().collaboration;
-      if (!userCollaboration) return;
-
-      set(state => ({
-        collaboration: {
-          ...state.collaboration,
-          userCollaboration: {
-            ...state.collaboration.userCollaboration!,
-            finalVote: filePath,
-            lastInteraction: new Date() as any
+    voteFor: async (filePath) => {
+      const { user } = get().auth;
+      const { currentCollaboration } = get().collaboration;
+      if (!user || !currentCollaboration) return;
+      try {
+        await CollaborationService.voteForTrack(user.uid, currentCollaboration.id, filePath);
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            userCollaboration: {
+              ...state.collaboration.userCollaboration!,
+              finalVote: filePath,
+              lastInteraction: new Date() as any
+            }
           }
-        }
-      }));
+        }));
+      } catch (e) {
+        // noop
+      }
     },
 
     setListenedRatio: (ratio) => {
@@ -744,7 +756,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const collab = get().collaboration.currentCollaboration;
       if (!collab) return;
       try {
-        await CollaborationService.setSubmissionApproved(collab.id, filePath, true);
+        await CollaborationService.setSubmissionApproved();
         set(state => ({
           collaboration: {
             ...state.collaboration,
@@ -760,7 +772,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const collab = get().collaboration.currentCollaboration;
       if (!collab) return;
       try {
-        await CollaborationService.setSubmissionApproved(collab.id, filePath, false);
+        await CollaborationService.setSubmissionApproved();
         set(state => ({
           collaboration: {
             ...state.collaboration,
@@ -830,7 +842,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     previousTrack: () => {
       const engine = get().audio.engine;
       const audioState = get().audio.state;
-      const { regularTracks, favorites, pastStageTracks, backingTrack, isTrackFavorite } = get().collaboration;
+      const { regularTracks, favorites, pastStageTracks, backingTrack } = get().collaboration;
       
       if (!engine || !audioState) return;
 
@@ -838,46 +850,41 @@ export const useAppStore = create<AppState>((set, get) => ({
       const currentTrackIndex = audioState.playerController.currentTrackId;
 
       if (pastStagePlayback) {
-        if (currentTrackIndex > 0) {
-          const track = pastStageTracks[currentTrackIndex - 1];
-          const fullPath = `/test-audio/${track.filePath}`;
-          engine.playPastStage(fullPath, currentTrackIndex - 1);
-        }
-      } else {
-        // Determine if we're in favorites mode by checking the currently playing track
-        const currentTrackSrc = audioState.player1.source;
-        if (!currentTrackSrc) return;
-        const currentTrackFilePath = currentTrackSrc.replace('/test-audio/', '');
-        const isCurrentTrackFavorite = isTrackFavorite(currentTrackFilePath);
-        
-        if (isCurrentTrackFavorite) {
-          // Navigate through favorites array
-          const favoriteIndex = favorites.findIndex(track => track.filePath === currentTrackFilePath);
-          
-          if (favoriteIndex > 0) {
-            const track = favorites[favoriteIndex - 1];
-            engine.setPlayingFavourite(true);
-            const fullPath = `/test-audio/${track.filePath}`;
-            const backingPath = backingTrack?.filePath ? `/test-audio/${backingTrack.filePath}` : '';
-            engine.playSubmission(fullPath, backingPath, favoriteIndex - 1);
-          }
-        } else {
-          // Navigate through regular tracks
+        (async () => {
           if (currentTrackIndex > 0) {
-            const track = regularTracks[currentTrackIndex - 1];
-            engine.setPlayingFavourite(false);
-            const fullPath = `/test-audio/${track.filePath}`;
-            const backingPath = backingTrack?.filePath ? `/test-audio/${backingTrack.filePath}` : '';
-            engine.playSubmission(fullPath, backingPath, currentTrackIndex - 1);
+            const track = pastStageTracks[currentTrackIndex - 1];
+            const src = await resolveAudioUrl(track.filePath);
+            engine.playPastStage(src, currentTrackIndex - 1);
           }
-        }
+        })();
+      } else {
+        const playingFav = audioState.playerController.playingFavourite;
+        (async () => {
+          if (playingFav) {
+            if (currentTrackIndex > 0) {
+              const track = favorites[currentTrackIndex - 1];
+              engine.setPlayingFavourite(true);
+              const submissionSrc = await resolveAudioUrl(track.filePath);
+              const backingSrc = backingTrack?.filePath ? await resolveAudioUrl(backingTrack.filePath) : '';
+              engine.playSubmission(submissionSrc, backingSrc, currentTrackIndex - 1);
+            }
+          } else {
+            if (currentTrackIndex > 0) {
+              const track = regularTracks[currentTrackIndex - 1];
+              engine.setPlayingFavourite(false);
+              const submissionSrc = await resolveAudioUrl(track.filePath);
+              const backingSrc = backingTrack?.filePath ? await resolveAudioUrl(backingTrack.filePath) : '';
+              engine.playSubmission(submissionSrc, backingSrc, currentTrackIndex - 1);
+            }
+          }
+        })();
       }
     },
 
     nextTrack: () => {
       const engine = get().audio.engine;
       const audioState = get().audio.state;
-      const { regularTracks, favorites, pastStageTracks, backingTrack, isTrackFavorite } = get().collaboration;
+      const { regularTracks, favorites, pastStageTracks, backingTrack } = get().collaboration;
       
       if (!engine || !audioState) return;
 
@@ -885,39 +892,34 @@ export const useAppStore = create<AppState>((set, get) => ({
       const currentTrackIndex = audioState.playerController.currentTrackId;
 
       if (pastStagePlayback) {
-        if (currentTrackIndex < pastStageTracks.length - 1) {
-          const track = pastStageTracks[currentTrackIndex + 1];
-          const fullPath = `/test-audio/${track.filePath}`;
-          engine.playPastStage(fullPath, currentTrackIndex + 1);
-        }
+        (async () => {
+          if (currentTrackIndex < pastStageTracks.length - 1) {
+            const track = pastStageTracks[currentTrackIndex + 1];
+            const src = await resolveAudioUrl(track.filePath);
+            engine.playPastStage(src, currentTrackIndex + 1);
+          }
+        })();
       } else {
-        // Determine if we're in favorites mode by checking the currently playing track
-        const currentTrackSrc = audioState.player1.source;
-        if (!currentTrackSrc) return;
-        const currentTrackFilePath = currentTrackSrc.replace('/test-audio/', '');
-        const isCurrentTrackFavorite = isTrackFavorite(currentTrackFilePath);
-        
-        if (isCurrentTrackFavorite) {
-          // Navigate through favorites array
-          const favoriteIndex = favorites.findIndex(track => track.filePath === currentTrackFilePath);
-          
-          if (favoriteIndex < favorites.length - 1) {
-            const track = favorites[favoriteIndex + 1];
-            engine.setPlayingFavourite(true);
-            const fullPath = `/test-audio/${track.filePath}`;
-            const backingPath = backingTrack?.filePath ? `/test-audio/${backingTrack.filePath}` : '';
-            engine.playSubmission(fullPath, backingPath, favoriteIndex + 1);
+        const playingFav = audioState.playerController.playingFavourite;
+        (async () => {
+          if (playingFav) {
+            if (currentTrackIndex < favorites.length - 1) {
+              const track = favorites[currentTrackIndex + 1];
+              engine.setPlayingFavourite(true);
+              const submissionSrc = await resolveAudioUrl(track.filePath);
+              const backingSrc = backingTrack?.filePath ? await resolveAudioUrl(backingTrack.filePath) : '';
+              engine.playSubmission(submissionSrc, backingSrc, currentTrackIndex + 1);
+            }
+          } else {
+            if (currentTrackIndex < regularTracks.length - 1) {
+              const track = regularTracks[currentTrackIndex + 1];
+              engine.setPlayingFavourite(false);
+              const submissionSrc = await resolveAudioUrl(track.filePath);
+              const backingSrc = backingTrack?.filePath ? await resolveAudioUrl(backingTrack.filePath) : '';
+              engine.playSubmission(submissionSrc, backingSrc, currentTrackIndex + 1);
+            }
           }
-        } else {
-          // Navigate through regular tracks
-          if (currentTrackIndex < regularTracks.length - 1) {
-            const track = regularTracks[currentTrackIndex + 1];
-            engine.setPlayingFavourite(false);
-            const fullPath = `/test-audio/${track.filePath}`;
-            const backingPath = backingTrack?.filePath ? `/test-audio/${backingTrack.filePath}` : '';
-            engine.playSubmission(fullPath, backingPath, currentTrackIndex + 1);
-          }
-        }
+        })();
       }
     },
 
@@ -945,10 +947,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       } else {
         if (DEBUG_LOGS) console.log('playSubmission - favorite parameter is null/undefined');
       }
-      
-      // Construct the full path to the local audio file
-      const fullPath = `/test-audio/${track.filePath}`;
-      engine.playSubmission(fullPath, backingTrack?.filePath ? `/test-audio/${backingTrack.filePath}` : '', index);
+
+      (async () => {
+        const submissionSrc = await resolveAudioUrl(track.filePath);
+        const backingSrc = backingTrack?.filePath ? await resolveAudioUrl(backingTrack.filePath) : '';
+        engine.playSubmission(submissionSrc, backingSrc, index);
+      })();
     },
 
     playPastSubmission: (index) => {
@@ -957,9 +961,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       
       if (!engine || !pastStageTracks[index]) return;
 
-      // Construct the full path to the local audio file
-      const fullPath = `/test-audio/${pastStageTracks[index].filePath}`;
-      engine.playPastStage(fullPath, index);
+      (async () => {
+        const src = await resolveAudioUrl(pastStageTracks[index].filePath);
+        engine.playPastStage(src, index);
+      })();
     },
 
     getCurrentTime: (state) => {

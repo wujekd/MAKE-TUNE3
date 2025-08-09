@@ -1,0 +1,11 @@
+.row { display: flex; }
+.col { display: flex; flex-direction: column; }
+.gap-8 { gap: 8px; }
+.gap-16 { gap: 16px; }
+.mt-8 { margin-top: 8px; }
+.mb-8 { margin-bottom: 8px; }
+.center { display: flex; align-items: center; justify-content: center; }
+.hidden { display: none; }
+.wrap { flex-wrap: wrap; }
+.abs-tl { position: absolute; top: 16px; left: 16px; z-index: 1000; }
+

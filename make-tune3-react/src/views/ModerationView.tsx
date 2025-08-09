@@ -7,6 +7,7 @@ import SubmissionItem from '../components/SubmissionItem';
 import { Mixer } from '../components/Mixer';
 import { ModerationPanel } from '../components/ModerationPanel';
 import './MainView.css';
+import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
 
 export function ModerationView() {
   const audioContext = useContext(AudioEngineContext);
@@ -34,6 +35,11 @@ export function ModerationView() {
 
   if (!audioContext) return null;
   const { engine, state } = audioContext;
+  useEffect(() => {
+    const backingPath = useAppStore.getState().collaboration.currentCollaboration?.backingTrackPath;
+    if (!backingPath) return;
+    // If already resolved elsewhere to full URL, we could resolve here; otherwise, rely on submission view logic.
+  }, []);
 
   return (
     <div className="main-container">

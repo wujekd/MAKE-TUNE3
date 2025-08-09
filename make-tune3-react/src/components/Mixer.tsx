@@ -176,7 +176,8 @@ export function Mixer({ state }: MixerProps) {
               label={undefined}
               size={18}
               colorOn="#d33"
-              text="mute"
+              onText="mute"
+              offText="unmute"
             />
           </div>
           <input 

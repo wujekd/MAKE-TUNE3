@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import { useContext, useEffect, useState } from "react";
 import './SubmissionItem.css';
 import { AudioEngineContext } from "../audio-services/AudioEngineContext";
 import { useAppStore } from "../stores/appStore";
@@ -15,21 +15,14 @@ export default ({ track, index, isPlaying, isCurrentTrack, listened, favorite, o
       isFinal: boolean
     }) => {
 
-  const submission = {
-    markingListened: false,
-    collabId: 'temp-collab'
-  };
-
   const { user } = useAppStore(state => state.auth);
   const audioContext = useContext(AudioEngineContext);
   if (!audioContext) {
     return <div>Loading audio engine...</div>;
   }
   const { engine, state } = audioContext;
+  const [pendingPlay, setPendingPlay] = useState(false);
   
-  const isVotedFor = false;
-  const isSubmittingVote = false;
-
   const displayProgress = isCurrentTrack && state.player1.duration > 0 
     ? (state.player1.currentTime / state.player1.duration) * 100 
     : 0;
@@ -38,14 +31,18 @@ export default ({ track, index, isPlaying, isCurrentTrack, listened, favorite, o
     console.log('playSubmission called with:', track.filePath, index, favorite)
     if (isPlaying && isCurrentTrack){
       engine.pause();
+      setPendingPlay(false);
     } else {
+      setPendingPlay(true);
       onPlay(track.filePath, index, favorite)
     }
   };
-  
-  const onVote = (sub: any) => {
-    voteFor(track.filePath);
-  };
+
+  useEffect(() => {
+    if (isCurrentTrack && isPlaying) {
+      setPendingPlay(false);
+    }
+  }, [isCurrentTrack, isPlaying]);
   
   const handleAddToFavorites = () => {
     console.log('Add to favorites clicked for track:', track.filePath);
@@ -56,7 +53,6 @@ export default ({ track, index, isPlaying, isCurrentTrack, listened, favorite, o
     <div className={`
       submission-container
       ${isFinal ? 'voted-for' : ''}
-      ${submission.markingListened ? 'marking' : ''}
       ${listened ? 'listened' : ''}
       ${isCurrentTrack ? 'currently-playing' : ''}
     `}>
@@ -68,14 +64,14 @@ export default ({ track, index, isPlaying, isCurrentTrack, listened, favorite, o
         onClick={handlePlayClick}
       >
         <div className="progress-bar" style={{ width: `${displayProgress}%` }}></div>
-        <span className="play-icon">{isCurrentTrack && isPlaying ? '❚❚' : '▶'}</span>
+        <span className="play-icon">{pendingPlay ? '…' : (isCurrentTrack && isPlaying ? '❚❚' : '▶')}</span>
       </button>
       
       {favorite ? (
         <button 
           className="vote-button"
-          onClick={() => onVote(submission)}
-          disabled={isSubmittingVote || isFinal}
+          onClick={() => voteFor(track.filePath)}
+          disabled={isFinal}
         >
           {isFinal ? '✓ Voted' : 'Vote'}
         </button>

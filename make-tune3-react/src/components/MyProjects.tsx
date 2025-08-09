@@ -34,9 +34,9 @@ export function MyProjects() {
   }, [user]);
 
   return (
-    <div className="project-history" style={{ maxWidth: 420, width: '100%' }}>
+    <div className="project-history card" style={{ maxWidth: 420, width: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h4 className="project-history-title" style={{ marginBottom: 0 }}>my projects</h4>
+        <h4 className="project-history-title card__title" style={{ marginBottom: 0 }}>my projects</h4>
         <button
           style={{
             marginLeft: 8,
@@ -54,9 +54,9 @@ export function MyProjects() {
           + create project
         </button>
       </div>
-      <div className="collab-list" style={{ marginTop: 8 }}>
+      <div className="collab-list list" style={{ marginTop: 8 }}>
         {showForm && (
-          <div className="collab-history-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+          <div className="collab-history-item list__item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
             <input
               placeholder="project name"
               value={name}
@@ -114,13 +114,10 @@ export function MyProjects() {
           <div style={{ color: 'var(--white)' }}>no projects</div>
         )}
         {user && projects.map(p => (
-          <div key={p.id} className="collab-history-item" onClick={() => { window.location.href = `/project/${p.id}`; }}>
-            <div className="collab-status-indicator">●</div>
-            <div className="collab-info">
-              <span className="collab-name">{p.name}</span>
-              <span className="collab-stage">
-                {new Date((p as any).createdAt?.toMillis ? (p as any).createdAt.toMillis() : (p as any).createdAt).toLocaleString()}
-              </span>
+          <div key={p.id} className="collab-history-item list__item" onClick={() => { window.location.href = `/project/${p.id}`; }}>
+            <div className="collab-name list__title">{p.name}</div>
+            <div className="collab-stage list__subtitle">
+              {new Date((p as any).createdAt?.toMillis ? (p as any).createdAt.toMillis() : (p as any).createdAt).toLocaleString()}
             </div>
             <button
               style={{

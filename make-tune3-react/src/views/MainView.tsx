@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
@@ -8,17 +8,14 @@ import './MainView.css';
 import SubmissionItem from '../components/SubmissionItem';
 import Favorites from '../components/Favorites';
 import { Mixer } from '../components/Mixer';
-import { SubmissionEQ } from '../components/SubmissionEQ';
+// import { SubmissionEQ } from '../components/SubmissionEQ';
 import { DebugInfo } from '../components/DebugInfo';
 import ProjectHistory from '../components/ProjectHistory';
+import { storage } from '../services/firebase';
+import { ref, getDownloadURL } from 'firebase/storage';
 
-interface MainViewProps {
-  onShowAuth: () => void;
-}
-
-export function MainView({ onShowAuth }: MainViewProps) {
+export function MainView() {
   const audioContext = useContext(AudioEngineContext);
-  const [debug, setDebug] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
   // get data from different slices
@@ -26,9 +23,10 @@ export function MainView({ onShowAuth }: MainViewProps) {
   const { 
     regularTracks,
     favorites,
+    backingTrack,
     loadCollaboration,
     loadCollaborationAnonymousById,
-    markAsListened,
+    // markAsListened,
     addToFavorites,
     removeFromFavorites,
     voteFor,
@@ -38,12 +36,9 @@ export function MainView({ onShowAuth }: MainViewProps) {
   const { playSubmission } = useAppStore(state => state.playback);
   const { setShowAuth } = useAppStore(state => state.ui);
 
-
-
   if (!audioContext) {
     return <div>Audio engine not available</div>;
   }
-
   const { engine, state } = audioContext;
 
   // read collabId from url
@@ -65,8 +60,22 @@ export function MainView({ onShowAuth }: MainViewProps) {
 
   useEffect(() => {
     if (!engine) return;
+    const srcToFilePath = (src: string): string => {
+      if (!src) return '';
+      if (src.startsWith('/test-audio/')) return src.replace('/test-audio/', '');
+      if (src.startsWith('http')) {
+        const idx = src.indexOf('/o/');
+        if (idx !== -1) {
+          let rest = src.substring(idx + 3);
+          const q = rest.indexOf('?');
+          if (q !== -1) rest = rest.substring(0, q);
+          try { return decodeURIComponent(rest); } catch { return rest; }
+        }
+      }
+      return src;
+    };
     const onListened = (trackSrc: string) => {
-      const clean = trackSrc.replace('/test-audio/', '');
+      const clean = srcToFilePath(trackSrc);
       const { collaboration } = useAppStore.getState();
       const track = collaboration.regularTracks.find(t => t.filePath === clean);
       if (track) {
@@ -74,7 +83,7 @@ export function MainView({ onShowAuth }: MainViewProps) {
       }
     };
     const isListened = (trackSrc: string) => {
-      const clean = trackSrc.replace('/test-audio/', '');
+      const clean = srcToFilePath(trackSrc);
       const { collaboration } = useAppStore.getState();
       return collaboration.isTrackListened(clean);
     };
@@ -83,6 +92,26 @@ export function MainView({ onShowAuth }: MainViewProps) {
       engine.clearTrackListenedCallback();
     };
   }, [engine]);
+
+  // Resolve and preload backing track for faster first play
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!engine) return;
+      const path = backingTrack?.filePath || '';
+      if (!path) return;
+      try {
+        let url = '';
+        if (path.startsWith('/test-audio/')) url = path;
+        else if (!path.startsWith('collabs/')) url = `/test-audio/${path}`;
+        else url = await getDownloadURL(ref(storage, path));
+        if (!cancelled && url) {
+          engine.preloadBacking(url);
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [engine, backingTrack?.filePath]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -107,20 +136,7 @@ export function MainView({ onShowAuth }: MainViewProps) {
 
   return (
     <div className="main-container">
-      <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 1000 }}>
-        <button
-          onClick={() => (window.location.href = '/collabs')}
-          style={{
-            padding: '8px 12px',
-            borderRadius: 6,
-            border: '1px solid var(--border-color, #333)',
-            background: 'var(--primary1-700)',
-            color: 'var(--white)'
-          }}
-        >
-          ← back to collabs
-        </button>
-      </div>
+      <div className="abs-tl"><button onClick={() => (window.location.href = '/collabs')}>← back</button></div>
       <StoreTest />
       <button 
         style={{
@@ -184,21 +200,25 @@ export function MainView({ onShowAuth }: MainViewProps) {
               onPlay={(trackId, index, favorite) => playSubmission(trackId, index, favorite)}
               voteFor={voteFor}
               listenedRatio={7}
-              finalVote={null}
+              finalVote={useAppStore.getState().collaboration.userCollaboration?.finalVote || null}
             />
           <div className="audio-player-title">Submissions</div>
-            <div style={{ display: 'flex', flexDirection: 'row', gap: '10px', flexWrap: 'wrap' }}>
+            <div className="row gap-16 wrap submissions-scroll">
               {regularTracks.filter(track => !isTrackFavorite(track.filePath)).map((track, index) => (
                 <SubmissionItem 
                     key={track.id}
                     track={track}
                     index={index}
-                    isCurrentTrack={!state.playerController.pastStagePlayback && state.player1.source === `/test-audio/${track.filePath}`}
+                    isCurrentTrack={
+                      !state.playerController.pastStagePlayback &&
+                      !state.playerController.playingFavourite &&
+                      state.playerController.currentTrackId === index
+                    }
                     isPlaying={state.player1.isPlaying}
                                           listened={isTrackListened(track.filePath)}
                                           favorite={isTrackFavorite(track.filePath)}
                       onAddToFavorites={() => addToFavorites(track.filePath)}
-                    onPlay={(filePath, index, favorite) => playSubmission(filePath, index, false)}
+                    onPlay={(filePath, index) => playSubmission(filePath, index, false)}
                     voteFor={voteFor}
                     listenedRatio={7}
                     isFinal={false}
