@@ -40,11 +40,12 @@ body {
 }
 
 .main-container {
+  position: fixed;
+  inset: 0;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: repeat(5, 1fr);
-  height: 100vh;
-  width: 100vw;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
 }
 
 .info-top {
@@ -60,12 +61,21 @@ body {
 
 .submissions-section {
   grid-column: 1 / 6;
-  grid-row: 2 / 6;
+  grid-row: 2 / -1;
   background-color: var(--primary1-400);
   color: var(--white);
-  overflow-y: auto;
+  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   transition: all 0.3s ease;
 }
+
+.submissions-section > .audio-player-section { flex: 1; min-height: 0; }
+.submissions-section > .audio-player-section > .favorites-section { flex: 0 0 auto; }
+.submissions-section > .audio-player-section > .audio-player-title { flex: 0 0 auto; }
+.submissions-section > .audio-player-section > .submissions-scroll { flex: 1 1 auto; min-height: 0; }
 
 .submissions-section.active-playback {
   background-color: var(--primary1-500);
@@ -74,7 +84,7 @@ body {
 /* Mixer styling */
 .mixer-section {
   grid-column: 6 / -1;
-  grid-row: 2 / 6;
+  grid-row: 2 / -1;
   background-color: var(--primary1-700);
   color: var(--white);
   display: flex;
@@ -292,16 +302,28 @@ body {
   border-radius: 0.25rem;
 }
 
-.audio-player-section {
-  margin-bottom: 30px;
+.submissions-section .audio-player-section {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: var(--space-4);
+  min-height: 0;
 }
 
 .audio-player-title {
   font-size: 1.25rem;
   font-weight: 600;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0;
   color: var(--white);
 }
+
+/* force submissions list to be the only scroller inside the panel */
+.submissions-scroll { min-height: 0; overflow-x: auto; overflow-y: hidden; white-space: nowrap; }
+/* 
+/* increase specificity to ensure it wins over any earlier global rules */
+.submissions-section .audio-player-section .submissions-scroll {
+  overflow-y: auto !important;
+  display: block;
+} */
 
 details {
   border: 1px solid var(--primary1-600);

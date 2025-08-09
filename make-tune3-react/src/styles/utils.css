@@ -7,5 +7,6 @@
 .center { display: flex; align-items: center; justify-content: center; }
 .hidden { display: none; }
 .wrap { flex-wrap: wrap; }
+.nowrap { flex-wrap: nowrap; }
 .abs-tl { position: absolute; top: 16px; left: 16px; z-index: 1000; }
 

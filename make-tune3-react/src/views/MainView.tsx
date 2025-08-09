@@ -136,50 +136,35 @@ export function MainView() {
 
   return (
     <div className="main-container">
-      <div className="abs-tl"><button onClick={() => (window.location.href = '/collabs')}>← back</button></div>
+      <div style={{
+          position: 'absolute',
+          top: '40px',
+          left: '140px',
+          zIndex: 1000,
+        }}><button onClick={() => (window.location.href = '/collabs')}>← back</button></div>
       <StoreTest />
       <button 
-        style={{
-          position: 'absolute',
-          top: '20px',
-          right: '140px',
-          zIndex: 1000,
-        }}
+        style={{ position: 'absolute', top: '6px', right: '16px', zIndex: 1000 }}
         onClick={() => console.log('playingFavourite:', state.playerController.playingFavourite)}
       >
         Log Playback Mode
       </button>
       <button 
-        style={{
-          position: 'absolute',
-          top: '20px',
-          right: '270px',
-          zIndex: 1000,
-        }}
+        style={{ position: 'absolute', top: '6px', right: '160px', zIndex: 1000 }}
         onClick={() => console.log('favourites:', regularTracks.filter(t => isTrackFavorite(t.filePath)))}
       >
         Log Favorites
       </button>
       {user ? (
         <button 
-          style={{
-            position: 'absolute',
-            top: '20px',
-            right: '400px',
-            zIndex: 1000,
-          }}
+          style={{ position: 'absolute', top: '20px', right: '320px', zIndex: 1000 }}
           onClick={signOut}
         >
           Logout ({user.email})
         </button>
       ) : (
         <button 
-          style={{
-            position: 'absolute',
-            top: '20px',
-            right: '400px',
-            zIndex: 1000,
-          }}
+          style={{ position: 'absolute', top: '20px', right: '320px', zIndex: 1000 }}
           onClick={() => setShowAuth(true)}
         >
           Login
@@ -203,7 +188,17 @@ export function MainView() {
               finalVote={useAppStore.getState().collaboration.userCollaboration?.finalVote || null}
             />
           <div className="audio-player-title">Submissions</div>
-            <div className="row gap-16 wrap submissions-scroll">
+            <div
+              className="submissions-scroll"
+              style={{
+                display: 'flex',
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                alignItems: 'flex-start',
+                gap: 16,
+                overflowY: 'auto',
+              }}
+            >
               {regularTracks.filter(track => !isTrackFavorite(track.filePath)).map((track, index) => (
                 <SubmissionItem 
                     key={track.id}

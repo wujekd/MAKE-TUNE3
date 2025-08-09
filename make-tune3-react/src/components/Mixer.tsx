@@ -18,19 +18,20 @@ export function Mixer({ state }: MixerProps) {
   const lastTsRef = useRef<number | null>(null);
   useEffect(() => {
     if (!audioCtx?.engine) return;
-    const releasePerSec =1.3;
-    const unsubscribe = audioCtx.engine.onMasterLevel(({ peak }) => {
+    const tauAttack = 0.1;
+    const tauRelease = 0.5;
+    const sensitivity = 4.5;
+    const unsubscribe = audioCtx.engine.onMasterLevel(({ rms }) => {
       const now = performance.now();
       const last = lastTsRef.current ?? now;
-      const dt = (now - last) / 1000;
+      const dt = Math.max(0, (now - last) / 1000);
       lastTsRef.current = now;
       let d = levelRef.current;
-      const target = Math.max(0, Math.min(1, peak));
-      if (target >= d) {
-        d = target;
-      } else {
-        d = Math.max(target, d - releasePerSec * dt);
-      }
+      const target = Math.max(0, Math.min(1, rms * sensitivity));
+      const coeff = target > d
+        ? 1 - Math.exp(-dt / tauAttack)
+        : 1 - Math.exp(-dt / tauRelease);
+      d = d + (target - d) * coeff;
       levelRef.current = d;
       setMasterLevel(d);
     });

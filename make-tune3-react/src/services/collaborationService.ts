@@ -13,7 +13,7 @@ import {
   arrayUnion
 } from 'firebase/firestore';
 import { db, storage } from './firebase';
-import { ref, uploadBytes } from 'firebase/storage';
+import { ref, uploadBytesResumable, type UploadTaskSnapshot } from 'firebase/storage';
 import { DEBUG_ALLOW_MULTIPLE_SUBMISSIONS } from '../config';
 import type { 
   Project, 
@@ -115,7 +115,13 @@ export class CollaborationService {
     return list.includes(userId);
   }
 
-  static async uploadSubmission(file: File, collaborationId: CollaborationId, userId: UserId, title?: string): Promise<{ filePath: string; submissionId: string }> {
+  static async uploadSubmission(
+    file: File,
+    collaborationId: CollaborationId,
+    userId: UserId,
+    title?: string,
+    onProgress?: (percent: number) => void
+  ): Promise<{ filePath: string; submissionId: string }> {
     const exists = await this.hasUserSubmitted(collaborationId, userId);
     if (exists) {
       throw new Error('already submitted');
@@ -124,7 +130,18 @@ export class CollaborationService {
     const submissionId = (typeof crypto !== 'undefined' && (crypto as any).randomUUID) ? (crypto as any).randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     const path = `collabs/${collaborationId}/submissions/${submissionId}.${ext}`;
     const r = ref(storage, path);
-    const uploaded = await uploadBytes(r, file, { contentType: file.type, customMetadata: { ownerUid: userId } });
+    const task = uploadBytesResumable(r, file, { contentType: file.type, customMetadata: { ownerUid: userId } });
+    const uploaded: UploadTaskSnapshot = await new Promise((resolve, reject) => {
+      task.on(
+        'state_changed',
+        (snap) => {
+          const pct = (snap.bytesTransferred / snap.totalBytes) * 100;
+          if (onProgress) onProgress(Math.round(pct));
+        },
+        (err) => reject(err),
+        () => resolve(task.snapshot)
+      );
+    });
     const createdAt = Timestamp.now();
 
     // Gate: append userId to participantIds list on collaboration

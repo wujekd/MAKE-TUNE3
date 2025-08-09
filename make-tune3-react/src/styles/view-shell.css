@@ -4,8 +4,8 @@
 .left-panel { min-width: 0; }
 .right-panel { min-width: 0; }
 .submissions-section { background: var(--color-panel-2); border-radius: var(--radius-md); padding: var(--space-4); box-shadow: var(--shadow-inset); }
-.audio-player-section { display: flex; flex-direction: column; gap: var(--space-4); height: 60vh; overflow: hidden; }
-.submissions-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-right: 6px; }
+.audio-player-section { display: flex; flex-direction: column; gap: var(--space-4); flex: 1; min-height: 0; overflow: hidden; }
+.submissions-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 
 @media (max-width: 900px) {
   .content-columns { grid-template-columns: 1fr; }

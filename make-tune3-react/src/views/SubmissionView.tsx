@@ -12,6 +12,7 @@ import { ref, getDownloadURL } from 'firebase/storage';
 import { useParams } from 'react-router-dom';
 import { DEBUG_ALLOW_MULTIPLE_SUBMISSIONS } from '../config';
 import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
+import '../components/Favorites.css';
 
 export function SubmissionView() {
   const audioContext = useContext(AudioEngineContext);
@@ -23,6 +24,7 @@ export function SubmissionView() {
   const blobUrlRef = useRef<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<number>(0);
   const [backingUrl, setBackingUrl] = useState<string>('');
   const state = useAppStore(s => s.audio.state) as any;
   usePrefetchAudio(backingUrl);
@@ -41,9 +43,9 @@ export function SubmissionView() {
   const onUpload = async () => {
     if (!file || !currentCollaboration || !user) { setError('missing file or auth'); return; }
     if (!DEBUG_ALLOW_MULTIPLE_SUBMISSIONS && alreadySubmitted) { setError('you already submitted'); return; }
-    setSaving(true); setError(null);
+    setSaving(true); setError(null); setProgress(0);
     try {
-      await CollaborationService.uploadSubmission(file, currentCollaboration.id, user.uid);
+      await CollaborationService.uploadSubmission(file, currentCollaboration.id, user.uid, undefined, (p) => setProgress(p));
       setFile(null);
       await loadCollaboration(user.uid, currentCollaboration.id);
     } catch (e: any) {
@@ -102,50 +104,77 @@ export function SubmissionView() {
 
   return (
     <div className="main-container">
-      <div className="abs-tl">
-        <button onClick={() => (window.location.href = '/collabs')}>← back to collabs</button>
-      </div>
+      
 
       <div className="info-top">
-        <h2>submission stage</h2>
+        <div className="abs-tl mt-16 ml-16 z-1000">
+          <button onClick={() => (window.location.href = '/collabs')} className="btn btn--secondary">← back to collabs</button>
+        </div>
+        <h2>Submission</h2>
         <ProjectHistory />
       </div>
 
       <div className="submissions-section active-playback">
-        <div className="card" style={{ maxWidth: 560 }}>
-          <h4 className="card__title">upload your submission</h4>
-          <div className="card__body">
-              <div style={{ color: 'var(--white)', opacity: 0.8, marginBottom: 8 }}>choose an audio file to submit to the current collaboration</div>
-              <input type="file" accept="audio/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-              <div className="row gap-8 mt-8 center" style={{ justifyContent: 'flex-start' }}>
-                <button
-                  onClick={() => {
-                    if (!audioContext?.engine || !currentCollaboration || !file) return;
-                    const isPlaying = !!(state && state.player1 && state.player1.isPlaying);
-                    if (isPlaying) {
-                      audioContext.engine.stopPreview();
-                    } else {
-                      let blobUrl = blobUrlRef.current;
-                      if (!blobUrl) {
-                        blobUrl = URL.createObjectURL(file);
-                        blobUrlRef.current = blobUrl;
+        <div className="audio-player-section">
+          {/* Top block styled like Favorites */}
+          <section className="favorites-section">
+            <div className="favorites-header">
+              <h2 className="favorites-title">Submission check</h2>
+            </div>
+            <div className="favorites-container">
+              <div className="favorite-item favorite-placeholder" style={{ outline: '1px dashed rgba(255,255,255,0.2)' }}>
+                <div style={{ color: 'var(--white)', opacity: 0.8 }}>
+                  {file ? `selected: ${file.name}` : 'no file selected'}
+                </div>
+                <div className="row gap-8 mt-8" style={{ alignItems: 'center' }}>
+                  <button
+                    onClick={() => {
+                      if (!audioContext?.engine || !currentCollaboration || !file) return;
+                      const isPlaying = !!(state && state.player1 && state.player1.isPlaying);
+                      if (isPlaying) {
+                        audioContext.engine.stopPreview();
+                      } else {
+                        let blobUrl = blobUrlRef.current;
+                        if (!blobUrl) {
+                          blobUrl = URL.createObjectURL(file);
+                          blobUrlRef.current = blobUrl;
+                        }
+                        if (!backingUrl) return;
+                        audioContext.engine.previewSubmission(blobUrl, backingUrl);
                       }
-                      if (!backingUrl) return;
-                      audioContext.engine.previewSubmission(blobUrl, backingUrl);
-                    }
-                  }}
-                  disabled={!file || !backingUrl}
-                >
-                  {state?.player1?.isPlaying ? 'pause' : 'play'}
-                </button>
-                <button onClick={onUpload} disabled={saving || !file || !user || alreadySubmitted}> {saving ? 'uploading...' : 'upload'} </button>
-                {!DEBUG_ALLOW_MULTIPLE_SUBMISSIONS && alreadySubmitted && <div style={{ color: 'var(--white)' }}>you already submitted to this collaboration</div>}
-                {!user && <div style={{ color: 'var(--white)' }}>login required</div>}
+                    }}
+                    disabled={!file || !backingUrl}
+                  >
+                    {state?.player1?.isPlaying ? 'pause' : 'play'}
+                  </button>
+                </div>
               </div>
-              {error && <div style={{ color: 'var(--white)', marginTop: 8 }}>{error}</div>}
-              {file && (
-                <div style={{ marginTop: 8, color: 'var(--white)', opacity: 0.85 }}>selected: {file.name}</div>
-              )}
+            </div>
+          </section>
+
+          {/* Title and scroll area mirrors MainView submissions list */}
+          <div className="audio-player-title">Upload</div>
+          <div className="submissions-scroll">
+            <div className="row gap-16 wrap">
+              <div className="card" style={{ maxWidth: 560 }}>
+                <h4 className="card__title">Upload your submission</h4>
+                <div className="card__body">
+                  <div className="mb-8" style={{ color: 'var(--white)', opacity: 0.8 }}>Choose an audio file to submit to the current collaboration</div>
+                  <input type="file" accept="audio/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                  <div className="row gap-8 mt-8" style={{ justifyContent: 'flex-start', alignItems: 'center' }}>
+                    <button onClick={onUpload} disabled={saving || !file || !user || alreadySubmitted}>{saving ? `uploading ${progress}%` : 'upload'}</button>
+                    {saving && (
+                      <div style={{ width: 180, height: 8, background: 'rgba(255,255,255,0.15)', borderRadius: 4 }}>
+                        <div style={{ width: `${progress}%`, height: '100%', background: 'var(--contrast-600)', borderRadius: 4 }} />
+                      </div>
+                    )}
+                    {!DEBUG_ALLOW_MULTIPLE_SUBMISSIONS && alreadySubmitted && <div style={{ color: 'var(--white)' }}>you already submitted to this collaboration</div>}
+                    {!user && <div style={{ color: 'var(--white)' }}>login required</div>}
+                  </div>
+                  {error && <div className="mt-8" style={{ color: 'var(--white)' }}>{error}</div>}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
