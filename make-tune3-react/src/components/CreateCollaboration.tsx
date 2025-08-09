@@ -12,12 +12,18 @@ export function CreateCollaboration({ projectId, onCreated }: { projectId: strin
   const [backingFile, setBackingFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<number>(0);
 
   const create = async () => {
     const trimmed = name.trim();
     if (!trimmed) { setError('name required'); return; }
     setSaving(true); setError(null);
     try {
+      // Compute absolute close times for MVP
+      const now = Date.now();
+      const submissionCloseAt = new Date(now + submissionDuration * 1000);
+      const votingCloseAt = new Date(submissionCloseAt.getTime() + votingDuration * 1000);
+
       // Create the collaboration first to get its id for backing path
       const collab = await CollaborationService.createCollaboration({
         projectId,
@@ -27,11 +33,14 @@ export function CreateCollaboration({ projectId, onCreated }: { projectId: strin
         submissionPaths: [],
         submissionDuration,
         votingDuration,
+        submissionCloseAt: submissionCloseAt as any,
+        votingCloseAt: votingCloseAt as any,
         status: 'unpublished',
         publishedAt: null
       });
       if (backingFile) {
-        const backingPath = await CollaborationService.uploadBackingTrack(backingFile, collab.id);
+        setProgress(0);
+        const backingPath = await CollaborationService.uploadBackingTrack(backingFile, collab.id, (p) => setProgress(p));
         await CollaborationService.updateCollaboration(collab.id, { backingTrackPath: backingPath });
       }
       onCreated(collab);
@@ -40,6 +49,7 @@ export function CreateCollaboration({ projectId, onCreated }: { projectId: strin
       setSubmissionDuration(604800);
       setVotingDuration(259200);
       setBackingFile(null);
+      setProgress(0);
     } catch (e: any) {
       setError(e?.message || 'failed to create');
     } finally {
@@ -104,8 +114,13 @@ export function CreateCollaboration({ projectId, onCreated }: { projectId: strin
         )}
       </div>
       {error && <div style={{ color: 'var(--white)' }}>{error}</div>}
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button onClick={create} disabled={saving}>{saving ? 'creating...' : 'create collaboration'}</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {saving && backingFile && (
+          <div style={{ width: 180, height: 8, background: 'rgba(255,255,255,0.15)', borderRadius: 4 }}>
+            <div style={{ width: `${progress}%`, height: '100%', background: 'var(--contrast-600)', borderRadius: 4 }} />
+          </div>
+        )}
+        <button onClick={create} disabled={saving}>{saving ? (backingFile ? `uploading ${progress}%` : 'creating...') : 'create collaboration'}</button>
       </div>
     </div>
   );

@@ -1,3 +1,9 @@
+@import './styles/variables.css';
+@import './styles/utils.css';
+@import './styles/view-shell.css';
+@import './styles/card.css';
+@import './styles/list.css';
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -62,12 +68,7 @@ body {
   width: 100%;
 }
 
-/* design system */
-@import './styles/variables.css';
-@import './styles/utils.css';
-@import './styles/view-shell.css';
-@import './styles/card.css';
-@import './styles/list.css';
+/* design system imports moved to top */
 
 h1 {
   font-size: 3.2em;

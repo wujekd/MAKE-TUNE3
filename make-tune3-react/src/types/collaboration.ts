@@ -44,6 +44,8 @@ export interface Collaboration {
   // pastStageTrackPaths removed - now in Project.pastCollaborations
   submissionDuration: number; // duration in seconds
   votingDuration: number; // duration in seconds
+  submissionCloseAt?: Timestamp; // absolute time when submission stage ends
+  votingCloseAt?: Timestamp; // absolute time when voting stage ends
   status: 'unpublished' | 'submission' | 'voting' | 'completed';
   requiresModeration?: boolean; // when true, new submissions need approval
   needsModeration?: boolean; // has pending unmoderated submissions

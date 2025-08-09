@@ -98,11 +98,28 @@ export class CollaborationService {
     return { ...(collaborationData as any), id: docRef.id } as Collaboration;
   }
 
-  static async uploadBackingTrack(file: File, collaborationId: string): Promise<string> {
+  static async uploadBackingTrack(
+    file: File,
+    collaborationId: string,
+    onProgress?: (percent: number) => void
+  ): Promise<string> {
     const ext = this.getPreferredAudioExtension(file);
     const path = `collabs/${collaborationId}/backing.${ext}`;
     const r = ref(storage, path);
-    await uploadBytes(r, file, { contentType: file.type });
+    const task = uploadBytesResumable(r, file, { contentType: file.type });
+    await new Promise<void>((resolve, reject) => {
+      task.on(
+        'state_changed',
+        (snap) => {
+          if (onProgress) {
+            const pct = (snap.bytesTransferred / snap.totalBytes) * 100;
+            onProgress(Math.round(pct));
+          }
+        },
+        (err) => reject(err),
+        () => resolve()
+      );
+    });
     return path;
   }
 
