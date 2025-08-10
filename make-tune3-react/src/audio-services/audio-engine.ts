@@ -22,6 +22,7 @@ export class AudioEngine {
   private masterAnalyser: AnalyserNode | null = null;
   private levelListeners: Set<(level: { peak: number; rms: number }) => void> = new Set();
   private rafId: number | null = null;
+  private syncRafId: number | null = null;
   private state: AudioState;
   private onStateChange?: (state: AudioState) => void;
   private playbackTracker: PlaybackTracker;
@@ -64,6 +65,22 @@ export class AudioEngine {
       }
     }
     return this.audioContext;
+  }
+
+  private synchronizePlayers(windowMs: number = 3000, threshold: number = 0.001): void {
+    const start = performance.now();
+    const adjust = () => {
+      const now = performance.now();
+      if (now - start > windowMs) return;
+      const d = this.player1.currentTime - this.player2.currentTime;
+      if (Math.abs(d) > threshold) {
+        if (d > 0) this.player2.currentTime = this.player1.currentTime;
+        else this.player1.currentTime = this.player2.currentTime;
+      }
+      this.syncRafId = window.requestAnimationFrame(adjust);
+    };
+    if (this.syncRafId !== null) cancelAnimationFrame(this.syncRafId);
+    this.syncRafId = window.requestAnimationFrame(adjust);
   }
   private setupAudioRouting(): void {
     if (!this.audioContext) return;
@@ -120,6 +137,18 @@ export class AudioEngine {
     }
     this.player2Gain.gain.value = this.state.player2.volume;
     this.masterGain.gain.value = this.state.master.volume;
+  }
+
+  private async resumeIfSuspended(): Promise<void> {
+    if (!this.audioContext) return;
+    if (this.audioContext.state !== 'running') {
+      try { await this.audioContext.resume(); } catch {}
+    }
+  }
+
+  async unlock(): Promise<void> {
+    this.initAudioContext();
+    await this.resumeIfSuspended();
   }
 
   private wireEq(enabled: boolean): void {
@@ -187,14 +216,14 @@ export class AudioEngine {
     }
   }
   // playback methods
-  private async ensureLoaded(player: HTMLAudioElement, src: string): Promise<void> {
+  private async ensureLoaded(player: HTMLAudioElement, src: string, timeoutMs: number = 150): Promise<void> {
     if (!src) return;
     if (player.src !== src) {
       player.src = src;
       player.load();
     }
-    if (player.readyState >= 3) return;
-    await new Promise<void>((resolve, reject) => {
+    if (player.readyState >= 2) return;
+    const ready = new Promise<void>((resolve, reject) => {
       const onReady = () => { cleanup(); resolve(); };
       const onErr = () => { cleanup(); reject(new Error('audio load error')); };
       const cleanup = () => {
@@ -204,9 +233,14 @@ export class AudioEngine {
       player.addEventListener('canplay', onReady, { once: true });
       player.addEventListener('error', onErr, { once: true });
     });
+    const timed = new Promise<void>((resolve) => setTimeout(resolve, timeoutMs));
+    await Promise.race([ready, timed]).catch(() => {});
   }
   loadSource(playerId: 1 | 2, src: string): void {
     const player = playerId === 1 ? this.player1 : this.player2;
+    if (player.src === src) {
+      return;
+    }
     player.src = src;
     player.load();
     if (playerId === 1) {
@@ -230,12 +264,11 @@ export class AudioEngine {
   }
   async playSubmission(submissionSrc: string, backingSrc: string, index: number): Promise<void> {
     this.initAudioContext();
+    this.resumeIfSuspended();
     this.loadSource(1, submissionSrc);
     this.loadSource(2, backingSrc);
-    await Promise.all([
-      this.ensureLoaded(this.player1, submissionSrc),
-      this.ensureLoaded(this.player2, backingSrc)
-    ]);
+    await this.ensureLoaded(this.player1, submissionSrc);
+    await this.ensureLoaded(this.player2, backingSrc, 120);
     this.player1.currentTime = 0;
     this.player2.currentTime = 0;
     this.state.playerController.pastStagePlayback = false;
@@ -250,17 +283,27 @@ export class AudioEngine {
     } else {
       console.log(`AudioEngine: Skipping playback tracking for ${submissionSrc} (already listened)`);
     }
-    await Promise.allSettled([this.player1.play(), this.player2.play()]);
-    setTimeout(() => {
-      const d = this.player1.currentTime - this.player2.currentTime;
-      if (Math.abs(d) > 0.05) {
-        if (d > 0) this.player2.currentTime = this.player1.currentTime;
-        else this.player1.currentTime = this.player2.currentTime;
-      }
-    }, 100);
+    this.player1.playbackRate = 1;
+    this.player2.playbackRate = 1;
+    this.player2.muted = false;
+    this.resumeIfSuspended();
+    try { await this.player2.play(); } catch {}
+    try {
+      await this.player1.play();
+    } catch {}
+    if (this.player2.paused) {
+      try { await this.resumeIfSuspended(); await this.player2.play(); } catch {}
+    }
+    {
+      const t = Math.max(this.player1.currentTime, this.player2.currentTime);
+      this.player1.currentTime = t;
+      this.player2.currentTime = t;
+    }
+    this.synchronizePlayers(1500, 0.005);
   } 
   playPastStage(src: string, index: number){
     this.initAudioContext();
+    this.resumeIfSuspended();
     this.loadSource(2, src);
     this.player1.pause();
     this.player2.play();
@@ -277,41 +320,51 @@ export class AudioEngine {
   // preview submission with backing without altering track index or listened tracking
   async previewSubmission(submissionSrc: string, backingSrc: string): Promise<void> {
     this.initAudioContext();
+    this.resumeIfSuspended();
     if (this.state.player2.source !== backingSrc) this.loadSource(2, backingSrc);
     this.loadSource(1, submissionSrc);
-    await Promise.all([
-      this.ensureLoaded(this.player1, submissionSrc),
-      this.ensureLoaded(this.player2, backingSrc)
-    ]);
+    await this.ensureLoaded(this.player1, submissionSrc);
+    await this.ensureLoaded(this.player2, backingSrc, 120);
     this.state.playerController.pastStagePlayback = false;
     this.updateState({
       player1: { ...this.state.player1, isPlaying: true },
       player2: { ...this.state.player2, isPlaying: true }
     });
-    await Promise.allSettled([this.player1.play(), this.player2.play()]);
-    setTimeout(() => {
-      const d = this.player1.currentTime - this.player2.currentTime;
-      if (Math.abs(d) > 0.05) {
-        if (d > 0) this.player2.currentTime = this.player1.currentTime;
-        else this.player1.currentTime = this.player2.currentTime;
-      }
-    }, 100);
+    this.player1.playbackRate = 1;
+    this.player2.playbackRate = 1;
+    this.player2.muted = false;
+    this.resumeIfSuspended();
+    try { await this.player2.play(); } catch {}
+    try {
+      await this.player1.play();
+    } catch {}
+    if (this.player2.paused) {
+      try { await this.resumeIfSuspended(); await this.player2.play(); } catch {}
+    }
+    {
+      const t = Math.max(this.player1.currentTime, this.player2.currentTime);
+      this.player1.currentTime = t;
+      this.player2.currentTime = t;
+    }
+    this.synchronizePlayers(1500, 0.005);
   }
 
   async preloadBacking(src: string): Promise<void> {
     if (!src) return;
     this.initAudioContext();
+    await this.resumeIfSuspended();
     if (this.state.player2.source !== src) this.loadSource(2, src);
     await this.ensureLoaded(this.player2, src);
+    const wasMuted = this.player2.muted;
     try {
-      const wasMuted = this.player2.muted;
       this.player2.muted = true;
       await this.player2.play();
-      this.player2.pause();
-      this.player2.currentTime = 0;
-      this.player2.muted = wasMuted;
     } catch {
       // ignore autoplay failures; ensureLoaded already primed buffer
+    } finally {
+      try { this.player2.pause(); } catch {}
+      this.player2.currentTime = 0;
+      this.player2.muted = wasMuted;
     }
   }
 
@@ -346,6 +399,7 @@ export class AudioEngine {
   }
   toggleP2(): void {
     this.initAudioContext();
+    this.resumeIfSuspended();
     const state = this.getState();
     if (state.player2.isPlaying) {
       this.player2.pause();
@@ -361,6 +415,7 @@ export class AudioEngine {
   }
   toggleBoth(): void {
     this.initAudioContext();
+    this.resumeIfSuspended();
     const state = this.getState();
     const player1Playing = state.player1.isPlaying;
     const player2Playing = state.player2.isPlaying;

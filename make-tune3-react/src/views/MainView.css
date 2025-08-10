@@ -89,7 +89,7 @@ body {
   color: var(--white);
   display: flex;
   flex-direction: column;
-  padding: 1rem;
+  padding: 0.3rem;
   position: relative;
   border-radius: 0.25rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -97,7 +97,8 @@ body {
 
 .channels-container {
   display: flex;
-  justify-content: space-around;
+  justify-content: center;
+  gap: 1rem;
   flex: 1;
   margin-top: 1rem;
 }
@@ -111,7 +112,7 @@ body {
   flex-direction: column;
   align-items: center;
   border-radius: 0.25rem;
-  padding: 0.5rem;
+  padding: 0.2rem;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
   border: 1px solid var(--primary1-900);
   overflow: hidden;
@@ -143,7 +144,7 @@ body {
   transform: rotate(-90deg);
   transform-origin: bottom left;
   position: absolute;
-  bottom: 9%;
+  bottom: 6%;
   left: 50%;
   -webkit-appearance: none;
   height: 12px;

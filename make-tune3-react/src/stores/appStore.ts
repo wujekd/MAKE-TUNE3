@@ -933,7 +933,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     playSubmission: (filePath, index, favorite) => {
       if (DEBUG_LOGS) console.log('playSubmission called with:', { filePath, index, favorite });
       const engine = get().audio.engine;
-      const { backingTrack } = get().collaboration;
+      const audioState = get().audio.state as any;
+      const { backingTrack, currentCollaboration } = get().collaboration;
       const track = get().collaboration.getTrackByFilePath(filePath);
       
       if (!engine || !track) {
@@ -950,7 +951,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       (async () => {
         const submissionSrc = await resolveAudioUrl(track.filePath);
-        const backingSrc = backingTrack?.filePath ? await resolveAudioUrl(backingTrack.filePath) : '';
+        let backingSrc = '';
+        const backingPath = backingTrack?.filePath || currentCollaboration?.backingTrackPath || '';
+        if (backingPath) {
+          backingSrc = await resolveAudioUrl(backingPath);
+        } else if (audioState?.player2?.source) {
+          backingSrc = audioState.player2.source as string;
+        }
         engine.playSubmission(submissionSrc, backingSrc, index);
       })();
     },

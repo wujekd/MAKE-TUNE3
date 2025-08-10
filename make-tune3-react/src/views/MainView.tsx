@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, useRef } from 'react';
 import { useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
@@ -40,6 +40,7 @@ export function MainView() {
     return <div>Audio engine not available</div>;
   }
   const { engine, state } = audioContext;
+  const pendingBackingUrlRef = useRef<string>('');
 
   // read collabId from url
   const location = useLocation();
@@ -106,12 +107,29 @@ export function MainView() {
         else if (!path.startsWith('collabs/')) url = `/test-audio/${path}`;
         else url = await getDownloadURL(ref(storage, path));
         if (!cancelled && url) {
+          pendingBackingUrlRef.current = url;
           engine.preloadBacking(url);
         }
       } catch {}
     })();
     return () => { cancelled = true; };
   }, [engine, backingTrack?.filePath]);
+
+  // Fallback: on first user gesture after refresh, unlock and re-preload backing
+  useEffect(() => {
+    if (!engine) return;
+    const handler = async () => {
+      await engine.unlock?.();
+      const url = pendingBackingUrlRef.current;
+      if (url) engine.preloadBacking(url);
+    };
+    window.addEventListener('pointerdown', handler, { once: true });
+    window.addEventListener('keydown', handler, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', handler as any);
+      window.removeEventListener('keydown', handler as any);
+    };
+  }, [engine]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

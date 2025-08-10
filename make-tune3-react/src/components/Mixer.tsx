@@ -175,7 +175,7 @@ export function Mixer({ state }: MixerProps) {
                 audioCtx.engine.setSubmissionMuted(next);
               }}
               label={undefined}
-              size={18}
+              size={12}
               colorOn="#d33"
               onText="mute"
               offText="unmute"

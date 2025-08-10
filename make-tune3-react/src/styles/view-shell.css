@@ -1,10 +1,10 @@
-.main-container { position: relative; padding: var(--space-4); }
-.info-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4); }
+.main-container { position: fixed; inset: 0; padding: 0; }
+.info-top { display: flex; align-items: center; justify-content: space-between; margin: 0; }
 .content-columns { display: grid; grid-template-columns: 1fr 340px; gap: var(--space-4); }
 .left-panel { min-width: 0; }
 .right-panel { min-width: 0; }
-.submissions-section { background: var(--color-panel-2); border-radius: var(--radius-md); padding: var(--space-4); box-shadow: var(--shadow-inset); }
-.audio-player-section { display: flex; flex-direction: column; gap: var(--space-4); flex: 1; min-height: 0; overflow: hidden; }
+.submissions-section { background: var(--color-panel-2); border-radius: var(--radius-md); padding: 0; box-shadow: var(--shadow-inset); }
+.audio-player-section { display: flex; flex-direction: column; gap: 0; flex: 1; min-height: 0; overflow: hidden; }
 .submissions-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 
 @media (max-width: 900px) {
