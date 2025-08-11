@@ -4,12 +4,14 @@ import type { AudioEngine } from '../audio-services/audio-engine';
 import type { AudioState } from '../types';
 
 // debug flag for console logs
-const DEBUG_LOGS = false;
+const DEBUG_LOGS = true;
 import type { 
   Project, 
   Collaboration,
   Track, 
-  UserCollaboration
+  UserCollaboration,
+  SubmissionEntry,
+  SubmissionSettings
 } from '../types/collaboration';
 
 import { 
@@ -125,7 +127,7 @@ const formatTime = (seconds: number): string => {
 };
 
 // create track from file path
-const createTrackFromFilePath = (filePath: string, category: 'backing' | 'submission' | 'pastStage', collaborationId: string): Track => {
+const createTrackFromFilePath = (filePath: string, category: 'backing' | 'submission' | 'pastStage', collaborationId: string, settings?: SubmissionSettings): Track => {
   const fileName = filePath.split('/').pop() || filePath;
       const title = fileName.replace(/\.[^/.]+$/, ''); // remove extension
   
@@ -137,7 +139,8 @@ const createTrackFromFilePath = (filePath: string, category: 'backing' | 'submis
     createdAt: new Date() as any, // set when real data available
     collaborationId,
     category,
-    approved: true // default approved
+    approved: true, // default approved
+    submissionSettings: settings
   };
 };
 
@@ -346,20 +349,27 @@ export const useAppStore = create<AppState>((set, get) => ({
         set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: true } }));
         
         const collaborationData = await CollaborationService.loadCollaborationData(userId, collaborationId);
+        if (DEBUG_LOGS) console.log('loaded collaboration.submissions:', collaborationData.collaboration?.submissions);
         
         // Construct track objects from file paths
-        const submissionTracks = collaborationData.collaboration.submissionPaths.map(path => 
-          createTrackFromFilePath(path, 'submission', collaborationData.collaboration.id)
-        );
+        const submissionTracks = (collaborationData.collaboration.submissions && collaborationData.collaboration.submissions.length > 0)
+          ? collaborationData.collaboration.submissions.map((s: SubmissionEntry) => {
+              if (DEBUG_LOGS) console.log('tracks from submissions[]', s);
+              return createTrackFromFilePath(s.path, 'submission', collaborationData.collaboration.id, s.settings);
+            })
+          : (collaborationData.collaboration as any).submissionPaths?.map((path: string) => {
+              if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[]', path);
+              return createTrackFromFilePath(path, 'submission', collaborationData.collaboration.id);
+            }) || [];
         const backingTrack = collaborationData.collaboration.backingTrackPath ? 
           createTrackFromFilePath(collaborationData.collaboration.backingTrackPath, 'backing', collaborationData.collaboration.id) : null;
         
         // calculate favorites and regular tracks
         const favoriteFilePaths = collaborationData.userCollaboration?.favoriteTracks || [];
-        const favorites = submissionTracks.filter(track => 
+        const favorites = submissionTracks.filter((track: Track) => 
           favoriteFilePaths.includes(track.filePath)
         );
-        const regularTracks = submissionTracks.filter(track => 
+        const regularTracks = submissionTracks.filter((track: Track) => 
           !favoriteFilePaths.includes(track.filePath)
         );
         
@@ -401,11 +411,18 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
         
         const collaborationData = await CollaborationService.loadCollaborationDataAnonymous(collaboration.id);
+        if (DEBUG_LOGS) console.log('loaded (anon) collaboration.submissions:', collaborationData.collaboration?.submissions);
         
         // Construct track objects from file paths
-        const submissionTracks = collaborationData.collaboration.submissionPaths.map(path => 
-          createTrackFromFilePath(path, 'submission', collaborationData.collaboration.id)
-        );
+        const submissionTracks = (collaborationData.collaboration.submissions && collaborationData.collaboration.submissions.length > 0)
+          ? collaborationData.collaboration.submissions.map((s: SubmissionEntry) => {
+              if (DEBUG_LOGS) console.log('tracks from submissions[] (anon)', s);
+              return createTrackFromFilePath(s.path, 'submission', collaborationData.collaboration.id, s.settings);
+            })
+          : (collaborationData.collaboration as any).submissionPaths?.map((path: string) => {
+              if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon)', path);
+              return createTrackFromFilePath(path, 'submission', collaborationData.collaboration.id);
+            }) || [];
         const backingTrack = collaborationData.collaboration.backingTrackPath ? 
           createTrackFromFilePath(collaborationData.collaboration.backingTrackPath, 'backing', collaborationData.collaboration.id) : null;
         
@@ -442,9 +459,16 @@ export const useAppStore = create<AppState>((set, get) => ({
         if (DEBUG_LOGS) console.log('loading collaboration data for anonymous user by id');
         set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: true } }));
         const collaborationData = await CollaborationService.loadCollaborationDataAnonymous(collaborationId);
-        const submissionTracks = collaborationData.collaboration.submissionPaths.map(path => 
-          createTrackFromFilePath(path, 'submission', collaborationData.collaboration.id)
-        );
+        if (DEBUG_LOGS) console.log('loaded (anon by id) collaboration.submissions:', collaborationData.collaboration?.submissions);
+        const submissionTracks = (collaborationData.collaboration.submissions && collaborationData.collaboration.submissions.length > 0)
+          ? collaborationData.collaboration.submissions.map((s: SubmissionEntry) => {
+              if (DEBUG_LOGS) console.log('tracks from submissions[] (anon by id)', s);
+              return createTrackFromFilePath(s.path, 'submission', collaborationData.collaboration.id, s.settings);
+            })
+          : (collaborationData.collaboration as any).submissionPaths?.map((path: string) => {
+              if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon by id)', path);
+              return createTrackFromFilePath(path, 'submission', collaborationData.collaboration.id);
+            }) || [];
         const backingTrack = collaborationData.collaboration.backingTrackPath ? 
           createTrackFromFilePath(collaborationData.collaboration.backingTrackPath, 'backing', collaborationData.collaboration.id) : null;
         const regularTracks = submissionTracks;
@@ -950,6 +974,26 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
 
       (async () => {
+        // optimistic apply of submission settings in MainView
+        const selected = track as Track;
+        const settings = selected.submissionSettings;
+        if (DEBUG_LOGS) console.log('applying submission settings (optimistic):', settings);
+        const engineInstance = engine;
+        if (settings && engineInstance) {
+          // apply volume (linear)
+          engineInstance.setVolume(1, settings.volume?.gain ?? 1);
+          // apply EQ in one call to avoid intermediate merges
+          const eq = settings.eq;
+          const eqPayload: any = {
+            highpass: { frequency: eq?.highpass?.frequency ?? get().audio.state?.eq.highpass.frequency ?? 20, Q: get().audio.state?.eq.highpass.Q ?? 0.7 },
+            param1: { frequency: eq?.param1?.frequency ?? get().audio.state?.eq.param1.frequency, Q: eq?.param1?.Q ?? get().audio.state?.eq.param1.Q, gain: eq?.param1?.gain ?? get().audio.state?.eq.param1.gain },
+            param2: { frequency: eq?.param2?.frequency ?? get().audio.state?.eq.param2.frequency, Q: eq?.param2?.Q ?? get().audio.state?.eq.param2.Q, gain: eq?.param2?.gain ?? get().audio.state?.eq.param2.gain },
+            highshelf: { frequency: eq?.highshelf?.frequency ?? get().audio.state?.eq.highshelf.frequency, gain: eq?.highshelf?.gain ?? get().audio.state?.eq.highshelf.gain }
+          };
+          if (DEBUG_LOGS) console.log('eq before apply:', get().audio.state?.eq, 'payload:', eqPayload);
+          engineInstance.setEq(eqPayload);
+          if (DEBUG_LOGS) console.log('eq after apply (state):', get().audio.state?.eq, 'p1 volume:', get().audio.state?.player1.volume);
+        }
         const submissionSrc = await resolveAudioUrl(track.filePath);
         let backingSrc = '';
         const backingPath = backingTrack?.filePath || currentCollaboration?.backingTrackPath || '';

@@ -12,6 +12,8 @@ export function ProjectEditView() {
   const [collabs, setCollabs] = useState<Collaboration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mode, setMode] = useState<'none'|'create'|'view'|'edit'>('none');
 
   useEffect(() => {
     let mounted = true;
@@ -77,14 +79,14 @@ export function ProjectEditView() {
       <div style={{ display: 'flex', gap: 16 }}>
         <div className="project-history" style={{ maxWidth: 480, width: '100%' }}>
           <h4 className="project-history-title">collaboration manager</h4>
-          <div className="collab-list">
+      <div className="collab-list">
             {loading && <div style={{ color: 'var(--white)' }}>loading...</div>}
             {error && <div style={{ color: 'var(--white)' }}>{error}</div>}
             {!loading && !error && collabs.length === 0 && (
               <div style={{ color: 'var(--white)' }}>no collaborations yet</div>
             )}
             {collabs.map(col => (
-              <div key={col.id} className="collab-history-item">
+              <div key={col.id} className="collab-history-item" onClick={() => { setSelectedId(col.id); setMode('view'); }}>
                 <div className="collab-status-indicator">●</div>
                 <div className="collab-info">
                   <span className="collab-name">{col.name}</span>
@@ -92,17 +94,70 @@ export function ProjectEditView() {
                 </div>
               </div>
             ))}
+            <div className="collab-history-item" onClick={() => { setSelectedId(null); setMode('create'); }}>
+              <div className="collab-info">
+                <span className="collab-name">+ add collaboration</span>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="project-history" style={{ maxWidth: 480, width: '100%' }}>
-          <h4 className="project-history-title">create collaboration</h4>
-          <div className="collab-list">
-            {project && (
+        <div className="project-history" style={{ maxWidth: 480, width: '100%', minHeight: 280 }}>
+          <h4 className="project-history-title">details</h4>
+          <div className="collab-list" style={{ padding: 12 }}>
+            {mode === 'none' && <div style={{ color: 'var(--white)', opacity: 0.8 }}>go on, select something</div>}
+            {mode === 'create' && project && (
               <CreateCollaboration
                 projectId={project.id}
-                onCreated={(c) => setCollabs(prev => [c, ...prev])}
+                onCreated={(c) => { setCollabs(prev => [c, ...prev]); setSelectedId(c.id); setMode('view'); }}
               />
             )}
+            {mode === 'view' && selectedId && (() => {
+              const col = collabs.find(c => c.id === selectedId);
+              if (!col) return <div style={{ color: 'var(--white)' }}>not found</div>;
+              const canEdit = col.status === 'unpublished' && collabs.filter(x => (x as any).createdAt < (col as any).createdAt).every(x => x.status === 'completed');
+              return (
+                <div style={{ color: 'var(--white)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ fontSize: 16, fontWeight: 600 }}>{col.name}</div>
+                  <div style={{ opacity: 0.85 }}>{col.description}</div>
+                  <div style={{ opacity: 0.7, fontSize: 12 }}>status: {col.status}</div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button disabled={!canEdit} onClick={() => setMode('edit')}>edit</button>
+                    <button disabled={col.status !== 'unpublished'} onClick={async () => {
+                      if (!project) return;
+                      const now = Date.now();
+                      const submissionCloseAt = new Date(now + (col.submissionDuration || 0) * 1000);
+                      const votingCloseAt = new Date(submissionCloseAt.getTime() + (col.votingDuration || 0) * 1000);
+                      await CollaborationService.updateCollaboration(col.id, { status: 'submission', publishedAt: new Date() as any, submissionCloseAt: submissionCloseAt as any, votingCloseAt: votingCloseAt as any });
+                      setCollabs(prev => prev.map(x => x.id === col.id ? { ...x, status: 'submission', publishedAt: new Date() as any, submissionCloseAt: submissionCloseAt as any, votingCloseAt: votingCloseAt as any } as any : x));
+                    }}>publish</button>
+                    <button disabled={col.status !== 'unpublished'} onClick={async () => {
+                      const ok = window.confirm('delete this collaboration?');
+                      if (!ok) return;
+                      await CollaborationService.deleteCollaboration(col.id);
+                      setCollabs(prev => prev.filter(x => x.id !== col.id));
+                      setSelectedId(null); setMode('none');
+                    }}>delete</button>
+                  </div>
+                </div>
+              );
+            })()}
+            {mode === 'edit' && selectedId && project && (() => {
+              const col = collabs.find(c => c.id === selectedId);
+              if (!col) return null;
+              if (col.status !== 'unpublished') return <div style={{ color: 'var(--white)' }}>cannot edit published collaboration</div>;
+              return (
+                <CreateCollaboration
+                  projectId={project.id}
+                  mode="edit"
+                  initial={col}
+                  onCreated={() => {}}
+                  onSaved={(updated) => {
+                    setCollabs(prev => prev.map(x => x.id === updated.id ? updated : x));
+                    setMode('view');
+                  }}
+                />
+              );
+            })()}
           </div>
         </div>
       </div>

@@ -19,7 +19,7 @@ export function CollabListView() {
         const list = await CollaborationService.listPublishedCollaborations();
         if (mounted) {
           setCollabs(list);
-          setNeedsMod(list.filter(c => c.needsModeration));
+          setNeedsMod(list.filter(c => (c as any).unmoderatedSubmissions));
         }
       } catch (e: any) {
         if (mounted) setError(e?.message || 'failed to load');

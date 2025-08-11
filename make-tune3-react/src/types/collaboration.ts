@@ -10,6 +10,8 @@ export interface Track {
   collaborationId: string;
   category: 'backing' | 'submission' | 'pastStage';
   approved?: boolean; // submissions moderation
+  // optional submission settings attached for voting playback
+  submissionSettings?: SubmissionSettings;
 }
 
 export interface PastCollaboration {
@@ -39,7 +41,8 @@ export interface Collaboration {
   name: string;
   description: string;
   backingTrackPath: string; // direct file path
-  submissionPaths: string[]; // submission file paths
+  // New model: submission entries with path and settings
+  submissions?: SubmissionEntry[];
   participantIds?: string[]; // user ids who submitted
   // pastStageTrackPaths removed - now in Project.pastCollaborations
   submissionDuration: number; // duration in seconds
@@ -48,10 +51,27 @@ export interface Collaboration {
   votingCloseAt?: Timestamp; // absolute time when voting stage ends
   status: 'unpublished' | 'submission' | 'voting' | 'completed';
   requiresModeration?: boolean; // when true, new submissions need approval
-  needsModeration?: boolean; // has pending unmoderated submissions
+  unmoderatedSubmissions?: boolean; // has pending unmoderated submissions
   createdAt: Timestamp;
   publishedAt: Timestamp | null; // when collaboration becomes active
   updatedAt: Timestamp;
+}
+
+// Submission settings saved with each submission
+export interface SubmissionSettings {
+  eq: {
+    highshelf: { gain: number; frequency: number };
+    param2: { gain: number; frequency: number; Q: number };
+    param1: { gain: number; frequency: number; Q: number };
+    highpass: { frequency: number; enabled?: boolean };
+  };
+  volume: { gain: number }; // linear 0-1
+}
+
+export interface SubmissionEntry {
+  path: string;
+  settings: SubmissionSettings;
+  createdAt?: Timestamp;
 }
 
 // private collection - admin only

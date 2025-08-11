@@ -1,4 +1,4 @@
-import { CSSProperties, KeyboardEvent } from 'react';
+import type { CSSProperties, KeyboardEvent } from 'react';
 
 type Props = {
   checked: boolean;
@@ -72,7 +72,7 @@ export function DeskToggle({
     width: 8,
     height: 8,
     borderRadius: '50%',
-    background: checked ? colorOn : '#2a3232',
+    background: checked ? colorOn : colorOff,
     boxShadow: checked ? '0 0 6px rgba(34,197,94,0.9)' : 'none',
     border: '1px solid #0b1414'
   };

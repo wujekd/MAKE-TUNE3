@@ -22,7 +22,8 @@ import type {
   UserProfile,
   ProjectId, 
   CollaborationId,
-  UserId
+  UserId,
+  SubmissionSettings
 } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 import { runTransaction, serverTimestamp } from 'firebase/firestore';
@@ -137,7 +138,8 @@ export class CollaborationService {
     collaborationId: CollaborationId,
     userId: UserId,
     title?: string,
-    onProgress?: (percent: number) => void
+    onProgress?: (percent: number) => void,
+    settings?: SubmissionSettings
   ): Promise<{ filePath: string; submissionId: string }> {
     const exists = await this.hasUserSubmitted(collaborationId, userId);
     if (exists) {
@@ -180,8 +182,22 @@ export class CollaborationService {
     const collabSnap = await getDoc(collabRef);
     if (collabSnap.exists()) {
       const data = collabSnap.data() as Collaboration;
-      const needsMod = data.requiresModeration ? true : (data.needsModeration === true);
-      await updateDoc(collabRef, { submissionPaths: arrayUnion(path), updatedAt: Timestamp.now(), needsModeration: needsMod });
+      const needsMod = data.requiresModeration ? true : ((data as any).unmoderatedSubmissions === true);
+      const entry = {
+        path,
+        settings: settings ?? {
+          eq: {
+            highshelf: { gain: 0, frequency: 8000 },
+            param2: { gain: 0, frequency: 3000, Q: 1 },
+            param1: { gain: 0, frequency: 250, Q: 1 },
+            highpass: { frequency: 20, enabled: false }
+          },
+          volume: { gain: 1 }
+        }
+      } as any;
+      await updateDoc(collabRef, { submissions: arrayUnion(entry), updatedAt: Timestamp.now(), unmoderatedSubmissions: needsMod });
+      // temporary dual-write for backward compatibility
+      await updateDoc(collabRef, { submissionPaths: arrayUnion(path) }).catch(() => {});
     }
 
     return { filePath: path, submissionId };
@@ -216,9 +232,12 @@ export class CollaborationService {
     });
   }
 
-  // Track Management - Removed (no longer needed with file path based model)
+  static async deleteCollaboration(collaborationId: CollaborationId): Promise<void> {
+    const refCol = doc(db, COLLECTIONS.COLLABORATIONS, collaborationId);
+    await deleteDoc(refCol);
+  }
 
-  // User Profile Management
+  // user Profile Management
   static async getUserProfile(userId: UserId): Promise<UserProfile | null> {
     const docRef = doc(db, COLLECTIONS.USERS, userId);
     const docSnap = await getDoc(docRef);
@@ -248,7 +267,7 @@ export class CollaborationService {
     }
   }
 
-  // User Collaboration Management
+  // user Collaboration Management
   static async getUserCollaboration(userId: UserId, collaborationId: CollaborationId): Promise<UserCollaboration | null> {
     const q = query(
       collection(db, COLLECTIONS.USER_COLLABORATIONS),
@@ -291,7 +310,7 @@ export class CollaborationService {
       throw new Error('User collaboration not found');
     }
 
-    // Find the document ID by querying again
+    // find the document ID by querying again
     const q = query(
       collection(db, COLLECTIONS.USER_COLLABORATIONS),
       where('userId', '==', userId),
@@ -312,7 +331,8 @@ export class CollaborationService {
 
   // moderation
   static async setSubmissionApproved(): Promise<void> {
-    // using file paths model: update collaboration submissionPaths is not needed for approval flag.
+    // TODO 
+    // using file paths model: update collaboration  submissionPaths is notneeded for approval flag.
     // store approval in a separate collection or embed if we had track docs.
     // for now, noop placeholder; integrate with real schema later.
     return;
@@ -333,7 +353,7 @@ export class CollaborationService {
         listenedRatio: 7
       });
     } else {
-      // Update existing collaboration
+      // update existing collaboration
       const listenedTracks = [...collaboration.listenedTracks];
       if (!listenedTracks.includes(filePath)) {
         listenedTracks.push(filePath);
@@ -346,7 +366,7 @@ export class CollaborationService {
     const collaboration = await this.getUserCollaboration(userId, collaborationId);
     
     if (!collaboration) {
-      // Create new collaboration
+      // create new collaboration
       await this.createUserCollaboration({
         userId,
         collaborationId,
@@ -356,7 +376,7 @@ export class CollaborationService {
         listenedRatio: 7
       });
     } else {
-      // Update existing collaboration
+      // updejtcollab
       const favoriteTracks = [...collaboration.favoriteTracks];
       if (!favoriteTracks.includes(filePath)) {
         favoriteTracks.push(filePath);
@@ -388,7 +408,7 @@ export class CollaborationService {
         listenedRatio: 7
       });
     } else {
-      // Update existing collaboration
+      // update collaboration
       await this.updateUserCollaboration(userId, collaborationId, { finalVote: filePath });
     }
   }
@@ -421,7 +441,7 @@ export class CollaborationService {
     };
   }
 
-  // Load collaboration data for anonymous users (no user-specific data)
+  // load collaboration data for anonymous users (no user-specific data)
   static async loadCollaborationDataAnonymous(collaborationId: CollaborationId): Promise<{
     collaboration: Collaboration;
     userCollaboration: null;
@@ -438,7 +458,7 @@ export class CollaborationService {
     };
   }
 
-  // Get user's collaboration list
+  // get user's collaboration list
   static async getUserCollaborations(userId: UserId): Promise<Collaboration[]> {
     const userProfile = await this.getUserProfile(userId);
     if (!userProfile || !userProfile.collaborationIds || userProfile.collaborationIds.length === 0) {
@@ -452,7 +472,7 @@ export class CollaborationService {
     return collaborations.filter((collab): collab is Collaboration => collab !== null);
   }
 
-  // Get first available collaboration for anonymous users
+  // get first available collaboration for anonymous users
   static async getFirstCollaboration(): Promise<Collaboration | null> {
     const q = query(collection(db, COLLECTIONS.COLLABORATIONS), limit(1));
     const querySnapshot = await getDocs(q);

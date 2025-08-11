@@ -3,7 +3,6 @@ import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { useAppStore } from '../stores/appStore';
 import { Mixer } from '../components/Mixer';
 import './MainView.css';
-import { AnalogVUMeter } from '../components/AnalogVUMeter';
 import ProjectHistory from '../components/ProjectHistory';
 import '../components/ProjectHistory.css';
 import { CollaborationService } from '../services/collaborationService';
@@ -26,10 +25,12 @@ export function SubmissionView() {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<number>(0);
   const [backingUrl, setBackingUrl] = useState<string>('');
+  const pendingBackingUrlRef = useRef<string>('');
   const state = useAppStore(s => s.audio.state) as any;
   usePrefetchAudio(backingUrl);
   useEffect(() => {
     if (!audioContext?.engine || !backingUrl) return;
+    pendingBackingUrlRef.current = backingUrl;
     audioContext.engine.preloadBacking(backingUrl);
   }, [audioContext?.engine, backingUrl]);
 
@@ -45,7 +46,18 @@ export function SubmissionView() {
     if (!DEBUG_ALLOW_MULTIPLE_SUBMISSIONS && alreadySubmitted) { setError('you already submitted'); return; }
     setSaving(true); setError(null); setProgress(0);
     try {
-      await CollaborationService.uploadSubmission(file, currentCollaboration.id, user.uid, undefined, (p) => setProgress(p));
+      const eqState = (audioContext?.engine?.getState?.() as any)?.eq;
+      const p1Vol = (audioContext?.engine?.getState?.() as any)?.player1?.volume ?? 1;
+      const settings = {
+        eq: {
+          highshelf: { gain: eqState?.highshelf?.gain ?? 0, frequency: eqState?.highshelf?.frequency ?? 8000 },
+          param2: { gain: eqState?.param2?.gain ?? 0, frequency: eqState?.param2?.frequency ?? 3000, Q: eqState?.param2?.Q ?? 1 },
+          param1: { gain: eqState?.param1?.gain ?? 0, frequency: eqState?.param1?.frequency ?? 250, Q: eqState?.param1?.Q ?? 1 },
+          highpass: { frequency: eqState?.highpass?.frequency ?? 20, enabled: true }
+        },
+        volume: { gain: p1Vol }
+      } as any;
+      await CollaborationService.uploadSubmission(file, currentCollaboration.id, user.uid, undefined, (p) => setProgress(p), settings);
       setFile(null);
       await loadCollaboration(user.uid, currentCollaboration.id);
     } catch (e: any) {
@@ -72,6 +84,22 @@ export function SubmissionView() {
     })();
     return () => { cancelled = true; };
   }, [currentCollaboration?.backingTrackPath]);
+
+  useEffect(() => {
+    const engine = audioContext?.engine;
+    if (!engine) return;
+    const handler = async () => {
+      await engine.unlock?.();
+      const url = pendingBackingUrlRef.current;
+      if (url) engine.preloadBacking(url);
+    };
+    window.addEventListener('pointerdown', handler, { once: true });
+    window.addEventListener('keydown', handler, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', handler as any);
+      window.removeEventListener('keydown', handler as any);
+    };
+  }, [audioContext?.engine]);
 
   // manage blob url lifecycle only (no auto-play)
   useEffect(() => {
