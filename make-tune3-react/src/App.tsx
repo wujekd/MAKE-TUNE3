@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { MainView } from './views/MainView'
 import { AuthView } from './views/auth/AuthView'
 import { CollabListView } from './views/CollabListView'
@@ -7,6 +7,7 @@ import { ProjectEditView } from './views/ProjectEditView'
 import { SubmissionView } from './views/SubmissionView'
 import { useAppStore } from './stores/appStore'
 import { ModerationView } from './views/ModerationView'
+import { AppShell } from './components/AppShell';
 
 function App() {
   const { user, loading } = useAppStore(state => state.auth);
@@ -24,26 +25,67 @@ function App() {
     }
   }, [user, showAuth, setShowAuth]);
 
-  if (showAuth) {
-    return (
-      <BrowserRouter>
-        <AuthView onBackToMain={() => setShowAuth(false)} />
-      </BrowserRouter>
-    );
-  }
+  const router = createBrowserRouter([
+    {
+      element: showAuth ? <AuthView onBackToMain={() => setShowAuth(false)} /> : <AppShell />,
+      children: showAuth ? [] : [
+        {
+          path: '/collabs',
+          element: <CollabListView />,
+          handle: {
+            title: 'Collaborations',
+            breadcrumb: 'Collaborations',
+            actions: () => ([{ key: 'to-auth', label: 'Login', onClick: () => useAppStore.getState().ui.setShowAuth(true) }])
+          }
+        },
+        {
+          path: '/project/:projectId',
+          element: <ProjectEditView />,
+          handle: {
+            title: 'Project',
+            breadcrumb: 'Project',
+            actions: ({ navigate: nav }: any) => ([{ key: 'back', label: 'Back', onClick: () => nav(-1) }])
+          }
+        },
+        {
+          path: '/collab/:collaborationId',
+          element: <MainView key={user?.uid || 'anonymous'} />,
+          handle: {
+            title: 'Collaboration',
+            breadcrumb: 'Collaboration',
+            actions: ({ navigate, params, collab }: any) => ([
+              { key: 'back', label: 'Back', onClick: () => navigate(-1) },
+              collab?.status === 'submission' ? { key: 'to-submit', label: 'Submit', onClick: () => navigate(`/collab/${params.collaborationId}/submit`) } : null
+            ].filter(Boolean))
+          }
+        },
+        {
+          path: '/collab/:collaborationId/moderate',
+          element: <ModerationView />,
+          handle: {
+            title: 'Moderation',
+            breadcrumb: 'Moderation',
+            actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate(-1) }])
+          }
+        },
+        {
+          path: '/collab/:collaborationId/submit',
+          element: <SubmissionView />,
+          handle: {
+            title: 'Submit',
+            breadcrumb: 'Submit',
+            actions: ({ navigate, params }: any) => ([
+              { key: 'back', label: 'Back', onClick: () => navigate(-1) },
+              { key: 'to-collab', label: 'To voting', onClick: () => navigate(`/collab/${params.collaborationId}`) }
+            ])
+          }
+        },
+        { path: '*', element: <Navigate to="/collabs" replace /> }
+      ]
+    }
+  ]);
 
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/collabs" element={<CollabListView />} />
-        <Route path="/project/:projectId" element={<ProjectEditView />} />
-        <Route path="/collab/:collaborationId" element={<MainView key={user?.uid || 'anonymous'} onShowAuth={() => setShowAuth(true)} />} />
-        <Route path="/collab/:collaborationId/moderate" element={<ModerationView />} />
-        <Route path="/collab/:collaborationId/submit" element={<SubmissionView />} />
-        <Route path="*" element={<Navigate to="/collabs" replace />} />
-      </Routes>
-    </BrowserRouter>
-  );
+  return <RouterProvider router={router} />;
 }
 
 export default App
