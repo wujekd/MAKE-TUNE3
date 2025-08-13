@@ -3,11 +3,19 @@ import {onDocumentCreated,
 import {initializeApp} from "firebase-admin/app";
 import {getFirestore, Timestamp} from "firebase-admin/firestore";
 import {setGlobalOptions} from "firebase-functions";
+import {onObjectFinalized} from "firebase-functions/v2/storage";
+import {getStorage} from "firebase-admin/storage";
+import * as path from "path";
+import * as os from "os";
+import * as fs from "fs";
+import ffmpeg from "fluent-ffmpeg";
+import ffmpegStatic from "ffmpeg-static";
 import {onSchedule} from "firebase-functions/v2/scheduler";
 setGlobalOptions({region: "europe-west1", maxInstances: 10});
 
 initializeApp();
 const db = getFirestore();
+const storageAdmin = getStorage();
 
 const BAD = ["foo", "bar"];
 const sanitize = (s: string) =>
@@ -131,3 +139,75 @@ export const advanceCollaborationStages = onSchedule(
   console.log(`advanceCollaborationStages processed ${processed}`);
   }
 );
+
+// Storage trigger: transcode large files (>20MB) to 256kbps MP3
+export const transcodeLargeToMp3 = onObjectFinalized({region: "europe-west1"}, async (event) => {
+  const object = event.data;
+  const bucketName = object.bucket;
+  const filePath = object.name || "";
+  const size = Number(object.size || 0);
+  if (!filePath.startsWith("collabs/") || !filePath.includes("/submissions/")) return;
+  if (size <= 20 * 1024 * 1024) return;
+  // allow any source type above 20MB
+  const ext = path.extname(filePath).toLowerCase();
+  const base = path.basename(filePath, ext);
+  const collabId = filePath.split("/")[1];
+  const optimizedPath = `collabs/${collabId}/optimized/${base}.mp3`;
+
+  const bucket = storageAdmin.bucket(bucketName);
+  const destFile = bucket.file(optimizedPath);
+  const [exists] = await destFile.exists();
+  if (exists) return;
+
+  const tmpIn = path.join(os.tmpdir(), `${base}${ext}`);
+  const tmpOut = path.join(os.tmpdir(), `${base}.mp3`);
+  try {
+    // download source
+    await bucket.file(filePath).download({destination: tmpIn});
+    // set ffmpeg binary
+    (ffmpeg as any).setFfmpegPath(ffmpegStatic as any);
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(tmpIn)
+        .audioCodec("libmp3lame")
+        .audioBitrate("256k")
+        .audioFrequency(44100)
+        .format("mp3")
+        .on("end", () => resolve())
+        .on("error", reject)
+        .save(tmpOut);
+    });
+    // upload
+    await bucket.upload(tmpOut, {destination: optimizedPath, contentType: "audio/mpeg"});
+    const optimizedFile = bucket.file(optimizedPath);
+    const [meta] = await optimizedFile.getMetadata();
+    const optimizedSize = Number(meta.size || 0);
+    // update collaboration doc submissions entry
+    const collabRef = db.collection("collaborations").doc(collabId);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(collabRef);
+      if (!snap.exists) return;
+      const data = snap.data() as any;
+      const subs: any[] = Array.isArray(data.submissions) ? data.submissions : [];
+      const idx = subs.findIndex((s) => s?.path && s.path.startsWith(`collabs/${collabId}/submissions/`) && s.path.includes(base));
+      const now = Timestamp.now();
+      if (idx >= 0) {
+        subs[idx] = {
+          ...subs[idx],
+          optimizedPath,
+          optimizedAt: now,
+          originalSize: size,
+          optimizedSize,
+          optimizeStatus: "done",
+        };
+        tx.update(collabRef, {submissions: subs, updatedAt: now});
+      } else {
+        // legacy or not found: no-op
+      }
+    });
+  } catch (e) {
+    console.error("transcodeLargeToMp3 failed", e);
+  } finally {
+    try { fs.unlinkSync(tmpIn); } catch {}
+    try { fs.unlinkSync(tmpOut); } catch {}
+  }
+});
