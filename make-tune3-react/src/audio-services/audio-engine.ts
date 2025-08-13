@@ -29,6 +29,7 @@ export class AudioEngine {
   private onTrackListened?: (trackSrc: string)=>void;
   private listenedRatio?: number;
   private isTrackListened?: (trackSrc: string) => boolean;
+  private playbackTrackingEnabled: boolean = true;
 
   constructor(player1: HTMLAudioElement, player2: HTMLAudioElement, ) {
     this.player1 = player1;
@@ -277,11 +278,11 @@ export class AudioEngine {
       player1: { ...this.state.player1, isPlaying: true },
       player2: { ...this.state.player2, isPlaying: true }
     });
-    if (!this.isTrackListened || !this.isTrackListened(submissionSrc)) {
+    if (this.playbackTrackingEnabled && this.onTrackListened && this.isTrackListened && !this.isTrackListened(submissionSrc)) {
       console.log(`AudioEngine: Starting playback tracking for ${submissionSrc} (not yet listened)`);
       this.playbackTracker.startTracking(submissionSrc);
     } else {
-      console.log(`AudioEngine: Skipping playback tracking for ${submissionSrc} (already listened)`);
+      console.log(`AudioEngine: Skipping playback tracking for ${submissionSrc} (already listened or tracking disabled)`);
     }
     this.player1.playbackRate = 1;
     this.player2.playbackRate = 1;
@@ -578,7 +579,9 @@ export class AudioEngine {
           duration: this.player1.duration || 0
         }
       });
-      this.playbackTracker.updateProgress(this.player1.currentTime, this.player1.duration);
+      if (this.playbackTrackingEnabled) {
+        this.playbackTracker.updateProgress(this.player1.currentTime, this.player1.duration);
+      }
     });
     this.player1.addEventListener('ended', () => {
       this.updateState({
@@ -618,6 +621,12 @@ export class AudioEngine {
         }
       });
     });
+  }
+  setPlaybackTrackingEnabled(enabled: boolean): void {
+    this.playbackTrackingEnabled = enabled;
+    if (!enabled) {
+      this.playbackTracker.stopTracking();
+    }
   }
   private updateState(newState: Partial<AudioState>) {
     this.state = { ...this.state, ...newState };

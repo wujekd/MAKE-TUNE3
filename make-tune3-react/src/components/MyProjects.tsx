@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { CollaborationService } from '../services/collaborationService';
 import './ProjectHistory.css';
+import { Link } from 'react-router-dom';
 
 export function MyProjects() {
   const { user } = useAppStore(state => state.auth);
@@ -114,12 +115,12 @@ export function MyProjects() {
           <div style={{ color: 'var(--white)' }}>no projects</div>
         )}
         {user && projects.map(p => (
-          <div key={p.id} className="collab-history-item list__item" onClick={() => { window.location.href = `/project/${p.id}`; }}>
+          <Link key={p.id} to={`/project/${p.id}`} className="collab-history-item list__item" style={{ textDecoration: 'none' }}>
             <div className="collab-name list__title">{p.name}</div>
             <div className="collab-stage list__subtitle">
               {new Date((p as any).createdAt?.toMillis ? (p as any).createdAt.toMillis() : (p as any).createdAt).toLocaleString()}
             </div>
-            <button
+            <span
               style={{
                 marginLeft: 'auto',
                 padding: '4px 8px',
@@ -128,11 +129,10 @@ export function MyProjects() {
                 background: 'var(--primary1-800)',
                 color: 'var(--white)'
               }}
-              onClick={(e) => { e.stopPropagation(); window.location.href = `/project/${p.id}`; }}
             >
               edit
-            </button>
-          </div>
+            </span>
+          </Link>
         ))}
       </div>
     </div>

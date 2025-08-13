@@ -8,7 +8,7 @@
 
 .debug-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 220px 260px 220px;
   gap: 0.75rem;
   color: var(--white);
 }

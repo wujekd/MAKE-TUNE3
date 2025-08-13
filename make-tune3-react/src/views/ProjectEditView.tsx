@@ -137,6 +137,37 @@ export function ProjectEditView() {
                       setCollabs(prev => prev.filter(x => x.id !== col.id));
                       setSelectedId(null); setMode('none');
                     }}>delete</button>
+                    <button disabled={col.status !== 'completed' || !(col as any).winnerPath} onClick={async () => {
+                      const path = (col as any).winnerPath as string | undefined;
+                      if (!path) return;
+                      try {
+                        const { storage } = await import('../services/firebase');
+                        const { ref, getBlob, getDownloadURL } = await import('firebase/storage');
+                        let filename = path.split('/').pop() || 'winner';
+                        if (path.startsWith('collabs/')) {
+                          const storageRef = ref(storage, path);
+                          const blob = await getBlob(storageRef);
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = filename;
+                          document.body.appendChild(a);
+                          a.click();
+                          a.remove();
+                          URL.revokeObjectURL(url);
+                        } else {
+                          // fallback for absolute URLs
+                          const a = document.createElement('a');
+                          a.href = path;
+                          a.download = filename;
+                          document.body.appendChild(a);
+                          a.click();
+                          a.remove();
+                        }
+                      } catch (e) {
+                        alert('could not download winner');
+                      }
+                    }}>download winner</button>
                   </div>
                 </div>
               );

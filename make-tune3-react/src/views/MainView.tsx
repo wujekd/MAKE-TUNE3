@@ -34,6 +34,7 @@ export function MainView() {
     isTrackFavorite
   } = useAppStore(state => state.collaboration);
   const { playSubmission } = useAppStore(state => state.playback);
+  const { currentProject, currentCollaboration } = useAppStore(state => state.collaboration);
   const { setShowAuth } = useAppStore(state => state.ui);
 
   if (!audioContext) {
@@ -154,44 +155,27 @@ export function MainView() {
 
   return (
     <div className="main-container">
-      <div style={{
+      {/* <div style={{
           position: 'absolute',
           top: '40px',
           left: '140px',
           zIndex: 1000,
         }}><button onClick={() => (window.location.href = '/collabs')}>← back</button></div>
-      <StoreTest />
-      <button 
-        style={{ position: 'absolute', top: '6px', right: '16px', zIndex: 1000 }}
-        onClick={() => console.log('playingFavourite:', state.playerController.playingFavourite)}
-      >
-        Log Playback Mode
-      </button>
-      <button 
-        style={{ position: 'absolute', top: '6px', right: '160px', zIndex: 1000 }}
-        onClick={() => console.log('favourites:', regularTracks.filter(t => isTrackFavorite(t.filePath)))}
-      >
-        Log Favorites
-      </button>
-      {user ? (
-        <button 
-          style={{ position: 'absolute', top: '20px', right: '320px', zIndex: 1000 }}
-          onClick={signOut}
-        >
-          Logout ({user.email})
-        </button>
-      ) : (
-        <button 
-          style={{ position: 'absolute', top: '20px', right: '320px', zIndex: 1000 }}
-          onClick={() => setShowAuth(true)}
-        >
-          Login
-        </button>
-      )}
-      <div className="info-top">
-        <h2>Audio Engine Test</h2>
-          <DebugInfo engine={engine} />
-          <ProjectHistory />
+      <StoreTest /> */}
+      
+
+      <div className="info-top mv-fixed">
+        <div className="mv-header-left">
+          <div className="mv-header-col">
+            <div className="mv-title">{currentProject?.name || ''}</div>
+            <div className="mv-subtitle">project description: {currentProject?.description || ''}</div>
+          </div>
+          <div className="mv-header-col">
+            <div className="mv-title">{currentCollaboration?.name || ''}</div>
+            <div className="mv-subtitle">collaboration description: {currentCollaboration?.description || ''}</div>
+          </div>
+        </div>
+        <ProjectHistory />
       </div>
       
       <div className={`submissions-section ${!state.playerController.pastStagePlayback ? 'active-playback' : ''}`}>

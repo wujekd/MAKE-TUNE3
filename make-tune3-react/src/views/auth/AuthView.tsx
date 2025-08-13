@@ -6,10 +6,11 @@ import type { AuthMode } from '../../types/auth';
 
 interface AuthViewProps {
   onBackToMain: () => void;
+  initialMode?: AuthMode;
 }
 
-export function AuthView({ onBackToMain }: AuthViewProps) {
-  const [mode, setMode] = useState<AuthMode>('login');
+export function AuthView({ onBackToMain, initialMode = 'login' }: AuthViewProps) {
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const { user } = useAppStore(state => state.auth);
 
   if (user) {

@@ -52,6 +52,11 @@ export interface Collaboration {
   status: 'unpublished' | 'submission' | 'voting' | 'completed';
   requiresModeration?: boolean; // when true, new submissions need approval
   unmoderatedSubmissions?: boolean; // has pending unmoderated submissions
+  // results (set by CF on completion)
+  winnerPath?: string;
+  results?: { path: string; votes: number }[];
+  resultsComputedAt?: Timestamp;
+  completedAt?: Timestamp;
   createdAt: Timestamp;
   publishedAt: Timestamp | null; // when collaboration becomes active
   updatedAt: Timestamp;

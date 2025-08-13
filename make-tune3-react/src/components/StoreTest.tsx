@@ -30,21 +30,15 @@ export function StoreTest() {
 
   return (
     <details style={{
-      position: 'absolute',
-      top: '20px',
-      right: '10px',
-      zIndex: 1000,
-      backgroundColor: 'var(--background)',
-      padding: '10px',
-      border: '1px solid var(--primary)',
-      borderRadius: '4px',
+      backgroundColor: 'var(--primary1-900)',
+      padding: '6px 8px',
+      border: '1px solid rgba(255,255,255,0.15)',
+      borderRadius: '6px',
       fontSize: '12px',
-      maxWidth: '400px',
-      maxHeight: '600px',
-      overflow: 'auto'
+      color: 'var(--white)'
     }}>
-      <summary style={{ cursor: 'pointer', fontWeight: 'bold', marginBottom: '8px' }}>
-        Store Test
+      <summary style={{ cursor: 'pointer', fontWeight: 400 }}>
+        Store
       </summary>
       
       <div style={{ marginBottom: '10px' }}>

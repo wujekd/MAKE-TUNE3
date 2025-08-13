@@ -53,11 +53,18 @@ body {
   grid-row: 1;
   background-color: var(--primary1-500);
   color: var(--white);
-  padding: 1rem;
+  padding: 0.5rem 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
+
+.mv-fixed { height: 64px; overflow: hidden; }
+.mv-header-left { display: flex; flex-direction: column; justify-content: space-evenly; gap: 0; max-width: 65%; height: 100%; }
+.mv-header-block { display: flex; flex-direction: column; max-width: 40%; }
+.mv-header-col { display: flex; flex-direction: column; max-width: 100%; }
+.mv-title { font-size: 16px; font-weight: 600; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv-subtitle { font-size: 12px; opacity: 0.8; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .submissions-section {
   grid-column: 1 / 6;

@@ -51,7 +51,7 @@ export function CollabListView() {
           {collabs.map(c => {
             const s = String(c.status || '').toLowerCase().trim();
             const id = encodeURIComponent(c.id);
-            const to = s === 'submission' ? `/collab/${id}/submit` : `/collab/${id}`;
+            const to = s === 'submission' ? `/collab/${id}/submit` : (s === 'completed' ? `/collab/${id}/completed` : `/collab/${id}`);
             return (
               <Link key={c.id} to={to} className="collab-history-item list__item">
                 <div className="collab-info" style={{ display: 'flex', flexDirection: 'column' }}>

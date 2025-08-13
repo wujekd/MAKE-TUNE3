@@ -1,17 +1,18 @@
 import { useEffect } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { MainView } from './views/MainView'
-import { AuthView } from './views/auth/AuthView'
 import { CollabListView } from './views/CollabListView'
 import { ProjectEditView } from './views/ProjectEditView'
 import { SubmissionView } from './views/SubmissionView'
 import { useAppStore } from './stores/appStore'
 import { ModerationView } from './views/ModerationView'
 import { AppShell } from './components/AppShell';
+import { AuthRoute } from './components/AuthRoute';
+import { CompletedView } from './views/CompletedView';
 
 function App() {
   const { user, loading } = useAppStore(state => state.auth);
-  const { showAuth, setShowAuth } = useAppStore(state => state.ui);
+  const { setShowAuth } = useAppStore(state => state.ui);
 
   useEffect(() => {
     // console.log('app render - user:', user?.email, 'loading:', loading);
@@ -19,27 +20,27 @@ function App() {
 
   // hide auth view when user logs in successfully
   useEffect(() => {
-    if (user && showAuth) {
-      // console.log('app: hiding auth view after successful login');
+    if (user) {
       setShowAuth(false);
     }
-  }, [user, showAuth, setShowAuth]);
+  }, [user, setShowAuth]);
 
   const router = createBrowserRouter([
     {
-      element: showAuth ? <AuthView onBackToMain={() => setShowAuth(false)} /> : <AppShell />,
-      children: showAuth ? [] : [
+      element: <AppShell />,
+      children: [
+        { index: true, element: <Navigate to="collabs" replace /> },
         {
-          path: '/collabs',
+          path: 'collabs',
           element: <CollabListView />,
           handle: {
             title: 'Collaborations',
             breadcrumb: 'Collaborations',
-            actions: () => ([{ key: 'to-auth', label: 'Login', onClick: () => useAppStore.getState().ui.setShowAuth(true) }])
+            actions: ({ navigate }: any) => ([{ key: 'to-auth', label: 'Login', onClick: () => navigate('auth') }])
           }
         },
         {
-          path: '/project/:projectId',
+          path: 'project/:projectId',
           element: <ProjectEditView />,
           handle: {
             title: 'Project',
@@ -48,7 +49,7 @@ function App() {
           }
         },
         {
-          path: '/collab/:collaborationId',
+          path: 'collab/:collaborationId',
           element: <MainView key={user?.uid || 'anonymous'} />,
           handle: {
             title: 'Collaboration',
@@ -60,7 +61,7 @@ function App() {
           }
         },
         {
-          path: '/collab/:collaborationId/moderate',
+          path: 'collab/:collaborationId/moderate',
           element: <ModerationView />,
           handle: {
             title: 'Moderation',
@@ -69,7 +70,19 @@ function App() {
           }
         },
         {
-          path: '/collab/:collaborationId/submit',
+          path: 'collab/:collaborationId/completed',
+          element: <CompletedView />,
+          handle: {
+            title: 'Completed',
+            breadcrumb: 'Completed',
+            actions: ({ navigate, params }: any) => ([
+              { key: 'back', label: 'Back', onClick: () => navigate(-1) },
+              { key: 'to-collab', label: 'Open collab', onClick: () => navigate(`/collab/${params.collaborationId}`) }
+            ])
+          }
+        },
+        {
+          path: 'collab/:collaborationId/submit',
           element: <SubmissionView />,
           handle: {
             title: 'Submit',
@@ -80,9 +93,10 @@ function App() {
             ])
           }
         },
-        { path: '*', element: <Navigate to="/collabs" replace /> }
+        { path: '*', element: <Navigate to="collabs" replace /> }
       ]
-    }
+    },
+    { path: '/auth', element: <AuthRoute /> }
   ]);
 
   return <RouterProvider router={router} />;
