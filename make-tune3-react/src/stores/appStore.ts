@@ -127,7 +127,7 @@ const formatTime = (seconds: number): string => {
 };
 
 // create track from file path
-const createTrackFromFilePath = (filePath: string, category: 'backing' | 'submission' | 'pastStage', collaborationId: string, settings?: SubmissionSettings): Track => {
+const createTrackFromFilePath = (filePath: string, category: 'backing' | 'submission' | 'pastStage', collaborationId: string, settings?: SubmissionSettings, optimizedPath?: string): Track => {
   const fileName = filePath.split('/').pop() || filePath;
       const title = fileName.replace(/\.[^/.]+$/, ''); // remove extension
   
@@ -135,6 +135,7 @@ const createTrackFromFilePath = (filePath: string, category: 'backing' | 'submis
     id: filePath, // use filePath as id
     title,
     filePath,
+    optimizedPath,
     duration: 0, // set by audioengine
     createdAt: new Date() as any, // set when real data available
     collaborationId,
@@ -355,7 +356,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         const submissionTracks = (collaborationData.collaboration.submissions && collaborationData.collaboration.submissions.length > 0)
           ? collaborationData.collaboration.submissions.map((s: SubmissionEntry) => {
               if (DEBUG_LOGS) console.log('tracks from submissions[]', s);
-              return createTrackFromFilePath(s.path, 'submission', collaborationData.collaboration.id, s.settings);
+              return createTrackFromFilePath(s.path, 'submission', collaborationData.collaboration.id, s.settings, s.optimizedPath);
             })
           : (collaborationData.collaboration as any).submissionPaths?.map((path: string) => {
               if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[]', path);
@@ -417,7 +418,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         const submissionTracks = (collaborationData.collaboration.submissions && collaborationData.collaboration.submissions.length > 0)
           ? collaborationData.collaboration.submissions.map((s: SubmissionEntry) => {
               if (DEBUG_LOGS) console.log('tracks from submissions[] (anon)', s);
-              return createTrackFromFilePath(s.path, 'submission', collaborationData.collaboration.id, s.settings);
+              return createTrackFromFilePath(s.path, 'submission', collaborationData.collaboration.id, s.settings, s.optimizedPath);
             })
           : (collaborationData.collaboration as any).submissionPaths?.map((path: string) => {
               if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon)', path);
@@ -463,7 +464,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         const submissionTracks = (collaborationData.collaboration.submissions && collaborationData.collaboration.submissions.length > 0)
           ? collaborationData.collaboration.submissions.map((s: SubmissionEntry) => {
               if (DEBUG_LOGS) console.log('tracks from submissions[] (anon by id)', s);
-              return createTrackFromFilePath(s.path, 'submission', collaborationData.collaboration.id, s.settings);
+              return createTrackFromFilePath(s.path, 'submission', collaborationData.collaboration.id, s.settings, s.optimizedPath);
             })
           : (collaborationData.collaboration as any).submissionPaths?.map((path: string) => {
               if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon by id)', path);
@@ -877,7 +878,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         (async () => {
           if (currentTrackIndex > 0) {
             const track = pastStageTracks[currentTrackIndex - 1];
-            const src = await resolveAudioUrl(track.filePath);
+            const src = await resolveAudioUrl(track.optimizedPath || track.filePath);
             engine.playPastStage(src, currentTrackIndex - 1);
           }
         })();
@@ -888,7 +889,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             if (currentTrackIndex > 0) {
               const track = favorites[currentTrackIndex - 1];
               engine.setPlayingFavourite(true);
-              const submissionSrc = await resolveAudioUrl(track.filePath);
+              const chosenPathPrevFav = track.optimizedPath || track.filePath;
+              if (DEBUG_LOGS) console.log('previousTrack (favorites) path selected:', track.optimizedPath ? 'optimizedPath' : 'originalPath', chosenPathPrevFav);
+              const submissionSrc = await resolveAudioUrl(chosenPathPrevFav);
               const backingSrc = backingTrack?.filePath ? await resolveAudioUrl(backingTrack.filePath) : '';
               engine.playSubmission(submissionSrc, backingSrc, currentTrackIndex - 1);
             }
@@ -896,7 +899,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             if (currentTrackIndex > 0) {
               const track = regularTracks[currentTrackIndex - 1];
               engine.setPlayingFavourite(false);
-              const submissionSrc = await resolveAudioUrl(track.filePath);
+              const chosenPathPrevReg = track.optimizedPath || track.filePath;
+              if (DEBUG_LOGS) console.log('previousTrack (regular) path selected:', track.optimizedPath ? 'optimizedPath' : 'originalPath', chosenPathPrevReg);
+              const submissionSrc = await resolveAudioUrl(chosenPathPrevReg);
               const backingSrc = backingTrack?.filePath ? await resolveAudioUrl(backingTrack.filePath) : '';
               engine.playSubmission(submissionSrc, backingSrc, currentTrackIndex - 1);
             }
@@ -919,7 +924,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         (async () => {
           if (currentTrackIndex < pastStageTracks.length - 1) {
             const track = pastStageTracks[currentTrackIndex + 1];
-            const src = await resolveAudioUrl(track.filePath);
+            const src = await resolveAudioUrl(track.optimizedPath || track.filePath);
             engine.playPastStage(src, currentTrackIndex + 1);
           }
         })();
@@ -930,7 +935,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             if (currentTrackIndex < favorites.length - 1) {
               const track = favorites[currentTrackIndex + 1];
               engine.setPlayingFavourite(true);
-              const submissionSrc = await resolveAudioUrl(track.filePath);
+              const chosenPathNextFav = track.optimizedPath || track.filePath;
+              if (DEBUG_LOGS) console.log('nextTrack (favorites) path selected:', track.optimizedPath ? 'optimizedPath' : 'originalPath', chosenPathNextFav);
+              const submissionSrc = await resolveAudioUrl(chosenPathNextFav);
               const backingSrc = backingTrack?.filePath ? await resolveAudioUrl(backingTrack.filePath) : '';
               engine.playSubmission(submissionSrc, backingSrc, currentTrackIndex + 1);
             }
@@ -938,7 +945,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             if (currentTrackIndex < regularTracks.length - 1) {
               const track = regularTracks[currentTrackIndex + 1];
               engine.setPlayingFavourite(false);
-              const submissionSrc = await resolveAudioUrl(track.filePath);
+              const chosenPathNextReg = track.optimizedPath || track.filePath;
+              if (DEBUG_LOGS) console.log('nextTrack (regular) path selected:', track.optimizedPath ? 'optimizedPath' : 'originalPath', chosenPathNextReg);
+              const submissionSrc = await resolveAudioUrl(chosenPathNextReg);
               const backingSrc = backingTrack?.filePath ? await resolveAudioUrl(backingTrack.filePath) : '';
               engine.playSubmission(submissionSrc, backingSrc, currentTrackIndex + 1);
             }
@@ -994,7 +1003,9 @@ export const useAppStore = create<AppState>((set, get) => ({
           engineInstance.setEq(eqPayload);
           if (DEBUG_LOGS) console.log('eq after apply (state):', get().audio.state?.eq, 'p1 volume:', get().audio.state?.player1.volume);
         }
-        const submissionSrc = await resolveAudioUrl(track.filePath);
+        const chosenPath = track.optimizedPath || track.filePath;
+        if (DEBUG_LOGS) console.log('playSubmission path selected:', track.optimizedPath ? 'optimizedPath' : 'originalPath', chosenPath);
+        const submissionSrc = await resolveAudioUrl(chosenPath);
         let backingSrc = '';
         const backingPath = backingTrack?.filePath || currentCollaboration?.backingTrackPath || '';
         if (backingPath) {

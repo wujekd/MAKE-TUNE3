@@ -6,6 +6,8 @@ import './MainView.css';
 import ProjectHistory from '../components/ProjectHistory';
 import '../components/ProjectHistory.css';
 import { CollaborationService } from '../services/collaborationService';
+import { DownloadBacking } from '../components/DownloadBacking';
+import { UploadSubmission } from '../components/UploadSubmission';
 import { storage } from '../services/firebase';
 import { ref, getDownloadURL } from 'firebase/storage';
 import { useParams } from 'react-router-dom';
@@ -27,6 +29,7 @@ export function SubmissionView() {
   const [backingUrl, setBackingUrl] = useState<string>('');
   const pendingBackingUrlRef = useRef<string>('');
   const state = useAppStore(s => s.audio.state) as any;
+  const [hasDownloaded, setHasDownloaded] = useState<boolean>(true);
   usePrefetchAudio(backingUrl);
   useEffect(() => {
     if (!audioContext?.engine || !backingUrl) return;
@@ -126,6 +129,14 @@ export function SubmissionView() {
     else loadCollaborationAnonymousById(collaborationId);
   }, [collaborationId, user, loadCollaboration, loadCollaborationAnonymousById]);
 
+  useEffect(() => {
+    (async () => {
+      if (!user || !currentCollaboration) { setHasDownloaded(true); return; }
+      const ok = await CollaborationService.hasDownloadedBacking(user.uid, currentCollaboration.id);
+      setHasDownloaded(ok);
+    })();
+  }, [user?.uid, currentCollaboration?.id]);
+
   // no auto-load/play; backing will be set on first preview request
 
   if (!audioContext) return <div>audio engine not available</div>;
@@ -135,9 +146,6 @@ export function SubmissionView() {
       
 
       <div className="info-top">
-        <div className="abs-tl mt-16 ml-16 z-1000">
-          <button onClick={() => (window.location.href = '/collabs')} className="btn btn--secondary">← back to collabs</button>
-        </div>
         <h2>Submission</h2>
         <ProjectHistory />
       </div>
@@ -181,27 +189,15 @@ export function SubmissionView() {
           </section>
 
           {/* Title and scroll area mirrors MainView submissions list */}
-          <div className="audio-player-title">Upload</div>
+          <div className="audio-player-title">{hasDownloaded ? 'Upload' : 'Download'}</div>
           <div className="submissions-scroll">
             <div className="row gap-16 wrap">
-              <div className="card" style={{ maxWidth: 560 }}>
-                <h4 className="card__title">Upload your submission</h4>
-                <div className="card__body">
-                  <div className="mb-8" style={{ color: 'var(--white)', opacity: 0.8 }}>Choose an audio file to submit to the current collaboration</div>
-                  <input type="file" accept="audio/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-                  <div className="row gap-8 mt-8" style={{ justifyContent: 'flex-start', alignItems: 'center' }}>
-                    <button onClick={onUpload} disabled={saving || !file || !user || alreadySubmitted}>{saving ? `uploading ${progress}%` : 'upload'}</button>
-                    {saving && (
-                      <div style={{ width: 180, height: 8, background: 'rgba(255,255,255,0.15)', borderRadius: 4 }}>
-                        <div style={{ width: `${progress}%`, height: '100%', background: 'var(--contrast-600)', borderRadius: 4 }} />
-                      </div>
-                    )}
-                    {!DEBUG_ALLOW_MULTIPLE_SUBMISSIONS && alreadySubmitted && <div style={{ color: 'var(--white)' }}>you already submitted to this collaboration</div>}
-                    {!user && <div style={{ color: 'var(--white)' }}>login required</div>}
-                  </div>
-                  {error && <div className="mt-8" style={{ color: 'var(--white)' }}>{error}</div>}
-                </div>
-              </div>
+              {!hasDownloaded && user && currentCollaboration && currentCollaboration.backingTrackPath && (
+                <DownloadBacking userId={user.uid} collaborationId={currentCollaboration.id} backingPath={currentCollaboration.backingTrackPath} onDownloaded={() => setHasDownloaded(true)} />
+              )}
+              {(hasDownloaded || !user) && collaborationId && (
+                <UploadSubmission collaborationId={collaborationId} backingUrl={backingUrl} />
+              )}
             </div>
           </div>
         </div>

@@ -1,0 +1,34 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() { return request.auth != null; }
+
+    // Public read for audio assets
+    // Backing files live at: collabs/{collabId}/backing.{ext}
+    // We match any file directly under collab and gate by filename
+    match /collabs/{collabId}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn()
+        && fileName.matches('^backing\\..+$')
+        && request.resource.contentType.matches('audio/.*');
+    }
+
+    match /collabs/{collabId}/submissions/{fileId} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.resource.contentType.matches('audio/.*');
+    }
+
+    // Optimized/transcoded submission files
+    match /collabs/{collabId}/optimized/{fileId} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.resource.contentType.matches('audio/.*');
+    }
+
+    // Default deny
+    match /{allPaths=**} {
+      allow read: if false;
+      allow write: if false;
+    }
+  }
+}
+

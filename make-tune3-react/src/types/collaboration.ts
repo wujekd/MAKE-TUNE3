@@ -5,6 +5,7 @@ export interface Track {
   id: string;
   title: string;
   filePath: string;
+  optimizedPath?: string;
   duration: number;
   createdAt: Timestamp;
   collaborationId: string;
@@ -75,6 +76,7 @@ export interface SubmissionSettings {
 
 export interface SubmissionEntry {
   path: string;
+  optimizedPath?: string;
   settings: SubmissionSettings;
   createdAt?: Timestamp;
 }

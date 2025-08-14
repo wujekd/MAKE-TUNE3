@@ -284,6 +284,29 @@ export class CollaborationService {
     return { ...doc.data() } as UserCollaboration;
   }
 
+  // backing download markers
+  static async hasDownloadedBacking(userId: UserId, collaborationId: CollaborationId): Promise<boolean> {
+    const q = query(
+      collection(db, COLLECTIONS.SUBMISSION_USERS),
+      where('userId', '==', userId),
+      where('collaborationId', '==', collaborationId),
+      where('downloadedBacking', '==', true),
+      limit(1)
+    );
+    const snap = await getDocs(q);
+    return !snap.empty;
+  }
+
+  static async markBackingDownloaded(userId: UserId, collaborationId: CollaborationId, backingPath: string): Promise<void> {
+    await addDoc(collection(db, COLLECTIONS.SUBMISSION_USERS), {
+      userId,
+      collaborationId,
+      downloadedBacking: true,
+      backingPath,
+      downloadedBackingAt: Timestamp.now()
+    });
+  }
+
   static async createUserCollaboration(collaboration: Omit<UserCollaboration, 'createdAt' | 'lastInteraction'>): Promise<UserCollaboration> {
     const now = Timestamp.now();
     const collaborationData: UserCollaboration = {
