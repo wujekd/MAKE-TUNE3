@@ -2,7 +2,9 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
@@ -43,6 +45,29 @@ export class AuthService {
       }
       
       return userDoc.data() as User;
+    } catch (error: any) {
+      throw this.formatError(error);
+    }
+  }
+
+  static async signInWithGooglePopup(): Promise<User> {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const { user } = result;
+      const userRef = doc(db, 'users', user.uid);
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) {
+        const userProfile: User = {
+          uid: user.uid,
+          email: user.email || '',
+          createdAt: new Date() as any,
+          collaborationIds: []
+        };
+        await setDoc(userRef, userProfile);
+        return userProfile;
+      }
+      return snap.data() as User;
     } catch (error: any) {
       throw this.formatError(error);
     }

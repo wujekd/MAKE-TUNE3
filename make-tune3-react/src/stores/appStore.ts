@@ -34,6 +34,7 @@ interface AppState {
     signUp: (email: string, password: string) => Promise<void>;
     signOut: () => Promise<void>;
     resetPassword: (email: string) => Promise<void>;
+    signInWithGoogle: () => Promise<void>;
     initializeAuth: () => (() => void);
   };
 
@@ -193,6 +194,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       } catch (error: any) {
         set(state => ({ auth: { ...state.auth, loading: false } }));
         if (DEBUG_LOGS) console.error('sign up error:', error);
+        throw error;
+      }
+    },
+
+    signInWithGoogle: async () => {
+      try {
+        set(state => ({ auth: { ...state.auth, loading: true } }));
+        const userProfile = await AuthService.signInWithGooglePopup();
+        set(state => ({ auth: { ...state.auth, user: userProfile, loading: false } }));
+      } catch (error: any) {
+        if (DEBUG_LOGS) console.error('google sign in error:', error);
+        set(state => ({ auth: { ...state.auth, loading: false } }));
         throw error;
       }
     },
