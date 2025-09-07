@@ -1,0 +1,29 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "collaborations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "submissionCloseAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "collaborations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "votingCloseAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "userCollaborations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "collaborationId", "order": "ASCENDING" },
+        { "fieldPath": "finalVote", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

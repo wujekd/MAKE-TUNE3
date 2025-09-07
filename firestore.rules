@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(project) { return isSignedIn() && project.data.ownerId == request.auth.uid; }
+
+    // projects: public read, only owner write
+    match /projects/{projectId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isOwner(resource);
+    }
+
+    // collaborations: public read
+    match /collaborations/{collabId} {
+      allow read: if true;
+
+      // owner can update anything
+      allow update, delete: if isOwner(get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)));
+      allow create: if isOwner(get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)));
+
+      // participants may append to participantIds and submissions only (append-only)
+      allow update: if isSignedIn() &&
+        // participantIds append-only
+        request.resource.data.participantIds.size() >= resource.data.participantIds.size() &&
+        resource.data.participantIds.every(id, idx in resource.data.participantIds) == request.resource.data.participantIds[idx] &&
+        // submissions append-only
+        request.resource.data.submissions.size() >= resource.data.submissions.size();
+    }
+
+    // users: each user can read/write their own profile
+    match /users/{userId} {
+      allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // usernames mapping: claim a username if it doesn't exist
+    match /usernames/{name} {
+      allow read: if true;
+      allow create: if isSignedIn() && !exists(/databases/$(database)/documents/usernames/$(name));
+      allow update, delete: if false;
+    }
+
+    // userCollaborations: private to the user
+    match /userCollaborations/{docId} {
+      // reads use resource.data; writes use request.resource.data
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create, update, delete: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // submissionUsers: create by the submitting user; reads restricted (owner or self)
+    match /submissionUsers/{docId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if false;
+      allow update, delete: if false;
+    }
+
+    // project name index: read, but writes should be via trusted backend (optional)
+    match /projectNameIndex/{nameKey} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}
+
