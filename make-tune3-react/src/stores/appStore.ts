@@ -640,15 +640,26 @@ export const useAppStore = create<AppState>((set, get) => ({
 
           // update playingFavourite and currentTrackId if this is the currently playing track
           if (engine && audioState) {
-            const currentTrackSrc = audioState.player1.source;
-            const track = get().collaboration.getTrackByFilePath(filePath);
-            
-            if (track && currentTrackSrc === `/test-audio/${track.filePath}`) {
+            const currentTrackSrc = audioState.player1.source as string;
+            const srcToFilePath = (src: string): string => {
+              if (!src) return '';
+              if (src.startsWith('/test-audio/')) return src.replace('/test-audio/', '');
+              if (src.startsWith('http')) {
+                const idx = src.indexOf('/o/');
+                if (idx !== -1) {
+                  let rest = src.substring(idx + 3);
+                  const q = rest.indexOf('?');
+                  if (q !== -1) rest = rest.substring(0, q);
+                  try { return decodeURIComponent(rest); } catch { return rest; }
+                }
+              }
+              return src;
+            };
+            const clean = srcToFilePath(currentTrackSrc);
+            if (track && (clean === track.filePath || (track.optimizedPath && clean === track.optimizedPath))) {
               if (DEBUG_LOGS) console.log('updating playingFavourite to true for currently playing track');
               engine.setPlayingFavourite(true);
-              
-              // update currentTrackId to reflect the new position in favorites
-              const newFavoriteIndex = get().collaboration.favorites.findIndex(t => t.filePath === track.filePath);
+              const newFavoriteIndex = updatedFavoritesArray.findIndex(t => t.filePath === track.filePath);
               if (newFavoriteIndex !== -1) {
                 if (DEBUG_LOGS) console.log('updating currentTrackId to:', newFavoriteIndex);
                 engine.updateCurrentTrackId(newFavoriteIndex);
@@ -710,15 +721,28 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         // update playingFavourite and currentTrackId if this is the currently playing track
         if (engine && audioState) {
-          const currentTrackSrc = audioState.player1.source;
+          const currentTrackSrc = audioState.player1.source as string;
+          const srcToFilePath = (src: string): string => {
+            if (!src) return '';
+            if (src.startsWith('/test-audio/')) return src.replace('/test-audio/', '');
+            if (src.startsWith('http')) {
+              const idx = src.indexOf('/o/');
+              if (idx !== -1) {
+                let rest = src.substring(idx + 3);
+                const q = rest.indexOf('?');
+                if (q !== -1) rest = rest.substring(0, q);
+                try { return decodeURIComponent(rest); } catch { return rest; }
+              }
+            }
+            return src;
+          };
+          const clean = srcToFilePath(currentTrackSrc);
           const track = get().collaboration.getTrackByFilePath(filePath);
-          
-          if (track && currentTrackSrc === `/test-audio/${track.filePath}`) {
+          if (track && (clean === track.filePath || (track.optimizedPath && clean === track.optimizedPath))) {
             if (DEBUG_LOGS) console.log('updating playingFavourite to false for currently playing track');
             engine.setPlayingFavourite(false);
-            
-            // update currentTrackId to reflect the new position in regular tracks
-            const newRegularIndex = get().collaboration.regularTracks.findIndex(t => t.filePath === track.filePath);
+            const nextRegular = updateRegularTracks(get().collaboration.allTracks, updatedFavorites);
+            const newRegularIndex = nextRegular.findIndex(t => t.filePath === track.filePath);
             if (newRegularIndex !== -1) {
               if (DEBUG_LOGS) console.log('updating currentTrackId to:', newRegularIndex);
               engine.updateCurrentTrackId(newRegularIndex);

@@ -49,7 +49,7 @@ export function Mixer({ state }: MixerProps) {
     getTimeSliderValue
   } = useAppStore(state => state.playback);
 
-  const { regularTracks, favorites, pastStageTracks, isTrackFavorite } = useAppStore(state => state.collaboration);
+  const { regularTracks, favorites, pastStageTracks } = useAppStore(state => state.collaboration);
 
   const handleSubmissionVolumeChangeEvent = (e: React.ChangeEvent<HTMLInputElement>) => {
     const volume = parseFloat(e.target.value);
@@ -68,41 +68,19 @@ export function Mixer({ state }: MixerProps) {
 
   // calculate canGoBack and canGoForward from state
   const pastStagePlayback = state.playerController.pastStagePlayback;
+  const isPlayingFavourite = state.playerController.playingFavourite;
   const currentTrackIndex = state.playerController.currentTrackId;
-  
   let canGoBack = false;
   let canGoForward = false;
-  
   if (pastStagePlayback) {
     canGoBack = currentTrackIndex > 0;
     canGoForward = currentTrackIndex < pastStageTracks.length - 1;
+  } else if (isPlayingFavourite) {
+    canGoBack = currentTrackIndex > 0;
+    canGoForward = currentTrackIndex < favorites.length - 1;
   } else {
-    // determine if in favorites mode by checking currently playing track
-    const currentTrackSrc = state.player1.source;
-    if (!currentTrackSrc) {
-      canGoBack = false;
-      canGoForward = false;
-    } else {
-      const currentTrackFilePath = currentTrackSrc.replace('/test-audio/', '');
-      const isCurrentTrackFavorite = isTrackFavorite(currentTrackFilePath);
-      
-      if (isCurrentTrackFavorite) {
-        // check navigation within favorites array
-        const favoriteIndex = favorites.findIndex(track => track.filePath === currentTrackFilePath);
-        canGoBack = favoriteIndex > 0;
-        canGoForward = favoriteIndex < favorites.length - 1;
-              } else {
-          // check navigation within regular tracks
-        const currentTrack = regularTracks[currentTrackIndex];
-        if (currentTrack) {
-          canGoBack = currentTrackIndex > 0;
-          canGoForward = currentTrackIndex < regularTracks.length - 1;
-        } else {
-          canGoBack = false;
-          canGoForward = false;
-        }
-      }
-    }
+    canGoBack = currentTrackIndex > 0;
+    canGoForward = currentTrackIndex < regularTracks.length - 1;
   }
 
   return (
