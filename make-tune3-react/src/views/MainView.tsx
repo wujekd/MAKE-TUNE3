@@ -79,7 +79,7 @@ export function MainView() {
     const onListened = (trackSrc: string) => {
       const clean = srcToFilePath(trackSrc);
       const { collaboration } = useAppStore.getState();
-      const track = collaboration.regularTracks.find(t => t.filePath === clean);
+      const track = collaboration.allTracks.find(t => t.filePath === clean || t.optimizedPath === clean);
       if (track) {
         collaboration.markAsListened(track.filePath);
       }
@@ -87,7 +87,9 @@ export function MainView() {
     const isListened = (trackSrc: string) => {
       const clean = srcToFilePath(trackSrc);
       const { collaboration } = useAppStore.getState();
-      return collaboration.isTrackListened(clean);
+      const track = collaboration.allTracks.find(t => t.filePath === clean || t.optimizedPath === clean);
+      if (!track) return false;
+      return collaboration.isTrackListened(track.filePath);
     };
     engine.setTrackListenedCallback(onListened, 7, isListened);
     return () => {
