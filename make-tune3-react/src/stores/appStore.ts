@@ -31,7 +31,7 @@ interface AppState {
     user: User | null;
     loading: boolean;
     signIn: (email: string, password: string) => Promise<void>;
-    signUp: (email: string, password: string) => Promise<void>;
+    signUp: (email: string, password: string, username?: string) => Promise<void>;
     signOut: () => Promise<void>;
     resetPassword: (email: string) => Promise<void>;
     signInWithGoogle: () => Promise<void>;
@@ -186,10 +186,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     },
 
-    signUp: async (email, password) => {
+    signUp: async (email, password, username) => {
       try {
         set(state => ({ auth: { ...state.auth, loading: true } }));
-        const userProfile = await AuthService.registerWithEmail(email, password);
+        const userProfile = await AuthService.registerWithEmail(email, password, username);
         set(state => ({ auth: { ...state.auth, user: userProfile, loading: false } }));
       } catch (error: any) {
         set(state => ({ auth: { ...state.auth, loading: false } }));

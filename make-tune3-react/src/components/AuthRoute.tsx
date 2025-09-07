@@ -12,7 +12,8 @@ export function AuthRoute() {
 
   useEffect(() => {
     if (user) {
-      navigate('/collabs', { replace: true });
+      if (!user.username) navigate('/onboarding/username', { replace: true });
+      else navigate('/collabs', { replace: true });
     }
   }, [user, navigate]);
   return <AuthView initialMode={initialMode as any} onBackToMain={() => { setShowAuth(false); navigate('/collabs'); }} />

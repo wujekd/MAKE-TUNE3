@@ -8,6 +8,7 @@ interface RegisterFormProps {
 
 export function RegisterForm({ onSwitchToSignIn }: RegisterFormProps) {
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,7 +28,7 @@ export function RegisterForm({ onSwitchToSignIn }: RegisterFormProps) {
     setLoading(true);
 
     try {
-      await signUp(email, password);
+      await signUp(email, password, username);
     } catch (error: any) {
       setError(error.message || 'Failed to create account');
     } finally {
@@ -41,6 +42,18 @@ export function RegisterForm({ onSwitchToSignIn }: RegisterFormProps) {
       {error && <div className="error-message">{error}</div>}
       
       <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label htmlFor="username">Username</label>
+          <input
+            type="text"
+            id="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            placeholder="username"
+          />
+        </div>
+
         <div className="form-group">
           <label htmlFor="email">Email</label>
           <input

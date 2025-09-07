@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LoginForm } from '../../components/auth/LoginForm';
 import { RegisterForm } from '../../components/auth/RegisterForm';
+import { ForgotPassword } from '../../components/auth/ForgotPassword';
 import { useAppStore } from '../../stores/appStore';
 import type { AuthMode } from '../../types/auth';
 
@@ -36,10 +37,12 @@ export function AuthView({ onBackToMain, initialMode = 'login' }: AuthViewProps)
             onSwitchToSignUp={() => setMode('register')}
             onSwitchToForgotPassword={() => setMode('forgotPassword')}
           />
-        ) : (
+        ) : mode === 'register' ? (
           <RegisterForm 
             onSwitchToSignIn={() => setMode('login')}
           />
+        ) : (
+          <ForgotPassword onBackToSignIn={() => setMode('login')} />
         )}
       </div>
     </div>
