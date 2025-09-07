@@ -94,7 +94,12 @@ export function MyProjects() {
                     setProjects(prev => [{ id: p.id, name: p.name, createdAt: (p as any).createdAt }, ...prev]);
                     setShowForm(false); setName(''); setDescription('');
                   } catch (e: any) {
-                    setFormError(e?.message || 'failed to create');
+                    const msg = e?.message || 'failed to create';
+                    if (/name already taken/i.test(msg)) {
+                      setFormError('Name already taken. Please choose a different name.');
+                    } else {
+                      setFormError(msg);
+                    }
                   } finally {
                     setSaving(false);
                   }

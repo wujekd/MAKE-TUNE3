@@ -10,12 +10,15 @@ service firebase.storage {
       allow read: if true;
       allow write: if isSignedIn()
         && fileName.matches('^backing\\..+$')
-        && request.resource.contentType.matches('audio/.*');
+        && request.resource.contentType.matches('audio/.*')
+        && request.resource.size < 131072000; // < 125MB
     }
 
     match /collabs/{collabId}/submissions/{fileId} {
       allow read: if true;
-      allow write: if isSignedIn() && request.resource.contentType.matches('audio/.*');
+      allow write: if isSignedIn()
+        && request.resource.contentType.matches('audio/.*')
+        && request.resource.size < 131072000; // < 125MB
     }
 
     // Optimized/transcoded submission files

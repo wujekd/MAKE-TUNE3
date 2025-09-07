@@ -4,6 +4,7 @@ import {initializeApp} from "firebase-admin/app";
 import {getFirestore, Timestamp} from "firebase-admin/firestore";
 import {setGlobalOptions} from "firebase-functions";
 import {onObjectFinalized} from "firebase-functions/v2/storage";
+import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {getStorage} from "firebase-admin/storage";
 import * as path from "path";
 import * as os from "os";
@@ -210,4 +211,44 @@ export const transcodeLargeToMp3 = onObjectFinalized({region: "europe-west1"}, a
     try { fs.unlinkSync(tmpIn); } catch {}
     try { fs.unlinkSync(tmpOut); } catch {}
   }
+});
+
+const buildNameKey = (name: string) =>
+  name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/[^a-z0-9 ]/g, "")
+    .replace(/\s/g, "-");
+
+export const createProjectWithUniqueName = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+  const nameRaw = String(request.data?.name ?? "").trim();
+  const descriptionRaw = String(request.data?.description ?? "");
+  if (!nameRaw) throw new HttpsError("invalid-argument", "name required");
+  const nameKey = buildNameKey(nameRaw);
+  const result = await db.runTransaction(async (tx) => {
+    const idxRef = db.collection("projectNameIndex").doc(nameKey);
+    const idxSnap = await tx.get(idxRef);
+    if (idxSnap.exists) throw new HttpsError("already-exists", "name taken");
+    const now = Timestamp.now();
+    const projRef = db.collection("projects").doc();
+    const projectData = {
+      name: nameRaw,
+      description: descriptionRaw,
+      createdAt: now,
+      updatedAt: now,
+      ownerId: uid,
+      isActive: true,
+      pastCollaborations: [],
+      nameKey,
+    } as any;
+    tx.set(projRef, projectData);
+    tx.set(idxRef, {projectId: projRef.id, ownerId: uid, createdAt: now});
+    return {id: projRef.id, ...(projectData as any)};
+  });
+  return result;
 });

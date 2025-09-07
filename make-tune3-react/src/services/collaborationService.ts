@@ -12,7 +12,8 @@ import {
   Timestamp, 
   arrayUnion
 } from 'firebase/firestore';
-import { db, storage } from './firebase';
+import app, { db, storage } from './firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { ref, uploadBytesResumable, type UploadTaskSnapshot } from 'firebase/storage';
 import { DEBUG_ALLOW_MULTIPLE_SUBMISSIONS } from '../config';
 import type { 
@@ -26,7 +27,7 @@ import type {
   SubmissionSettings
 } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
-import { runTransaction, serverTimestamp } from 'firebase/firestore';
+ 
 
 export class CollaborationService {
   private static getPreferredAudioExtension(file: File): string {
@@ -104,6 +105,9 @@ export class CollaborationService {
     collaborationId: string,
     onProgress?: (percent: number) => void
   ): Promise<string> {
+    if (file.size >= 131072000) {
+      throw new Error('File too large. Maximum size is 125MB.');
+    }
     const ext = this.getPreferredAudioExtension(file);
     const path = `collabs/${collaborationId}/backing.${ext}`;
     const r = ref(storage, path);
@@ -141,6 +145,9 @@ export class CollaborationService {
     onProgress?: (percent: number) => void,
     settings?: SubmissionSettings
   ): Promise<{ filePath: string; submissionId: string }> {
+    if (file.size >= 131072000) {
+      throw new Error('File too large. Maximum size is 125MB.');
+    }
     const exists = await this.hasUserSubmitted(collaborationId, userId);
     if (exists) {
       throw new Error('already submitted');
@@ -542,34 +549,34 @@ export class CollaborationService {
 
   // create project with unique name enforcement
   static async createProjectWithUniqueName(params: { name: string; description?: string; ownerId: string }): Promise<Project> {
-    const nameKey = this.buildNameKey(params.name);
-    const projectsCol = collection(db, COLLECTIONS.PROJECTS);
-    const indexDocRef = doc(db, COLLECTIONS.PROJECT_NAME_INDEX, nameKey);
-
-    const result = await runTransaction(db, async (tx) => {
-      const existing = await tx.get(indexDocRef);
-      if (existing.exists()) {
-        throw new Error('name taken');
+    const functions = getFunctions(app, 'europe-west1');
+    const createProject = httpsCallable(functions, 'createProjectWithUniqueName');
+    try {
+      const res: any = await createProject({ name: params.name, description: params.description || '' });
+      const data = res?.data as any;
+      if (data?.id) {
+        const ref = doc(db, COLLECTIONS.PROJECTS, data.id);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          return { ...(snap.data() as any), id: snap.id } as Project;
+        }
+        return {
+          id: data.id,
+          name: params.name,
+          description: params.description || '',
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+          ownerId: params.ownerId,
+          isActive: true,
+          pastCollaborations: []
+        } as any;
       }
-
-      const now = serverTimestamp() as unknown as Timestamp;
-      const projectData: Omit<Project, 'id'> & { nameKey: string } = {
-        name: params.name,
-        description: params.description || '',
-        createdAt: now as any,
-        updatedAt: now as any,
-        ownerId: params.ownerId,
-        isActive: true,
-        pastCollaborations: [],
-        nameKey
-      } as any;
-
-      const projRef = await addDoc(projectsCol, projectData as any);
-      tx.set(indexDocRef, { projectId: projRef.id, ownerId: params.ownerId, createdAt: now });
-
-      return { id: projRef.id, ...(projectData as any) } as Project;
-    });
-
-    return result;
+      throw new Error('failed to create');
+    } catch (e: any) {
+      if (e?.code === 'functions/already-exists' || /name taken/i.test(e?.message || '')) {
+        throw new Error('Name already taken. Please choose a different name.');
+      }
+      throw e;
+    }
   }
 } 
