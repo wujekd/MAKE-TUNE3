@@ -37,7 +37,7 @@ export function CollabListView() {
   // always render view; hydrate when data arrives
 
   return (
-    <div className="row gap-16" style={{ padding: 24 }}>
+    <div className="row gap-16" style={{ padding: 24, background: 'var(--primary1-800)', minHeight: '100%', width: '100%', boxSizing: 'border-box', alignItems: 'flex-start' }}>
       <MyProjects />
       <div className="project-history card" style={{ maxWidth: 420, width: '100%' }}>
         <h4 className="project-history-title card__title">collaborations</h4>

@@ -89,12 +89,13 @@ button {
   font-size:0.85em;
   font-weight: 200;
   font-family: inherit;
-  background-color: #1a3937;
+  background-color: var(--primary1-800);
   cursor: pointer;
   transition: border-color 0.25s;
 }
 button:hover {
-  border-color: #646cff;
+  /* border-color: var(--primary1-600); */
+  border-color: var(--contrast-700);
 }
 button:focus,
 button:focus-visible {

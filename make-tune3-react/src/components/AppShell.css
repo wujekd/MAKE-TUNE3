@@ -1,2 +1,2 @@
 .app-shell__header { position: fixed; top: 0; left: 0; right: 0; height: 36px; display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.1); background: linear-gradient(180deg, #1e2f2f, #0f1a1a); backdrop-filter: blur(4px); z-index: 1000; }
-.app-shell__content { position: absolute; top: 56px; left: 0; right: 0; bottom: 0; }
+.app-shell__content { position: absolute; top: 36px; left: 0; right: 0; bottom: 0; }
