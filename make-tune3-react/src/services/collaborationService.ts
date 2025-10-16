@@ -275,6 +275,13 @@ export class CollaborationService {
   }
 
   // user Collaboration Management
+  static async createUserCollaboration(data: Partial<UserCollaboration> & { userId: UserId; collaborationId: CollaborationId }): Promise<void> {
+    await addDoc(collection(db, COLLECTIONS.USER_COLLABORATIONS), {
+      ...data,
+      lastInteraction: Timestamp.now()
+    } as any);
+  }
+
   static async getUserCollaboration(userId: UserId, collaborationId: CollaborationId): Promise<UserCollaboration | null> {
     const q = query(
       collection(db, COLLECTIONS.USER_COLLABORATIONS),
@@ -312,22 +319,6 @@ export class CollaborationService {
       backingPath,
       downloadedBackingAt: Timestamp.now()
     });
-  }
-
-  static async createUserCollaboration(collaboration: Omit<UserCollaboration, 'createdAt' | 'lastInteraction'>): Promise<UserCollaboration> {
-    const now = Timestamp.now();
-    const collaborationData: UserCollaboration = {
-      ...collaboration,
-      createdAt: now,
-      lastInteraction: now
-    };
-
-    await addDoc(collection(db, COLLECTIONS.USER_COLLABORATIONS), collaborationData);
-    
-    // Add collaboration to user's profile
-    await this.addCollaborationToUser(collaboration.userId, collaboration.collaborationId);
-    
-    return collaborationData;
   }
 
   static async updateUserCollaboration(
@@ -533,6 +524,28 @@ export class CollaborationService {
     );
     const snapshot = await getDocs(q);
     return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Project));
+  }
+
+  // list my recent submission collaborations via callable CF
+  static async listMySubmissionCollabs(): Promise<Array<{
+    projectId: string;
+    projectName: string;
+    collabId: string;
+    collabName: string;
+    status: Collaboration['status'];
+    submissionCloseAt: number | null;
+    votingCloseAt: number | null;
+    backingPath: string;
+    mySubmissionPath: string;
+    winnerPath: string | null;
+    submittedAt: number | null;
+  }>> {
+    const functions = getFunctions(app, 'europe-west1');
+    const getMine = httpsCallable(functions, 'getMySubmissionCollabs');
+    const res: any = await getMine({});
+    const data = (res?.data as any) || {};
+    if (data?.unauthenticated) return [];
+    return Array.isArray(data.items) ? data.items : [];
   }
 
   // normalize name to key

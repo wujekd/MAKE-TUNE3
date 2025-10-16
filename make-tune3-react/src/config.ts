@@ -1,2 +1,2 @@
-export const DEBUG_ALLOW_MULTIPLE_SUBMISSIONS = true;
+export const DEBUG_ALLOW_MULTIPLE_SUBMISSIONS = false;
 
