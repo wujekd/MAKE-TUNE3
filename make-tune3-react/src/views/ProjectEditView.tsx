@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import type { Project, Collaboration } from '../types/collaboration';
 import { CollaborationService } from '../services/collaborationService';
 import '../components/ProjectHistory.css';
-import { CreateCollaboration } from '../components/CreateCollaboration';
+import { CollaborationDetails } from '../components/CollaborationDetails';
 
 export function ProjectEditView() {
   const { projectId } = useParams();
@@ -26,6 +26,7 @@ export function ProjectEditView() {
         if (!mounted) return;
         setProject(p);
         setCollabs(c);
+        console.log(c)
       } catch (e: any) {
         if (mounted) setError(e?.message || 'failed to load');
       } finally {
@@ -104,95 +105,18 @@ export function ProjectEditView() {
         <div className="project-history" style={{ maxWidth: 480, width: '100%', minHeight: 280 }}>
           <h4 className="project-history-title">details</h4>
           <div className="collab-list" style={{ padding: 12 }}>
-            {mode === 'none' && <div style={{ color: 'var(--white)', opacity: 0.8 }}>go on, select something</div>}
-            {mode === 'create' && project && (
-              <CreateCollaboration
-                projectId={project.id}
-                onCreated={(c) => { setCollabs(prev => [c, ...prev]); setSelectedId(c.id); setMode('view'); }}
-              />
-            )}
-            {mode === 'view' && selectedId && (() => {
-              const col = collabs.find(c => c.id === selectedId);
-              if (!col) return <div style={{ color: 'var(--white)' }}>not found</div>;
-              const canEdit = col.status === 'unpublished' && collabs.filter(x => (x as any).createdAt < (col as any).createdAt).every(x => x.status === 'completed');
-              return (
-                <div style={{ color: 'var(--white)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ fontSize: 16, fontWeight: 600 }}>{col.name}</div>
-                  <div style={{ opacity: 0.85 }}>{col.description}</div>
-                  <div style={{ opacity: 0.7, fontSize: 12 }}>status: {col.status}</div>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                    <button disabled={!canEdit} onClick={() => setMode('edit')}>edit</button>
-                    <button disabled={col.status !== 'unpublished'} onClick={async () => {
-                      if (!project) return;
-                      const now = Date.now();
-                      const submissionCloseAt = new Date(now + (col.submissionDuration || 0) * 1000);
-                      const votingCloseAt = new Date(submissionCloseAt.getTime() + (col.votingDuration || 0) * 1000);
-                      await CollaborationService.updateCollaboration(col.id, { status: 'submission', publishedAt: new Date() as any, submissionCloseAt: submissionCloseAt as any, votingCloseAt: votingCloseAt as any });
-                      setCollabs(prev => prev.map(x => x.id === col.id ? { ...x, status: 'submission', publishedAt: new Date() as any, submissionCloseAt: submissionCloseAt as any, votingCloseAt: votingCloseAt as any } as any : x));
-                    }}>publish</button>
-                    <button disabled={col.status !== 'unpublished'} onClick={async () => {
-                      const ok = window.confirm('delete this collaboration?');
-                      if (!ok) return;
-                      await CollaborationService.deleteCollaboration(col.id);
-                      setCollabs(prev => prev.filter(x => x.id !== col.id));
-                      setSelectedId(null); setMode('none');
-                    }}>delete</button>
-                    <button disabled={col.status !== 'completed' || !(col as any).winnerPath} onClick={async () => {
-                      const path = (col as any).winnerPath as string | undefined;
-                      if (!path) return;
-                      try {
-                        const { storage } = await import('../services/firebase');
-                        const { ref, getBlob, getDownloadURL } = await import('firebase/storage');
-                        let filename = path.split('/').pop() || 'winner';
-                        if (path.startsWith('collabs/')) {
-                          const storageRef = ref(storage, path);
-                          const blob = await getBlob(storageRef);
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = filename;
-                          document.body.appendChild(a);
-                          a.click();
-                          a.remove();
-                          URL.revokeObjectURL(url);
-                        } else {
-                          // fallback for absolute URLs
-                          const a = document.createElement('a');
-                          a.href = path;
-                          a.download = filename;
-                          document.body.appendChild(a);
-                          a.click();
-                          a.remove();
-                        }
-                      } catch (e) {
-                        alert('could not download winner');
-                      }
-                    }}>download winner</button>
-                  </div>
-                </div>
-              );
-            })()}
-            {mode === 'edit' && selectedId && project && (() => {
-              const col = collabs.find(c => c.id === selectedId);
-              if (!col) return null;
-              if (col.status !== 'unpublished') return <div style={{ color: 'var(--white)' }}>cannot edit published collaboration</div>;
-              return (
-                <CreateCollaboration
-                  projectId={project.id}
-                  mode="edit"
-                  initial={col}
-                  onCreated={() => {}}
-                  onSaved={(updated) => {
-                    setCollabs(prev => prev.map(x => x.id === updated.id ? updated : x));
-                    setMode('view');
-                  }}
-                />
-              );
-            })()}
+            <CollaborationDetails
+              mode={mode}
+              selectedId={selectedId}
+              collabs={collabs}
+              project={project}
+              onModeChange={setMode}
+              onCollabsUpdate={setCollabs}
+              onSelectedIdChange={setSelectedId}
+            />
           </div>
         </div>
       </div>
     </div>
   );
 }
-

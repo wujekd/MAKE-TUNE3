@@ -134,7 +134,7 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
       <div style={{ display: 'flex', gap: 16 }}>
         <div style={{ flex: 1 }}>
           <Potentiometer
-            label="submission duration (s)"
+            label="Submission duration:"
             value={submissionDuration}
             min={60}
             max={60 * 60 * 24 * 14}
@@ -189,7 +189,7 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
         </div>
         <div style={{ flex: 1 }}>
           <Potentiometer
-            label="voting duration (s)"
+            label="Voting duration:"
             value={votingDuration}
             min={60}
             max={60 * 60 * 24 * 14}
