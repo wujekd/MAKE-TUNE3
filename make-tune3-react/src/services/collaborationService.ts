@@ -15,7 +15,7 @@ import {
 import app, { db, storage } from './firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { ref, uploadBytesResumable, type UploadTaskSnapshot } from 'firebase/storage';
-import { DEBUG_ALLOW_MULTIPLE_SUBMISSIONS } from '../config';
+import { DEBUG_ALLOW_MULTIPLE_SUBMISSIONS, MAX_SUBMISSION_FILE_SIZE } from '../config';
 import type { 
   Project, 
   Collaboration,
@@ -105,8 +105,8 @@ export class CollaborationService {
     collaborationId: string,
     onProgress?: (percent: number) => void
   ): Promise<string> {
-    if (file.size >= 131072000) {
-      throw new Error('File too large. Maximum size is 125MB.');
+    if (file.size >= MAX_SUBMISSION_FILE_SIZE) {
+      throw new Error(`File too large. Maximum size is ${Math.round(MAX_SUBMISSION_FILE_SIZE / 1024 / 1024)}MB.`);
     }
     const ext = this.getPreferredAudioExtension(file);
     const path = `collabs/${collaborationId}/backing.${ext}`;
@@ -141,12 +141,12 @@ export class CollaborationService {
     file: File,
     collaborationId: CollaborationId,
     userId: UserId,
-    title?: string,
     onProgress?: (percent: number) => void,
     settings?: SubmissionSettings
   ): Promise<{ filePath: string; submissionId: string }> {
-    if (file.size >= 131072000) {
-      throw new Error('File too large. Maximum size is 125MB.');
+    
+    if (file.size >= MAX_SUBMISSION_FILE_SIZE) {
+      throw new Error(`File too large. Maximum size is ${Math.round(MAX_SUBMISSION_FILE_SIZE / 1024 / 1024)}MB.`);
     }
     const exists = await this.hasUserSubmitted(collaborationId, userId);
     if (exists) {
@@ -180,7 +180,6 @@ export class CollaborationService {
       collaborationId,
       submissionId,
       path,
-      title: title || '',
       contentType: uploaded.metadata.contentType || file.type,
       size: uploaded.metadata.size || file.size,
       createdAt

@@ -55,8 +55,8 @@ export function SubmissionView() {
     if (!engine) return;
     const handler = async () => {
       await engine.unlock?.();
-      const url = pendingBackingUrlRef.current;
-      if (url) engine.preloadBacking(url);
+      const backingUrl = pendingBackingUrlRef.current;
+      if (backingUrl) engine.preloadBacking(backingUrl);
     };
     window.addEventListener('pointerdown', handler, { once: true });
     window.addEventListener('keydown', handler, { once: true });
@@ -129,4 +129,3 @@ export function SubmissionView() {
     </div>
   );
 }
-

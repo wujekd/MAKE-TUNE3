@@ -51,7 +51,30 @@ export function UploadSubmission({ collaborationId, backingUrl }: { collaboratio
             if (!user || !file) { setError('missing file or auth'); return; }
             setSaving(true); setError(null); setProgress(0);
             try {
-              await CollaborationService.uploadSubmission(file, collaborationId, user.uid, undefined, (p) => setProgress(p));
+              const currentSettings = audioContext?.state ? {
+                eq: {
+                  highshelf: { 
+                    gain: audioContext.state.eq.highshelf.gain, 
+                    frequency: audioContext.state.eq.highshelf.frequency 
+                  },
+                  param2: { 
+                    gain: audioContext.state.eq.param2.gain, 
+                    frequency: audioContext.state.eq.param2.frequency, 
+                    Q: audioContext.state.eq.param2.Q 
+                  },
+                  param1: { 
+                    gain: audioContext.state.eq.param1.gain, 
+                    frequency: audioContext.state.eq.param1.frequency, 
+                    Q: audioContext.state.eq.param1.Q 
+                  },
+                  highpass: { 
+                    frequency: audioContext.state.eq.highpass.frequency, 
+                    enabled: audioContext.state.eq.highpass.frequency > 20 
+                  }
+                },
+                volume: { gain: audioContext.state.player1.volume }
+              } : undefined;
+              await CollaborationService.uploadSubmission(file, collaborationId, user.uid, (p) => setProgress(p), currentSettings);
               setFile(null);
               if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
             } catch (e: any) {
