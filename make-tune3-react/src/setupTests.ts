@@ -1,4 +1,12 @@
+// src/setupTests.ts
 import '@testing-library/jest-dom';
+
+// Declare global types
+declare global {
+  var firebaseApp: any;
+  var firebaseDb: any;
+  var firebaseStorage: any;
+}
 
 // Mock HTML Audio Element
 Object.defineProperty(window, 'HTMLAudioElement', {
@@ -18,20 +26,42 @@ Object.defineProperty(window, 'HTMLAudioElement', {
   }
 });
 
-// Mock Web Audio API
 Object.defineProperty(window, 'AudioContext', {
   writable: true,
   value: class MockAudioContext {
     destination = {};
+    state = 'running';
     
-    createGain = () => ({
+    createGain = () => ({ 
+      connect: () => {}, 
+      disconnect: () => {},
+      gain: { value: 1 } 
+    });
+    
+    createMediaElementSource = () => ({ 
       connect: () => {},
-      gain: { value: 1 }
+      disconnect: () => {}
     });
     
-    createMediaElementSource = () => ({
-      connect: () => {}
+    createBiquadFilter = () => ({ 
+      connect: () => {},
+      disconnect: () => {},
+      type: 'peaking',
+      frequency: { value: 0 },
+      Q: { value: 0 },
+      gain: { value: 0 }
     });
+    
+    createAnalyser = () => ({
+      connect: () => {},
+      disconnect: () => {},
+      fftSize: 2048,
+      smoothingTimeConstant: 0.8,
+      getByteFrequencyData: () => {},
+      getByteTimeDomainData: () => {}
+    });
+    
+    resume = () => Promise.resolve();
   }
 });
 
@@ -39,4 +69,31 @@ Object.defineProperty(window, 'AudioContext', {
 Object.defineProperty(window, 'webkitAudioContext', {
   writable: true,
   value: window.AudioContext
-}); 
+});
+
+// Firebase setup for integration tests
+import { initializeApp } from 'firebase/app';
+import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
+import { connectStorageEmulator, getStorage } from 'firebase/storage';
+
+// Initialize Firebase for testing
+const app = initializeApp({
+  projectId: 'test-project',
+  apiKey: 'test-api-key',
+  authDomain: 'test-project.firebaseapp.com',
+  storageBucket: 'test-project.appspot.com',
+});
+
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+// Connect to emulators only in test environment
+if (process.env.NODE_ENV === 'test') {
+  connectFirestoreEmulator(db, 'localhost', 8080);
+  connectStorageEmulator(storage, 'localhost', 9199);
+}
+
+// Make Firebase available globally for tests
+globalThis.firebaseApp = app;
+globalThis.firebaseDb = db;
+globalThis.firebaseStorage = storage;

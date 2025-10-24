@@ -32,5 +32,4 @@ const ProjectHistory = () => {
     </div>
   );
 };
-
 export default ProjectHistory; 

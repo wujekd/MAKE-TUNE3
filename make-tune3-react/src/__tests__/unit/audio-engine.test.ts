@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AudioEngine } from '../../audio-services/audio-engine';
 
 // Mock HTML Audio Elements
@@ -7,11 +8,11 @@ const createMockAudioElement = () => ({
   duration: 0,
   volume: 1,
   paused: true,
-  play: jest.fn().mockResolvedValue(undefined),
-  pause: jest.fn(),
-  load: jest.fn(),
-  addEventListener: jest.fn(),
-  removeEventListener: jest.fn()
+  play: vi.fn().mockResolvedValue(undefined),
+  pause: vi.fn(),
+  load: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn()
 });
 
 describe('AudioEngine', () => {
@@ -32,16 +33,16 @@ describe('AudioEngine', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('initialization', () => {
-    test('should initialize with two audio elements', () => {
+    it('should initialize with two audio elements', () => {
       expect(audioEngine).toBeDefined();
       expect(audioEngine.getState()).toBeDefined();
     });
 
-    test('should have initial state with default values', () => {
+    it('should have initial state with default values', () => {
       const state = audioEngine.getState();
       
       expect(state.player1.isPlaying).toBe(false);
@@ -61,7 +62,7 @@ describe('AudioEngine', () => {
   });
 
   describe('loadSource', () => {
-    test('should load source for player 1', () => {
+    it('should load source for player 1', () => {
       const testSrc = '/test-audio/sample.mp3';
       
       audioEngine.loadSource(1, testSrc);
@@ -70,7 +71,7 @@ describe('AudioEngine', () => {
       expect(mockPlayer1.load).toHaveBeenCalled();
     });
 
-    test('should load source for player 2', () => {
+    it('should load source for player 2', () => {
       const testSrc = '/test-audio/backing.mp3';
       
       audioEngine.loadSource(2, testSrc);
@@ -79,7 +80,7 @@ describe('AudioEngine', () => {
       expect(mockPlayer2.load).toHaveBeenCalled();
     });
 
-    test('should update state source property', () => {
+    it('should update state source property', () => {
       const testSrc = '/test-audio/sample.mp3';
       
       audioEngine.loadSource(1, testSrc);
@@ -88,7 +89,7 @@ describe('AudioEngine', () => {
       expect(state.player1.source).toBe(testSrc);
     });
 
-    test('should reset player2 currentTime when loading player1', () => {
+    it('should reset player2 currentTime when loading player1', () => {
       mockPlayer2.currentTime = 10; // Set some initial time
       
       audioEngine.loadSource(1, '/test-audio/sample.mp3');
@@ -98,11 +99,11 @@ describe('AudioEngine', () => {
   });
 
   describe('playSubmission', () => {
-    test('should load both sources and start playback', () => {
+    it('should load both sources and start playback', async () => {
       const submissionSrc = '/test-audio/submission.mp3';
       const backingSrc = '/test-audio/backing.mp3';
       
-      audioEngine.playSubmission(submissionSrc, backingSrc);
+      await audioEngine.playSubmission(submissionSrc, backingSrc, 0);
       
       expect(mockPlayer1.src).toBe(submissionSrc);
       expect(mockPlayer2.src).toBe(backingSrc);
@@ -110,8 +111,8 @@ describe('AudioEngine', () => {
       expect(mockPlayer2.play).toHaveBeenCalled();
     });
 
-    test('should update state to playing', () => {
-      audioEngine.playSubmission('/test-audio/submission.mp3', '/test-audio/backing.mp3');
+    it('should update state to playing', async () => {
+      await audioEngine.playSubmission('/test-audio/submission.mp3', '/test-audio/backing.mp3', 0);
       
       const state = audioEngine.getState();
       expect(state.player1.isPlaying).toBe(true);
@@ -120,18 +121,18 @@ describe('AudioEngine', () => {
   });
 
   describe('playPastStage', () => {
-    test('should load source to player 2 and start playback', () => {
+    it('should load source to player 2 and start playback', async () => {
       const pastStageSrc = '/test-audio/past-stage.mp3';
       
-      audioEngine.playPastStage(pastStageSrc);
+      await audioEngine.playPastStage(pastStageSrc, 0);
       
       expect(mockPlayer2.src).toBe(pastStageSrc);
       expect(mockPlayer1.pause).toHaveBeenCalled();
       expect(mockPlayer2.play).toHaveBeenCalled();
     });
 
-    test('should update player2 state to playing', () => {
-      audioEngine.playPastStage('/test-audio/past-stage.mp3');
+    it('should update player2 state to playing', async () => {
+      await audioEngine.playPastStage('/test-audio/past-stage.mp3', 0);
       
       const state = audioEngine.getState();
       expect(state.player2.isPlaying).toBe(true);
@@ -139,9 +140,9 @@ describe('AudioEngine', () => {
   });
 
   describe('pause', () => {
-    test('should pause both players', () => {
+    it('should pause both players', () => {
       // First start playing
-      audioEngine.playSubmission('/test-audio/submission.mp3', '/test-audio/backing.mp3');
+      audioEngine.playSubmission('/test-audio/submission.mp3', '/test-audio/backing.mp3', 0);
       
       // Then pause
       audioEngine.pause();
@@ -150,9 +151,9 @@ describe('AudioEngine', () => {
       expect(mockPlayer2.pause).toHaveBeenCalled();
     });
 
-    test('should update state to not playing', () => {
+    it('should update state to not playing', () => {
       // First start playing
-      audioEngine.playSubmission('/test-audio/submission.mp3', '/test-audio/backing.mp3');
+      audioEngine.playSubmission('/test-audio/submission.mp3', '/test-audio/backing.mp3', 0);
       
       // Then pause
       audioEngine.pause();
@@ -164,21 +165,21 @@ describe('AudioEngine', () => {
   });
 
   describe('volume control', () => {
-    test('should set volume for player 1', () => {
+    it('should set volume for player 1', () => {
       audioEngine.setVolume(1, 0.5);
       
       const state = audioEngine.getState();
       expect(state.player1.volume).toBe(0.5);
     });
 
-    test('should set volume for player 2', () => {
+    it('should set volume for player 2', () => {
       audioEngine.setVolume(2, 0.7);
       
       const state = audioEngine.getState();
       expect(state.player2.volume).toBe(0.7);
     });
 
-    test('should set master volume', () => {
+    it('should set master volume', () => {
       audioEngine.setMasterVolume(0.8);
       
       const state = audioEngine.getState();
@@ -187,8 +188,8 @@ describe('AudioEngine', () => {
   });
 
   describe('state callbacks', () => {
-    test('should call state change callback when state updates', () => {
-      const mockCallback = jest.fn();
+    it('should call state change callback when state updates', () => {
+      const mockCallback = vi.fn();
       
       audioEngine.setCallbacks(mockCallback);
       
@@ -203,4 +204,4 @@ describe('AudioEngine', () => {
       );
     });
   });
-}); 
+});

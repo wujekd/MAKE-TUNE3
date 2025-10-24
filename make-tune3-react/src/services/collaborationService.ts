@@ -105,6 +105,7 @@ export class CollaborationService {
     collaborationId: string,
     onProgress?: (percent: number) => void
   ): Promise<string> {
+    
     if (file.size >= MAX_SUBMISSION_FILE_SIZE) {
       throw new Error(`File too large. Maximum size is ${Math.round(MAX_SUBMISSION_FILE_SIZE / 1024 / 1024)}MB.`);
     }
@@ -129,11 +130,11 @@ export class CollaborationService {
   }
 
   static async hasUserSubmitted(collaborationId: CollaborationId, userId: UserId): Promise<boolean> {
+    if (DEBUG_ALLOW_MULTIPLE_SUBMISSIONS) return false;
     const collabRef = doc(db, COLLECTIONS.COLLABORATIONS, collaborationId);
     const snap = await getDoc(collabRef);
     const data = snap.exists() ? (snap.data() as Collaboration) : null;
     const list = (data && Array.isArray((data as any).participantIds)) ? (data as any).participantIds as string[] : [];
-    if (DEBUG_ALLOW_MULTIPLE_SUBMISSIONS) return false;
     return list.includes(userId);
   }
 
