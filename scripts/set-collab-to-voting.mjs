@@ -1,6 +1,9 @@
 import { createRequire } from 'module';
 import { pathToFileURL } from 'url';
 import { resolve } from 'path';
+import { config } from 'dotenv';
+
+config({ path: resolve(process.cwd(), 'make-tune3-react', '.env') });
 
 const nodeModulesPath = resolve(process.cwd(), 'make-tune3-react', 'node_modules');
 const require = createRequire(pathToFileURL(nodeModulesPath + '/').href);
@@ -9,12 +12,12 @@ const { initializeApp } = require('firebase/app');
 const { getFirestore, doc, updateDoc, Timestamp } = require('firebase/firestore');
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDI7qgK0u9rfCkB2o3tKdwZxeVzW2YN93Q",
-  authDomain: "make-tunes.firebaseapp.com",
-  projectId: "make-tunes",
-  storageBucket: "make-tunes.firebasestorage.app",
-  messagingSenderId: "529897726529",
-  appId: "1:529897726529:web:bb5f8fdc5f94e1c2ec12a1"
+  apiKey: process.env.VITE_FIREBASE_API_KEY,
+  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.VITE_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
