@@ -23,6 +23,14 @@
         { "fieldPath": "collaborationId", "order": "ASCENDING" },
         { "fieldPath": "finalVote", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "submissionUsers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Collaboration } from '../types/collaboration';
-import { CollaborationService } from '../services/collaborationService';
+import { CollaborationService, SubmissionService } from '../services';
 import { Potentiometer } from './Potentiometer';
 // removed AnalogVUMeter
 import { DeskToggle } from './DeskToggle';
@@ -74,7 +74,7 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
         let updated: Collaboration = { ...initial, name: trimmed, description, submissionDuration, votingDuration, requiresModeration } as any;
         if (backingFile) {
           setProgress(0);
-          const backingPath = await CollaborationService.uploadBackingTrack(backingFile, initial.id, (p) => setProgress(p));
+          const backingPath = await SubmissionService.uploadBackingTrack(backingFile, initial.id, (p) => setProgress(p));
           await CollaborationService.updateCollaboration(initial.id, { backingTrackPath: backingPath });
           updated = { ...updated, backingTrackPath: backingPath } as any;
         }
@@ -95,7 +95,7 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
         } as any);
         if (backingFile) {
           setProgress(0);
-          const backingPath = await CollaborationService.uploadBackingTrack(backingFile, collab.id, (p) => setProgress(p));
+          const backingPath = await SubmissionService.uploadBackingTrack(backingFile, collab.id, (p) => setProgress(p));
           await CollaborationService.updateCollaboration(collab.id, { backingTrackPath: backingPath });
           (collab as any).backingTrackPath = backingPath;
         }

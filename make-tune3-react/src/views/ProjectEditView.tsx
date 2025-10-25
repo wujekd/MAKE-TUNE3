@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { Project, Collaboration } from '../types/collaboration';
-import { CollaborationService } from '../services/collaborationService';
+import { ProjectService, CollaborationService } from '../services';
 import '../components/ProjectHistory.css';
 import { CollaborationDetails } from '../components/CollaborationDetails';
 
@@ -20,7 +20,7 @@ export function ProjectEditView() {
     (async () => {
       try {
         if (!projectId) throw new Error('missing project id');
-        const p = await CollaborationService.getProject(projectId);
+        const p = await ProjectService.getProject(projectId);
         if (!p) throw new Error('project not found');
         const c = await CollaborationService.getCollaborationsByProject(projectId);
         if (!mounted) return;
@@ -47,7 +47,7 @@ export function ProjectEditView() {
               const ok = window.confirm('delete this project? this cannot be undone');
               if (!ok) return;
               try {
-                await CollaborationService.deleteProject(project.id);
+                await ProjectService.deleteProject(project.id);
                 navigate('/collabs');
               } catch (e) {
                 alert('failed to delete project');

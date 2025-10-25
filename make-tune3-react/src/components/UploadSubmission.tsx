@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useContext } from 'react';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { useAppStore } from '../stores/appStore';
-import { CollaborationService } from '../services/collaborationService';
+import { SubmissionService } from '../services';
 
 export function UploadSubmission({ collaborationId, backingUrl }: { collaborationId: string; backingUrl: string }) {
   const audioContext = useContext(AudioEngineContext);
@@ -74,7 +74,7 @@ export function UploadSubmission({ collaborationId, backingUrl }: { collaboratio
                 },
                 volume: { gain: audioContext.state.player1.volume }
               } : undefined;
-              await CollaborationService.uploadSubmission(file, collaborationId, user.uid, (p) => setProgress(p), currentSettings);
+              await SubmissionService.uploadSubmission(file, collaborationId, user.uid, (p) => setProgress(p), currentSettings);
               setFile(null);
               if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
             } catch (e: any) {

@@ -20,7 +20,7 @@ import {
 import type { User as FirebaseUser } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { AuthService } from '../services/authService';
-import { CollaborationService } from '../services/collaborationService';
+import { CollaborationServiceLegacy as CollaborationService } from '../services';
 import { storage } from '../services/firebase';
 import { ref, getDownloadURL } from 'firebase/storage';
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Collaboration, Project } from '../types/collaboration';
-import { CollaborationService } from '../services/collaborationService';
+import { CollaborationService } from '../services';
 import { CreateCollaboration } from './CreateCollaboration';
 
 interface CollaborationDetailsProps {

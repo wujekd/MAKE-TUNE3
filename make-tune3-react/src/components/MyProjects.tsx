@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '../stores/appStore';
-import { CollaborationService } from '../services/collaborationService';
+import { ProjectService } from '../services';
 import './ProjectHistory.css';
 import { Link } from 'react-router-dom';
 
@@ -22,7 +22,7 @@ export function MyProjects() {
     setLoading(true);
     (async () => {
       try {
-        const list = await CollaborationService.listUserProjects(user.uid);
+        const list = await ProjectService.listUserProjects(user.uid);
         if (mounted) setProjects(list);
       } catch (e: any) {
         if (mounted) setError(e?.message || 'failed to load');
@@ -108,7 +108,7 @@ export function MyProjects() {
                       if (description.length > 500) { setFormError('description too long'); return; }
                       setSaving(true); setFormError(null);
                       try {
-                        const p = await CollaborationService.createProjectWithUniqueName({ name: trimmed, description, ownerId: user.uid });
+                        const p = await ProjectService.createProjectWithUniqueName({ name: trimmed, description, ownerId: user.uid });
                         setProjects(prev => [{ id: p.id, name: p.name, createdAt: (p as any).createdAt }, ...prev]);
                         setShowForm(false); setName(''); setDescription('');
                       } catch (e: any) {

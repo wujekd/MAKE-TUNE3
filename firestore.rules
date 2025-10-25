@@ -3,29 +3,71 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function isSignedIn() { return request.auth != null; }
     function isOwner(project) { return isSignedIn() && project.data.ownerId == request.auth.uid; }
-
-    // projects: public read, only owner write
-    match /projects/{projectId} {
-      allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isOwner(resource);
+    function validateProjectData(data) {
+      return data.keys().hasAll(['name', 'description', 'ownerId', 'isActive', 'pastCollaborations', 'createdAt', 'updatedAt'])
+        && data.name is string && data.name.size() >= 3 && data.name.size() <= 100
+        && data.description is string && data.description.size() >= 10 && data.description.size() <= 500
+        && data.ownerId is string
+        && data.isActive is bool
+        && data.pastCollaborations is list
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
     }
 
-    // collaborations: public read
+    function validateCollaborationData(data) {
+      let validStatuses = ['draft', 'published', 'submission', 'voting', 'completed', 'unpublished'];
+      return data.keys().hasAll(['projectId', 'name', 'status', 'createdAt', 'updatedAt'])
+        && data.projectId is string
+        && data.name is string && data.name.size() >= 3 && data.name.size() <= 100
+        && data.status is string && data.status in validStatuses
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && (!('participantIds' in data) || data.participantIds is list)
+        && (!('submissions' in data) || data.submissions is list)
+        && (!('submissionPaths' in data) || data.submissionPaths is list)
+        && (!('publishedAt' in data) || data.publishedAt == null || data.publishedAt is timestamp)
+        && (!('backingTrackPath' in data) || data.backingTrackPath is string)
+        && (!('description' in data) || data.description is string)
+        && (!('submissionDuration' in data) || data.submissionDuration is number)
+        && (!('votingDuration' in data) || data.votingDuration is number)
+        && (!('requiresModeration' in data) || data.requiresModeration is bool)
+        && (!('submissionCloseAt' in data) || data.submissionCloseAt is timestamp)
+        && (!('votingCloseAt' in data) || data.votingCloseAt is timestamp)
+        && (!('winnerPath' in data) || data.winnerPath is string);
+    }
+
+    match /projects/{projectId} {
+      allow read: if true;
+      allow create: if isSignedIn() 
+        && request.resource.data.ownerId == request.auth.uid
+        && validateProjectData(request.resource.data);
+      allow update: if isOwner(resource)
+        && validateProjectData(request.resource.data)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isOwner(resource);
+    }
+
     match /collaborations/{collabId} {
       allow read: if true;
 
-      // owner can update anything
-      allow update, delete: if isOwner(get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)));
-      allow create: if isOwner(get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)));
+      allow create: if isSignedIn()
+        && exists(/databases/$(database)/documents/projects/$(request.resource.data.projectId))
+        && get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)).data.ownerId == request.auth.uid
+        && validateCollaborationData(request.resource.data);
 
-      // participants may append to participantIds and submissions only (append-only)
-      allow update: if isSignedIn() &&
-        // participantIds append-only
-        request.resource.data.participantIds.size() >= resource.data.participantIds.size() &&
-        resource.data.participantIds.every(id, idx in resource.data.participantIds) == request.resource.data.participantIds[idx] &&
-        // submissions append-only
-        request.resource.data.submissions.size() >= resource.data.submissions.size();
+      allow update: if get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.ownerId == request.auth.uid
+        && validateCollaborationData(request.resource.data)
+        && request.resource.data.projectId == resource.data.projectId
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow update: if isSignedIn()
+        && validateCollaborationData(request.resource.data)
+        && request.resource.data.projectId == resource.data.projectId
+        && request.resource.data.participantIds.size() >= resource.data.participantIds.size()
+        && request.resource.data.submissions.size() >= resource.data.submissions.size();
+
+      allow delete: if get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.ownerId == request.auth.uid;
     }
 
     // users: each user can read/write their own profile
@@ -61,4 +103,3 @@ service cloud.firestore {
     }
   }
 }
-

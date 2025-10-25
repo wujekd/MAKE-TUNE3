@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { storage } from '../services/firebase';
 import { ref, getBlob } from 'firebase/storage';
-import { CollaborationService } from '../services/collaborationService';
+import { UserService } from '../services';
 
 export function DownloadBacking({ userId, collaborationId, backingPath, onDownloaded }: { userId: string; collaborationId: string; backingPath: string; onDownloaded?: () => void }) {
   const [downloading, setDownloading] = useState(false);
@@ -30,7 +30,7 @@ export function DownloadBacking({ userId, collaborationId, backingPath, onDownlo
             a.click();
             a.remove();
             URL.revokeObjectURL(url);
-            await CollaborationService.markBackingDownloaded(userId, collaborationId, backingPath);
+            await UserService.markBackingDownloaded(userId, collaborationId, backingPath);
             onDownloaded?.();
           } catch (e: any) {
             setError(e?.message || 'download failed');

@@ -5,7 +5,7 @@ import { Mixer } from '../components/Mixer';
 import './MainView.css';
 import ProjectHistory from '../components/ProjectHistory';
 import '../components/ProjectHistory.css';
-import { CollaborationService } from '../services/collaborationService';
+import { UserService, SubmissionService } from '../services';
 import { DownloadBacking } from '../components/DownloadBacking';
 import { UploadSubmission } from '../components/UploadSubmission';
 import { storage } from '../services/firebase';
@@ -75,7 +75,7 @@ export function SubmissionView() {
   useEffect(() => {
     (async () => {
       if (!user || !currentCollaboration) { setHasDownloaded(true); return; }
-      const ok = await CollaborationService.hasDownloadedBacking(user.uid, currentCollaboration.id);
+      const ok = await UserService.hasDownloadedBacking(user.uid, currentCollaboration.id);
       setHasDownloaded(ok);
     })();
   }, [user?.uid, currentCollaboration?.id]);
@@ -83,7 +83,7 @@ export function SubmissionView() {
   useEffect(() => {
     (async () => {
       if (!user || !currentCollaboration) { setHasSubmitted(false); return; }
-      const submitted = await CollaborationService.hasUserSubmitted(currentCollaboration.id, user.uid);
+      const submitted = await SubmissionService.hasUserSubmitted(currentCollaboration.id, user.uid);
       setHasSubmitted(submitted);
     })();
   }, [user?.uid, currentCollaboration?.id]);

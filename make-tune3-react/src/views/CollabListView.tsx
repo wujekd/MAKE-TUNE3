@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Collaboration } from '../types/collaboration';
-import { CollaborationService } from '../services/collaborationService';
+import { CollaborationService } from '../services';
 import { Link } from 'react-router-dom';
 import '../components/ProjectHistory.css';
 import { MyProjects } from '../components/MyProjects';
