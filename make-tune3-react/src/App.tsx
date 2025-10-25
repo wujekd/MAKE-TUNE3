@@ -11,6 +11,7 @@ import { AppShell } from './components/AppShell';
 import { AuthRoute } from './components/AuthRoute';
 import { CompletedView } from './views/CompletedView';
 import { UsernameOnboarding } from './views/UsernameOnboarding';
+import { LandingView } from './views/LandingView';
 
 function App() {
   const { user, loading } = useAppStore(state => state.auth);
@@ -31,7 +32,17 @@ function App() {
     {
       element: <AppShell />,
       children: [
-        { index: true, element: <Navigate to="collabs" replace /> },
+        {
+          index: true,
+          element: <LandingView />,
+          handle: {
+            title: 'Home',
+            breadcrumb: 'Home',
+            actions: ({ navigate }: any) => ([
+              { key: 'open-collabs', label: 'Open workspace', onClick: () => navigate('collabs') }
+            ])
+          }
+        },
         { path: 'onboarding/username', element: <UsernameOnboarding />, handle: { title: 'Choose Username', breadcrumb: 'Username' } },
         {
           path: 'collabs',
