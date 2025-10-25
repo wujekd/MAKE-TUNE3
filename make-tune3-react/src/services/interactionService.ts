@@ -39,9 +39,9 @@ export class InteractionService {
   static async voteForTrack(userId: UserId, collaborationId: CollaborationId, filePath: string): Promise<void> {
     const userCollab = await UserService.getUserCollaboration(userId, collaborationId);
     if (!userCollab) {
-      await UserService.createUserCollaboration({ userId, collaborationId, votedForTrack: filePath });
+      await UserService.createUserCollaboration({ userId, collaborationId, finalVote: filePath });
     } else {
-      await UserService.updateUserCollaboration(userId, collaborationId, { votedForTrack: filePath });
+      await UserService.updateUserCollaboration(userId, collaborationId, { finalVote: filePath });
     }
   }
 
