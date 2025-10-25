@@ -45,7 +45,6 @@ export function AppShell() {
   const signInWithGoogle = useAppStore(s => s.auth.signInWithGoogle);
   const signOut = useAppStore(s => s.auth.signOut);
   const navigate = useNavigate();
-  // no-op
   const proj = useAppStore(s => s.collaboration.currentProject);
   const collab = useAppStore(s => s.collaboration.currentCollaboration);
   const [showDebug, setShowDebug] = useState(false);

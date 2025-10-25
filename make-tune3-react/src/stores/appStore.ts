@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import type { User } from '../types/auth';
-import type { AudioEngine } from '../audio-services/audio-engine';
 import type { AudioState } from '../types';
 
 // debug flag for console logs
@@ -10,8 +9,7 @@ import type {
   Collaboration,
   Track, 
   UserCollaboration,
-  SubmissionEntry,
-  SubmissionSettings
+  SubmissionEntry
 } from '../types/collaboration';
 
 import { 
@@ -26,10 +24,10 @@ import {
   UserService, 
   InteractionService, 
   DataService,
-  SubmissionService 
+  SubmissionService
 } from '../services';
-import { storage } from '../services/firebase';
-import { ref, getDownloadURL } from 'firebase/storage';
+import { TrackUtils, AudioUrlUtils, PlaybackUtils } from '../utils';
+import { useAudioStore } from './useAudioStore';
 
 // store interface
 interface AppState {
@@ -43,14 +41,6 @@ interface AppState {
     resetPassword: (email: string) => Promise<void>;
     signInWithGoogle: () => Promise<void>;
     initializeAuth: () => (() => void);
-  };
-
-  // audio engine slice
-  audio: {
-    engine: AudioEngine | null;
-    state: AudioState | null;
-    setEngine: (engine: AudioEngine) => void;
-    setState: (state: AudioState) => void;
   };
 
   // collaboration data slice
@@ -101,16 +91,6 @@ interface AppState {
     rejectSubmission?: (filePath: string) => Promise<void>;
   };
 
-  // ui state slice
-  ui: {
-    isLoading: boolean;
-    showAuth: boolean;
-    debug: boolean;
-    setLoading: (loading: boolean) => void;
-    setShowAuth: (show: boolean) => void;
-    setDebug: (debug: boolean) => void;
-  };
-
   // playback actions slice
   playback: {
     handleSubmissionVolumeChange: (volume: number) => void;
@@ -127,49 +107,12 @@ interface AppState {
   };
 }
 
-// format time helper
-const formatTime = (seconds: number): string => {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.floor(seconds % 60);
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-};
-
-// create track from file path
-const createTrackFromFilePath = (filePath: string, category: 'backing' | 'submission' | 'pastStage', collaborationId: string, settings?: SubmissionSettings, optimizedPath?: string): Track => {
-  const fileName = filePath.split('/').pop() || filePath;
-      const title = fileName.replace(/\.[^/.]+$/, ''); // remove extension
-  
-  return {
-    id: filePath, // use filePath as id
-    title,
-    filePath,
-    optimizedPath,
-    duration: 0, // set by audioengine
-    createdAt: new Date() as any, // set when real data available
-    collaborationId,
-    category,
-    approved: true, // default approved
-    submissionSettings: settings
-  };
-};
-
-// resolve audio src helper
-const urlCache = new Map<string, string>();
-const resolveAudioUrl = async (path: string): Promise<string> => {
-  if (!path) return '';
-  if (path.startsWith('http')) return path;
-  if (path.startsWith('/test-audio/')) return path;
-  if (!path.startsWith('collabs/')) return `/test-audio/${path}`;
-  const cached = urlCache.get(path);
-  if (cached) return cached;
-  const url = await getDownloadURL(ref(storage, path));
-  urlCache.set(path, url);
-  return url;
-};
-
-// update regular tracks based on favorites
+// Delegate to utils
+const formatTime = PlaybackUtils.formatTime;
+const createTrackFromFilePath = TrackUtils.createTrackFromFilePath;
+const resolveAudioUrl = AudioUrlUtils.resolveAudioUrl;
 const updateRegularTracks = (allTracks: Track[], favoriteFilePaths: string[]) => {
-  return allTracks.filter(track => !favoriteFilePaths.includes(track.filePath));
+  return TrackUtils.filterByFavorites(allTracks, favoriteFilePaths).regular;
 };
 
 // create store
@@ -290,16 +233,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  // Audio Slice
-  audio: {
-    engine: null,
-    state: null,
-
-    setEngine: (engine) => set(state => ({ audio: { ...state.audio, engine } })),
-
-    setState: (audioState) => set(state => ({ audio: { ...state.audio, state: audioState } }))
-  },
-
   // Collaboration Slice
   collaboration: {
     currentProject: null,
@@ -372,18 +305,26 @@ export const useAppStore = create<AppState>((set, get) => ({
         const collaborationData = await DataService.loadCollaborationData(userId, collaborationId);
         if (DEBUG_LOGS) console.log('loaded collaboration.submissions:', collaborationData.collaboration?.submissions);
         
+        if (!collaborationData.collaboration) {
+          if (DEBUG_LOGS) console.error('collaboration data is null for collaborationId:', collaborationId);
+          if (DEBUG_LOGS) console.error('Full response:', collaborationData);
+          set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
+          return;
+        }
+        
         // Construct track objects from file paths
-        const submissionTracks = (collaborationData.collaboration.submissions && collaborationData.collaboration.submissions.length > 0)
-          ? collaborationData.collaboration.submissions.map((s: SubmissionEntry) => {
+        const collab = collaborationData.collaboration;
+        const submissionTracks = (collab.submissions && collab.submissions.length > 0)
+          ? collab.submissions.map((s: SubmissionEntry) => {
               if (DEBUG_LOGS) console.log('tracks from submissions[]', s);
-              return createTrackFromFilePath(s.path, 'submission', collaborationData.collaboration.id, s.settings, s.optimizedPath);
+              return createTrackFromFilePath(s.path, 'submission', collab.id, s.settings, s.optimizedPath);
             })
-          : (collaborationData.collaboration as any).submissionPaths?.map((path: string) => {
+          : (collab as any).submissionPaths?.map((path: string) => {
               if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[]', path);
-              return createTrackFromFilePath(path, 'submission', collaborationData.collaboration.id);
+              return createTrackFromFilePath(path, 'submission', collab.id);
             }) || [];
-        const backingTrack = collaborationData.collaboration.backingTrackPath ? 
-          createTrackFromFilePath(collaborationData.collaboration.backingTrackPath, 'backing', collaborationData.collaboration.id) : null;
+        const backingTrack = collab.backingTrackPath ? 
+          createTrackFromFilePath(collab.backingTrackPath, 'backing', collab.id) : null;
         
         // calculate favorites and regular tracks
         const favoriteFilePaths = collaborationData.userCollaboration?.favoriteTracks || [];
@@ -414,8 +355,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
         
         if (DEBUG_LOGS) console.log('collaboration data loaded successfully');
-      } catch (error) {
+      } catch (error: any) {
         if (DEBUG_LOGS) console.error('error loading collaboration data:', error);
+        if (DEBUG_LOGS) console.error('error message:', error?.message);
+        if (DEBUG_LOGS) console.error('error code:', error?.code);
         set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
       }
     },
@@ -434,18 +377,25 @@ export const useAppStore = create<AppState>((set, get) => ({
         const collaborationData = await DataService.loadCollaborationDataAnonymous(collaboration.id);
         if (DEBUG_LOGS) console.log('loaded (anon) collaboration.submissions:', collaborationData.collaboration?.submissions);
         
+        if (!collaborationData.collaboration) {
+          if (DEBUG_LOGS) console.error('collaboration data is null (anon)');
+          set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
+          return;
+        }
+        
         // Construct track objects from file paths
-        const submissionTracks = (collaborationData.collaboration.submissions && collaborationData.collaboration.submissions.length > 0)
-          ? collaborationData.collaboration.submissions.map((s: SubmissionEntry) => {
+        const collab = collaborationData.collaboration;
+        const submissionTracks = (collab.submissions && collab.submissions.length > 0)
+          ? collab.submissions.map((s: SubmissionEntry) => {
               if (DEBUG_LOGS) console.log('tracks from submissions[] (anon)', s);
-              return createTrackFromFilePath(s.path, 'submission', collaborationData.collaboration.id, s.settings, s.optimizedPath);
+              return createTrackFromFilePath(s.path, 'submission', collab.id, s.settings, s.optimizedPath);
             })
-          : (collaborationData.collaboration as any).submissionPaths?.map((path: string) => {
+          : (collab as any).submissionPaths?.map((path: string) => {
               if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon)', path);
-              return createTrackFromFilePath(path, 'submission', collaborationData.collaboration.id);
+              return createTrackFromFilePath(path, 'submission', collab.id);
             }) || [];
-        const backingTrack = collaborationData.collaboration.backingTrackPath ? 
-          createTrackFromFilePath(collaborationData.collaboration.backingTrackPath, 'backing', collaborationData.collaboration.id) : null;
+        const backingTrack = collab.backingTrackPath ? 
+          createTrackFromFilePath(collab.backingTrackPath, 'backing', collab.id) : null;
         
         // For anonymous users, all tracks are regular tracks (no favorites)
         const regularTracks = submissionTracks;
@@ -478,20 +428,28 @@ export const useAppStore = create<AppState>((set, get) => ({
     loadCollaborationAnonymousById: async (collaborationId: string) => {
       try {
         if (DEBUG_LOGS) console.log('loading collaboration data for anonymous user by id');
-        set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: true } }));
-        const collaborationData = await DataService.loadCollaborationDataAnonymous(collaborationId);
-        if (DEBUG_LOGS) console.log('loaded (anon by id) collaboration.submissions:', collaborationData.collaboration?.submissions);
-        const submissionTracks = (collaborationData.collaboration.submissions && collaborationData.collaboration.submissions.length > 0)
-          ? collaborationData.collaboration.submissions.map((s: SubmissionEntry) => {
+      set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: true } }));
+      const collaborationData = await DataService.loadCollaborationDataAnonymous(collaborationId);
+      if (DEBUG_LOGS) console.log('loaded (anon by id) collaboration.submissions:', collaborationData.collaboration?.submissions);
+      
+      if (!collaborationData.collaboration) {
+        if (DEBUG_LOGS) console.error('collaboration data is null (anon by id)');
+        set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
+        return;
+      }
+      
+      const collab = collaborationData.collaboration;
+      const submissionTracks = (collab.submissions && collab.submissions.length > 0)
+          ? collab.submissions.map((s: SubmissionEntry) => {
               if (DEBUG_LOGS) console.log('tracks from submissions[] (anon by id)', s);
-              return createTrackFromFilePath(s.path, 'submission', collaborationData.collaboration.id, s.settings, s.optimizedPath);
+              return createTrackFromFilePath(s.path, 'submission', collab.id, s.settings, s.optimizedPath);
             })
-          : (collaborationData.collaboration as any).submissionPaths?.map((path: string) => {
+          : (collab as any).submissionPaths?.map((path: string) => {
               if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon by id)', path);
-              return createTrackFromFilePath(path, 'submission', collaborationData.collaboration.id);
+              return createTrackFromFilePath(path, 'submission', collab.id);
             }) || [];
-        const backingTrack = collaborationData.collaboration.backingTrackPath ? 
-          createTrackFromFilePath(collaborationData.collaboration.backingTrackPath, 'backing', collaborationData.collaboration.id) : null;
+      const backingTrack = collab.backingTrackPath ? 
+        createTrackFromFilePath(collab.backingTrackPath, 'backing', collab.id) : null;
         const regularTracks = submissionTracks;
         set(state => ({
           collaboration: {
@@ -594,7 +552,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (DEBUG_LOGS) console.log('addToFavorites called with filePath:', filePath);
       const { user } = get().auth;
       const { currentCollaboration } = get().collaboration;
-      const { engine, state: audioState } = get().audio;
+      const { engine, state: audioState } = useAudioStore.getState();
       
       if (DEBUG_LOGS) console.log('user status:', user ? 'authenticated' : 'anonymous');
       if (DEBUG_LOGS) console.log('current collaboration:', currentCollaboration?.id);
@@ -683,7 +641,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (DEBUG_LOGS) console.log('removeFromFavorites called with filePath:', filePath);
       const { user } = get().auth;
       const { currentCollaboration } = get().collaboration;
-      const { engine, state: audioState } = get().audio;
+      const { engine, state: audioState } = useAudioStore.getState();
       
       if (!user) {
         // anonymous users can't remove from favorites
@@ -818,7 +776,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     getTrackByFilePath: (filePath) => {
       const { allTracks } = get().collaboration;
-      return allTracks.find(track => track.filePath === filePath);
+      return TrackUtils.findTrackByFilePath(allTracks, filePath);
     },
 
     approveSubmission: async (filePath) => {
@@ -829,9 +787,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         set(state => ({
           collaboration: {
             ...state.collaboration,
-            allTracks: state.collaboration.allTracks.map(t => t.filePath === filePath ? { ...t, approved: true } : t),
-            regularTracks: state.collaboration.regularTracks.map(t => t.filePath === filePath ? { ...t, approved: true } : t),
-            favorites: state.collaboration.favorites.map(t => t.filePath === filePath ? { ...t, approved: true } : t)
+            allTracks: TrackUtils.updateTrackApprovalStatus(state.collaboration.allTracks, filePath, true),
+            regularTracks: TrackUtils.updateTrackApprovalStatus(state.collaboration.regularTracks, filePath, true),
+            favorites: TrackUtils.updateTrackApprovalStatus(state.collaboration.favorites, filePath, true)
           }
         }));
       } catch {}
@@ -845,9 +803,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         set(state => ({
           collaboration: {
             ...state.collaboration,
-            allTracks: state.collaboration.allTracks.map(t => t.filePath === filePath ? { ...t, approved: false } : t),
-            regularTracks: state.collaboration.regularTracks.map(t => t.filePath === filePath ? { ...t, approved: false } : t),
-            favorites: state.collaboration.favorites.map(t => t.filePath === filePath ? { ...t, approved: false } : t)
+            allTracks: TrackUtils.updateTrackApprovalStatus(state.collaboration.allTracks, filePath, false),
+            regularTracks: TrackUtils.updateTrackApprovalStatus(state.collaboration.regularTracks, filePath, false),
+            favorites: TrackUtils.updateTrackApprovalStatus(state.collaboration.favorites, filePath, false)
           }
         }));
       } catch {}
@@ -868,36 +826,25 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  // UI Slice
-  ui: {
-    isLoading: true,
-    showAuth: false,
-    debug: false,
-
-    setLoading: (loading) => set(state => ({ ui: { ...state.ui, isLoading: loading } })),
-    setShowAuth: (show) => set(state => ({ ui: { ...state.ui, showAuth: show } })),
-    setDebug: (debug) => set(state => ({ ui: { ...state.ui, debug } }))
-  },
-
   // Playback Slice
   playback: {
     handleSubmissionVolumeChange: (volume) => {
-      const engine = get().audio.engine;
+      const engine = useAudioStore.getState().engine;
       if (engine) {
         engine.setVolume(1, volume);
       }
     },
 
     handleMasterVolumeChange: (volume) => {
-      const engine = get().audio.engine;
+      const engine = useAudioStore.getState().engine;
       if (engine) {
         engine.setMasterVolume(volume);
       }
     },
 
     handleTimeSliderChange: (value) => {
-      const engine = get().audio.engine;
-      const state = get().audio.state;
+      const engine = useAudioStore.getState().engine;
+      const state = useAudioStore.getState().state;
       if (!engine || !state) return;
 
       const pastStagePlayback = state.playerController.pastStagePlayback;
@@ -909,8 +856,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
 
     previousTrack: () => {
-      const engine = get().audio.engine;
-      const audioState = get().audio.state;
+      const engine = useAudioStore.getState().engine;
+      const audioState = useAudioStore.getState().state;
       const { regularTracks, favorites, pastStageTracks, backingTrack } = get().collaboration;
       
       if (!engine || !audioState) return;
@@ -955,8 +902,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
 
     nextTrack: () => {
-      const engine = get().audio.engine;
-      const audioState = get().audio.state;
+      const engine = useAudioStore.getState().engine;
+      const audioState = useAudioStore.getState().state;
       const { regularTracks, favorites, pastStageTracks, backingTrack } = get().collaboration;
       
       if (!engine || !audioState) return;
@@ -1001,7 +948,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
 
     togglePlayPause: () => {
-      const engine = get().audio.engine;
+      const engine = useAudioStore.getState().engine;
       if (engine) {
         engine.togglePlayback();
       }
@@ -1009,8 +956,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     playSubmission: (filePath, index, favorite) => {
       if (DEBUG_LOGS) console.log('playSubmission called with:', { filePath, index, favorite });
-      const engine = get().audio.engine;
-      const audioState = get().audio.state as any;
+      const engine = useAudioStore.getState().engine;
+      const audioState = useAudioStore.getState().state as any;
       const { backingTrack, currentCollaboration } = get().collaboration;
       const track = get().collaboration.getTrackByFilePath(filePath);
       
@@ -1037,15 +984,16 @@ export const useAppStore = create<AppState>((set, get) => ({
           engineInstance.setVolume(1, settings.volume?.gain ?? 1);
           // apply EQ in one call to avoid intermediate merges
           const eq = settings.eq;
+          const currentAudioState = useAudioStore.getState().state;
           const eqPayload: any = {
-            highpass: { frequency: eq?.highpass?.frequency ?? get().audio.state?.eq.highpass.frequency ?? 20, Q: get().audio.state?.eq.highpass.Q ?? 0.7 },
-            param1: { frequency: eq?.param1?.frequency ?? get().audio.state?.eq.param1.frequency, Q: eq?.param1?.Q ?? get().audio.state?.eq.param1.Q, gain: eq?.param1?.gain ?? get().audio.state?.eq.param1.gain },
-            param2: { frequency: eq?.param2?.frequency ?? get().audio.state?.eq.param2.frequency, Q: eq?.param2?.Q ?? get().audio.state?.eq.param2.Q, gain: eq?.param2?.gain ?? get().audio.state?.eq.param2.gain },
-            highshelf: { frequency: eq?.highshelf?.frequency ?? get().audio.state?.eq.highshelf.frequency, gain: eq?.highshelf?.gain ?? get().audio.state?.eq.highshelf.gain }
+            highpass: { frequency: eq?.highpass?.frequency ?? currentAudioState?.eq.highpass.frequency ?? 20, Q: currentAudioState?.eq.highpass.Q ?? 0.7 },
+            param1: { frequency: eq?.param1?.frequency ?? currentAudioState?.eq.param1.frequency, Q: eq?.param1?.Q ?? currentAudioState?.eq.param1.Q, gain: eq?.param1?.gain ?? currentAudioState?.eq.param1.gain },
+            param2: { frequency: eq?.param2?.frequency ?? currentAudioState?.eq.param2.frequency, Q: eq?.param2?.Q ?? currentAudioState?.eq.param2.Q, gain: eq?.param2?.gain ?? currentAudioState?.eq.param2.gain },
+            highshelf: { frequency: eq?.highshelf?.frequency ?? currentAudioState?.eq.highshelf.frequency, gain: eq?.highshelf?.gain ?? currentAudioState?.eq.highshelf.gain }
           };
-          if (DEBUG_LOGS) console.log('eq before apply:', get().audio.state?.eq, 'payload:', eqPayload);
+          if (DEBUG_LOGS) console.log('eq before apply:', currentAudioState?.eq, 'payload:', eqPayload);
           engineInstance.setEq(eqPayload);
-          if (DEBUG_LOGS) console.log('eq after apply (state):', get().audio.state?.eq, 'p1 volume:', get().audio.state?.player1.volume);
+          if (DEBUG_LOGS) console.log('eq after apply (state):', currentAudioState?.eq, 'p1 volume:', currentAudioState?.player1.volume);
         }
         const chosenPath = track.optimizedPath || track.filePath;
         if (DEBUG_LOGS) console.log('playSubmission path selected:', track.optimizedPath ? 'optimizedPath' : 'originalPath', chosenPath);
@@ -1062,7 +1010,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
 
     playPastSubmission: (index) => {
-      const engine = get().audio.engine;
+      const engine = useAudioStore.getState().engine;
       const { pastStageTracks } = get().collaboration;
       
       if (!engine || !pastStageTracks[index]) return;
@@ -1072,19 +1020,16 @@ export const useAppStore = create<AppState>((set, get) => ({
         engine.playPastStage(src, index);
       })();
     },
-
     getCurrentTime: (state) => {
       const pastStagePlayback = state.playerController.pastStagePlayback;
       const currentTime = pastStagePlayback ? state.player2.currentTime : state.player1.currentTime;
       return formatTime(currentTime);
     },
-
     getTotalTime: (state) => {
       const pastStagePlayback = state.playerController.pastStagePlayback;
       const duration = pastStagePlayback ? state.player2.duration : state.player1.duration;
       return formatTime(duration);
     },
-
     getTimeSliderValue: (state) => {
       const pastStagePlayback = state.playerController.pastStagePlayback;
       const currentTime = pastStagePlayback ? state.player2.currentTime : state.player1.currentTime;

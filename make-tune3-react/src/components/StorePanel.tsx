@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAppStore } from '../stores/appStore';
+import { useAudioStore, useUIStore } from '../stores';
 
 export function StorePanel() {
   const { user } = useAppStore(state => state.auth);
@@ -15,8 +16,8 @@ export function StorePanel() {
     isTrackFavorite,
     isTrackListened
   } = useAppStore(state => state.collaboration);
-  const { isLoading, setLoading } = useAppStore(state => state.ui);
-  const { state: audioState, engine: audioEngine } = useAppStore(state => state.audio);
+  const { isLoading, setLoading } = useUIStore();
+  const { state: audioState, engine: audioEngine } = useAudioStore();
 
   const favoriteTracks = allTracks.filter(track => isTrackFavorite(track.filePath));
   const listenedTracks = allTracks.filter(track => isTrackListened(track.filePath));

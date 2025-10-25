@@ -16,12 +16,17 @@ export function CollabListView() {
     let mounted = true;
     (async () => {
       try {
-        const list = await CollaborationService.listPublishedCollaborations();
+        console.log('CollabListView: fetching all collaborations...');
+        const list = await CollaborationService.listAllCollaborations();
+        console.log('CollabListView: received', list.length, 'collaborations:', list);
         if (mounted) {
           setCollabs(list);
           setNeedsMod(list.filter(c => (c as any).unmoderatedSubmissions));
         }
       } catch (e: any) {
+        console.error('CollabListView: error loading collaborations:', e);
+        console.error('CollabListView: error code:', e?.code);
+        console.error('CollabListView: error message:', e?.message);
         if (mounted) setError(e?.message || 'failed to load');
       } finally {
         if (mounted) setHasLoaded(true);

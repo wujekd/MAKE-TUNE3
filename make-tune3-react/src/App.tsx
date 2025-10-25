@@ -5,6 +5,7 @@ import { CollabListView } from './views/CollabListView'
 import { ProjectEditView } from './views/ProjectEditView'
 import { SubmissionView } from './views/SubmissionView'
 import { useAppStore } from './stores/appStore'
+import { useUIStore } from './stores'
 import { ModerationView } from './views/ModerationView'
 import { AppShell } from './components/AppShell';
 import { AuthRoute } from './components/AuthRoute';
@@ -13,7 +14,7 @@ import { UsernameOnboarding } from './views/UsernameOnboarding';
 
 function App() {
   const { user, loading } = useAppStore(state => state.auth);
-  const { setShowAuth } = useAppStore(state => state.ui);
+  const { setShowAuth } = useUIStore();
 
   useEffect(() => {
     // console.log('app render - user:', user?.email, 'loading:', loading);

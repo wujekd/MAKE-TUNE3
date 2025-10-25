@@ -1,6 +1,7 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { useAppStore } from '../stores/appStore';
+import { useAudioStore } from '../stores';
 import { Mixer } from '../components/Mixer';
 import './MainView.css';
 import ProjectHistory from '../components/ProjectHistory';
@@ -22,7 +23,7 @@ export function SubmissionView() {
 
   const [backingUrl, setBackingUrl] = useState<string>('');
   const pendingBackingUrlRef = useRef<string>('');
-  const state = useAppStore(s => s.audio.state) as any;
+  const state = useAudioStore(s => s.state) as any;
   const [hasDownloaded, setHasDownloaded] = useState<boolean>(true);
   const [hasSubmitted, setHasSubmitted] = useState<boolean>(false);
   usePrefetchAudio(backingUrl);

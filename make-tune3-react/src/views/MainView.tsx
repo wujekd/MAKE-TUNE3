@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { StoreTest } from '../components/StoreTest';
 import { useAppStore } from '../stores/appStore';
+import { useUIStore } from '../stores';
 import './MainView.css';
 import SubmissionItem from '../components/SubmissionItem';
 import Favorites from '../components/Favorites';
@@ -35,7 +36,7 @@ export function MainView() {
   } = useAppStore(state => state.collaboration);
   const { playSubmission } = useAppStore(state => state.playback);
   const { currentProject, currentCollaboration } = useAppStore(state => state.collaboration);
-  const { setShowAuth } = useAppStore(state => state.ui);
+  const { setShowAuth } = useUIStore();
 
   if (!audioContext) {
     return <div>Audio engine not available</div>;

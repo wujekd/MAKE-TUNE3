@@ -1,11 +1,12 @@
 import React from 'react';
 import { useAppStore } from '../stores/appStore';
+import { useAudioStore } from '../stores';
 import './ProjectHistory.css';
 
 const ProjectHistory = () => {
   const { pastStageTracks } = useAppStore(state => state.collaboration);
   const { playPastSubmission } = useAppStore(state => state.playback);
-  const { state: audioState } = useAppStore(state => state.audio);
+  const { state: audioState } = useAudioStore();
   
   const isPastStageActive = audioState?.playerController.pastStagePlayback || false;
   const currentTrackIndex = audioState?.playerController.currentTrackId || 0;

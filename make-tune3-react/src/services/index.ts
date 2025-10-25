@@ -1,4 +1,5 @@
 // Barrel export for all services
+// Services handle Firebase/backend operations
 export { ProjectService } from './projectService';
 export { CollaborationService } from './collaborationService';
 export { UserService } from './userService';

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAppStore } from '../stores/appStore';
+import { useAudioStore, useUIStore } from '../stores';
 
 export function StoreTest() {
   const { user } = useAppStore(state => state.auth);
@@ -15,8 +16,8 @@ export function StoreTest() {
     isTrackFavorite,
     isTrackListened
   } = useAppStore(state => state.collaboration);
-  const { isLoading, setLoading } = useAppStore(state => state.ui);
-  const { state: audioState, engine: audioEngine } = useAppStore(state => state.audio);
+  const { isLoading, setLoading } = useUIStore();
+  const { state: audioState, engine: audioEngine } = useAudioStore();
 
   const handleTestLoading = () => {
     setLoading(!isLoading);

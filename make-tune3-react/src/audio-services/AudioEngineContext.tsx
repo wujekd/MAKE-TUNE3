@@ -2,7 +2,7 @@ import React, { createContext, useRef, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { AudioEngine } from './audio-engine';
 import type { AudioState } from '../types';
-import { useAppStore } from '../stores/appStore';
+import { useAudioStore } from '../stores';
 
 // Context value holds both the engine and its current state
 interface AudioEngineContextValue {
@@ -23,7 +23,7 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AudioState | null>(null);
 
   // Get Zustand actions from audio slice
-  const { setEngine, setState: setAudioState } = useAppStore(state => state.audio);
+  const { setEngine, setState: setAudioState } = useAudioStore();
 
   useEffect(() => {
     // Instantiate engine once refs are available and not already created
