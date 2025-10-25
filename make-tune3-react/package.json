@@ -18,7 +18,8 @@
     "emulators:restart": "npm run emulators:stop && sleep 2 && npm run emulators",
     "setup-firebase": "node setup-firebase.js",
     "clear-firebase": "node clear-firebase-data.js",
-    "create-submission-project": "node create-submission-project.js"
+    "create-submission-project": "node create-submission-project.js",
+    "preview:ui": "node ../scripts/preview-ui-option.cjs"
   },
   "dependencies": {
     "dotenv": "^17.2.3",
