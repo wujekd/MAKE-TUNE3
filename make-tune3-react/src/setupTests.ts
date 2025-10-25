@@ -76,24 +76,24 @@ import { initializeApp } from 'firebase/app';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import { connectStorageEmulator, getStorage } from 'firebase/storage';
 
-// Initialize Firebase for testing
 const app = initializeApp({
-  projectId: 'test-project',
-  apiKey: 'test-api-key',
-  authDomain: 'test-project.firebaseapp.com',
-  storageBucket: 'test-project.appspot.com',
+  projectId: 'demo-test-project',
+  apiKey: 'demo-test-api-key',
+  authDomain: 'demo-test-project.firebaseapp.com',
+  storageBucket: 'demo-test-project.appspot.com',
 });
 
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-// Connect to emulators only in test environment
 if (process.env.NODE_ENV === 'test') {
-  connectFirestoreEmulator(db, 'localhost', 8080);
-  connectStorageEmulator(storage, 'localhost', 9199);
+  try {
+    connectFirestoreEmulator(db, 'localhost', 8080);
+    connectStorageEmulator(storage, 'localhost', 9199);
+  } catch (e) {
+  }
 }
 
-// Make Firebase available globally for tests
 globalThis.firebaseApp = app;
 globalThis.firebaseDb = db;
 globalThis.firebaseStorage = storage;

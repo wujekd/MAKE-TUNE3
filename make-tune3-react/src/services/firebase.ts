@@ -1,7 +1,7 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { getFirestore, connectFirestoreEmulator, type Firestore } from 'firebase/firestore';
+import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -12,11 +12,26 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-const app = initializeApp(firebaseConfig);
+let app: FirebaseApp;
+if (process.env.NODE_ENV === 'test' && globalThis.firebaseApp) {
+  app = globalThis.firebaseApp;
+} else {
+  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+}
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
-const storageBucketUrl = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ? `gs://${import.meta.env.VITE_FIREBASE_STORAGE_BUCKET}` : undefined;
-export const storage = storageBucketUrl ? getStorage(app, storageBucketUrl) : getStorage(app);
 
+let db: Firestore;
+let storage: FirebaseStorage;
+
+if (process.env.NODE_ENV === 'test' && globalThis.firebaseDb && globalThis.firebaseStorage) {
+  db = globalThis.firebaseDb;
+  storage = globalThis.firebaseStorage;
+} else {
+  db = getFirestore(app);
+  const storageBucketUrl = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ? `gs://${import.meta.env.VITE_FIREBASE_STORAGE_BUCKET}` : undefined;
+  storage = storageBucketUrl ? getStorage(app, storageBucketUrl) : getStorage(app);
+}
+
+export { db, storage };
 export default app; 
