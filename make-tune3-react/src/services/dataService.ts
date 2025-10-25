@@ -1,4 +1,4 @@
-import { CollaborationService as CollaborationServiceNew } from './collaborationServiceNew';
+import { CollaborationService } from './collaborationService';
 import { UserService } from './userService';
 import type { Collaboration, UserCollaboration, UserProfile, UserId, CollaborationId } from '../types/collaboration';
 
@@ -9,7 +9,7 @@ export class DataService {
     userProfile: UserProfile | null;
   }> {
     const [collaboration, userCollaboration, userProfile] = await Promise.all([
-      CollaborationServiceNew.getCollaboration(collaborationId),
+      CollaborationService.getCollaboration(collaborationId),
       UserService.getUserCollaboration(userId, collaborationId),
       UserService.getUserProfile(userId),
     ]);
@@ -19,7 +19,7 @@ export class DataService {
   static async loadCollaborationDataAnonymous(collaborationId: CollaborationId): Promise<{
     collaboration: Collaboration | null;
   }> {
-    const collaboration = await CollaborationServiceNew.getCollaboration(collaborationId);
+    const collaboration = await CollaborationService.getCollaboration(collaborationId);
     return { collaboration };
   }
 }

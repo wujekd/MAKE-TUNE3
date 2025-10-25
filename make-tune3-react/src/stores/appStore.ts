@@ -20,7 +20,14 @@ import {
 import type { User as FirebaseUser } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { AuthService } from '../services/authService';
-import { CollaborationServiceLegacy as CollaborationService } from '../services';
+import { 
+  CollaborationService, 
+  ProjectService, 
+  UserService, 
+  InteractionService, 
+  DataService,
+  SubmissionService 
+} from '../services';
 import { storage } from '../services/firebase';
 import { ref, getDownloadURL } from 'firebase/storage';
 
@@ -249,7 +256,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             if (DEBUG_LOGS) console.log('user profile fetched:', userProfile);
             
             // Load user's collaborations
-            const collaborations = await CollaborationService.getUserCollaborations(firebaseUser.uid);
+            const collaborations = await UserService.getUserCollaborations(firebaseUser.uid);
             if (DEBUG_LOGS) console.log('user collaborations loaded:', collaborations);
             
             set(state => ({ 
@@ -362,7 +369,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         if (DEBUG_LOGS) console.log('loading collaboration data for:', collaborationId);
         set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: true } }));
         
-        const collaborationData = await CollaborationService.loadCollaborationData(userId, collaborationId);
+        const collaborationData = await DataService.loadCollaborationData(userId, collaborationId);
         if (DEBUG_LOGS) console.log('loaded collaboration.submissions:', collaborationData.collaboration?.submissions);
         
         // Construct track objects from file paths
@@ -424,7 +431,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           throw new Error('No collaborations found');
         }
         
-        const collaborationData = await CollaborationService.loadCollaborationDataAnonymous(collaboration.id);
+        const collaborationData = await DataService.loadCollaborationDataAnonymous(collaboration.id);
         if (DEBUG_LOGS) console.log('loaded (anon) collaboration.submissions:', collaborationData.collaboration?.submissions);
         
         // Construct track objects from file paths
@@ -472,7 +479,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       try {
         if (DEBUG_LOGS) console.log('loading collaboration data for anonymous user by id');
         set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: true } }));
-        const collaborationData = await CollaborationService.loadCollaborationDataAnonymous(collaborationId);
+        const collaborationData = await DataService.loadCollaborationDataAnonymous(collaborationId);
         if (DEBUG_LOGS) console.log('loaded (anon by id) collaboration.submissions:', collaborationData.collaboration?.submissions);
         const submissionTracks = (collaborationData.collaboration.submissions && collaborationData.collaboration.submissions.length > 0)
           ? collaborationData.collaboration.submissions.map((s: SubmissionEntry) => {
@@ -512,7 +519,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         if (DEBUG_LOGS) console.log('loading project data for:', projectId);
         set(state => ({ collaboration: { ...state.collaboration, isLoadingProject: true } }));
         
-        const project = await CollaborationService.getProject(projectId);
+        const project = await ProjectService.getProject(projectId);
         
         if (project) {
           // Extract past stage tracks from project.pastCollaborations
@@ -559,7 +566,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         set(state => ({ collaboration: { ...state.collaboration, isUpdatingListened: true } }));
         
         // firebase call first
-        await CollaborationService.markTrackAsListened(user.uid, currentCollaboration.id, filePath);
+        await InteractionService.markTrackAsListened(user.uid, currentCollaboration.id, filePath);
         
         // update local state only after firebase success
         const { userCollaboration } = get().collaboration;
@@ -610,7 +617,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           
           // firebase call first
           if (DEBUG_LOGS) console.log('calling firebase addTrackToFavorites...');
-          await CollaborationService.addTrackToFavorites(user.uid, currentCollaboration.id, filePath);
+          await InteractionService.addTrackToFavorites(user.uid, currentCollaboration.id, filePath);
           if (DEBUG_LOGS) console.log('firebase call successful');
           
           // update local state only after firebase success
@@ -695,7 +702,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         set(state => ({ collaboration: { ...state.collaboration, isUpdatingFavorites: true } }));
         
         // firebase call first
-        await CollaborationService.removeTrackFromFavorites(user.uid, currentCollaboration.id, filePath);
+        await InteractionService.removeTrackFromFavorites(user.uid, currentCollaboration.id, filePath);
         
         // update local state only after firebase success
         const { userCollaboration } = get().collaboration;
@@ -760,7 +767,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const { currentCollaboration } = get().collaboration;
       if (!user || !currentCollaboration) return;
       try {
-        await CollaborationService.voteForTrack(user.uid, currentCollaboration.id, filePath);
+        await InteractionService.voteForTrack(user.uid, currentCollaboration.id, filePath);
         set(state => ({
           collaboration: {
             ...state.collaboration,
@@ -818,7 +825,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const collab = get().collaboration.currentCollaboration;
       if (!collab) return;
       try {
-        await CollaborationService.setSubmissionApproved();
+        await SubmissionService.setSubmissionApproved();
         set(state => ({
           collaboration: {
             ...state.collaboration,
@@ -834,7 +841,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const collab = get().collaboration.currentCollaboration;
       if (!collab) return;
       try {
-        await CollaborationService.setSubmissionApproved();
+        await SubmissionService.setSubmissionApproved();
         set(state => ({
           collaboration: {
             ...state.collaboration,
@@ -848,7 +855,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     loadUserCollaborations: async (userId) => {
       try {
-        const collaborations = await CollaborationService.getUserCollaborations(userId);
+        const collaborations = await UserService.getUserCollaborations(userId);
         set(state => ({
           collaboration: {
             ...state.collaboration,
