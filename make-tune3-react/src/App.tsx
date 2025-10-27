@@ -4,6 +4,7 @@ import { MainView } from './views/MainView'
 import { CollabListView } from './views/CollabListView'
 import { ProjectEditView } from './views/ProjectEditView'
 import { SubmissionView } from './views/SubmissionView'
+import { AdminTagsView } from './views/AdminTagsView'
 import { useAppStore } from './stores/appStore'
 import { useUIStore } from './stores'
 import { ModerationView } from './views/ModerationView'
@@ -11,6 +12,7 @@ import { AppShell } from './components/AppShell';
 import { AuthRoute } from './components/AuthRoute';
 import { CompletedView } from './views/CompletedView';
 import { UsernameOnboarding } from './views/UsernameOnboarding';
+import { ProjectService } from './services';
 
 function App() {
   const { user, loading } = useAppStore(state => state.auth);
@@ -48,7 +50,23 @@ function App() {
           handle: {
             title: 'Project',
             breadcrumb: 'Project',
-            actions: ({ navigate: nav }: any) => ([{ key: 'back', label: 'Back', onClick: () => nav(-1) }])
+            actions: ({ navigate: nav, project }: any) => ([
+              { key: 'back', label: 'Back', onClick: () => nav(-1) },
+              project ? { 
+                key: 'delete', 
+                label: 'Delete Project', 
+                onClick: async () => {
+                  const ok = window.confirm('Delete this project? This cannot be undone.');
+                  if (!ok) return;
+                  try {
+                    await ProjectService.deleteProject(project.id);
+                    nav('/collabs');
+                  } catch (e) {
+                    alert('Failed to delete project');
+                  }
+                }
+              } : null
+            ].filter(Boolean))
           }
         },
         {
@@ -96,7 +114,16 @@ function App() {
             ])
           }
         },
-        { path: '*', element: <Navigate to="collabs" replace /> }
+        {
+          path: 'admin/tags',
+          element: <AdminTagsView />,
+          handle: {
+            title: 'Manage Tags',
+            breadcrumb: 'Tags',
+            actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
+          }
+        },
+        { path: '*', element: <Navigate to="/collabs" replace /> }
       ]
     },
     { path: '/auth', element: <AuthRoute /> }

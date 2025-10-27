@@ -20,6 +20,8 @@ describe('CollaborationService Integration Tests', () => {
       const projectData = {
         name: 'Test Project',
         description: 'A test project for integration testing',
+        tags: [],
+        tagsKey: [],
         ownerId: 'test-user-123',
         isActive: true,
         pastCollaborations: []
@@ -47,6 +49,8 @@ describe('CollaborationService Integration Tests', () => {
       const projectData = {
         name: 'Persistent Test Project',
         description: 'Testing persistence',
+        tags: [],
+        tagsKey: [],
         ownerId: 'test-user-456',
         isActive: true,
         pastCollaborations: []
@@ -186,6 +190,8 @@ describe('CollaborationService Integration Tests', () => {
       const project = await ProjectService.createProject({
         name: 'Test Project',
         description: 'Project for collaboration test',
+        tags: [],
+        tagsKey: [],
         ownerId: 'test-user-collab',
         isActive: true,
         pastCollaborations: []
@@ -195,6 +201,8 @@ describe('CollaborationService Integration Tests', () => {
         projectId: project.id,
         name: 'Test Collaboration',
         description: 'Test description',
+        tags: [],
+        tagsKey: [],
         status: 'unpublished' as const,
         backingTrackPath: '',
         submissionDuration: 7,

@@ -3,6 +3,8 @@ import { useAppStore } from '../stores/appStore';
 import { ProjectService } from '../services';
 import './ProjectHistory.css';
 import { Link } from 'react-router-dom';
+import { TagInput } from './TagInput';
+import { TagUtils } from '../utils/tagUtils';
 
 export function MyProjects() {
   const { user } = useAppStore(state => state.auth);
@@ -13,6 +15,7 @@ export function MyProjects() {
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -91,10 +94,16 @@ export function MyProjects() {
                   rows={3}
                   style={{ padding: 8, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)', resize: 'vertical' }}
                 />
+                <TagInput
+                  tags={tags}
+                  onChange={setTags}
+                  disabled={saving}
+                  placeholder="Add tags..."
+                />
                 {formError && <div style={{ color: 'var(--white)' }}>{formError}</div>}
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                   <button
-                    onClick={() => { setShowForm(false); setName(''); setDescription(''); setFormError(null); }}
+                    onClick={() => { setShowForm(false); setName(''); setDescription(''); setTags([]); setFormError(null); }}
                     disabled={saving}
                   >
                     cancel
@@ -106,11 +115,20 @@ export function MyProjects() {
                       if (!trimmed) { setFormError('name required'); return; }
                       if (trimmed.length > 80) { setFormError('name too long'); return; }
                       if (description.length > 500) { setFormError('description too long'); return; }
+                      
+                      const normalized = TagUtils.normalizeTags(tags);
+                      
                       setSaving(true); setFormError(null);
                       try {
-                        const p = await ProjectService.createProjectWithUniqueName({ name: trimmed, description, ownerId: user.uid });
+                        const p = await ProjectService.createProjectWithUniqueName({ 
+                          name: trimmed, 
+                          description, 
+                          ownerId: user.uid,
+                          tags: normalized.display,
+                          tagsKey: normalized.keys
+                        });
                         setProjects(prev => [{ id: p.id, name: p.name, createdAt: (p as any).createdAt }, ...prev]);
-                        setShowForm(false); setName(''); setDescription('');
+                        setShowForm(false); setName(''); setDescription(''); setTags([]);
                       } catch (e: any) {
                         const msg = e?.message || 'failed to create';
                         if (/name already taken/i.test(msg)) {

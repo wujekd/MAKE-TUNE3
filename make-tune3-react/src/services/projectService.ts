@@ -1,4 +1,4 @@
-import { doc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Project, ProjectId } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
@@ -8,6 +8,8 @@ export class ProjectService {
     const now = Timestamp.now();
     const projectData = {
       ...project,
+      tags: project.tags || [],
+      tagsKey: project.tagsKey || [],
       createdAt: now,
       updatedAt: now
     } as Omit<Project, 'id'>;
@@ -49,8 +51,8 @@ export class ProjectService {
     return snap.docs.map(d => ({ ...(d.data() as any), id: d.id } as Project));
   }
 
-  static async createProjectWithUniqueName(params: { name: string; description?: string; ownerId: string }): Promise<Project> {
-    const { name, description, ownerId } = params;
+  static async createProjectWithUniqueName(params: { name: string; description?: string; ownerId: string; tags?: string[]; tagsKey?: string[] }): Promise<Project> {
+    const { name, description, ownerId, tags = [], tagsKey = [] } = params;
     const nameKey = name.toLowerCase().replace(/\s+/g, '-');
     const nameIndexRef = doc(db, COLLECTIONS.PROJECT_NAME_INDEX, nameKey);
     const nameSnap = await getDoc(nameIndexRef);
@@ -64,16 +66,24 @@ export class ProjectService {
       description: description || '',
       ownerId,
       isActive: true,
-      pastCollaborations: []
+      pastCollaborations: [],
+      tags,
+      tagsKey
     });
 
-    await addDoc(collection(db, COLLECTIONS.PROJECT_NAME_INDEX), {
-      nameKey,
-      projectId: project.id,
-      createdAt: Timestamp.now()
-    });
+    try {
+      await setDoc(nameIndexRef, {
+        nameKey,
+        projectId: project.id,
+        ownerId,
+        createdAt: Timestamp.now()
+      }, { merge: false });
+    } catch (error) {
+      // roll back the project doc if we fail to reserve the name
+      await deleteDoc(doc(db, COLLECTIONS.PROJECTS, project.id));
+      throw error;
+    }
 
     return project;
   }
 }
-

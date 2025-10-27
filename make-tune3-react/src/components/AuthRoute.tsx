@@ -2,10 +2,11 @@ import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthView } from '../views/auth/AuthView';
 import { useAppStore } from '../stores/appStore';
+import { useUIStore } from '../stores/useUIStore';
 
 export function AuthRoute() {
   const navigate = useNavigate();
-  const setShowAuth = useAppStore(s => s.ui.setShowAuth);
+  const { setShowAuth } = useUIStore();
   const user = useAppStore(s => s.auth.user);
   const [sp] = useSearchParams();
   const initialMode = sp.get('mode') === 'register' ? 'register' : 'login';

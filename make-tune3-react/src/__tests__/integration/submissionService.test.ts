@@ -27,6 +27,8 @@ describe('SubmissionService Integration', () => {
     const project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'> = {
       name: 'Test Project',
       description: 'Test project for submission tests',
+      tags: [],
+      tagsKey: [],
       ownerId: testUserId,
       isActive: true,
       pastCollaborations: []
@@ -38,6 +40,8 @@ describe('SubmissionService Integration', () => {
     const collaboration: Omit<Collaboration, 'id' | 'createdAt' | 'updatedAt'> = {
       name: 'Test Collaboration',
       description: 'Test description',
+      tags: [],
+      tagsKey: [],
       projectId: testProjectId,
       status: 'unpublished',
       backingTrackPath: '',

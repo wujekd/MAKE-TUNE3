@@ -8,6 +8,8 @@ export class CollaborationService {
     const now = Timestamp.now();
     const collaborationData = {
       ...collaboration,
+      tags: collaboration.tags || [],
+      tagsKey: collaboration.tagsKey || [],
       createdAt: now,
       publishedAt: (collaboration as any).publishedAt || null,
       updatedAt: now
@@ -85,5 +87,11 @@ export class CollaborationService {
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ ...(d.data() as any), id: d.id } as Collaboration));
   }
-}
 
+  static filterCollaborationsByTags(collaborations: Collaboration[], tagKeys: string[]): Collaboration[] {
+    if (tagKeys.length === 0) return collaborations;
+    return collaborations.filter(collab => 
+      tagKeys.every(key => collab.tagsKey?.includes(key))
+    );
+  }
+}

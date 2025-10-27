@@ -1,9 +1,128 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(project) { return isSignedIn() && project.data.ownerId == request.auth.uid; }
+    function validateProjectData(data) {
+      return data.name is string && data.name.size() >= 3 && data.name.size() <= 100
+        && data.description is string && data.description.size() <= 500
+        && data.ownerId is string
+        && data.isActive is bool
+        && data.pastCollaborations is list
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && (!('tags' in data) || (data.tags is list && data.tags.size() <= 10))
+        && (!('tagsKey' in data) || (data.tagsKey is list && data.tagsKey.size() <= 10))
+        && (!('nameKey' in data) || data.nameKey is string);
+    }
+
+    function validateCollaborationData(data) {
+      let validStatuses = ['draft', 'published', 'submission', 'voting', 'completed', 'unpublished'];
+      return data.keys().hasAll(['projectId', 'name', 'status', 'createdAt', 'updatedAt'])
+        && data.projectId is string
+        && data.name is string && data.name.size() >= 3 && data.name.size() <= 100
+        && data.status is string && data.status in validStatuses
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && (!('participantIds' in data) || data.participantIds is list)
+        && (!('submissions' in data) || data.submissions is list)
+        && (!('submissionPaths' in data) || data.submissionPaths is list)
+        && (!('publishedAt' in data) || data.publishedAt == null || data.publishedAt is timestamp)
+        && (!('backingTrackPath' in data) || data.backingTrackPath is string)
+        && (!('description' in data) || data.description is string)
+        && (!('submissionDuration' in data) || data.submissionDuration is number)
+        && (!('votingDuration' in data) || data.votingDuration is number)
+        && (!('requiresModeration' in data) || data.requiresModeration is bool)
+        && (!('submissionCloseAt' in data) || data.submissionCloseAt is timestamp)
+        && (!('votingCloseAt' in data) || data.votingCloseAt is timestamp)
+        && (!('winnerPath' in data) || data.winnerPath is string)
+        && (!('tags' in data) || (data.tags is list && data.tags.size() <= 10))
+        && (!('tagsKey' in data) || (data.tagsKey is list && data.tagsKey.size() <= 10));
+    }
+
+    function validateProjectNameIndexData(data, nameKey) {
+      return data.keys().hasOnly(['nameKey', 'projectId', 'ownerId', 'createdAt'])
+        && data.nameKey == nameKey
+        && data.projectId is string
+        && data.ownerId is string
+        && data.createdAt is timestamp;
+    }
+
+    match /projects/{projectId} {
+      allow read: if true;
+      allow create: if isSignedIn() 
+        && request.resource.data.ownerId == request.auth.uid
+        && validateProjectData(request.resource.data);
+      allow update: if isOwner(resource)
+        && validateProjectData(request.resource.data)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isOwner(resource);
+    }
+
+    match /collaborations/{collabId} {
+      allow read: if true;
+
+      allow create: if isSignedIn()
+        && exists(/databases/$(database)/documents/projects/$(request.resource.data.projectId))
+        && get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)).data.ownerId == request.auth.uid
+        && validateCollaborationData(request.resource.data);
+
+      allow update: if get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.ownerId == request.auth.uid
+        && validateCollaborationData(request.resource.data)
+        && request.resource.data.projectId == resource.data.projectId
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow update: if isSignedIn()
+        && validateCollaborationData(request.resource.data)
+        && request.resource.data.projectId == resource.data.projectId
+        && request.resource.data.participantIds.size() >= resource.data.participantIds.size()
+        && request.resource.data.submissions.size() >= resource.data.submissions.size();
+
+      allow delete: if get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.ownerId == request.auth.uid;
+    }
+
+    // users: each user can read/write their own profile
+    match /users/{userId} {
+      allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // usernames mapping: claim a username if it doesn't exist
+    match /usernames/{name} {
+      allow read: if true;
+      allow create: if isSignedIn() && !exists(/databases/$(database)/documents/usernames/$(name));
+      allow update, delete: if false;
+    }
+
+    // userCollaborations: private to the user
+    match /userCollaborations/{docId} {
+      // reads use resource.data; writes use request.resource.data
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create, update, delete: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // submissionUsers: create by the submitting user; reads restricted (owner or self)
+    match /submissionUsers/{docId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if false;
+      allow update, delete: if false;
+    }
+
+    // project name index: read, but writes should be via trusted backend (optional)
+    match /projectNameIndex/{nameKey} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && request.auth.uid == request.resource.data.ownerId
+        && validateProjectNameIndexData(request.resource.data, nameKey);
+      allow update: if false;
+      allow delete: if isSignedIn()
+        && resource.data.ownerId == request.auth.uid;
+    }
+
+    // tags: read by all, write by authenticated users (admin)
+    match /tags/{tagKey} {
+      allow read: if true;
+      allow create, update, delete: if isSignedIn();
     }
   }
 }
-

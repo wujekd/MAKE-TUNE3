@@ -1,0 +1,102 @@
+.tag-input {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tag-input__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: var(--primary1-600);
+  color: var(--white);
+  border-radius: 16px;
+  font-size: 14px;
+}
+
+.tag-chip__remove {
+  background: none;
+  border: none;
+  color: var(--white);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tag-chip__remove:hover {
+  opacity: 0.7;
+}
+
+.tag-input__input-wrapper {
+  position: relative;
+}
+
+.tag-input__input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--primary1-700);
+  border: 1px solid var(--primary1-500);
+  border-radius: 4px;
+  color: var(--white);
+  font-size: 14px;
+}
+
+.tag-input__input:focus {
+  outline: none;
+  border-color: var(--primary1-400);
+}
+
+.tag-input__suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--primary1-700);
+  border: 1px solid var(--primary1-500);
+  border-radius: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.tag-input__suggestion {
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: var(--white);
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tag-input__suggestion:hover {
+  background: var(--primary1-600);
+}
+
+.tag-count {
+  opacity: 0.7;
+  font-size: 12px;
+}
+
+.tag-input__error {
+  color: var(--error, #ff4444);
+  font-size: 12px;
+}
+

@@ -29,6 +29,8 @@ export interface Project {
   id: string;
   name: string;
   description: string;
+  tags: string[];
+  tagsKey: string[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
   ownerId: string;
@@ -41,6 +43,8 @@ export interface Collaboration {
   projectId: string;
   name: string;
   description: string;
+  tags: string[];
+  tagsKey: string[];
   backingTrackPath: string; // direct file path
   // New model: submission entries with path and settings
   submissions?: SubmissionEntry[];
@@ -118,6 +122,15 @@ export interface CollaborationData {
   pastStageTracks: Track[];
 }
 
+export interface Tag {
+  name: string;
+  key: string;
+  projectCount: number;
+  collaborationCount: number;
+  lastUpdatedAt: Timestamp;
+  createdAt: Timestamp;
+}
+
 // firebase collection names
 export const COLLECTIONS = {
   PROJECTS: 'projects',
@@ -125,7 +138,8 @@ export const COLLECTIONS = {
   USER_COLLABORATIONS: 'userCollaborations',
   USERS: 'users',
   SUBMISSION_USERS: 'submissionUsers', // private collection
-  PROJECT_NAME_INDEX: 'projectNameIndex'
+  PROJECT_NAME_INDEX: 'projectNameIndex',
+  TAGS: 'tags'
 } as const;
 
 // helper types

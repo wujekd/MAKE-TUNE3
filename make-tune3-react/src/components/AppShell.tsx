@@ -160,9 +160,6 @@ export function AppShell() {
               )}
             </div>
           )}
-          {!currentUser && (
-            <button onClick={async () => { try { await signInWithGoogle(); } catch {} }}>Sign in</button>
-          )}
           {rightActions.filter(a => a.visible !== false).map(a => (
             <button key={a.key} onClick={a.onClick} disabled={a.disabled}>{a.label}</button>
           ))}

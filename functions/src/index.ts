@@ -1,5 +1,6 @@
 import {onDocumentCreated,
-  onDocumentUpdated} from "firebase-functions/v2/firestore";
+  onDocumentUpdated,
+  onDocumentWritten} from "firebase-functions/v2/firestore";
 import {initializeApp} from "firebase-admin/app";
 import {getFirestore, Timestamp} from "firebase-admin/firestore";
 import {setGlobalOptions} from "firebase-functions";
@@ -252,3 +253,163 @@ export const createProjectWithUniqueName = onCall(async (request) => {
   });
   return result;
 });
+
+export const getMySubmissionCollabs = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) {
+    return {items: [], unauthenticated: true};
+  }
+  const subSnap = await db
+    .collection("submissionUsers")
+    .where("userId", "==", uid)
+    .orderBy("createdAt", "desc")
+    .limit(10)
+    .get();
+  if (subSnap.empty) {
+    return {items: []};
+  }
+  const submissions = subSnap.docs.map((d) => ({
+    id: d.id,
+    collaborationId: String((d.data() as any).collaborationId || ""),
+    path: String((d.data() as any).path || ""),
+    createdAt: (d.data() as any).createdAt as Timestamp,
+  }));
+  const collabIds = Array.from(new Set(submissions.map((s) => s.collaborationId).filter(Boolean)));
+  const collabRefs = collabIds.map((id) => db.collection("collaborations").doc(id));
+  const collabSnaps = collabRefs.length ? await db.getAll(...collabRefs) : [];
+  const collabMap = new Map<string, any>();
+  collabSnaps.forEach((s) => {
+    if (s.exists) collabMap.set(s.id, s.data());
+  });
+  const projectIds = Array.from(new Set(collabSnaps.filter((s) => s.exists).map((s) => String((s.data() as any).projectId || "")).filter(Boolean)));
+  const projectRefs = projectIds.map((id) => db.collection("projects").doc(id));
+  const projectSnaps = projectRefs.length ? await db.getAll(...projectRefs) : [];
+  const projectMap = new Map<string, any>();
+  projectSnaps.forEach((s) => {
+    if (s.exists) projectMap.set(s.id, s.data());
+  });
+  const items = submissions.map((s) => {
+    const collab = collabMap.get(s.collaborationId) || {};
+    const projectId = String(collab.projectId || "");
+    const project = projectId ? projectMap.get(projectId) || {} : {};
+    const status = String(collab.status || "");
+    return {
+      projectId,
+      projectName: String(project.name || ""),
+      collabId: s.collaborationId,
+      collabName: String(collab.name || ""),
+      status,
+      submissionCloseAt: collab.submissionCloseAt ? (collab.submissionCloseAt as Timestamp).toMillis() : null,
+      votingCloseAt: collab.votingCloseAt ? (collab.votingCloseAt as Timestamp).toMillis() : null,
+      backingPath: String(collab.backingTrackPath || ""),
+      mySubmissionPath: s.path,
+      winnerPath: status === "completed" ? String(collab.winnerPath || "") : null,
+      submittedAt: s.createdAt ? s.createdAt.toMillis() : null,
+    };
+  });
+  return {items};
+});
+
+export const syncTagsOnProjectWrite = onDocumentWritten(
+  "projects/{projectId}",
+  async (event) => {
+    const before = event.data?.before?.data() as any;
+    const after = event.data?.after?.data() as any;
+
+    const oldTags = (before?.tagsKey || []) as string[];
+    const newTags = (after?.tagsKey || []) as string[];
+
+    const removed = oldTags.filter((t) => !newTags.includes(t));
+    const added = newTags.filter((t) => !oldTags.includes(t));
+
+    const now = Timestamp.now();
+
+    for (const tagKey of removed) {
+      const tagRef = db.collection("tags").doc(tagKey);
+      await db.runTransaction(async (tx) => {
+        const tagSnap = await tx.get(tagRef);
+        if (!tagSnap.exists) return;
+        const data = tagSnap.data() as any;
+        const newCount = Math.max(0, (data.projectCount || 0) - 1);
+        tx.update(tagRef, {projectCount: newCount, lastUpdatedAt: now});
+      });
+    }
+
+    for (const tagKey of added) {
+      const tagRef = db.collection("tags").doc(tagKey);
+      const displayTag = after?.tags?.[newTags.indexOf(tagKey)] || tagKey;
+
+      await db.runTransaction(async (tx) => {
+        const tagSnap = await tx.get(tagRef);
+        if (tagSnap.exists) {
+          const data = tagSnap.data() as any;
+          tx.update(tagRef, {
+            projectCount: (data.projectCount || 0) + 1,
+            lastUpdatedAt: now,
+          });
+        } else {
+          tx.set(tagRef, {
+            name: displayTag,
+            key: tagKey,
+            projectCount: 1,
+            collaborationCount: 0,
+            createdAt: now,
+            lastUpdatedAt: now,
+          });
+        }
+      });
+    }
+  }
+);
+
+export const syncTagsOnCollaborationWrite = onDocumentWritten(
+  "collaborations/{collaborationId}",
+  async (event) => {
+    const before = event.data?.before?.data() as any;
+    const after = event.data?.after?.data() as any;
+
+    const oldTags = (before?.tagsKey || []) as string[];
+    const newTags = (after?.tagsKey || []) as string[];
+
+    const removed = oldTags.filter((t) => !newTags.includes(t));
+    const added = newTags.filter((t) => !oldTags.includes(t));
+
+    const now = Timestamp.now();
+
+    for (const tagKey of removed) {
+      const tagRef = db.collection("tags").doc(tagKey);
+      await db.runTransaction(async (tx) => {
+        const tagSnap = await tx.get(tagRef);
+        if (!tagSnap.exists) return;
+        const data = tagSnap.data() as any;
+        const newCount = Math.max(0, (data.collaborationCount || 0) - 1);
+        tx.update(tagRef, {collaborationCount: newCount, lastUpdatedAt: now});
+      });
+    }
+
+    for (const tagKey of added) {
+      const tagRef = db.collection("tags").doc(tagKey);
+      const displayTag = after?.tags?.[newTags.indexOf(tagKey)] || tagKey;
+
+      await db.runTransaction(async (tx) => {
+        const tagSnap = await tx.get(tagRef);
+        if (tagSnap.exists) {
+          const data = tagSnap.data() as any;
+          tx.update(tagRef, {
+            collaborationCount: (data.collaborationCount || 0) + 1,
+            lastUpdatedAt: now,
+          });
+        } else {
+          tx.set(tagRef, {
+            name: displayTag,
+            key: tagKey,
+            projectCount: 0,
+            collaborationCount: 1,
+            createdAt: now,
+            lastUpdatedAt: now,
+          });
+        }
+      });
+    }
+  }
+);

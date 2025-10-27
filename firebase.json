@@ -17,11 +17,10 @@
   ],
   "firestore": {
     "indexes": "firestore.indexes.json",
-    "rules": "firestore.rules"
+    "rules": "firestore.test.rules"
   },
   "storage": {
     "rules": "storage.rules"
-    
   },
   "emulators": {
     "firestore": {

@@ -4,14 +4,16 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isOwner(project) { return isSignedIn() && project.data.ownerId == request.auth.uid; }
     function validateProjectData(data) {
-      return data.keys().hasAll(['name', 'description', 'ownerId', 'isActive', 'pastCollaborations', 'createdAt', 'updatedAt'])
-        && data.name is string && data.name.size() >= 3 && data.name.size() <= 100
-        && data.description is string && data.description.size() >= 10 && data.description.size() <= 500
+      return data.name is string && data.name.size() >= 3 && data.name.size() <= 100
+        && data.description is string && data.description.size() <= 500
         && data.ownerId is string
         && data.isActive is bool
         && data.pastCollaborations is list
         && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
+        && data.updatedAt is timestamp
+        && (!('tags' in data) || (data.tags is list && data.tags.size() <= 10))
+        && (!('tagsKey' in data) || (data.tagsKey is list && data.tagsKey.size() <= 10))
+        && (!('nameKey' in data) || data.nameKey is string);
     }
 
     function validateCollaborationData(data) {
@@ -33,7 +35,17 @@ service cloud.firestore {
         && (!('requiresModeration' in data) || data.requiresModeration is bool)
         && (!('submissionCloseAt' in data) || data.submissionCloseAt is timestamp)
         && (!('votingCloseAt' in data) || data.votingCloseAt is timestamp)
-        && (!('winnerPath' in data) || data.winnerPath is string);
+        && (!('winnerPath' in data) || data.winnerPath is string)
+        && (!('tags' in data) || (data.tags is list && data.tags.size() <= 10))
+        && (!('tagsKey' in data) || (data.tagsKey is list && data.tagsKey.size() <= 10));
+    }
+
+    function validateProjectNameIndexData(data, nameKey) {
+      return data.keys().hasOnly(['nameKey', 'projectId', 'ownerId', 'createdAt'])
+        && data.nameKey == nameKey
+        && data.projectId is string
+        && data.ownerId is string
+        && data.createdAt is timestamp;
     }
 
     match /projects/{projectId} {
@@ -99,7 +111,18 @@ service cloud.firestore {
     // project name index: read, but writes should be via trusted backend (optional)
     match /projectNameIndex/{nameKey} {
       allow read: if true;
-      allow write: if false;
+      allow create: if isSignedIn()
+        && request.auth.uid == request.resource.data.ownerId
+        && validateProjectNameIndexData(request.resource.data, nameKey);
+      allow update: if false;
+      allow delete: if isSignedIn()
+        && resource.data.ownerId == request.auth.uid;
+    }
+
+    // tags: read by all, write by authenticated users (admin)
+    match /tags/{tagKey} {
+      allow read: if true;
+      allow create, update, delete: if isSignedIn();
     }
   }
 }

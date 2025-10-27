@@ -4,4 +4,5 @@
 export { TrackUtils } from './trackUtils';
 export { AudioUrlUtils } from './audioUrlUtils';
 export { PlaybackUtils } from './playbackUtils';
+export { TagUtils } from './tagUtils';
 
