@@ -2,10 +2,10 @@ import { useContext, useEffect } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
-import Favorites from '../components/Favorites';
-import SubmissionItem from '../components/SubmissionItem';
+import { ModerationSubmissionItem } from '../components/ModerationSubmissionItem';
 import { Mixer } from '../components/Mixer';
 import { ModerationPanel } from '../components/ModerationPanel';
+import { CollabHeader } from '../components/CollabHeader';
 import './MainView.css';
 import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
 
@@ -14,11 +14,9 @@ export function ModerationView() {
   const { user } = useAppStore(state => state.auth);
   const { 
     regularTracks,
-    favorites,
+    currentCollaboration,
     loadCollaboration,
     loadCollaborationAnonymousById,
-    isTrackFavorite,
-    isTrackListened,
     approveSubmission,
     rejectSubmission
   } = useAppStore(state => state.collaboration);
@@ -51,6 +49,9 @@ export function ModerationView() {
 
       <div className="info-top">
         <h2>Moderation</h2>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+          <CollabHeader collaboration={currentCollaboration} />
+        </div>
       </div>
 
       <div className={`submissions-section ${!state.playerController.pastStagePlayback ? 'active-playback' : ''}`}>
@@ -62,25 +63,23 @@ export function ModerationView() {
           />
           <div className="audio-player-title">Submissions</div>
           <div style={{ display: 'flex', flexDirection: 'row', gap: '10px', flexWrap: 'wrap' }}>
-            {regularTracks.map((track, index) => (
-              <SubmissionItem 
-                key={track.id}
-                track={track}
-                index={index}
-                isCurrentTrack={
-                  !state.playerController.pastStagePlayback &&
-                  state.player1.source === `/test-audio/${track.filePath}`
-                }
-                isPlaying={state.player1.isPlaying}
-                listened={isTrackListened(track.filePath)}
-                favorite={isTrackFavorite(track.filePath)}
-                onAddToFavorites={() => {}}
-                onPlay={(filePath, ix) => playSubmission(filePath, ix, false)}
-                voteFor={() => {}}
-                listenedRatio={7}
-                isFinal={false}
-              />
-            ))}
+            {regularTracks.map((track, index) => {
+              const isCurrent =
+                !state.playerController.pastStagePlayback &&
+                !state.playerController.playingFavourite &&
+                state.playerController.currentTrackId === index;
+
+              return (
+                <ModerationSubmissionItem 
+                  key={track.id}
+                  track={track}
+                  index={index}
+                  isCurrentTrack={isCurrent}
+                  isPlaying={isCurrent && state.player1.isPlaying}
+                  onPlay={(filePath, ix) => playSubmission(filePath, ix, false)}
+                />
+              );
+            })}
           </div>
         </div>
       </div>

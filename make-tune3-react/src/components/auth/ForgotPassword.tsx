@@ -20,5 +20,3 @@ export function ForgotPassword({ onBackToSignIn }: ForgotPasswordProps) {
     </div>
   );
 }
-
-

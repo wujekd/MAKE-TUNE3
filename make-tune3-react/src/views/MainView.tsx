@@ -12,6 +12,7 @@ import { Mixer } from '../components/Mixer';
 // import { SubmissionEQ } from '../components/SubmissionEQ';
 import { DebugInfo } from '../components/DebugInfo';
 import ProjectHistory from '../components/ProjectHistory';
+import { CollabHeader } from '../components/CollabHeader';
 import { storage } from '../services/firebase';
 import { ref, getDownloadURL } from 'firebase/storage';
 
@@ -178,7 +179,10 @@ export function MainView() {
             <div className="mv-subtitle">collaboration description: {currentCollaboration?.description || ''}</div>
           </div>
         </div>
-        <ProjectHistory />
+        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+          <ProjectHistory />
+          <CollabHeader collaboration={currentCollaboration} />
+        </div>
       </div>
       
       <div className={`submissions-section ${!state.playerController.pastStagePlayback ? 'active-playback' : ''}`}>

@@ -17,7 +17,7 @@ interface CollaborationDetailsProps {
 
 import { TimeUtils, type CountdownResult } from '../utils/timeUtils';
 
-// Helper function to safely convert Date or Timestamp to milliseconds
+// date or timestamp to milliseconds
 function toMillis(dateOrTimestamp: any): number {
   if (!dateOrTimestamp) return 0;
   if (typeof dateOrTimestamp.toMillis === 'function') {
@@ -140,14 +140,6 @@ export function CollaborationDetails({
                   const submissionEnd = toMillis((col as any).submissionCloseAt);
                   const votingEnd = toMillis((col as any).votingCloseAt);
 
-                  console.log('Progress calculation:', {
-                    now,
-                    publishedAt,
-                    submissionEnd,
-                    votingEnd,
-                    status: col.status
-                  });
-
                   if (col.status === 'voting') {
                     // In voting phase, start at 50% and progress to 100%
                     return 50 + ((now - submissionEnd) / (votingEnd - submissionEnd)) * 50;
@@ -246,7 +238,5 @@ export function CollaborationDetails({
       />
     );
   }
-
   return null;
 }
-

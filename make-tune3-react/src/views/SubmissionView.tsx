@@ -6,6 +6,7 @@ import { Mixer } from '../components/Mixer';
 import './MainView.css';
 import ProjectHistory from '../components/ProjectHistory';
 import '../components/ProjectHistory.css';
+import { CollabHeader } from '../components/CollabHeader';
 import { UserService, SubmissionService } from '../services';
 import { DownloadBacking } from '../components/DownloadBacking';
 import { UploadSubmission } from '../components/UploadSubmission';
@@ -97,7 +98,10 @@ export function SubmissionView() {
 
       <div className="info-top">
         <h2>Submission</h2>
-        <ProjectHistory />
+        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+          <ProjectHistory />
+          <CollabHeader collaboration={currentCollaboration} />
+        </div>
       </div>
 
       <div className="submissions-section active-playback">

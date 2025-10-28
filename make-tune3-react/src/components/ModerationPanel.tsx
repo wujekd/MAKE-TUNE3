@@ -61,10 +61,10 @@ export function ModerationPanel({ tracks, onApprove, onReject }: Props) {
       </div>
       <div className="favorites-container" ref={scrollContainerRef}>
         {current ? (
-          <div className="favorite-item">
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="remove-button" onClick={() => onReject(current)}>×</button>
-              <button onClick={() => onApprove(current)} style={{ padding: '6px 10px' }}>approve</button>
+          <div className="favorite-item" style={{ width: '100%' }}>
+            <div className="moderation-actions">
+              <button className="moderation-button moderation-reject" onClick={() => onReject(current)}>Reject</button>
+              <button className="moderation-button moderation-approve" onClick={() => onApprove(current)}>Approve</button>
             </div>
             <div style={{ color: 'var(--white)', paddingTop: 8 }}>{current.title || current.filePath}</div>
           </div>

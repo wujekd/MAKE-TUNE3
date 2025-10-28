@@ -31,6 +31,7 @@ export function MyProjects() {
         if (mounted) setError(e?.message || 'failed to load');
       } finally {
         if (mounted) setLoading(false);
+        
       }
     })();
     return () => {

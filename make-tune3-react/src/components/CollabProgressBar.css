@@ -9,27 +9,32 @@
 }
 
 .collab-progress__track {
-  height: 8px;
-  background: var(--primary1-800, #2a2a2a);
+  height: 12px;
+  background: var(--primary1-600);
   border-radius: 4px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  opacity: 0.9;
 }
 
 .collab-progress__fill {
   position: absolute;
   height: 100%;
   top: 0;
+  border-radius: 4px;
   transition: width 0.3s ease;
 }
 
 .collab-progress__fill--submission {
-  background: var(--primary2-500, #4a90e2);
+  background: linear-gradient(135deg, #18261d, #16a34a);
   left: 0;
+  opacity: 0.75;
 }
 
 .collab-progress__fill--voting {
-  background: var(--primary3-500, #50e3c2);
+  background: linear-gradient(135deg, var(--contrast-600), var(--contrast-700));
+  left: 50%;
+  opacity: 0.75;
 }
 
 .collab-progress__divider {
@@ -38,6 +43,34 @@
   top: 0;
   height: 100%;
   width: 2px;
-  background: var(--primary1-900);
+  background: rgba(255, 255, 255, 0.2);
   transform: translateX(-1px);
+  z-index: 2;
+}
+
+.collab-progress__handle {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--contrast-600);
+  cursor: default;
+  border: 2px solid var(--white);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  z-index: 3;
+  transition: left 0.3s ease;
+}
+
+.collab-progress__labels {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
+  margin-top: 4px;
+  font-size: 0.625rem;
+  color: var(--white);
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
