@@ -1,0 +1,43 @@
+.collab-progress {
+  margin: 12px 0;
+}
+
+.collab-progress__bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.collab-progress__track {
+  height: 8px;
+  background: var(--primary1-800, #2a2a2a);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.collab-progress__fill {
+  position: absolute;
+  height: 100%;
+  top: 0;
+  transition: width 0.3s ease;
+}
+
+.collab-progress__fill--submission {
+  background: var(--primary2-500, #4a90e2);
+  left: 0;
+}
+
+.collab-progress__fill--voting {
+  background: var(--primary3-500, #50e3c2);
+}
+
+.collab-progress__divider {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  height: 100%;
+  width: 2px;
+  background: var(--primary1-900);
+  transform: translateX(-1px);
+}

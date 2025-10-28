@@ -1,0 +1,52 @@
+.timer-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px; /* Increased gap between units */
+  font-family: monospace;
+  padding: 8px;
+  border-radius: 4px;
+  background: var(--primary1-900, #1a1a1a);
+  width: 100%;
+  min-height: 52px; /* Fixed height to match non-completed state */
+  box-sizing: border-box;
+}
+
+.timer-display--completed {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timer-display__unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 40px;
+}
+
+.timer-display__value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--white);
+  line-height: 20px; /* Fixed line height */
+}
+
+.timer-display__label {
+  font-size: 10px;
+  color: var(--white);
+  opacity: 0.6;
+  line-height: 14px; /* Fixed line height */
+}
+
+.timer-display__separator {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--white);
+  opacity: 0.4;
+  margin-top: -8px;
+  padding: 0 2px; /* Added padding for better spacing */
+}

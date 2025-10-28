@@ -60,9 +60,10 @@ export function ProjectEditView() {
       </div>
 
       <div style={{ display: 'flex', gap: 16, flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        <div className="project-history" style={{ maxWidth: 480, width: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        {/* Manager - 1/3 width */}
+        <div className="project-history" style={{ width: '33.333%', maxWidth: 'none', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <h4 className="project-history-title">collaboration manager</h4>
-      <div className="collab-list" style={{ flex: 1, overflowY: 'auto' }}>
+          <div className="collab-list" style={{ flex: 1, overflowY: 'auto' }}>
             {loading && <div style={{ color: 'var(--white)' }}>loading...</div>}
             {error && <div style={{ color: 'var(--white)' }}>{error}</div>}
             {!loading && !error && collabs.length === 0 && (
@@ -84,9 +85,30 @@ export function ProjectEditView() {
             </div>
           </div>
         </div>
-        <div className="project-history" style={{ maxWidth: 480, width: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        {/* Details - 2/3 width */}
+        <div className="project-history" style={{ 
+          width: '66.666%', 
+          maxWidth: 'none', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          minHeight: 0,
+          overflow: 'hidden' // Contain overflow at this level
+        }}>
           <h4 className="project-history-title">details</h4>
-          <div className="collab-list" style={{ padding: 12, flex: 1, overflowY: 'auto' }}>
+          <div className="collab-list" style={{ 
+            padding: 12, 
+            flex: 1,
+            minHeight: 0, // Important for nested flex scroll
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden' // Contain overflow at this level too
+          }}>
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              width: '100%'
+            }}>
             <CollaborationDetails
               mode={mode}
               selectedId={selectedId}
@@ -96,6 +118,7 @@ export function ProjectEditView() {
               onCollabsUpdate={setCollabs}
               onSelectedIdChange={setSelectedId}
             />
+            </div>
           </div>
         </div>
       </div>

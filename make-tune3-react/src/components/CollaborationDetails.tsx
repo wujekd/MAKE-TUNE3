@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import type { Collaboration, Project } from '../types/collaboration';
 import { CollaborationService } from '../services';
 import { CreateCollaboration } from './CreateCollaboration';
+import { CollabProgressBar } from './CollabProgressBar';
+import { TimerDisplay } from './TimerDisplay';
 
 interface CollaborationDetailsProps {
   mode: 'none' | 'create' | 'view' | 'edit';
@@ -13,22 +15,7 @@ interface CollaborationDetailsProps {
   onSelectedIdChange: (id: string | null) => void;
 }
 
-function formatCountdown(targetDate: Date): string {
-  const now = new Date().getTime();
-  const target = targetDate.getTime();
-  const diff = target - now;
-
-  if (diff <= 0) return 'completed';
-
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-  if (days > 0) return `${days}d ${hours}h ${minutes}m ${seconds}s`;
-  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
-  return `${minutes}m ${seconds}s`;
-}
+import { TimeUtils, type CountdownResult } from '../utils/timeUtils';
 
 export function CollaborationDetails({
   mode,
@@ -39,19 +26,26 @@ export function CollaborationDetails({
   onCollabsUpdate,
   onSelectedIdChange
 }: CollaborationDetailsProps) {
-  const [countdown, setCountdown] = useState<{ submission: string; voting: string }>({ submission: '', voting: '' });
+  const [countdown, setCountdown] = useState<{ submission: CountdownResult; voting: CountdownResult }>({
+    submission: { days: 0, hours: 0, minutes: 0, seconds: 0, completed: false },
+    voting: { days: 0, hours: 0, minutes: 0, seconds: 0, completed: false }
+  });
 
   useEffect(() => {
     if (mode !== 'view' || !selectedId) return;
     const col = collabs.find(c => c.id === selectedId);
     if (!col || col.status === 'unpublished') return;
 
-    const updateCountdown = () => {
+      const updateCountdown = () => {
       const subClose = (col as any).submissionCloseAt;
       const votClose = (col as any).votingCloseAt;
       setCountdown({
-        submission: subClose ? formatCountdown(new Date(subClose.toMillis ? subClose.toMillis() : subClose)) : 'N/A',
-        voting: votClose ? formatCountdown(new Date(votClose.toMillis ? votClose.toMillis() : votClose)) : 'N/A'
+        submission: subClose 
+          ? TimeUtils.formatCountdown(new Date(subClose.toMillis ? subClose.toMillis() : subClose))
+          : { days: 0, hours: 0, minutes: 0, seconds: 0, completed: true },
+        voting: votClose 
+          ? TimeUtils.formatCountdown(new Date(votClose.toMillis ? votClose.toMillis() : votClose))
+          : { days: 0, hours: 0, minutes: 0, seconds: 0, completed: true }
       });
     };
 
@@ -94,24 +88,64 @@ export function CollaborationDetails({
 
         {hasTimestamps && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8, padding: 12, background: 'rgba(255,255,255,0.05)', borderRadius: 6 }}>
-            <div>
-              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Submission phase</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, fontFamily: 'monospace' }}>{countdown.submission}</div>
-                <div style={{ fontSize: 12, opacity: 0.6 }}>
-                  {subCloseAt ? new Date(subCloseAt.toMillis ? subCloseAt.toMillis() : subCloseAt).toLocaleString() : 'N/A'}
+            {/* Phases Container */}
+            <div style={{ display: 'flex', gap: 16 }}>
+              {/* Submission Phase - Left Half */}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Submission phase</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <TimerDisplay {...countdown.submission} />
+                  <div style={{ fontSize: 11, opacity: 0.6, textAlign: 'center' }}>
+                    {subCloseAt ? new Date(subCloseAt.toMillis ? subCloseAt.toMillis() : subCloseAt).toLocaleString() : 'N/A'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Voting Phase - Right Half */}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Voting phase</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <TimerDisplay 
+                    {...countdown.voting} 
+                    pending={col.status === 'submission'} 
+                  />
+                  <div style={{ fontSize: 11, opacity: 0.6, textAlign: 'center' }}>
+                    {votCloseAt ? new Date(votCloseAt.toMillis ? votCloseAt.toMillis() : votCloseAt).toLocaleString() : 'N/A'}
+                  </div>
                 </div>
               </div>
             </div>
-            <div>
-              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Voting phase</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, fontFamily: 'monospace' }}>{countdown.voting}</div>
-                <div style={{ fontSize: 12, opacity: 0.6 }}>
-                  {votCloseAt ? new Date(votCloseAt.toMillis ? votCloseAt.toMillis() : votCloseAt).toLocaleString() : 'N/A'}
-                </div>
-              </div>
-            </div>
+
+            {col.status !== 'unpublished' && (
+              // <CollabProgressBar progress={40} />
+              <CollabProgressBar 
+                progress={(() => {
+                  const now = Date.now();
+                  const publishedAt = (col.publishedAt as any)?.toMillis() || 0;
+                  const submissionEnd = (col as any).submissionCloseAt?.toMillis() || 0;
+                  const votingEnd = (col as any).votingCloseAt?.toMillis() || 0;
+
+                  console.log('Progress calculation:', {
+                    now,
+                    publishedAt,
+                    submissionEnd,
+                    votingEnd,
+                    status: col.status
+                  });
+
+                  if (col.status === 'voting') {
+                    // In voting phase, start at 50% and progress to 100%
+                    return 50 + ((now - submissionEnd) / (votingEnd - submissionEnd)) * 50;
+                  } else if (col.status === 'completed') {
+                    return 100;
+                  } else if (col.status === 'submission') {
+                    // In submission phase, progress from 0% to 50%
+                    return ((now - publishedAt) / (submissionEnd - publishedAt)) * 50;
+                  }
+                  return 0;
+                })()}
+              />
+            )}
           </div>
         )}
 

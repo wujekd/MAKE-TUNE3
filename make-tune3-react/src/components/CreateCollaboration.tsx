@@ -5,6 +5,8 @@ import { Potentiometer } from './Potentiometer';
 import { DeskToggle } from './DeskToggle';
 import { TagInput } from './TagInput';
 import { TagUtils } from '../utils/tagUtils';
+import { TimerDisplay } from './TimerDisplay';
+import { TimeUtils } from '../utils/timeUtils';
 
 type Props = {
   projectId: string;
@@ -18,8 +20,8 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-  const [submissionDuration, setSubmissionDuration] = useState<number>(604800);
-  const [votingDuration, setVotingDuration] = useState<number>(259200);
+  const [submissionDuration, setSubmissionDuration] = useState<number>(TimeUtils.clampDuration(604800));
+  const [votingDuration, setVotingDuration] = useState<number>(TimeUtils.clampDuration(259200));
   const [backingFile, setBackingFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,26 +30,6 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
   const [replaceBacking, setReplaceBacking] = useState<boolean>(false);
 
   // removed textual duration display helper
-
-  const splitDuration = (seconds: number) => {
-    const d = Math.floor(seconds / 86400);
-    const h = Math.floor((seconds % 86400) / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    return { d, h, m };
-  };
-
-  const clampDurationSec = (sec: number) => {
-    const min = 60;
-    const max = 60 * 60 * 24 * 14;
-    return Math.max(min, Math.min(max, sec));
-  };
-
-  const combineDuration = (d: number, h: number, m: number) => {
-    const dd = Math.max(0, Math.min(14, Math.floor(d)));
-    const hh = Math.max(0, Math.min(23, Math.floor(h)));
-    const mm = Math.max(0, Math.min(59, Math.floor(m)));
-    return clampDurationSec(dd * 86400 + hh * 3600 + mm * 60);
-  };
 
   useEffect(() => {
     if (mode === 'edit' && initial) {
@@ -131,7 +113,12 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      gap: 8,
+      width: '100%'
+    }}>
       <input
         placeholder="name"
         value={name}
@@ -166,53 +153,21 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
             min={60}
             max={60 * 60 * 24 * 14}
             step={60}
-            onChange={setSubmissionDuration}
-            onInput={setSubmissionDuration}
+            onChange={val => setSubmissionDuration(TimeUtils.clampDuration(val))}
+            onInput={val => setSubmissionDuration(TimeUtils.clampDuration(val))}
             showValue={false}
           />
-          {(() => {
-            const { d, h, m } = splitDuration(submissionDuration);
-            const setD = (val: number) => setSubmissionDuration(combineDuration(val, h, m));
-            const setH = (val: number) => setSubmissionDuration(combineDuration(d, val, m));
-            const setM = (val: number) => setSubmissionDuration(combineDuration(d, h, val));
-            return (
-              <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <input
-                    type="number"
-                    min={0}
-                    max={14}
-                    value={d}
-                    onChange={(e) => setD(Number(e.target.value))}
-                    style={{ width: 30, padding: 4, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)' }}
-                  />
-                  <span style={{ fontSize: 12, color: 'var(--white)', opacity: 0.85 }}>d</span>
+          <div style={{ marginTop: 6 }}>
+            {(() => {
+              const { days, hours, minutes, seconds } = TimeUtils.formatCountdown(Date.now() / 1000 + submissionDuration);
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <TimerDisplay days={days} hours={hours} minutes={minutes} seconds={seconds} />
+
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <input
-                    type="number"
-                    min={0}
-                    max={23}
-                    value={h}
-                    onChange={(e) => setH(Number(e.target.value))}
-                    style={{ width: 30, padding: 4, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)' }}
-                  />
-                  <span style={{ fontSize: 12, color: 'var(--white)', opacity: 0.85 }}>h</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <input
-                    type="number"
-                    min={0}
-                    max={59}
-                    value={m}
-                    onChange={(e) => setM(Number(e.target.value))}
-                    style={{ width: 30, padding: 4, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)' }}
-                  />
-                  <span style={{ fontSize: 12, color: 'var(--white)', opacity: 0.85 }}>m</span>
-                </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
+          </div>
         </div>
         <div style={{ flex: 1 }}>
           <Potentiometer
@@ -221,53 +176,20 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
             min={60}
             max={60 * 60 * 24 * 14}
             step={60}
-            onChange={setVotingDuration}
-            onInput={setVotingDuration}
+            onChange={val => setVotingDuration(TimeUtils.clampDuration(val))}
+            onInput={val => setVotingDuration(TimeUtils.clampDuration(val))}
             showValue={false}
           />
-          {(() => {
-            const { d, h, m } = splitDuration(votingDuration);
-            const setD = (val: number) => setVotingDuration(combineDuration(val, h, m));
-            const setH = (val: number) => setVotingDuration(combineDuration(d, val, m));
-            const setM = (val: number) => setVotingDuration(combineDuration(d, h, val));
-            return (
-              <div style={{ marginTop: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <input
-                    type="number"
-                    min={0}
-                    max={14}
-                    value={d}
-                    onChange={(e) => setD(Number(e.target.value))}
-                    style={{ width: 30, padding: 4, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)' }}
-                  />
-                  <span style={{ fontSize: 12, color: 'var(--white)', opacity: 0.85 }}>d</span>
+          <div style={{ marginTop: 6 }}>
+            {(() => {
+              const { days, hours, minutes, seconds } = TimeUtils.formatCountdown(Date.now() / 1000 + votingDuration); // now + duration
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <TimerDisplay days={days} hours={hours} minutes={minutes} seconds={seconds} />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <input
-                    type="number"
-                    min={0}
-                    max={23}
-                    value={h}
-                    onChange={(e) => setH(Number(e.target.value))}
-                    style={{ width: 30, padding: 4, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)' }}
-                  />
-                  <span style={{ fontSize: 12, color: 'var(--white)', opacity: 0.85 }}>h</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <input
-                    type="number"
-                    min={0}
-                    max={59}
-                    value={m}
-                    onChange={(e) => setM(Number(e.target.value))}
-                    style={{ width: 30, padding: 4, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)' }}
-                  />
-                  <span style={{ fontSize: 12, color: 'var(--white)', opacity: 0.85 }}>m</span>
-                </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
+          </div>
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
