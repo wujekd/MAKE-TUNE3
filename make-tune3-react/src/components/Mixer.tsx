@@ -4,6 +4,7 @@ import { useAppStore } from '../stores/appStore';
 import type { AudioState } from '../types';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { AnalogVUMeter } from './AnalogVUMeter';
+import { SmallLEDMeter } from './SmallLEDMeter';
 import { SubmissionEQ } from './SubmissionEQ';
 
 interface MixerProps {
@@ -13,9 +14,17 @@ interface MixerProps {
 export function Mixer({ state }: MixerProps) {
   const audioCtx = useContext(AudioEngineContext);
   const [masterLevel, setMasterLevel] = useState(0);
+  const [player1Level, setPlayer1Level] = useState(0);
+  const [player2Level, setPlayer2Level] = useState(0);
   const [submissionMuted, setSubmissionMuted] = useState(false);
-  const levelRef = useRef(0);
-  const lastTsRef = useRef<number | null>(null);
+  const masterLevelRef = useRef(0);
+  const player1LevelRef = useRef(0);
+  const player2LevelRef = useRef(0);
+  const masterLastTsRef = useRef<number | null>(null);
+  const player1LastTsRef = useRef<number | null>(null);
+  const player2LastTsRef = useRef<number | null>(null);
+  
+  // Master level monitoring
   useEffect(() => {
     if (!audioCtx?.engine) return;
     const tauAttack = 0.1;
@@ -23,17 +32,63 @@ export function Mixer({ state }: MixerProps) {
     const sensitivity = 4.5;
     const unsubscribe = audioCtx.engine.onMasterLevel(({ rms }) => {
       const now = performance.now();
-      const last = lastTsRef.current ?? now;
+      const last = masterLastTsRef.current ?? now;
       const dt = Math.max(0, (now - last) / 1000);
-      lastTsRef.current = now;
-      let d = levelRef.current;
+      masterLastTsRef.current = now;
+      let d = masterLevelRef.current;
       const target = Math.max(0, Math.min(1, rms * sensitivity));
       const coeff = target > d
         ? 1 - Math.exp(-dt / tauAttack)
         : 1 - Math.exp(-dt / tauRelease);
       d = d + (target - d) * coeff;
-      levelRef.current = d;
+      masterLevelRef.current = d;
       setMasterLevel(d);
+    });
+    return unsubscribe;
+  }, [audioCtx?.engine]);
+  
+  // Player1 level monitoring
+  useEffect(() => {
+    if (!audioCtx?.engine) return;
+    const tauAttack = 0.05;
+    const tauRelease = 0.3;
+    const sensitivity = 4.5;
+    const unsubscribe = audioCtx.engine.onPlayer1Level(({ rms }) => {
+      const now = performance.now();
+      const last = player1LastTsRef.current ?? now;
+      const dt = Math.max(0, (now - last) / 1000);
+      player1LastTsRef.current = now;
+      let d = player1LevelRef.current;
+      const target = Math.max(0, Math.min(1, rms * sensitivity));
+      const coeff = target > d
+        ? 1 - Math.exp(-dt / tauAttack)
+        : 1 - Math.exp(-dt / tauRelease);
+      d = d + (target - d) * coeff;
+      player1LevelRef.current = d;
+      setPlayer1Level(d);
+    });
+    return unsubscribe;
+  }, [audioCtx?.engine]);
+  
+  // Player2 level monitoring
+  useEffect(() => {
+    if (!audioCtx?.engine) return;
+    const tauAttack = 0.05;
+    const tauRelease = 0.3;
+    const sensitivity = 4.5;
+    const unsubscribe = audioCtx.engine.onPlayer2Level(({ rms }) => {
+      const now = performance.now();
+      const last = player2LastTsRef.current ?? now;
+      const dt = Math.max(0, (now - last) / 1000);
+      player2LastTsRef.current = now;
+      let d = player2LevelRef.current;
+      const target = Math.max(0, Math.min(1, rms * sensitivity));
+      const coeff = target > d
+        ? 1 - Math.exp(-dt / tauAttack)
+        : 1 - Math.exp(-dt / tauRelease);
+      d = d + (target - d) * coeff;
+      player2LevelRef.current = d;
+      setPlayer2Level(d);
     });
     return unsubscribe;
   }, [audioCtx?.engine]);
@@ -159,6 +214,9 @@ export function Mixer({ state }: MixerProps) {
               offText="unmute"
             />
           </div>
+          <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}>
+            <SmallLEDMeter value={player1Level} min={0} max={1} />
+          </div>
           <input 
             type="range"
             className="vertical-slider"
@@ -177,6 +235,9 @@ export function Mixer({ state }: MixerProps) {
           </div>
           <div className="volume-indicator"></div>
           <span className="channel-label">Master</span>
+          <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}>
+            <SmallLEDMeter value={player2Level} min={0} max={1} />
+          </div>
           <input 
             type="range"
             className="vertical-slider"

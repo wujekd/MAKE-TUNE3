@@ -20,7 +20,11 @@ export class AudioEngine {
   // todo: add eq gains, solo, mute, mute master, stop playback tracker and emit state
   private masterGain: GainNode | null = null;
   private masterAnalyser: AnalyserNode | null = null;
+  private player1Analyser: AnalyserNode | null = null;
+  private player2Analyser: AnalyserNode | null = null;
   private levelListeners: Set<(level: { peak: number; rms: number }) => void> = new Set();
+  private player1LevelListeners: Set<(level: { peak: number; rms: number }) => void> = new Set();
+  private player2LevelListeners: Set<(level: { peak: number; rms: number }) => void> = new Set();
   private rafId: number | null = null;
   private syncRafId: number | null = null;
   private state: AudioState;
@@ -100,13 +104,26 @@ export class AudioEngine {
     this.masterAnalyser.fftSize = 1024;
     this.masterAnalyser.smoothingTimeConstant = 0.8;
     
+    // Create individual channel analysers
+    this.player1Analyser = this.audioContext.createAnalyser();
+    this.player1Analyser.fftSize = 512;
+    this.player1Analyser.smoothingTimeConstant = 0.8;
+    
+    this.player2Analyser = this.audioContext.createAnalyser();
+    this.player2Analyser.fftSize = 512;
+    this.player2Analyser.smoothingTimeConstant = 0.8;
+    
     // player1 chain: gain -> highpass -> param1 -> param2 -> highshelf -> mute -> master
     this.player1Gain.connect(this.eq.highpass);
     this.eq.highpass.connect(this.eq.param1);
     this.eq.param1.connect(this.eq.param2);
     this.eq.param2.connect(this.eq.highshelf);
     this.eq.highshelf.connect(this.player1MuteGain);
+    // Tap player1 post-EQ for level monitoring
+    this.player1MuteGain.connect(this.player1Analyser);
     this.player1MuteGain.connect(this.masterGain);
+    // Tap player2 for level monitoring
+    this.player2Gain.connect(this.player2Analyser);
     this.player2Gain.connect(this.masterGain);
     // split: to destination and to analyser
     this.masterGain.connect(this.audioContext.destination);
@@ -167,29 +184,66 @@ export class AudioEngine {
     this.eqEnabled = enabled;
   }
   private startLevelLoop() {
-    if (!this.audioContext || !this.masterAnalyser) return;
+    if (!this.audioContext || !this.masterAnalyser || !this.player1Analyser || !this.player2Analyser) return;
     if (this.rafId !== null) return;
-    const analyser = this.masterAnalyser;
-    const buffer = new Float32Array(analyser.fftSize);
+    
+    const masterAnalyser = this.masterAnalyser;
+    const player1Analyser = this.player1Analyser;
+    const player2Analyser = this.player2Analyser;
+    
+    const masterBuffer = new Float32Array(masterAnalyser.fftSize);
+    const player1Buffer = new Float32Array(player1Analyser.fftSize);
+    const player2Buffer = new Float32Array(player2Analyser.fftSize);
+    
     const notify = () => {
-      analyser.getFloatTimeDomainData(buffer);
+      // Master level
+      masterAnalyser.getFloatTimeDomainData(masterBuffer);
       let peak = 0;
       let sum = 0;
-      for (let i = 0; i < buffer.length; i++) {
-        const v = buffer[i];
+      for (let i = 0; i < masterBuffer.length; i++) {
+        const v = masterBuffer[i];
         const av = Math.abs(v);
         if (av > peak) peak = av;
         sum += v * v;
       }
-      const rms = Math.sqrt(sum / buffer.length);
-      const level = { peak, rms };
-      this.levelListeners.forEach(cb => cb(level));
+      const rms = Math.sqrt(sum / masterBuffer.length);
+      this.levelListeners.forEach(cb => cb({ peak, rms }));
+      
+      // Player1 level
+      player1Analyser.getFloatTimeDomainData(player1Buffer);
+      let peak1 = 0;
+      let sum1 = 0;
+      for (let i = 0; i < player1Buffer.length; i++) {
+        const v = player1Buffer[i];
+        const av = Math.abs(v);
+        if (av > peak1) peak1 = av;
+        sum1 += v * v;
+      }
+      const rms1 = Math.sqrt(sum1 / player1Buffer.length);
+      this.player1LevelListeners.forEach(cb => cb({ peak: peak1, rms: rms1 }));
+      
+      // Player2 level
+      player2Analyser.getFloatTimeDomainData(player2Buffer);
+      let peak2 = 0;
+      let sum2 = 0;
+      for (let i = 0; i < player2Buffer.length; i++) {
+        const v = player2Buffer[i];
+        const av = Math.abs(v);
+        if (av > peak2) peak2 = av;
+        sum2 += v * v;
+      }
+      const rms2 = Math.sqrt(sum2 / player2Buffer.length);
+      this.player2LevelListeners.forEach(cb => cb({ peak: peak2, rms: rms2 }));
+      
       this.rafId = window.requestAnimationFrame(notify);
     };
     this.rafId = window.requestAnimationFrame(notify);
   }
   private stopLevelLoopIfIdle() {
-    if (this.levelListeners.size === 0 && this.rafId !== null) {
+    if (this.levelListeners.size === 0 && 
+        this.player1LevelListeners.size === 0 && 
+        this.player2LevelListeners.size === 0 && 
+        this.rafId !== null) {
       window.cancelAnimationFrame(this.rafId);
       this.rafId = null;
     }
@@ -199,6 +253,22 @@ export class AudioEngine {
     this.startLevelLoop();
     return () => {
       this.levelListeners.delete(callback);
+      this.stopLevelLoopIfIdle();
+    };
+  }
+  onPlayer1Level(callback: (level: { peak: number; rms: number }) => void): () => void {
+    this.player1LevelListeners.add(callback);
+    this.startLevelLoop();
+    return () => {
+      this.player1LevelListeners.delete(callback);
+      this.stopLevelLoopIfIdle();
+    };
+  }
+  onPlayer2Level(callback: (level: { peak: number; rms: number }) => void): () => void {
+    this.player2LevelListeners.add(callback);
+    this.startLevelLoop();
+    return () => {
+      this.player2LevelListeners.delete(callback);
       this.stopLevelLoopIfIdle();
     };
   }
