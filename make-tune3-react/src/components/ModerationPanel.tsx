@@ -5,8 +5,8 @@ import './Favorites.css';
 
 type Props = {
   tracks: Track[];
-  onApprove: (filePath: string) => void;
-  onReject: (filePath: string) => void;
+  onApprove: (track: Track) => void;
+  onReject: (track: Track) => void;
 };
 
 export function ModerationPanel({ tracks, onApprove, onReject }: Props) {
@@ -14,10 +14,32 @@ export function ModerationPanel({ tracks, onApprove, onReject }: Props) {
   if (!ctx) return null;
   const { state } = ctx;
   const currentSrc = state.player1.source;
+  const normalizeSource = (src: string): string => {
+    if (!src) return '';
+    if (src.startsWith('/test-audio/')) {
+      return src.replace('/test-audio/', '');
+    }
+    if (src.startsWith('http')) {
+      const idx = src.indexOf('/o/');
+      if (idx !== -1) {
+        let rest = src.substring(idx + 3);
+        const q = rest.indexOf('?');
+        if (q !== -1) rest = rest.substring(0, q);
+        try {
+          return decodeURIComponent(rest);
+        } catch {
+          return rest;
+        }
+      }
+      return src;
+    }
+    return src;
+  };
+
   const current = useMemo(() => {
     if (!currentSrc) return null;
-    const fp = currentSrc.replace('/test-audio/', '');
-    return tracks.find(t => t.filePath === fp) || null;
+    const sourcePath = normalizeSource(currentSrc);
+    return tracks.find(t => t.filePath === sourcePath || t.optimizedPath === sourcePath) || null;
   }, [currentSrc, tracks]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -41,18 +63,21 @@ export function ModerationPanel({ tracks, onApprove, onReject }: Props) {
         {current ? (
           <div className="favorite-item">
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="remove-button" onClick={() => onReject(current.filePath)}>×</button>
-              <button onClick={() => onApprove(current.filePath)} style={{ padding: '6px 10px' }}>approve</button>
+              <button className="remove-button" onClick={() => onReject(current)}>×</button>
+              <button onClick={() => onApprove(current)} style={{ padding: '6px 10px' }}>approve</button>
             </div>
             <div style={{ color: 'var(--white)', paddingTop: 8 }}>{current.title || current.filePath}</div>
           </div>
+        ) : tracks.length === 0 ? (
+          <div className="no-favorites">
+            <p>all submissions moderated</p>
+          </div>
         ) : (
           <div className="no-favorites">
-            <p>play a submission to moderate</p>
+            <p>play a pending submission to moderate</p>
           </div>
         )}
       </div>
     </section>
   );
 }
-

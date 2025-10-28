@@ -41,6 +41,8 @@ export function ModerationView() {
     // If already resolved elsewhere to full URL, we could resolve here; otherwise, rely on submission view logic.
   }, []);
 
+  const pendingTracks = regularTracks.filter(track => track.moderationStatus === 'pending');
+
   return (
     <div className="main-container">
       <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 1000 }}>
@@ -54,9 +56,9 @@ export function ModerationView() {
       <div className={`submissions-section ${!state.playerController.pastStagePlayback ? 'active-playback' : ''}`}>
         <div className="audio-player-section">
           <ModerationPanel 
-            tracks={regularTracks}
-            onApprove={(fp) => approveSubmission?.(fp)}
-            onReject={(fp) => rejectSubmission?.(fp)}
+            tracks={pendingTracks}
+            onApprove={(track) => approveSubmission?.(track)}
+            onReject={(track) => rejectSubmission?.(track)}
           />
           <div className="audio-player-title">Submissions</div>
           <div style={{ display: 'flex', flexDirection: 'row', gap: '10px', flexWrap: 'wrap' }}>
@@ -65,7 +67,10 @@ export function ModerationView() {
                 key={track.id}
                 track={track}
                 index={index}
-                isCurrentTrack={!state.playerController.pastStagePlayback && state.player1.source === `/test-audio/${track.filePath}`}
+                isCurrentTrack={
+                  !state.playerController.pastStagePlayback &&
+                  state.player1.source === `/test-audio/${track.filePath}`
+                }
                 isPlaying={state.player1.isPlaying}
                 listened={isTrackListened(track.filePath)}
                 favorite={isTrackFavorite(track.filePath)}
@@ -83,4 +88,3 @@ export function ModerationView() {
     </div>
   );
 }
-

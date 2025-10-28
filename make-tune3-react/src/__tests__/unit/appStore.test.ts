@@ -45,7 +45,7 @@ vi.mock('../../services', async (importOriginal) => {
       loadCollaborationDataAnonymous: vi.fn()
     },
     SubmissionService: {
-      setSubmissionApproved: vi.fn()
+      setSubmissionModeration: vi.fn()
     },
     // TrackUtils imported separately from utils (not mocked)
   };
@@ -399,4 +399,3 @@ describe('AppStore - Playback Slice', () => {
     expect(() => playback.togglePlayPause()).not.toThrow();
   });
 });
-

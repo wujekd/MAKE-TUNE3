@@ -17,6 +17,21 @@ interface CollaborationDetailsProps {
 
 import { TimeUtils, type CountdownResult } from '../utils/timeUtils';
 
+// Helper function to safely convert Date or Timestamp to milliseconds
+function toMillis(dateOrTimestamp: any): number {
+  if (!dateOrTimestamp) return 0;
+  if (typeof dateOrTimestamp.toMillis === 'function') {
+    return dateOrTimestamp.toMillis();
+  }
+  if (dateOrTimestamp instanceof Date) {
+    return dateOrTimestamp.getTime();
+  }
+  if (typeof dateOrTimestamp === 'number') {
+    return dateOrTimestamp;
+  }
+  return 0;
+}
+
 export function CollaborationDetails({
   mode,
   selectedId,
@@ -41,10 +56,10 @@ export function CollaborationDetails({
       const votClose = (col as any).votingCloseAt;
       setCountdown({
         submission: subClose 
-          ? TimeUtils.formatCountdown(new Date(subClose.toMillis ? subClose.toMillis() : subClose))
+          ? TimeUtils.formatCountdown(new Date(toMillis(subClose)))
           : { days: 0, hours: 0, minutes: 0, seconds: 0, completed: true },
         voting: votClose 
-          ? TimeUtils.formatCountdown(new Date(votClose.toMillis ? votClose.toMillis() : votClose))
+          ? TimeUtils.formatCountdown(new Date(toMillis(votClose)))
           : { days: 0, hours: 0, minutes: 0, seconds: 0, completed: true }
       });
     };
@@ -96,7 +111,7 @@ export function CollaborationDetails({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <TimerDisplay {...countdown.submission} />
                   <div style={{ fontSize: 11, opacity: 0.6, textAlign: 'center' }}>
-                    {subCloseAt ? new Date(subCloseAt.toMillis ? subCloseAt.toMillis() : subCloseAt).toLocaleString() : 'N/A'}
+                    {subCloseAt ? new Date(toMillis(subCloseAt)).toLocaleString() : 'N/A'}
                   </div>
                 </div>
               </div>
@@ -110,7 +125,7 @@ export function CollaborationDetails({
                     pending={col.status === 'submission'} 
                   />
                   <div style={{ fontSize: 11, opacity: 0.6, textAlign: 'center' }}>
-                    {votCloseAt ? new Date(votCloseAt.toMillis ? votCloseAt.toMillis() : votCloseAt).toLocaleString() : 'N/A'}
+                    {votCloseAt ? new Date(toMillis(votCloseAt)).toLocaleString() : 'N/A'}
                   </div>
                 </div>
               </div>
@@ -121,9 +136,9 @@ export function CollaborationDetails({
               <CollabProgressBar 
                 progress={(() => {
                   const now = Date.now();
-                  const publishedAt = (col.publishedAt as any)?.toMillis() || 0;
-                  const submissionEnd = (col as any).submissionCloseAt?.toMillis() || 0;
-                  const votingEnd = (col as any).votingCloseAt?.toMillis() || 0;
+                  const publishedAt = toMillis(col.publishedAt);
+                  const submissionEnd = toMillis((col as any).submissionCloseAt);
+                  const votingEnd = toMillis((col as any).votingCloseAt);
 
                   console.log('Progress calculation:', {
                     now,

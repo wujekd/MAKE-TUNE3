@@ -87,8 +87,8 @@ interface AppState {
     isTrackFavorite: (filePath: string) => boolean;
     getTrackByFilePath: (filePath: string) => Track | undefined;
     // moderation
-    approveSubmission?: (filePath: string) => Promise<void>;
-    rejectSubmission?: (filePath: string) => Promise<void>;
+    approveSubmission?: (track: Track) => Promise<void>;
+    rejectSubmission?: (track: Track) => Promise<void>;
   };
 
   // playback actions slice
@@ -317,7 +317,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         const submissionTracks = (collab.submissions && collab.submissions.length > 0)
           ? collab.submissions.map((s: SubmissionEntry) => {
               if (DEBUG_LOGS) console.log('tracks from submissions[]', s);
-              return createTrackFromFilePath(s.path, 'submission', collab.id, s.settings, s.optimizedPath);
+              const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
+              return createTrackFromFilePath(s.path, 'submission', collab.id, {
+                settings: s.settings,
+                optimizedPath: s.optimizedPath,
+                submissionId: s.submissionId,
+                moderationStatus
+              });
             })
           : (collab as any).submissionPaths?.map((path: string) => {
               if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[]', path);
@@ -388,7 +394,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         const submissionTracks = (collab.submissions && collab.submissions.length > 0)
           ? collab.submissions.map((s: SubmissionEntry) => {
               if (DEBUG_LOGS) console.log('tracks from submissions[] (anon)', s);
-              return createTrackFromFilePath(s.path, 'submission', collab.id, s.settings, s.optimizedPath);
+              const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
+              return createTrackFromFilePath(s.path, 'submission', collab.id, {
+                settings: s.settings,
+                optimizedPath: s.optimizedPath,
+                submissionId: s.submissionId,
+                moderationStatus
+              });
             })
           : (collab as any).submissionPaths?.map((path: string) => {
               if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon)', path);
@@ -442,7 +454,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       const submissionTracks = (collab.submissions && collab.submissions.length > 0)
           ? collab.submissions.map((s: SubmissionEntry) => {
               if (DEBUG_LOGS) console.log('tracks from submissions[] (anon by id)', s);
-              return createTrackFromFilePath(s.path, 'submission', collab.id, s.settings, s.optimizedPath);
+              const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
+              return createTrackFromFilePath(s.path, 'submission', collab.id, {
+                settings: s.settings,
+                optimizedPath: s.optimizedPath,
+                submissionId: s.submissionId,
+                moderationStatus
+              });
             })
           : (collab as any).submissionPaths?.map((path: string) => {
               if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon by id)', path);
@@ -779,36 +797,125 @@ export const useAppStore = create<AppState>((set, get) => ({
       return TrackUtils.findTrackByFilePath(allTracks, filePath);
     },
 
-    approveSubmission: async (filePath) => {
-      const collab = get().collaboration.currentCollaboration;
-      if (!collab) return;
+    approveSubmission: async (track) => {
+      const { collaboration, auth } = get();
+      const { currentCollaboration, currentProject } = collaboration;
+      const { user } = auth;
+      if (!currentCollaboration || !currentProject || !user) return;
+      if (currentProject.ownerId !== user.uid) {
+        if (DEBUG_LOGS) console.warn('approveSubmission: user is not owner, skipping');
+        return;
+      }
+
+      const submissionIdentifier = track.submissionId || track.filePath;
       try {
-        await SubmissionService.setSubmissionApproved();
-        set(state => ({
-          collaboration: {
-            ...state.collaboration,
-            allTracks: TrackUtils.updateTrackApprovalStatus(state.collaboration.allTracks, filePath, true),
-            regularTracks: TrackUtils.updateTrackApprovalStatus(state.collaboration.regularTracks, filePath, true),
-            favorites: TrackUtils.updateTrackApprovalStatus(state.collaboration.favorites, filePath, true)
-          }
-        }));
-      } catch {}
+        await SubmissionService.setSubmissionModeration(
+          currentCollaboration.id,
+          submissionIdentifier,
+          'approved',
+          user.uid
+        );
+
+        set(state => {
+          const updateEntries = (entries?: SubmissionEntry[]) => {
+            if (!entries) return entries;
+            return entries.map(entry => {
+              const matches = (entry.submissionId && entry.submissionId === track.submissionId)
+                || entry.path === track.filePath;
+              if (!matches) return entry;
+              return {
+                ...entry,
+                submissionId: entry.submissionId || track.submissionId,
+                moderationStatus: 'approved',
+                moderatedBy: user.uid
+              };
+            });
+          };
+
+          const updatedSubmissions = updateEntries(state.collaboration.currentCollaboration?.submissions) || [];
+          const stillPending = updatedSubmissions.some(entry => (entry?.moderationStatus || 'approved') === 'pending');
+
+          return {
+            collaboration: {
+              ...state.collaboration,
+              currentCollaboration: state.collaboration.currentCollaboration ? {
+                ...state.collaboration.currentCollaboration,
+                submissions: updatedSubmissions,
+                unmoderatedSubmissions: stillPending
+              } : state.collaboration.currentCollaboration,
+              allTracks: TrackUtils.updateTrackApprovalStatus(state.collaboration.allTracks, track.filePath, true, 'approved'),
+              regularTracks: TrackUtils.updateTrackApprovalStatus(state.collaboration.regularTracks, track.filePath, true, 'approved'),
+              favorites: TrackUtils.updateTrackApprovalStatus(state.collaboration.favorites, track.filePath, true, 'approved')
+            }
+          };
+        });
+      } catch (error: any) {
+        if (DEBUG_LOGS) console.error('approveSubmission error:', error);
+        if (String(error?.message || '').includes('already-moderated')) {
+          // refresh to reflect current moderation state
+          get().collaboration.loadCollaboration(user.uid, currentCollaboration.id);
+        }
+      }
     },
 
-    rejectSubmission: async (filePath) => {
-      const collab = get().collaboration.currentCollaboration;
-      if (!collab) return;
+    rejectSubmission: async (track) => {
+      const { collaboration, auth } = get();
+      const { currentCollaboration, currentProject } = collaboration;
+      const { user } = auth;
+      if (!currentCollaboration || !currentProject || !user) return;
+      if (currentProject.ownerId !== user.uid) {
+        if (DEBUG_LOGS) console.warn('rejectSubmission: user is not owner, skipping');
+        return;
+      }
+
+      const submissionIdentifier = track.submissionId || track.filePath;
       try {
-        await SubmissionService.setSubmissionApproved();
-        set(state => ({
-          collaboration: {
-            ...state.collaboration,
-            allTracks: TrackUtils.updateTrackApprovalStatus(state.collaboration.allTracks, filePath, false),
-            regularTracks: TrackUtils.updateTrackApprovalStatus(state.collaboration.regularTracks, filePath, false),
-            favorites: TrackUtils.updateTrackApprovalStatus(state.collaboration.favorites, filePath, false)
-          }
-        }));
-      } catch {}
+        await SubmissionService.setSubmissionModeration(
+          currentCollaboration.id,
+          submissionIdentifier,
+          'rejected',
+          user.uid
+        );
+
+        set(state => {
+          const updateEntries = (entries?: SubmissionEntry[]) => {
+            if (!entries) return entries;
+            return entries.map(entry => {
+              const matches = (entry.submissionId && entry.submissionId === track.submissionId)
+                || entry.path === track.filePath;
+              if (!matches) return entry;
+              return {
+                ...entry,
+                submissionId: entry.submissionId || track.submissionId,
+                moderationStatus: 'rejected',
+                moderatedBy: user.uid
+              };
+            });
+          };
+
+          const updatedSubmissions = updateEntries(state.collaboration.currentCollaboration?.submissions) || [];
+          const stillPending = updatedSubmissions.some(entry => (entry?.moderationStatus || 'approved') === 'pending');
+
+          return {
+            collaboration: {
+              ...state.collaboration,
+              currentCollaboration: state.collaboration.currentCollaboration ? {
+                ...state.collaboration.currentCollaboration,
+                submissions: updatedSubmissions,
+                unmoderatedSubmissions: stillPending
+              } : state.collaboration.currentCollaboration,
+              allTracks: TrackUtils.updateTrackApprovalStatus(state.collaboration.allTracks, track.filePath, false, 'rejected'),
+              regularTracks: TrackUtils.updateTrackApprovalStatus(state.collaboration.regularTracks, track.filePath, false, 'rejected'),
+              favorites: TrackUtils.updateTrackApprovalStatus(state.collaboration.favorites, track.filePath, false, 'rejected')
+            }
+          };
+        });
+      } catch (error: any) {
+        if (DEBUG_LOGS) console.error('rejectSubmission error:', error);
+        if (String(error?.message || '').includes('already-moderated')) {
+          get().collaboration.loadCollaboration(user.uid, currentCollaboration.id);
+        }
+      }
     },
 
     loadUserCollaborations: async (userId) => {

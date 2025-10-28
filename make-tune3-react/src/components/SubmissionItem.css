@@ -41,6 +41,20 @@
   pointer-events: none;
 }
 
+.submission-container.moderation-approved {
+  background-color: rgba(34, 197, 94, 0.25);
+  border: 2px solid rgba(34, 197, 94, 0.6);
+}
+
+.submission-container.moderation-rejected {
+  background-color: rgba(239, 68, 68, 0.2);
+  border: 2px solid rgba(239, 68, 68, 0.5);
+}
+
+.submission-container.moderation-pending {
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+}
+
 .play-button {
   position: relative;
   background-color: var(--secondary);

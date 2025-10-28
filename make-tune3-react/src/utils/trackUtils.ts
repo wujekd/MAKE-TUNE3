@@ -1,4 +1,4 @@
-import type { Track, SubmissionSettings } from '../types/collaboration';
+import type { Track, SubmissionSettings, SubmissionModerationStatus } from '../types/collaboration';
 
 /**
  * Track utility functions for transforming and filtering track data.
@@ -12,23 +12,30 @@ export class TrackUtils {
     filePath: string,
     category: 'backing' | 'submission' | 'pastStage',
     collaborationId: string,
-    settings?: SubmissionSettings,
-    optimizedPath?: string
+    options?: {
+      settings?: SubmissionSettings;
+      optimizedPath?: string;
+      submissionId?: string;
+      moderationStatus?: SubmissionModerationStatus;
+      createdAt?: Date;
+    }
   ): Track {
     const fileName = filePath.split('/').pop() || filePath;
     const title = fileName.replace(/\.[^/.]+$/, ''); // Remove extension
-
+    const moderationStatus = options?.moderationStatus ?? 'approved';
     return {
       id: filePath, // Use filePath as id
       title,
       filePath,
-      optimizedPath,
+      optimizedPath: options?.optimizedPath,
+      submissionId: options?.submissionId,
       duration: 0, // Set by audio engine
-      createdAt: new Date() as any,
+      createdAt: (options?.createdAt || new Date()) as any,
       collaborationId,
       category,
-      approved: true, // Default approved
-      submissionSettings: settings
+      approved: moderationStatus === 'pending',
+      moderationStatus,
+      submissionSettings: options?.settings
     };
   }
 
@@ -73,13 +80,13 @@ export class TrackUtils {
   static updateTrackApprovalStatus(
     tracks: Track[],
     filePath: string,
-    approved: boolean
+    approved: boolean,
+    moderationStatus: SubmissionModerationStatus
   ): Track[] {
     return tracks.map(track =>
       track.filePath === filePath
-        ? { ...track, approved }
+        ? { ...track, approved, moderationStatus }
         : track
     );
   }
 }
-

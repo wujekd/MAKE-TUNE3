@@ -55,6 +55,9 @@ export default ({ track, index, isPlaying, isCurrentTrack, listened, favorite, o
       ${isFinal ? 'voted-for' : ''}
       ${listened ? 'listened' : ''}
       ${isCurrentTrack ? 'currently-playing' : ''}
+      ${track.moderationStatus === 'approved' ? 'moderation-approved' : ''}
+      ${track.moderationStatus === 'rejected' ? 'moderation-rejected' : ''}
+      ${track.moderationStatus === 'pending' ? 'moderation-pending' : ''}
     `}>
       <div style={{ fontSize: '10px', color: 'white', marginBottom: '4px' }}>
         Index: {index} | Track: {track.title}

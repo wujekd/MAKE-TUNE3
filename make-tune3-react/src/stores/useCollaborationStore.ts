@@ -56,8 +56,8 @@ interface CollaborationState {
   isTrackListened: (filePath: string) => boolean;
   isTrackFavorite: (filePath: string) => boolean;
   getTrackByFilePath: (filePath: string) => Track | undefined;
-  approveSubmission?: (filePath: string) => Promise<void>;
-  rejectSubmission?: (filePath: string) => Promise<void>;
+  approveSubmission?: (track: Track) => Promise<void>;
+  rejectSubmission?: (track: Track) => Promise<void>;
 }
 
 export const useCollaborationStore = create<CollaborationState>((set, get) => ({
@@ -120,7 +120,13 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
       const submissionTracks = (collab.submissions && collab.submissions.length > 0)
         ? collab.submissions.map((s: SubmissionEntry) => {
             if (DEBUG_LOGS) console.log('tracks from submissions[]', s);
-            return createTrackFromFilePath(s.path, 'submission', collab.id, s.settings, s.optimizedPath);
+            const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
+            return createTrackFromFilePath(s.path, 'submission', collab.id, {
+              settings: s.settings,
+              optimizedPath: s.optimizedPath,
+              submissionId: s.submissionId,
+              moderationStatus
+            });
           })
         : (collab as any).submissionPaths?.map((path: string) => {
             if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[]', path);
@@ -181,7 +187,13 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
       const submissionTracks = (collab.submissions && collab.submissions.length > 0)
         ? collab.submissions.map((s: SubmissionEntry) => {
             if (DEBUG_LOGS) console.log('tracks from submissions[] (anon)', s);
-            return createTrackFromFilePath(s.path, 'submission', collab.id, s.settings, s.optimizedPath);
+            const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
+            return createTrackFromFilePath(s.path, 'submission', collab.id, {
+              settings: s.settings,
+              optimizedPath: s.optimizedPath,
+              submissionId: s.submissionId,
+              moderationStatus
+            });
           })
         : (collab as any).submissionPaths?.map((path: string) => {
             if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon)', path);
@@ -407,32 +419,6 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
     return TrackUtils.findTrackByFilePath(allTracks, filePath);
   },
 
-  approveSubmission: async (filePath) => {
-    const { currentCollaboration } = get();
-    if (!currentCollaboration) return;
-    try {
-      await SubmissionService.setSubmissionApproved();
-      set(state => ({
-        allTracks: TrackUtils.updateTrackApprovalStatus(state.allTracks, filePath, true),
-        regularTracks: TrackUtils.updateTrackApprovalStatus(state.regularTracks, filePath, true),
-        favorites: TrackUtils.updateTrackApprovalStatus(state.favorites, filePath, true)
-      }));
-    } catch {}
-  },
-
-  rejectSubmission: async (filePath) => {
-    const { currentCollaboration } = get();
-    if (!currentCollaboration) return;
-    try {
-      await SubmissionService.setSubmissionApproved();
-      set(state => ({
-        allTracks: TrackUtils.updateTrackApprovalStatus(state.allTracks, filePath, false),
-        regularTracks: TrackUtils.updateTrackApprovalStatus(state.regularTracks, filePath, false),
-        favorites: TrackUtils.updateTrackApprovalStatus(state.favorites, filePath, false)
-      }));
-    } catch {}
-  },
-
   loadUserCollaborations: async (userId) => {
     try {
       const collaborations = await UserService.getUserCollaborations(userId);
@@ -442,4 +428,3 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
     }
   }
 }));
-

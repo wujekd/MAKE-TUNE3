@@ -6,11 +6,13 @@ export interface Track {
   title: string;
   filePath: string;
   optimizedPath?: string;
+  submissionId?: string;
   duration: number;
   createdAt: Timestamp;
   collaborationId: string;
   category: 'backing' | 'submission' | 'pastStage';
   approved?: boolean; // submissions moderation
+  moderationStatus?: SubmissionModerationStatus;
   // optional submission settings attached for voting playback
   submissionSettings?: SubmissionSettings;
 }
@@ -82,8 +84,14 @@ export interface SubmissionEntry {
   path: string;
   optimizedPath?: string;
   settings: SubmissionSettings;
+  submissionId?: string;
   createdAt?: Timestamp;
+  moderationStatus?: SubmissionModerationStatus;
+  moderatedAt?: Timestamp;
+  moderatedBy?: string;
 }
+
+export type SubmissionModerationStatus = 'pending' | 'approved' | 'rejected';
 
 // private collection - admin only
 export interface SubmissionUser {

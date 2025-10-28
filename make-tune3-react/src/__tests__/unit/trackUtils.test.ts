@@ -56,7 +56,7 @@ describe('TrackUtils', () => {
         'path/to/track.mp3',
         'submission',
         'collab-1',
-        settings
+        { settings }
       );
 
       expect(track.submissionSettings).toEqual(settings);
@@ -67,8 +67,7 @@ describe('TrackUtils', () => {
         'path/to/original.mp3',
         'submission',
         'collab-1',
-        undefined,
-        'path/to/optimized.mp3'
+        { optimizedPath: 'path/to/optimized.mp3' }
       );
 
       expect(track.filePath).toBe('path/to/original.mp3');
@@ -271,40 +270,47 @@ describe('TrackUtils', () => {
       const updated = TrackUtils.updateTrackApprovalStatus(
         mockTracks,
         'path/to/track1.mp3',
-        true
+        true,
+        'approved'
       );
 
       const track = updated.find(t => t.filePath === 'path/to/track1.mp3');
       expect(track?.approved).toBe(true);
+      expect(track?.moderationStatus).toBe('approved');
     });
 
     it('should reject a track', () => {
       const updated = TrackUtils.updateTrackApprovalStatus(
         mockTracks,
         'path/to/track2.mp3',
-        false
+        false,
+        'rejected'
       );
 
       const track = updated.find(t => t.filePath === 'path/to/track2.mp3');
       expect(track?.approved).toBe(false);
+      expect(track?.moderationStatus).toBe('rejected');
     });
 
     it('should not modify other tracks', () => {
       const updated = TrackUtils.updateTrackApprovalStatus(
         mockTracks,
         'path/to/track1.mp3',
-        true
+        true,
+        'approved'
       );
 
       const track2 = updated.find(t => t.filePath === 'path/to/track2.mp3');
       expect(track2?.approved).toBe(true);
+      expect(track2?.moderationStatus).toBeUndefined();
     });
 
     it('should return new array (immutable)', () => {
       const updated = TrackUtils.updateTrackApprovalStatus(
         mockTracks,
         'path/to/track1.mp3',
-        true
+        true,
+        'approved'
       );
 
       expect(updated).not.toBe(mockTracks);
@@ -312,4 +318,3 @@ describe('TrackUtils', () => {
     });
   });
 });
-

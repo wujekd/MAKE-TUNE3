@@ -1,10 +1,10 @@
-import { doc, getDoc, updateDoc, addDoc, collection, Timestamp, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, addDoc, collection, Timestamp, arrayUnion, runTransaction } from 'firebase/firestore';
 import { ref, uploadBytesResumable, type UploadTaskSnapshot } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import app, { db, storage } from './firebase';
 import { FileService } from './fileService';
 import { DEBUG_ALLOW_MULTIPLE_SUBMISSIONS } from '../config';
-import type { Collaboration, CollaborationId, UserId, SubmissionSettings } from '../types/collaboration';
+import type { Collaboration, CollaborationId, UserId, SubmissionSettings, SubmissionModerationStatus } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 
 export class SubmissionService {
@@ -90,24 +90,37 @@ export class SubmissionService {
     if (collabSnap.exists()) {
       const data = collabSnap.data() as Collaboration;
       const needsMod = data.requiresModeration ? true : ((data as any).unmoderatedSubmissions === true);
-      const entry = {
+      const defaultSettings = settings ?? {
+        eq: {
+          highshelf: { gain: 0, frequency: 8000 },
+          param2: { gain: 0, frequency: 3000, Q: 1 },
+          param1: { gain: 0, frequency: 250, Q: 1 },
+          highpass: { frequency: 20, enabled: false }
+        },
+        volume: { gain: 1 }
+      };
+
+      const newModerationStatus: SubmissionModerationStatus = data.requiresModeration ? 'pending' : 'approved';
+
+      const entry: Record<string, any> = {
         path,
-        settings: settings ?? {
-          eq: {
-            highshelf: { gain: 0, frequency: 8000 },
-            param2: { gain: 0, frequency: 3000, Q: 1 },
-            param1: { gain: 0, frequency: 250, Q: 1 },
-            highpass: { frequency: 20, enabled: false }
-          },
-          volume: { gain: 1 }
-        }
-      } as any;
+        submissionId,
+        settings: defaultSettings,
+        createdAt,
+        moderationStatus: newModerationStatus
+      };
+
+      if (!data.requiresModeration) {
+        entry.moderatedAt = createdAt;
+        entry.moderatedBy = userId;
+      }
+
       await updateDoc(collabRef, { 
-        submissions: arrayUnion(entry), 
-        updatedAt: Timestamp.now(), 
-        unmoderatedSubmissions: needsMod 
-      });
-      await updateDoc(collabRef, { submissionPaths: arrayUnion(path) }).catch(() => {});
+        submissions: arrayUnion(entry),
+        submissionPaths: arrayUnion(path),
+        updatedAt: Timestamp.now(),
+        unmoderatedSubmissions: data.requiresModeration ? true : ((data as any).unmoderatedSubmissions === true)
+      }).catch(() => {});
     }
 
     return { filePath: path, submissionId };
@@ -134,8 +147,60 @@ export class SubmissionService {
     return Array.isArray(data.items) ? data.items : [];
   }
 
-  static async setSubmissionApproved(): Promise<void> {
-    return;
+  static async setSubmissionModeration(
+    collaborationId: CollaborationId,
+    submissionIdentifier: string,
+    status: SubmissionModerationStatus,
+    moderatorId: UserId
+  ): Promise<SubmissionModerationStatus> {
+    const collabRef = doc(db, COLLECTIONS.COLLABORATIONS, collaborationId);
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(collabRef);
+      if (!snap.exists()) {
+        throw new Error('collaboration-not-found');
+      }
+
+      const data = snap.data() as Collaboration & { submissions?: any[] };
+
+      const submissionsArray = Array.isArray(data.submissions) ? [...data.submissions] : [];
+      if (submissionsArray.length === 0) {
+        throw new Error('no-submissions');
+      }
+
+      const targetIndex = submissionsArray.findIndex((entry: any) => {
+        if (!entry) return false;
+        const entryId = entry.submissionId || entry.path;
+        return entryId === submissionIdentifier || entry.path === submissionIdentifier;
+      });
+
+      if (targetIndex === -1) {
+        throw new Error('submission-not-found');
+      }
+
+      const target = submissionsArray[targetIndex] || {};
+      const currentStatus: SubmissionModerationStatus = target.moderationStatus || 'pending';
+      if (currentStatus !== 'pending') {
+        throw new Error('already-moderated');
+      }
+
+      const now = Timestamp.now();
+      submissionsArray[targetIndex] = {
+        ...target,
+        submissionId: target.submissionId || submissionIdentifier,
+        moderationStatus: status,
+        moderatedAt: now,
+        moderatedBy: moderatorId
+      };
+
+      const stillPending = submissionsArray.some((entry: any) => entry?.moderationStatus === 'pending');
+
+      tx.update(collabRef, {
+        submissions: submissionsArray,
+        unmoderatedSubmissions: stillPending,
+        updatedAt: now
+      });
+    });
+
+    return status;
   }
 }
-
