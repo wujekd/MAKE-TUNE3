@@ -11,7 +11,10 @@ export class ProjectService {
       tags: project.tags || [],
       tagsKey: project.tagsKey || [],
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      currentCollaborationId: project.currentCollaborationId ?? null,
+      currentCollaborationStatus: project.currentCollaborationStatus ?? null,
+      currentCollaborationStageEndsAt: project.currentCollaborationStageEndsAt ?? null
     } as Omit<Project, 'id'>;
 
     const docRef = await addDoc(collection(db, COLLECTIONS.PROJECTS), projectData as any);
@@ -68,7 +71,10 @@ export class ProjectService {
       isActive: true,
       pastCollaborations: [],
       tags,
-      tagsKey
+      tagsKey,
+      currentCollaborationId: null,
+      currentCollaborationStatus: null,
+      currentCollaborationStageEndsAt: null
     });
 
     try {

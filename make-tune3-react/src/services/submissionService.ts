@@ -1,10 +1,10 @@
-import { doc, getDoc, updateDoc, addDoc, collection, Timestamp, arrayUnion, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, addDoc, collection, Timestamp, arrayUnion, runTransaction, setDoc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, type UploadTaskSnapshot } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import app, { db, storage } from './firebase';
 import { FileService } from './fileService';
 import { DEBUG_ALLOW_MULTIPLE_SUBMISSIONS } from '../config';
-import type { Collaboration, CollaborationId, UserId, SubmissionSettings, SubmissionModerationStatus } from '../types/collaboration';
+import type { Collaboration, CollaborationDetail, CollaborationId, UserId, SubmissionSettings, SubmissionModerationStatus } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 
 export class SubmissionService {
@@ -71,9 +71,10 @@ export class SubmissionService {
     const createdAt = Timestamp.now();
 
     const collabRef = doc(db, COLLECTIONS.COLLABORATIONS, collaborationId);
+    const now = Timestamp.now();
     await updateDoc(collabRef, { 
       participantIds: arrayUnion(userId), 
-      updatedAt: Timestamp.now() 
+      updatedAt: now
     });
 
     await addDoc(collection(db, COLLECTIONS.SUBMISSION_USERS), {
@@ -115,12 +116,27 @@ export class SubmissionService {
         entry.moderatedBy = userId;
       }
 
-      await updateDoc(collabRef, { 
+      const detailRef = doc(db, COLLECTIONS.COLLABORATION_DETAILS, collaborationId);
+      const updateDetail = updateDoc(detailRef, {
         submissions: arrayUnion(entry),
         submissionPaths: arrayUnion(path),
+        updatedAt: Timestamp.now()
+      }).catch(async () => {
+        await setDoc(detailRef, {
+          collaborationId,
+          submissions: [entry],
+          submissionPaths: [path],
+          createdAt,
+          updatedAt: Timestamp.now()
+        });
+      });
+
+      const updateCollab = updateDoc(collabRef, { 
         updatedAt: Timestamp.now(),
         unmoderatedSubmissions: data.requiresModeration ? true : ((data as any).unmoderatedSubmissions === true)
       }).catch(() => {});
+
+      await Promise.all([updateDetail, updateCollab]);
     }
 
     return { filePath: path, submissionId };
@@ -154,15 +170,20 @@ export class SubmissionService {
     moderatorId: UserId
   ): Promise<SubmissionModerationStatus> {
     const collabRef = doc(db, COLLECTIONS.COLLABORATIONS, collaborationId);
+    const detailRef = doc(db, COLLECTIONS.COLLABORATION_DETAILS, collaborationId);
     await runTransaction(db, async (tx) => {
       const snap = await tx.get(collabRef);
       if (!snap.exists()) {
         throw new Error('collaboration-not-found');
       }
 
-      const data = snap.data() as Collaboration & { submissions?: any[] };
+      const detailSnap = await tx.get(detailRef);
+      if (!detailSnap.exists()) {
+        throw new Error('collaboration-details-not-found');
+      }
+      const detailData = detailSnap.data() as CollaborationDetail;
 
-      const submissionsArray = Array.isArray(data.submissions) ? [...data.submissions] : [];
+      const submissionsArray = Array.isArray(detailData.submissions) ? [...detailData.submissions] : [];
       if (submissionsArray.length === 0) {
         throw new Error('no-submissions');
       }
@@ -194,8 +215,12 @@ export class SubmissionService {
 
       const stillPending = submissionsArray.some((entry: any) => entry?.moderationStatus === 'pending');
 
-      tx.update(collabRef, {
+      tx.update(detailRef, {
         submissions: submissionsArray,
+        updatedAt: now
+      });
+
+      tx.update(collabRef, {
         unmoderatedSubmissions: stillPending,
         updatedAt: now
       });

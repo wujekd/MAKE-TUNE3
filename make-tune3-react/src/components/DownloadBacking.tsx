@@ -7,10 +7,10 @@ export function DownloadBacking({ userId, collaborationId, backingPath, onDownlo
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
-    <div className="card" style={{ maxWidth: 560 }}>
+    <div className="submission-pane">
       <h4 className="card__title">Download backing track</h4>
       <div className="card__body">
-        <button disabled={downloading} onClick={async () => {
+        <button className="submission-pane__button" disabled={downloading} onClick={async () => {
           setDownloading(true); setError(null);
           try {
             let filename = backingPath.split('/').pop() || 'backing';
@@ -43,4 +43,3 @@ export function DownloadBacking({ userId, collaborationId, backingPath, onDownlo
     </div>
   );
 }
-

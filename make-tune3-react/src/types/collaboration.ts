@@ -38,6 +38,9 @@ export interface Project {
   ownerId: string;
   isActive: boolean;
   pastCollaborations: PastCollaboration[]; // new field
+  currentCollaborationId?: string | null;
+  currentCollaborationStatus?: Collaboration['status'] | null;
+  currentCollaborationStageEndsAt?: Timestamp | null;
 }
 
 export interface Collaboration {
@@ -89,6 +92,15 @@ export interface SubmissionEntry {
   moderationStatus?: SubmissionModerationStatus;
   moderatedAt?: Timestamp;
   moderatedBy?: string;
+}
+
+export interface CollaborationDetail {
+  id: string;
+  collaborationId: string;
+  submissions: SubmissionEntry[];
+  submissionPaths?: string[];
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 export type SubmissionModerationStatus = 'pending' | 'approved' | 'rejected';
@@ -143,9 +155,11 @@ export interface Tag {
 export const COLLECTIONS = {
   PROJECTS: 'projects',
   COLLABORATIONS: 'collaborations',
+  COLLABORATION_DETAILS: 'collaborationDetails',
   USER_COLLABORATIONS: 'userCollaborations',
   USERS: 'users',
   SUBMISSION_USERS: 'submissionUsers', // private collection
+  USER_DOWNLOADS: 'userDownloads',
   PROJECT_NAME_INDEX: 'projectNameIndex',
   TAGS: 'tags'
 } as const;

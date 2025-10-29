@@ -232,6 +232,11 @@ describe('UserService Integration', () => {
       
       const hasDownloaded = await UserService.hasDownloadedBacking(testUserId, testCollaborationId);
       expect(hasDownloaded).toBe(true);
+
+      const ref = doc(db, 'userDownloads', `${testUserId}__${testCollaborationId}`);
+      const snap = await getDoc(ref);
+      expect(snap.exists()).toBe(true);
+      expect((snap.data() as any).downloadCount).toBe(1);
     });
 
     it('should allow multiple download records', async () => {
@@ -240,6 +245,10 @@ describe('UserService Integration', () => {
       
       const hasDownloaded = await UserService.hasDownloadedBacking(testUserId, testCollaborationId);
       expect(hasDownloaded).toBe(true);
+
+      const ref = doc(db, 'userDownloads', `${testUserId}__${testCollaborationId}`);
+      const snap = await getDoc(ref);
+      expect((snap.data() as any).downloadCount).toBe(2);
     });
   });
 
@@ -251,4 +260,3 @@ describe('UserService Integration', () => {
     });
   });
 });
-

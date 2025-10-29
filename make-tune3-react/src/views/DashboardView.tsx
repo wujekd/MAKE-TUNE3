@@ -6,7 +6,7 @@ import '../components/ProjectHistory.css';
 import { MyProjects } from '../components/MyProjects';
 import { TagFilter } from '../components/TagFilter';
 
-export function CollabListView() {
+export function DashboardView() {
   const [allCollabs, setAllCollabs] = useState<Collaboration[]>([]);
   const [filteredCollabs, setFilteredCollabs] = useState<Collaboration[]>([]);
   const [needsMod, setNeedsMod] = useState<Collaboration[]>([]);
@@ -19,18 +19,18 @@ export function CollabListView() {
     let mounted = true;
     (async () => {
       try {
-        console.log('CollabListView: fetching all collaborations...');
+        console.log('DashboardView: fetching all collaborations...');
         const list = await CollaborationService.listAllCollaborations();
-        console.log('CollabListView: received', list.length, 'collaborations:', list);
+        console.log('DashboardView: received', list.length, 'collaborations:', list);
         if (mounted) {
           setAllCollabs(list);
           setFilteredCollabs(list);
           setNeedsMod(list.filter(c => (c as any).unmoderatedSubmissions));
         }
       } catch (e: any) {
-        console.error('CollabListView: error loading collaborations:', e);
-        console.error('CollabListView: error code:', e?.code);
-        console.error('CollabListView: error message:', e?.message);
+        console.error('DashboardView: error loading collaborations:', e);
+        console.error('DashboardView: error code:', e?.code);
+        console.error('DashboardView: error message:', e?.message);
         if (mounted) setError(e?.message || 'failed to load');
       } finally {
         if (mounted) setHasLoaded(true);
@@ -129,4 +129,3 @@ export function CollabListView() {
     </div>
   );
 }
-

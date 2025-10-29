@@ -7,9 +7,10 @@ interface TimerDisplayProps {
   seconds: number;
   completed?: boolean;
   pending?: boolean;
+  closing?: boolean;
 }
 
-export function TimerDisplay({ days, hours, minutes, seconds, completed, pending }: TimerDisplayProps) {
+export function TimerDisplay({ days, hours, minutes, seconds, completed, pending, closing }: TimerDisplayProps) {
   if (completed) {
     return (
       <div className="timer-display">
@@ -22,6 +23,15 @@ export function TimerDisplay({ days, hours, minutes, seconds, completed, pending
     return (
       <div className="timer-display">
         <div className="timer-display--completed">pending</div>
+      </div>
+    );
+  }
+
+  if (closing) {
+    return (
+      <div className="timer-display timer-display--closing">
+        <div className="timer-display__spinner" />
+        <div className="timer-display__closing-text">closing…</div>
       </div>
     );
   }

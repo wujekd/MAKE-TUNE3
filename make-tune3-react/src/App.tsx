@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
-import { MainView } from './views/MainView'
-import { CollabListView } from './views/CollabListView'
+import { VotingView } from './views/VotingView'
+import { DashboardView } from './views/DashboardView'
 import { ProjectEditView } from './views/ProjectEditView'
 import { SubmissionView } from './views/SubmissionView'
 import { AdminTagsView } from './views/AdminTagsView'
@@ -37,7 +37,7 @@ function App() {
         { path: 'onboarding/username', element: <UsernameOnboarding />, handle: { title: 'Choose Username', breadcrumb: 'Username' } },
         {
           path: 'collabs',
-          element: <CollabListView />,
+          element: <DashboardView />,
           handle: {
             title: 'Collaborations',
             breadcrumb: 'Collaborations',
@@ -51,7 +51,7 @@ function App() {
             title: 'Project',
             breadcrumb: 'Project',
             actions: ({ navigate: nav, project }: any) => ([
-              { key: 'back', label: 'Back', onClick: () => nav(-1) },
+              { key: 'back', label: 'Back', onClick: () => nav('/collabs') },
               project ? { 
                 key: 'delete', 
                 label: 'Delete Project', 
@@ -71,12 +71,12 @@ function App() {
         },
         {
           path: 'collab/:collaborationId',
-          element: <MainView key={user?.uid || 'anonymous'} />,
+          element: <VotingView key={user?.uid || 'anonymous'} />,
           handle: {
             title: 'Collaboration',
             breadcrumb: 'Collaboration',
             actions: ({ navigate, params, collab }: any) => ([
-              { key: 'back', label: 'Back', onClick: () => navigate(-1) },
+              { key: 'back', label: 'Back', onClick: () => navigate('/collabs') },
               collab?.status === 'submission' ? { key: 'to-submit', label: 'Submit', onClick: () => navigate(`/collab/${params.collaborationId}/submit`) } : null
             ].filter(Boolean))
           }
@@ -87,7 +87,7 @@ function App() {
           handle: {
             title: 'Moderation',
             breadcrumb: 'Moderation',
-            actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate(-1) }])
+            actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
           }
         },
         {
@@ -97,7 +97,7 @@ function App() {
             title: 'Completed',
             breadcrumb: 'Completed',
             actions: ({ navigate, params }: any) => ([
-              { key: 'back', label: 'Back', onClick: () => navigate(-1) },
+              { key: 'back', label: 'Back', onClick: () => navigate('/collabs') },
               { key: 'to-collab', label: 'Open collab', onClick: () => navigate(`/collab/${params.collaborationId}`) }
             ])
           }
@@ -109,7 +109,7 @@ function App() {
             title: 'Submit',
             breadcrumb: 'Submit',
             actions: ({ navigate, params }: any) => ([
-              { key: 'back', label: 'Back', onClick: () => navigate(-1) },
+              { key: 'back', label: 'Back', onClick: () => navigate('/collabs') },
               { key: 'to-collab', label: 'To voting', onClick: () => navigate(`/collab/${params.collaborationId}`) }
             ])
           }

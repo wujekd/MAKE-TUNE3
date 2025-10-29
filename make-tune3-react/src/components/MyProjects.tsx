@@ -1,17 +1,70 @@
-import { useEffect, useState } from 'react';
-import { useAppStore } from '../stores/appStore';
-import { ProjectService } from '../services';
-import './ProjectHistory.css';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { DashboardService, ProjectService, SubmissionService } from '../services';
+import type { ProjectOverviewItem, DownloadSummaryItem } from '../services/dashboardService';
+import { useAppStore } from '../stores/appStore';
 import { TagInput } from './TagInput';
 import { TagUtils } from '../utils/tagUtils';
+import './ProjectHistory.css';
+
+type SubmissionSummaryItem = {
+  projectId: string;
+  projectName: string;
+  collabId: string;
+  collabName: string;
+  status: string;
+  submissionCloseAt: number | null;
+  votingCloseAt: number | null;
+  backingPath: string;
+  mySubmissionPath: string;
+  winnerPath: string | null;
+  submittedAt: number | null;
+};
+
+type ActiveTab = 'projects' | 'submissions' | 'downloads';
+
+const formatDateTime = (value: number | null | undefined): string => {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
+};
+
+const formatCountdownLabel = (
+  status: string,
+  submissionCloseAt: number | null,
+  votingCloseAt: number | null
+): string => {
+  if (status === 'submission') {
+    return submissionCloseAt ? `submission ends ${formatDateTime(submissionCloseAt)}` : 'submission running';
+  }
+  if (status === 'voting') {
+    return votingCloseAt ? `voting ends ${formatDateTime(votingCloseAt)}` : 'voting running';
+  }
+  if (status === 'completed') {
+    return votingCloseAt ? `completed ${formatDateTime(votingCloseAt)}` : 'completed';
+  }
+  return status || 'unpublished';
+};
 
 export function MyProjects() {
   const { user } = useAppStore(state => state.auth);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [projects, setProjects] = useState<Array<{ id: string; name: string; createdAt: any }>>([]);
-  const [activeTab, setActiveTab] = useState<'projects' | 'submissions'>('projects');
+
+  const [activeTab, setActiveTab] = useState<ActiveTab>('projects');
+
+  const [projects, setProjects] = useState<ProjectOverviewItem[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
+
+  const [submissionSummaries, setSubmissionSummaries] = useState<SubmissionSummaryItem[]>([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState(false);
+  const [submissionsLoaded, setSubmissionsLoaded] = useState(false);
+  const [submissionsError, setSubmissionsError] = useState<string | null>(null);
+
+  const [downloadSummaries, setDownloadSummaries] = useState<DownloadSummaryItem[]>([]);
+  const [downloadsLoading, setDownloadsLoading] = useState(false);
+  const [downloadsLoaded, setDownloadsLoaded] = useState(false);
+  const [downloadsError, setDownloadsError] = useState<string | null>(null);
+
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -19,40 +72,101 @@ export function MyProjects() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const fetchProjects = useCallback(async () => {
+    if (!user) {
+      setProjects([]);
+      return;
+    }
+    setProjectsLoading(true);
+    setProjectsError(null);
+    try {
+      const items = await DashboardService.listMyProjectsOverview();
+      setProjects(items);
+    } catch (e: any) {
+      console.error('failed to load projects overview', e);
+      try {
+        const fallback = await ProjectService.listUserProjects(user.uid);
+        const normalized: ProjectOverviewItem[] = fallback.map((p) => ({
+          projectId: p.id,
+          projectName: p.name,
+          description: p.description,
+          createdAt: (p.createdAt as any)?.toMillis ? (p.createdAt as any).toMillis() : null,
+          updatedAt: (p.updatedAt as any)?.toMillis ? (p.updatedAt as any).toMillis() : null,
+          currentCollaboration: null,
+        }));
+        setProjects(normalized);
+        const friendlyMessage = e?.message || 'failed to load projects overview';
+        setProjectsError(`${friendlyMessage}. Showing basic project info.`);
+      } catch (fallbackErr: any) {
+        console.error('failed to load fallback projects', fallbackErr);
+        setProjectsError(fallbackErr?.message || 'failed to load projects');
+      }
+    } finally {
+      setProjectsLoading(false);
+    }
+  }, [user]);
+
+  const fetchSubmissions = useCallback(async () => {
+    if (!user || submissionsLoading) return;
+    setSubmissionsLoading(true);
+    setSubmissionsError(null);
+    try {
+      const items = await SubmissionService.listMySubmissionCollabs();
+      setSubmissionSummaries(items as SubmissionSummaryItem[]);
+      setSubmissionsLoaded(true);
+    } catch (e: any) {
+      setSubmissionsError(e?.message || 'failed to load submissions');
+    } finally {
+      setSubmissionsLoading(false);
+    }
+  }, [user, submissionsLoading]);
+
+  const fetchDownloads = useCallback(async () => {
+    if (!user || downloadsLoading) return;
+    setDownloadsLoading(true);
+    setDownloadsError(null);
+    try {
+      const items = await DashboardService.listMyDownloadedCollabs();
+      setDownloadSummaries(items);
+      setDownloadsLoaded(true);
+    } catch (e: any) {
+      setDownloadsError(e?.message || 'failed to load downloads');
+    } finally {
+      setDownloadsLoading(false);
+    }
+  }, [user, downloadsLoading]);
+
+  useEffect(() => {
+    if (!user) {
+      setProjects([]);
+      setSubmissionSummaries([]);
+      setDownloadSummaries([]);
+      return;
+    }
+    void fetchProjects();
+  }, [user, fetchProjects]);
+
   useEffect(() => {
     if (!user) return;
-    let mounted = true;
-    setLoading(true);
-    (async () => {
-      try {
-        const list = await ProjectService.listUserProjects(user.uid);
-        if (mounted) setProjects(list);
-      } catch (e: any) {
-        if (mounted) setError(e?.message || 'failed to load');
-      } finally {
-        if (mounted) setLoading(false);
-        
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [user]);
+    if (activeTab === 'submissions' && !submissionsLoaded) {
+      void fetchSubmissions();
+    }
+    if (activeTab === 'downloads' && !downloadsLoaded) {
+      void fetchDownloads();
+    }
+  }, [activeTab, user, submissionsLoaded, downloadsLoaded, fetchSubmissions, fetchDownloads]);
 
   return (
     <div className="project-history card" style={{ maxWidth: 420, width: '100%' }}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-        <button
-          onClick={() => setActiveTab('projects')}
-          disabled={activeTab === 'projects'}
-        >
+        <button onClick={() => setActiveTab('projects')} disabled={activeTab === 'projects'}>
           my projects
         </button>
-        <button
-          onClick={() => setActiveTab('submissions')}
-          disabled={activeTab === 'submissions'}
-        >
+        <button onClick={() => setActiveTab('submissions')} disabled={activeTab === 'submissions'}>
           my submissions
+        </button>
+        <button onClick={() => setActiveTab('downloads')} disabled={activeTab === 'downloads'}>
+          my downloads
         </button>
       </div>
 
@@ -116,20 +230,20 @@ export function MyProjects() {
                       if (!trimmed) { setFormError('name required'); return; }
                       if (trimmed.length > 80) { setFormError('name too long'); return; }
                       if (description.length > 500) { setFormError('description too long'); return; }
-                      
+
                       const normalized = TagUtils.normalizeTags(tags);
-                      
+
                       setSaving(true); setFormError(null);
                       try {
-                        const p = await ProjectService.createProjectWithUniqueName({ 
-                          name: trimmed, 
-                          description, 
+                        await ProjectService.createProjectWithUniqueName({
+                          name: trimmed,
+                          description,
                           ownerId: user.uid,
                           tags: normalized.display,
                           tagsKey: normalized.keys
                         });
-                        setProjects(prev => [{ id: p.id, name: p.name, createdAt: (p as any).createdAt }, ...prev]);
                         setShowForm(false); setName(''); setDescription(''); setTags([]);
+                        await fetchProjects();
                       } catch (e: any) {
                         const msg = e?.message || 'failed to create';
                         if (/name already taken/i.test(msg)) {
@@ -151,16 +265,23 @@ export function MyProjects() {
             {!user && (
               <div style={{ color: 'var(--white)' }}>login to see your projects</div>
             )}
-            {user && loading && <div style={{ color: 'var(--white)' }}>loading...</div>}
-            {user && error && <div style={{ color: 'var(--white)' }}>{error}</div>}
-            {user && !loading && !error && projects.length === 0 && (
+            {user && projectsLoading && <div style={{ color: 'var(--white)' }}>loading...</div>}
+            {user && projectsError && <div style={{ color: 'var(--white)' }}>{projectsError}</div>}
+            {user && !projectsLoading && !projectsError && projects.length === 0 && (
               <div style={{ color: 'var(--white)' }}>no projects</div>
             )}
-            {user && projects.map(p => (
-              <Link key={p.id} to={`/project/${p.id}`} className="collab-history-item list__item" style={{ textDecoration: 'none' }}>
-                <div className="collab-name list__title">{p.name}</div>
-                <div className="collab-stage list__subtitle">
-                  {new Date((p as any).createdAt?.toMillis ? (p as any).createdAt.toMillis() : (p as any).createdAt).toLocaleString()}
+            {user && projects.map(project => (
+              <Link key={project.projectId} to={`/project/${project.projectId}`} className="collab-history-item list__item" style={{ textDecoration: 'none' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div className="collab-name list__title">{project.projectName}</div>
+                  <div className="collab-stage list__subtitle">created {formatDateTime(project.createdAt)}</div>
+                  {project.currentCollaboration ? (
+                    <div style={{ fontSize: 12, opacity: 0.75 }}>
+                      current: {project.currentCollaboration.name} · {formatCountdownLabel(project.currentCollaboration.status, project.currentCollaboration.submissionCloseAt, project.currentCollaboration.votingCloseAt)}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12, opacity: 0.6 }}>no active collaboration</div>
+                  )}
                 </div>
                 <span
                   style={{
@@ -172,7 +293,7 @@ export function MyProjects() {
                     color: 'var(--white)'
                   }}
                 >
-                  edit
+                  manage
                 </span>
               </Link>
             ))}
@@ -186,11 +307,79 @@ export function MyProjects() {
             <h4 className="project-history-title card__title" style={{ marginBottom: 0 }}>my submissions</h4>
           </div>
           <div className="collab-list list" style={{ marginTop: 8 }}>
-            <div style={{ color: 'var(--white)' }}>no submissions</div>
+            {!user && <div style={{ color: 'var(--white)' }}>login to see submissions</div>}
+            {user && submissionsLoading && <div style={{ color: 'var(--white)' }}>loading...</div>}
+            {user && submissionsError && <div style={{ color: 'var(--white)' }}>{submissionsError}</div>}
+            {user && !submissionsLoading && !submissionsError && submissionSummaries.length === 0 && (
+              <div style={{ color: 'var(--white)' }}>no submissions</div>
+            )}
+            {user && submissionSummaries.map(item => {
+              const status = item.status || 'unknown';
+              const route = status === 'completed'
+                ? `/collab/${encodeURIComponent(item.collabId)}/completed`
+                : status === 'submission'
+                  ? `/collab/${encodeURIComponent(item.collabId)}/submit`
+                  : `/collab/${encodeURIComponent(item.collabId)}`;
+              return (
+                <Link key={`${item.collabId}-${item.mySubmissionPath}`} to={route} className="collab-history-item list__item" style={{ textDecoration: 'none' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span className="collab-name list__title">{item.collabName}</span>
+                    <span className="collab-stage list__subtitle">{item.projectName}</span>
+                    <span style={{ fontSize: 12, opacity: 0.75 }}>{formatCountdownLabel(status, item.submissionCloseAt, item.votingCloseAt)}</span>
+                    <span style={{ fontSize: 12, opacity: 0.6 }}>submitted {formatDateTime(item.submittedAt)}</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {activeTab === 'downloads' && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h4 className="project-history-title card__title" style={{ marginBottom: 0 }}>downloaded backings</h4>
+          </div>
+          <div className="collab-list list" style={{ marginTop: 8 }}>
+            {!user && <div style={{ color: 'var(--white)' }}>login to see downloads</div>}
+            {user && downloadsLoading && <div style={{ color: 'var(--white)' }}>loading...</div>}
+            {user && downloadsError && <div style={{ color: 'var(--white)' }}>{downloadsError}</div>}
+            {user && !downloadsLoading && !downloadsError && downloadSummaries.length === 0 && (
+              <div style={{ color: 'var(--white)' }}>no downloads yet</div>
+            )}
+            {user && downloadSummaries.map(item => {
+              const status = item.status || 'unknown';
+              const route = status === 'completed'
+                ? `/collab/${encodeURIComponent(item.collabId)}/completed`
+                : status === 'submission'
+                  ? `/collab/${encodeURIComponent(item.collabId)}/submit`
+                  : `/collab/${encodeURIComponent(item.collabId)}`;
+              return (
+                <Link key={`${item.collabId}-${item.lastDownloadedAt}`} to={route} className="collab-history-item list__item" style={{ textDecoration: 'none' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span className="collab-name list__title">{item.collabName}</span>
+                    <span className="collab-stage list__subtitle">{item.projectName}</span>
+                    <span style={{ fontSize: 12, opacity: 0.75 }}>{formatCountdownLabel(status, item.submissionCloseAt, item.votingCloseAt)}</span>
+                    <span style={{ fontSize: 12, opacity: 0.6 }}>last downloaded {formatDateTime(item.lastDownloadedAt)} · {item.downloadCount} download{item.downloadCount === 1 ? '' : 's'}</span>
+                  </div>
+                  <span
+                    style={{
+                      marginLeft: 'auto',
+                      padding: '4px 8px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border-color, #333)',
+                      background: 'var(--primary1-800)',
+                      color: 'var(--white)'
+                    }}
+                  >
+                    open
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </>
       )}
     </div>
   );
 }
-

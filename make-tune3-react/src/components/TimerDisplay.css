@@ -50,3 +50,30 @@
   margin-top: -8px;
   padding: 0 2px; /* Added padding for better spacing */
 }
+
+.timer-display--closing {
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.timer-display__spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: var(--contrast-600);
+  border-radius: 50%;
+  animation: timer-spin 0.8s linear infinite;
+}
+
+.timer-display__closing-text {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
+}
+
+@keyframes timer-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

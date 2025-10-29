@@ -3,7 +3,13 @@ import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { useAppStore } from '../stores/appStore';
 import { SubmissionService } from '../services';
 
-export function UploadSubmission({ collaborationId, backingUrl }: { collaborationId: string; backingUrl: string }) {
+interface UploadSubmissionProps {
+  collaborationId: string;
+  backingUrl: string;
+  onSubmitSuccess?: () => void;
+}
+
+export function UploadSubmission({ collaborationId, backingUrl, onSubmitSuccess }: UploadSubmissionProps) {
   const audioContext = useContext(AudioEngineContext);
   const { user } = useAppStore(s => s.auth);
   const [file, setFile] = useState<File | null>(null);
@@ -22,14 +28,14 @@ export function UploadSubmission({ collaborationId, backingUrl }: { collaboratio
   }, []);
 
   return (
-    <div className="card" style={{ maxWidth: 560 }}>
+    <div className="submission-pane">
       <h4 className="card__title">Upload your submission</h4>
       <div className="card__body">
-        <div className="mb-8" style={{ color: 'var(--white)', opacity: 0.8 }}>Choose an audio file to submit to the current collaboration</div>
+        <div className="submission-pane__description">Choose an audio file to submit to the current collaboration</div>
         <input type="file" accept="audio/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-        <div className="row gap-8 mt-8" style={{ justifyContent: 'flex-start', alignItems: 'center' }}>
+        <div className="submission-pane__actions">
           {file && audioContext && (
-            <button onClick={async () => {
+            <button className="submission-pane__button" onClick={async () => {
               const { engine, state } = audioContext;
               if (!engine) return;
               if (state?.player1?.isPlaying) {
@@ -47,7 +53,7 @@ export function UploadSubmission({ collaborationId, backingUrl }: { collaboratio
               {audioContext?.state?.player1?.isPlaying ? 'pause' : 'play'}
             </button>
           )}
-          <button onClick={async () => {
+          <button className="submission-pane__button" onClick={async () => {
             if (!user || !file) { setError('missing file or auth'); return; }
             setSaving(true); setError(null); setProgress(0);
             try {
@@ -77,6 +83,7 @@ export function UploadSubmission({ collaborationId, backingUrl }: { collaboratio
               await SubmissionService.uploadSubmission(file, collaborationId, user.uid, (p) => setProgress(p), currentSettings);
               setFile(null);
               if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
+              onSubmitSuccess?.();
             } catch (e: any) {
               setError(e?.message || 'upload failed');
             } finally {
@@ -84,15 +91,14 @@ export function UploadSubmission({ collaborationId, backingUrl }: { collaboratio
             }
           }} disabled={saving || !file || !user}>{saving ? `uploading ${progress}%` : 'upload'}</button>
           {saving && (
-            <div style={{ width: 180, height: 8, background: 'rgba(255,255,255,0.15)', borderRadius: 4 }}>
-              <div style={{ width: `${progress}%`, height: '100%', background: 'var(--contrast-600)', borderRadius: 4 }} />
+            <div className="submission-pane__progress">
+              <div className="submission-pane__progress-bar" style={{ width: `${progress}%` }} />
             </div>
           )}
           {!user && <div style={{ color: 'var(--white)' }}>login required</div>}
         </div>
-        {error && <div className="mt-8" style={{ color: 'var(--white)' }}>{error}</div>}
+        {error && <div className="submission-pane__error">{error}</div>}
       </div>
     </div>
   );
 }
-

@@ -1081,7 +1081,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
 
       (async () => {
-        // optimistic apply of submission settings in MainView
+        // optimistic apply of submission settings in VotingView
         const selected = track as Track;
         const settings = selected.submissionSettings;
         if (DEBUG_LOGS) console.log('applying submission settings (optimistic):', settings);

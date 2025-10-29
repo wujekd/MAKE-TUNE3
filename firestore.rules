@@ -13,6 +13,9 @@ service cloud.firestore {
         && data.updatedAt is timestamp
         && (!('tags' in data) || (data.tags is list && data.tags.size() <= 10))
         && (!('tagsKey' in data) || (data.tagsKey is list && data.tagsKey.size() <= 10))
+        && (!('currentCollaborationId' in data) || data.currentCollaborationId == null || data.currentCollaborationId is string)
+        && (!('currentCollaborationStatus' in data) || data.currentCollaborationStatus == null || data.currentCollaborationStatus is string)
+        && (!('currentCollaborationStageEndsAt' in data) || data.currentCollaborationStageEndsAt == null || data.currentCollaborationStageEndsAt is timestamp)
         && (!('nameKey' in data) || data.nameKey is string);
     }
 
@@ -38,6 +41,30 @@ service cloud.firestore {
         && (!('winnerPath' in data) || data.winnerPath is string)
         && (!('tags' in data) || (data.tags is list && data.tags.size() <= 10))
         && (!('tagsKey' in data) || (data.tagsKey is list && data.tagsKey.size() <= 10));
+    }
+
+    function validateCollaborationDetailData(data) {
+      return (!('collaborationId' in data) || data.collaborationId is string)
+        && (!('submissions' in data) || data.submissions is list)
+        && (!('submissionPaths' in data) || data.submissionPaths is list)
+        && (!('createdAt' in data) || data.createdAt is timestamp)
+        && (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function canWriteCollaborationDetail(collabId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/collaborations/$(collabId))
+        && (
+          (
+            get(/databases/$(database)/documents/collaborations/$(collabId)).data.projectId is string
+            && exists(/databases/$(database)/documents/projects/$(get(/databases/$(database)/documents/collaborations/$(collabId)).data.projectId))
+            && get(/databases/$(database)/documents/projects/$(get(/databases/$(database)/documents/collaborations/$(collabId)).data.projectId)).data.ownerId == request.auth.uid
+          )
+          || (
+            get(/databases/$(database)/documents/collaborations/$(collabId)).data.participantIds is list
+            && request.auth.uid in get(/databases/$(database)/documents/collaborations/$(collabId)).data.participantIds
+          )
+        );
     }
 
     function validateProjectNameIndexData(data, nameKey) {
@@ -76,10 +103,20 @@ service cloud.firestore {
       allow update: if isSignedIn()
         && validateCollaborationData(request.resource.data)
         && request.resource.data.projectId == resource.data.projectId
-        && request.resource.data.participantIds.size() >= resource.data.participantIds.size()
-        && request.resource.data.submissions.size() >= resource.data.submissions.size();
+        && request.resource.data.createdAt == resource.data.createdAt
+        && (
+          !('participantIds' in resource.data)
+          || !('participantIds' in request.resource.data)
+          || request.resource.data.participantIds.size() >= resource.data.participantIds.size()
+        );
 
       allow delete: if get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.ownerId == request.auth.uid;
+    }
+
+    match /collaborationDetails/{collabId} {
+      allow read: if true;
+      allow create, update: if validateCollaborationDetailData(request.resource.data)
+        && canWriteCollaborationDetail(collabId);
     }
 
     // users: each user can read/write their own profile
@@ -99,6 +136,14 @@ service cloud.firestore {
       // reads use resource.data; writes use request.resource.data
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create, update, delete: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /userDownloads/{downloadId} {
+      allow get: if isSignedIn() && downloadId.split('__')[0] == request.auth.uid;
+      allow create, update: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && downloadId == request.auth.uid + '__' + request.resource.data.collaborationId;
+      allow delete: if false;
     }
 
     // submissionUsers: create by the submitting user; reads restricted (owner or self)

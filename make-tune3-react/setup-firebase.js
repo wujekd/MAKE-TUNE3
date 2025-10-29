@@ -57,6 +57,11 @@ async function setupFirebaseCollections() {
       description: 'A test project for development',
       ownerId: 've8DfsfgtjbCV9MdWyCwwwtqCf02',
       isActive: true,
+      tags: [],
+      tagsKey: [],
+      currentCollaborationId: null,
+      currentCollaborationStatus: null,
+      currentCollaborationStageEndsAt: null,
       pastCollaborations: [], // will be populated when collaborations complete
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
@@ -72,7 +77,6 @@ async function setupFirebaseCollections() {
       name: 'First Collaboration',
       description: 'Initial test collaboration',
       backingTrackPath: '', // will be set after creating backing track
-      submissionPaths: [], // will be populated after creating submission tracks
       submissionDuration: 7 * 24 * 60 * 60, // 7 days in seconds
       votingDuration: 7 * 24 * 60 * 60, // 7 days in seconds
       status: 'voting',
@@ -124,6 +128,7 @@ async function setupFirebaseCollections() {
     ];
 
     const submissionPaths = [];
+    const submissionEntries = [];
     for (const trackData of submissionTracks) {
       submissionPaths.push(trackData.filePath);
       console.log(' submission track path:', trackData.filePath);
@@ -139,6 +144,25 @@ async function setupFirebaseCollections() {
       
       await addDoc(collection(db, 'submissionUsers'), submissionUserData);
       console.log(' submission-user relationship created for path:', trackData.filePath);
+
+      const createdAtTs = Timestamp.now();
+      submissionEntries.push({
+        path: trackData.filePath,
+        submissionId: trackData.filePath,
+        settings: {
+          eq: {
+            highshelf: { gain: 0, frequency: 8000 },
+            param2: { gain: 0, frequency: 3000, Q: 1 },
+            param1: { gain: 0, frequency: 250, Q: 1 },
+            highpass: { frequency: 20, enabled: false }
+          },
+          volume: { gain: 1 }
+        },
+        createdAt: createdAtTs,
+        moderationStatus: 'approved',
+        moderatedAt: createdAtTs,
+        moderatedBy: 'seed-script'
+      });
     }
 
     // past stage tracks (no artist field for anonymity)
@@ -159,6 +183,14 @@ async function setupFirebaseCollections() {
         duration: 220
       }
     ];
+
+    await setDoc(doc(db, 'collaborationDetails', collaborationId), {
+      collaborationId: collaborationId,
+      submissions: submissionEntries,
+      submissionPaths: submissionPaths,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    });
 
     const pastStageTrackPaths = [];
     for (const trackData of pastStageTracks) {
@@ -200,11 +232,6 @@ async function setupFirebaseCollections() {
     // update project with past collaborations
     await setDoc(doc(db, 'projects', projectId), {
       pastCollaborations: pastCollaborations
-    }, { merge: true });
-
-    // update collaboration with submission paths only
-    await setDoc(doc(db, 'collaborations', collaborationId), {
-      submissionPaths: submissionPaths
     }, { merge: true });
 
     console.log('creating user collaboration...');

@@ -1,4 +1,4 @@
-import { doc, getDoc, updateDoc, addDoc, collection, query, where, getDocs, limit as firestoreLimit, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, addDoc, collection, query, where, getDocs, Timestamp, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import type { UserProfile, UserCollaboration, UserId, CollaborationId } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
@@ -83,25 +83,22 @@ export class UserService {
   }
 
   static async hasDownloadedBacking(userId: UserId, collaborationId: CollaborationId): Promise<boolean> {
-    const q = query(
-      collection(db, COLLECTIONS.SUBMISSION_USERS),
-      where('userId', '==', userId),
-      where('collaborationId', '==', collaborationId),
-      where('downloadedBacking', '==', true),
-      firestoreLimit(1)
-    );
-    const snap = await getDocs(q);
-    return !snap.empty;
+    const ref = doc(db, COLLECTIONS.USER_DOWNLOADS, `${userId}__${collaborationId}`);
+    const snap = await getDoc(ref);
+    return snap.exists();
   }
 
   static async markBackingDownloaded(userId: UserId, collaborationId: CollaborationId, backingPath: string): Promise<void> {
-    await addDoc(collection(db, COLLECTIONS.SUBMISSION_USERS), {
+    const ref = doc(db, COLLECTIONS.USER_DOWNLOADS, `${userId}__${collaborationId}`);
+    const existing = await getDoc(ref);
+    const downloadCount = existing.exists() ? (((existing.data() as any)?.downloadCount || 0) + 1) : 1;
+    await setDoc(ref, {
       userId,
       collaborationId,
-      downloadedBacking: true,
       backingPath,
-      downloadedBackingAt: Timestamp.now()
-    });
+      downloadCount,
+      lastDownloadedAt: Timestamp.now()
+    }, { merge: true });
   }
 
   static async getUserCollaborations(userId: UserId): Promise<any[]> {
@@ -118,4 +115,3 @@ export class UserService {
     return querySnapshot.docs.map(doc => ({ ...(doc.data() as any), id: doc.id }));
   }
 }
-

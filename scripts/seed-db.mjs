@@ -47,9 +47,14 @@ function buildProject(name, description) {
   return {
     name,
     description,
+    tags: [],
+    tagsKey: [],
     ownerId: OWNER_ID,
     isActive: true,
     pastCollaborations: [],
+    currentCollaborationId: null,
+    currentCollaborationStatus: null,
+    currentCollaborationStageEndsAt: null,
     createdAt: now,
     updatedAt: now
   };
@@ -62,7 +67,6 @@ function buildCollab(projectId, name, description) {
     name,
     description,
     backingTrackPath: '',
-    submissions: [],
     submissionDuration: 7 * 24 * 60 * 60,
     votingDuration: 3 * 24 * 60 * 60,
     status: 'unpublished',
@@ -81,6 +85,23 @@ async function run() {
 
   const c1 = await addDoc(collection(db, 'collaborations'), buildCollab(p1.id, 'Alpha Collab 1', 'Alpha initial collaboration'));
   const c2 = await addDoc(collection(db, 'collaborations'), buildCollab(p2.id, 'Beta Collab 1', 'Beta initial collaboration'));
+  const detailCollection = collection(db, 'collaborationDetails');
+  await Promise.all([
+    setDoc(doc(detailCollection, c1.id), {
+      collaborationId: c1.id,
+      submissions: [],
+      submissionPaths: [],
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    }),
+    setDoc(doc(detailCollection, c2.id), {
+      collaborationId: c2.id,
+      submissions: [],
+      submissionPaths: [],
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    })
+  ]);
 
   // add name index docs similar to unique-name workflow if needed later (optional seed)
   // await setDoc(doc(db, 'projectNameIndex', 'project-alpha'), { projectId: p1.id, ownerId: OWNER_ID, createdAt: Timestamp.now() });
@@ -95,4 +116,3 @@ run().catch(err => {
   console.error(err);
   process.exit(1);
 });
-

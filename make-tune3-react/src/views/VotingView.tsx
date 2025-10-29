@@ -1,6 +1,5 @@
-import { useContext, useEffect, useState, useRef } from 'react';
-import { useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useContext, useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { StoreTest } from '../components/StoreTest';
 import { useAppStore } from '../stores/appStore';
@@ -16,9 +15,10 @@ import { CollabHeader } from '../components/CollabHeader';
 import { storage } from '../services/firebase';
 import { ref, getDownloadURL } from 'firebase/storage';
 
-export function MainView() {
+export function VotingView() {
   const audioContext = useContext(AudioEngineContext);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
   
   // get data from different slices
   const { user, signOut } = useAppStore(state => state.auth);
@@ -44,6 +44,7 @@ export function MainView() {
   }
   const { engine, state } = audioContext;
   const pendingBackingUrlRef = useRef<string>('');
+  const stageCheckInFlightRef = useRef(false);
 
   // read collabId from url
   const location = useLocation();
@@ -144,6 +145,29 @@ export function MainView() {
     return () => clearTimeout(timer);
   }, [user?.uid]);
 
+  const handleStageChange = useCallback(async (nextStatus: 'voting' | 'completed') => {
+    if (stageCheckInFlightRef.current) return;
+    stageCheckInFlightRef.current = true;
+    try {
+      const current = useAppStore.getState().collaboration.currentCollaboration;
+      if (!current) return;
+      if (user) {
+        await loadCollaboration(user.uid, current.id);
+      } else {
+        await loadCollaborationAnonymousById(current.id);
+      }
+      const updated = useAppStore.getState().collaboration.currentCollaboration;
+      if (!updated) return;
+      if (updated.status === 'completed') {
+        navigate(`/collab/${updated.id}/completed`);
+      }
+    } catch (err) {
+      console.warn('[VotingView] stage change refresh failed', err);
+    } finally {
+      stageCheckInFlightRef.current = false;
+    }
+  }, [user, loadCollaboration, loadCollaborationAnonymousById, navigate]);
+
   if (isLoading) {
     return <div style={{ 
       display: 'flex', 
@@ -181,7 +205,7 @@ export function MainView() {
         </div>
         <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
           <ProjectHistory />
-          <CollabHeader collaboration={currentCollaboration} />
+          <CollabHeader collaboration={currentCollaboration} onStageChange={handleStageChange} />
         </div>
       </div>
       

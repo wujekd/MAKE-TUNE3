@@ -33,7 +33,7 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
   const startValRef = useRef<number>(0);
 
   // pixels for full range sweep
-  const sensitivity = 165;
+  const sensitivity = 250;
   const angle = useMemo(() => {
     const start = -135; // start angle
     const sweep = 270;  // total sweep
@@ -101,7 +101,7 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
     if (!dragging) return;
     const handleMove = (e: MouseEvent) => {
       const dy = e.clientY - startYRef.current; // down is +dy, up is -dy
-      const effSensitivity = e.shiftKey ? sensitivity * 5 : sensitivity;
+      const effSensitivity = e.shiftKey ? sensitivity * 20 : sensitivity;
       const delta = (-dy / effSensitivity) * (max - min);
       let next = startValRef.current + delta;
       // snap to step

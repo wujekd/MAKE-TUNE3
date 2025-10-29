@@ -83,7 +83,6 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
           tags: normalized.display,
           tagsKey: normalized.keys,
           backingTrackPath: '',
-          submissionPaths: [],
           submissionDuration,
           votingDuration,
           requiresModeration,
@@ -251,4 +250,3 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
     </div>
   );
 }
-

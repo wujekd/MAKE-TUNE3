@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { useAppStore } from '../stores/appStore';
 import { useAudioStore } from '../stores';
@@ -7,12 +7,12 @@ import './MainView.css';
 import ProjectHistory from '../components/ProjectHistory';
 import '../components/ProjectHistory.css';
 import { CollabHeader } from '../components/CollabHeader';
-import { UserService, SubmissionService } from '../services';
+import { UserService, SubmissionService, ProjectService } from '../services';
 import { DownloadBacking } from '../components/DownloadBacking';
 import { UploadSubmission } from '../components/UploadSubmission';
 import { storage } from '../services/firebase';
 import { ref, getDownloadURL } from 'firebase/storage';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
 import '../components/Favorites.css';
 
@@ -24,17 +24,20 @@ export function SubmissionView() {
 
   const [backingUrl, setBackingUrl] = useState<string>('');
   const pendingBackingUrlRef = useRef<string>('');
+  const stageCheckInFlightRef = useRef(false);
   const state = useAudioStore(s => s.state) as any;
-  const [hasDownloaded, setHasDownloaded] = useState<boolean>(true);
-  const [hasSubmitted, setHasSubmitted] = useState<boolean>(false);
+  const [projectInfo, setProjectInfo] = useState<{ name: string; description: string } | null>(null);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'downloaded' | 'submitted'>('loading');
+  const navigate = useNavigate();
+
   usePrefetchAudio(backingUrl);
+
   useEffect(() => {
     if (!audioContext?.engine || !backingUrl) return;
     pendingBackingUrlRef.current = backingUrl;
     audioContext.engine.preloadBacking(backingUrl);
   }, [audioContext?.engine, backingUrl]);
 
-  // resolve backing track URL when collaboration changes
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -57,8 +60,8 @@ export function SubmissionView() {
     if (!engine) return;
     const handler = async () => {
       await engine.unlock?.();
-      const backingUrl = pendingBackingUrlRef.current;
-      if (backingUrl) engine.preloadBacking(backingUrl);
+      const url = pendingBackingUrlRef.current;
+      if (url) engine.preloadBacking(url);
     };
     window.addEventListener('pointerdown', handler, { once: true });
     window.addEventListener('keydown', handler, { once: true });
@@ -74,58 +77,169 @@ export function SubmissionView() {
     else loadCollaborationAnonymousById(collaborationId);
   }, [collaborationId, user, loadCollaboration, loadCollaborationAnonymousById]);
 
-  useEffect(() => {
-    (async () => {
-      if (!user || !currentCollaboration) { setHasDownloaded(true); return; }
-      const ok = await UserService.hasDownloadedBacking(user.uid, currentCollaboration.id);
-      setHasDownloaded(ok);
-    })();
-  }, [user?.uid, currentCollaboration?.id]);
+  const handleStageChange = useCallback(async (nextStatus: 'voting' | 'completed') => {
+    if (stageCheckInFlightRef.current) {
+      return;
+    }
+    stageCheckInFlightRef.current = true;
+    console.log(`[SubmissionView] stage change to ${nextStatus} detected`);
+    try {
+      const current = useAppStore.getState().collaboration.currentCollaboration;
+      if (!current) return;
+      if (user) {
+        await loadCollaboration(user.uid, current.id);
+      } else {
+        await loadCollaborationAnonymousById(current.id);
+      }
+      const updated = useAppStore.getState().collaboration.currentCollaboration;
+      if (updated?.status === nextStatus) {
+        if (nextStatus === 'voting') {
+          setStatus('loading');
+          navigate(`/collab/${updated.id}`);
+        } else if (nextStatus === 'completed') {
+          setStatus('loading');
+          navigate(`/collab/${updated.id}/completed`);
+        }
+      }
+    } catch (err) {
+      console.warn('[SubmissionView] stage change refresh failed', err);
+    } finally {
+      stageCheckInFlightRef.current = false;
+    }
+  }, [user, loadCollaboration, loadCollaborationAnonymousById, navigate]);
 
   useEffect(() => {
     (async () => {
-      if (!user || !currentCollaboration) { setHasSubmitted(false); return; }
-      const submitted = await SubmissionService.hasUserSubmitted(currentCollaboration.id, user.uid);
-      setHasSubmitted(submitted);
+      if (!currentCollaboration?.projectId) {
+        setProjectInfo(null);
+        return;
+      }
+      try {
+        const project = await ProjectService.getProject(currentCollaboration.projectId);
+        if (project) {
+          setProjectInfo({ name: project.name, description: project.description });
+        }
+      } catch {
+        setProjectInfo(null);
+      }
+    })();
+  }, [currentCollaboration?.projectId]);
+
+  useEffect(() => {
+    (async () => {
+      setStatus('loading');
+      if (!user || !currentCollaboration) {
+        setStatus('ready');
+        return;
+      }
+      try {
+        const [downloaded, submitted] = await Promise.all([
+          UserService.hasDownloadedBacking(user.uid, currentCollaboration.id),
+          SubmissionService.hasUserSubmitted(currentCollaboration.id, user.uid)
+        ]);
+        if (submitted) {
+          setStatus('submitted');
+        } else if (downloaded) {
+          setStatus('downloaded');
+        } else {
+          setStatus('ready');
+        }
+      } catch (e) {
+        console.error('failed to resolve submission status', e);
+        setStatus('ready');
+      }
     })();
   }, [user?.uid, currentCollaboration?.id]);
 
   if (!audioContext) return <div>audio engine not available</div>;
 
+  const renderPane = () => {
+    if (status === 'loading') {
+      return (
+        <div className="submission-pane">
+          <h4 className="card__title">Preparing submission flow</h4>
+          <div className="card__body">
+            <div style={{ color: 'var(--white)', opacity: 0.8 }}>
+              Checking your download and submission status...
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (status === 'submitted' && user) {
+      return (
+        <div className="submission-pane">
+          <h4 className="card__title">Submission complete</h4>
+          <div className="card__body">
+            <div style={{ color: 'var(--white)', opacity: 0.8 }}>
+              You have already submitted to this collaboration.
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (status === 'ready' && user && currentCollaboration?.backingTrackPath) {
+      return (
+        <DownloadBacking
+          userId={user.uid}
+          collaborationId={currentCollaboration.id}
+          backingPath={currentCollaboration.backingTrackPath}
+          onDownloaded={() => setStatus('downloaded')}
+        />
+      );
+    }
+
+    if (status === 'downloaded' && collaborationId) {
+      return (
+        <UploadSubmission
+          collaborationId={collaborationId}
+          backingUrl={backingUrl}
+          onSubmitSuccess={() => setStatus('submitted')}
+        />
+      );
+    }
+
+    if (!user && collaborationId) {
+      return (
+        <UploadSubmission
+          collaborationId={collaborationId}
+          backingUrl={backingUrl}
+          onSubmitSuccess={() => setStatus('submitted')}
+        />
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className="main-container">
-      
-
       <div className="info-top">
-        <h2>Submission</h2>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', gap: 16 }}>
+          <div>
+            {projectInfo && (
+              <div style={{ marginBottom: 8, color: 'var(--white)', opacity: 0.85 }}>
+                <div style={{ fontSize: 20, fontWeight: 600 }}>{projectInfo.name}</div>
+                {projectInfo.description && (
+                  <div style={{ fontSize: 13, opacity: 0.75 }}>{projectInfo.description}</div>
+                )}
+              </div>
+            )}
+            <h2 style={{ color: 'var(--white)', margin: 0 }}>{currentCollaboration?.name || 'Submission'}</h2>
+          </div>
           <ProjectHistory />
-          <CollabHeader collaboration={currentCollaboration} />
+          <div>
+            <CollabHeader collaboration={currentCollaboration} onStageChange={handleStageChange} />
+          </div>
         </div>
       </div>
 
       <div className="submissions-section active-playback">
         <div className="audio-player-section">
-          <div className="audio-player-title">
-            {hasSubmitted ? 'Already submitted' : hasDownloaded ? 'Upload' : 'Download'}
-          </div>
-          <div className="submissions-scroll">
-            {hasSubmitted && user && (
-              <div className="card" style={{ maxWidth: 560 }}>
-                <h4 className="card__title">Submission complete</h4>
-                <div className="card__body">
-                  <div style={{ color: 'var(--white)', opacity: 0.8 }}>
-                    You have already submitted to this collaboration.
-                  </div>
-                </div>
-              </div>
-            )}
-            {!hasSubmitted && !hasDownloaded && user && currentCollaboration && currentCollaboration.backingTrackPath && (
-              <DownloadBacking userId={user.uid} collaborationId={currentCollaboration.id} backingPath={currentCollaboration.backingTrackPath} onDownloaded={() => setHasDownloaded(true)} />
-            )}
-            {!hasSubmitted && (hasDownloaded || !user) && collaborationId && (
-              <UploadSubmission collaborationId={collaborationId} backingUrl={backingUrl} />
-            )}
+          <div className="submission-pane-wrapper">
+            {renderPane()}
           </div>
         </div>
       </div>

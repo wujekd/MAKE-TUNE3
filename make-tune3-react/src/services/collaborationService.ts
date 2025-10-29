@@ -1,6 +1,6 @@
-import { doc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, limit as firestoreLimit, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, limit as firestoreLimit, Timestamp, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Collaboration, CollaborationId, ProjectId } from '../types/collaboration';
+import type { Collaboration, CollaborationDetail, CollaborationId, ProjectId } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 
 export class CollaborationService {
@@ -10,13 +10,26 @@ export class CollaborationService {
       ...collaboration,
       tags: collaboration.tags || [],
       tagsKey: collaboration.tagsKey || [],
+      backingTrackPath: collaboration.backingTrackPath || '',
       createdAt: now,
       publishedAt: (collaboration as any).publishedAt || null,
       updatedAt: now
     } as Omit<Collaboration, 'id'>;
 
-    const docRef = await addDoc(collection(db, COLLECTIONS.COLLABORATIONS), collaborationData as any);
-    return { ...(collaborationData as any), id: docRef.id } as Collaboration;
+    const { submissions, submissionPaths, ...lightData } = collaborationData as any;
+
+    const docRef = await addDoc(collection(db, COLLECTIONS.COLLABORATIONS), lightData);
+
+    // create heavy detail doc with defaults
+    await setDoc(doc(db, COLLECTIONS.COLLABORATION_DETAILS, docRef.id), {
+      collaborationId: docRef.id,
+      submissions: Array.isArray(submissions) ? submissions : [],
+      submissionPaths: Array.isArray(submissionPaths) ? submissionPaths : [],
+      createdAt: now,
+      updatedAt: now
+    } satisfies Omit<CollaborationDetail, 'id'>).catch(() => {});
+
+    return { ...(lightData as any), id: docRef.id, submissions: Array.isArray(submissions) ? submissions : [], submissionPaths: Array.isArray(submissionPaths) ? submissionPaths : [] } as Collaboration;
   }
 
   static async getCollaboration(collaborationId: CollaborationId): Promise<Collaboration | null> {
@@ -26,8 +39,25 @@ export class CollaborationService {
     if (!docSnap.exists()) {
       return null;
     }
-    
-    return { ...(docSnap.data() as any), id: docSnap.id } as Collaboration;
+
+    const base = { ...(docSnap.data() as any), id: docSnap.id } as Collaboration;
+
+    try {
+      const detailRef = doc(db, COLLECTIONS.COLLABORATION_DETAILS, collaborationId);
+      const detailSnap = await getDoc(detailRef);
+      if (detailSnap.exists()) {
+        const detail = detailSnap.data() as CollaborationDetail;
+        return {
+          ...base,
+          submissions: Array.isArray(detail.submissions) ? detail.submissions : base.submissions,
+          submissionPaths: Array.isArray(detail.submissionPaths) ? detail.submissionPaths : (base as any).submissionPaths
+        } as Collaboration;
+      }
+    } catch (err) {
+      // ignore detail fetch errors and fallback to base data
+    }
+
+    return base;
   }
 
   static async getCollaborationsByProject(projectId: ProjectId): Promise<Collaboration[]> {
@@ -50,7 +80,10 @@ export class CollaborationService {
 
   static async deleteCollaboration(collaborationId: CollaborationId): Promise<void> {
     const refCol = doc(db, COLLECTIONS.COLLABORATIONS, collaborationId);
-    await deleteDoc(refCol);
+    await Promise.all([
+      deleteDoc(refCol),
+      deleteDoc(doc(db, COLLECTIONS.COLLABORATION_DETAILS, collaborationId)).catch(() => {})
+    ]);
   }
 
   static async getFirstCollaboration(): Promise<Collaboration | null> {
