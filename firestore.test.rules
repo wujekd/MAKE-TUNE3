@@ -139,7 +139,7 @@ service cloud.firestore {
     }
 
     match /userDownloads/{downloadId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn() && downloadId.split('__')[0] == request.auth.uid;
       allow create, update: if isSignedIn()
         && request.resource.data.userId == request.auth.uid
         && downloadId == request.auth.uid + '__' + request.resource.data.collaborationId;

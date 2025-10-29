@@ -33,7 +33,7 @@ export class TrackUtils {
       createdAt: (options?.createdAt || new Date()) as any,
       collaborationId,
       category,
-      approved: moderationStatus === 'pending',
+      approved: moderationStatus === 'approved',
       moderationStatus,
       submissionSettings: options?.settings
     };

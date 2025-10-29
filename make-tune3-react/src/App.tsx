@@ -5,6 +5,7 @@ import { DashboardView } from './views/DashboardView'
 import { ProjectEditView } from './views/ProjectEditView'
 import { SubmissionView } from './views/SubmissionView'
 import { AdminTagsView } from './views/AdminTagsView'
+import { AdminProjectsView } from './views/AdminProjectsView'
 import { useAppStore } from './stores/appStore'
 import { useUIStore } from './stores'
 import { ModerationView } from './views/ModerationView'
@@ -120,6 +121,15 @@ function App() {
           handle: {
             title: 'Manage Tags',
             breadcrumb: 'Tags',
+            actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
+          }
+        },
+        {
+          path: 'admin/projects',
+          element: <AdminProjectsView />,
+          handle: {
+            title: 'Manage Projects',
+            breadcrumb: 'Projects',
             actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
           }
         },

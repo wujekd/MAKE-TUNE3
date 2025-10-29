@@ -186,7 +186,10 @@ export function MyProjects() {
   }, [activeTab, user]);
 
   return (
-    <div className="project-history card" style={{ width: '100%' }}>
+    <div
+      className="project-history card"
+      style={{ minWidth: 0, maxWidth: 'none', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1, overflow: 'hidden' }}
+    >
       <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
         <button onClick={() => setActiveTab('projects')} disabled={activeTab === 'projects'}>
           my projects
@@ -223,7 +226,7 @@ export function MyProjects() {
               + create project
             </button>
           </div>
-          <div className="collab-list list" style={{ marginTop: 8 }}>
+          <div className="collab-list list" style={{ marginTop: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
             {showForm && (
               <div className="collab-history-item list__item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
                 <input
@@ -338,7 +341,7 @@ export function MyProjects() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h4 className="project-history-title card__title" style={{ marginBottom: 0 }}>to moderate</h4>
           </div>
-          <div className="collab-list list" style={{ marginTop: 8 }}>
+          <div className="collab-list list" style={{ marginTop: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
             {!user && <div style={{ color: 'var(--white)' }}>login to see moderation queue</div>}
             {user && moderationLoading && <div style={{ color: 'var(--white)' }}>loading...</div>}
             {user && moderationError && <div style={{ color: 'var(--white)' }}>{moderationError}</div>}
@@ -374,7 +377,7 @@ export function MyProjects() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h4 className="project-history-title card__title" style={{ marginBottom: 0 }}>my submissions</h4>
           </div>
-          <div className="collab-list list" style={{ marginTop: 8 }}>
+          <div className="collab-list list" style={{ marginTop: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
             {!user && <div style={{ color: 'var(--white)' }}>login to see submissions</div>}
             {user && submissionsLoading && <div style={{ color: 'var(--white)' }}>loading...</div>}
             {user && submissionsError && <div style={{ color: 'var(--white)' }}>{submissionsError}</div>}
@@ -408,7 +411,7 @@ export function MyProjects() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h4 className="project-history-title card__title" style={{ marginBottom: 0 }}>downloaded backings</h4>
           </div>
-          <div className="collab-list list" style={{ marginTop: 8 }}>
+          <div className="collab-list list" style={{ marginTop: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
             {!user && <div style={{ color: 'var(--white)' }}>login to see downloads</div>}
             {user && downloadsLoading && <div style={{ color: 'var(--white)' }}>loading...</div>}
             {user && downloadsError && <div style={{ color: 'var(--white)' }}>{downloadsError}</div>}

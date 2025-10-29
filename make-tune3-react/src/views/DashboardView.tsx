@@ -78,41 +78,69 @@ export function DashboardView() {
   const pendingModeration = needsMod.length;
 
   return (
-    <div style={{ background: 'var(--primary1-800)', minHeight: '100%', width: '100%', boxSizing: 'border-box', overflowY: 'auto' }}>
-      <div style={dashboardShell}>
-        <div
-          style={headerCard}
-        >
-          <div style={headerText}>
-            <div style={headerLabel}>dashboard</div>
-            <div style={headerTitle}>collab recommendations here</div>
+    <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, height: '100%', boxSizing: 'border-box', overflow: 'hidden', background: 'var(--primary1-800)' }}>
+      <div style={{
+        width: '100%',
+        marginTop: 7,
+        minHeight: 128,
+        borderRadius: 12,
+        background: 'linear-gradient(135deg, var(--primary1-600), var(--primary1-900))',
+        color: 'var(--white)',
+        padding: 16,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        flexShrink: 0
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ fontSize: 13, opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.12em' }}>dashboard</div>
+            <div style={{ fontSize: 22, fontWeight: 700 }}>collaboration overview</div>
+            <div style={{ fontSize: 12, opacity: 0.75 }}>track active projects, submissions, and moderation.</div>
           </div>
-          <div style={headerStats}>
+          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <StatCard value={totalCollabs} label="total collabs" />
             <StatCard value={filteredCount} label="visible" />
             <StatCard value={pendingModeration} label="pending mod" />
           </div>
         </div>
+      </div>
 
-        <div
-          style={bodyLayout}
-        >
-          <div style={sideColumn}>
+      <div style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flex: 1, minWidth: 0, gap: 10, minHeight: 0, overflow: 'hidden' }}>
+          <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <MyProjects />
           </div>
-
-          <div style={mainColumn}>
-            <div style={gridRow}>
-              <div className="project-history" style={collabsCard}>
-                <h4 className="project-history-title">collaborations</h4>
-                <div style={filterWrapper}>
-                  <TagFilter selectedTags={selectedTags} onTagsChange={handleTagsChange} />
-                </div>
-                <div
-                  className="collab-list"
-                  style={{ flex: 1, minHeight: 0, maxHeight: 420, overflowY: 'auto' }}
-                  aria-busy={!hasLoaded}
-                >
+          <div
+            className="project-history"
+            style={{
+              flex: 1,
+              minWidth: 0,
+              maxWidth: 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 0,
+              overflow: 'hidden'
+            }}
+          >
+            <h4 className="project-history-title">collaborations</h4>
+            <div
+              style={{
+                padding: 8,
+                flex: 1,
+                minHeight: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                overflow: 'hidden'
+              }}
+            >
+              <TagFilter selectedTags={selectedTags} onTagsChange={handleTagsChange} />
+              <div
+                className="collab-list"
+                style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}
+                aria-busy={!hasLoaded}
+              >
                   {error && <div style={{ color: 'var(--white)' }}>{error}</div>}
                   {hasLoaded && !error && filteredCollabs.length === 0 && (
                     <div style={{ color: 'var(--white)' }}>
@@ -178,14 +206,12 @@ export function DashboardView() {
                       </Link>
                     );
                   })}
-                </div>
-              </div>
-              <div style={mixerColumn}>
-                <Mixer1Channel state={audioState} />
               </div>
             </div>
-
           </div>
+        </div>
+        <div style={{ width: 140, flexShrink: 0, display: 'flex', height: '100%' }}>
+          <Mixer1Channel state={audioState} />
         </div>
       </div>
     </div>
@@ -194,61 +220,9 @@ export function DashboardView() {
 
 function StatCard({ value, label }: { value: number; label: string }) {
   return (
-    <div style={statCard}>
-      <div style={statValue}>{value}</div>
-      <div style={statLabel}>{label}</div>
+    <div style={{ minWidth: 90, textAlign: 'right' as const }}>
+      <div style={{ fontSize: 28, fontWeight: 700 }}>{value}</div>
+      <div style={{ fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.08em', opacity: 0.75 }}>{label}</div>
     </div>
   );
 }
-
-const dashboardShell = {
-  maxWidth: 1240,
-  margin: '0 auto',
-  padding: '18px 20px 24px',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 16,
-  minHeight: '100%',
-  boxSizing: 'border-box' as const
-};
-
-const headerCard = {
-  width: '100%',
-  minHeight: 132,
-  borderRadius: 12,
-  background: 'linear-gradient(135deg, var(--primary1-600), var(--primary1-900))',
-  color: 'var(--white)',
-  padding: '16px 20px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 24,
-  boxShadow: '0 8px 22px rgba(0,0,0,0.28)',
-  flexWrap: 'wrap' as const
-};
-
-const headerText = { display: 'flex', flexDirection: 'column' as const, gap: 6 };
-const headerLabel = { fontSize: 13, opacity: 0.75, textTransform: 'uppercase' as const, letterSpacing: '0.12em' };
-const headerTitle = { fontSize: 22, fontWeight: 700 };
-const headerSubtitle = { fontSize: 12, opacity: 0.75 };
-
-const headerStats = { display: 'flex', gap: 18, flexWrap: 'wrap' as const, justifyContent: 'flex-end' };
-const statCard = { minWidth: 90, textAlign: 'right' as const };
-const statValue = { fontSize: 28, fontWeight: 700 };
-const statLabel = { fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.08em', opacity: 0.75 };
-
-const bodyLayout = {
-  display: 'flex',
-  gap: 16,
-  flex: 1,
-  minHeight: 0,
-  flexWrap: 'wrap' as const,
-  alignItems: 'stretch' as const
-};
-
-const sideColumn = { flex: '1 1 420px', minWidth: 320, maxWidth: 520, display: 'flex', flexDirection: 'column' as const, minHeight: 0 };
-const mainColumn = { flex: '1 1 520px', minWidth: 360, display: 'flex', flexDirection: 'column' as const, gap: 16, minHeight: 0 };
-const gridRow = { display: 'flex', gap: 16, minHeight: 0, flexWrap: 'wrap' as const };
-const collabsCard = { flex: '1 1 420px', minWidth: 300, maxWidth: 'none', display: 'flex', flexDirection: 'column' as const, minHeight: 0 };
-const filterWrapper = { padding: '6px 10px 12px' };
-const mixerColumn = { flex: '0 0 140px', minWidth: 140, display: 'flex', height: '100%', minHeight: 280 };

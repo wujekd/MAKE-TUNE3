@@ -54,6 +54,11 @@ export class ProjectService {
     return snap.docs.map(d => ({ ...(d.data() as any), id: d.id } as Project));
   }
 
+  static async listAllProjects(): Promise<Project[]> {
+    const snap = await getDocs(collection(db, COLLECTIONS.PROJECTS));
+    return snap.docs.map(d => ({ ...(d.data() as any), id: d.id } as Project));
+  }
+
   static async createProjectWithUniqueName(params: { name: string; description?: string; ownerId: string; tags?: string[]; tagsKey?: string[] }): Promise<Project> {
     const { name, description, ownerId, tags = [], tagsKey = [] } = params;
     const nameKey = name.toLowerCase().replace(/\s+/g, '-');

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import type { Project, Collaboration } from '../types/collaboration';
 import { ProjectService, CollaborationService } from '../services';
 import { useAppStore } from '../stores/appStore';
@@ -11,6 +11,7 @@ import { usePlaybackStore } from '../stores/usePlaybackStore';
 
 export function ProjectEditView() {
   const { projectId } = useParams();
+  const [searchParams] = useSearchParams();
   const setCurrentProject = useAppStore(s => s.collaboration.setCurrentProject);
   const [project, setProject] = useState<Project | null>(null);
   const [collabs, setCollabs] = useState<Collaboration[]>([]);
@@ -18,6 +19,7 @@ export function ProjectEditView() {
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<'none'|'create'|'view'|'edit'>('none');
+  const [initialSelectionApplied, setInitialSelectionApplied] = useState(false);
   const audioState = useAudioStore(s => s.state);
   const stopBackingPlayback = usePlaybackStore(s => s.stopBackingPlayback);
 
@@ -42,6 +44,23 @@ export function ProjectEditView() {
     })();
     return () => { mounted = false; };
   }, [projectId, setCurrentProject]);
+
+  useEffect(() => {
+    if (initialSelectionApplied) return;
+    const collabParam = searchParams.get('collab');
+    if (!collabParam) {
+      setInitialSelectionApplied(true);
+      return;
+    }
+    const match = collabs.find(c => c.id === collabParam);
+    if (match) {
+      setSelectedId(collabParam);
+      setMode('view');
+      setInitialSelectionApplied(true);
+    } else if (!loading) {
+      setInitialSelectionApplied(true);
+    }
+  }, [collabs, searchParams, initialSelectionApplied, loading]);
 
   useEffect(() => {
     return () => {
