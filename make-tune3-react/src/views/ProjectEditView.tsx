@@ -5,6 +5,9 @@ import { ProjectService, CollaborationService } from '../services';
 import { useAppStore } from '../stores/appStore';
 import '../components/ProjectHistory.css';
 import { CollaborationDetails } from '../components/CollaborationDetails';
+import { Mixer1Channel } from '../components/Mixer1Channel';
+import { useAudioStore } from '../stores';
+import { usePlaybackStore } from '../stores/usePlaybackStore';
 
 export function ProjectEditView() {
   const { projectId } = useParams();
@@ -15,6 +18,8 @@ export function ProjectEditView() {
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<'none'|'create'|'view'|'edit'>('none');
+  const audioState = useAudioStore(s => s.state);
+  const stopBackingPlayback = usePlaybackStore(s => s.stopBackingPlayback);
 
   useEffect(() => {
     let mounted = true;
@@ -38,18 +43,25 @@ export function ProjectEditView() {
     return () => { mounted = false; };
   }, [projectId, setCurrentProject]);
 
+  useEffect(() => {
+    return () => {
+      stopBackingPlayback();
+    };
+  }, [stopBackingPlayback]);
+
   return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, height: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
+    <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, height: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
       <div style={{
         width: '100%',
-        minHeight: 120,
+        marginTop: 7,
+        minHeight: 128,
         borderRadius: 12,
         background: 'linear-gradient(135deg, var(--primary1-700), var(--primary1-900))',
         color: 'var(--white)',
-        padding: 16,
+        padding: 12,
         display: 'flex',
         flexDirection: 'column',
-        gap: 4,
+        gap: 6,
         flexShrink: 0
       }}>
         <div style={{ fontSize: 20, fontWeight: 700 }}>{project?.name || 'project'}</div>
@@ -59,11 +71,11 @@ export function ProjectEditView() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 16, flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        {/* Manager - 1/3 width */}
-        <div className="project-history" style={{ width: '33.333%', maxWidth: 'none', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        {/* Manager - narrower width */}
+        <div className="project-history" style={{ width: '26%', maxWidth: 240, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <h4 className="project-history-title">collaboration manager</h4>
-          <div className="collab-list" style={{ flex: 1, overflowY: 'auto' }}>
+          <div className="collab-list" style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
             {loading && <div style={{ color: 'var(--white)' }}>loading...</div>}
             {error && <div style={{ color: 'var(--white)' }}>{error}</div>}
             {!loading && !error && collabs.length === 0 && (
@@ -85,40 +97,45 @@ export function ProjectEditView() {
             </div>
           </div>
         </div>
-        {/* Details - 2/3 width */}
-        <div className="project-history" style={{ 
-          width: '66.666%', 
-          maxWidth: 'none', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          minHeight: 0,
-          overflow: 'hidden' // Contain overflow at this level
-        }}>
-          <h4 className="project-history-title">details</h4>
-          <div className="collab-list" style={{ 
-            padding: 12, 
+        {/* Details + Mixer */}
+        <div style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <div className="project-history" style={{ 
             flex: 1,
-            minHeight: 0, // Important for nested flex scroll
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden' // Contain overflow at this level too
+            maxWidth: 'none', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            minHeight: 0,
+            overflow: 'hidden' // Contain overflow at this level
           }}>
-            <div style={{
+            <h4 className="project-history-title">details</h4>
+            <div className="collab-list" style={{ 
+              padding: 8, 
               flex: 1,
-              overflowY: 'auto',
-              overflowX: 'hidden',
-              width: '100%'
+              minHeight: 0, // Important for nested flex scroll
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden' // Contain overflow at this level too
             }}>
-            <CollaborationDetails
-              mode={mode}
-              selectedId={selectedId}
-              collabs={collabs}
-              project={project}
-              onModeChange={setMode}
-              onCollabsUpdate={setCollabs}
-              onSelectedIdChange={setSelectedId}
-            />
+              <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                width: '100%'
+              }}>
+              <CollaborationDetails
+                mode={mode}
+                selectedId={selectedId}
+                collabs={collabs}
+                project={project}
+                onModeChange={setMode}
+                onCollabsUpdate={setCollabs}
+                onSelectedIdChange={setSelectedId}
+              />
+              </div>
             </div>
+          </div>
+          <div style={{ width: 140, flexShrink: 0, display: 'flex', height: '100%' }}>
+            <Mixer1Channel state={audioState} />
           </div>
         </div>
       </div>

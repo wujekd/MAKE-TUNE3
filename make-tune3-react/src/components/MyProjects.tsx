@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { DashboardService, ProjectService, SubmissionService } from '../services';
+import { DashboardService, ProjectService, SubmissionService, CollaborationService } from '../services';
 import type { ProjectOverviewItem, DownloadSummaryItem } from '../services/dashboardService';
 import { useAppStore } from '../stores/appStore';
 import { TagInput } from './TagInput';
@@ -21,7 +21,7 @@ type SubmissionSummaryItem = {
   submittedAt: number | null;
 };
 
-type ActiveTab = 'projects' | 'submissions' | 'downloads';
+type ActiveTab = 'projects' | 'submissions' | 'downloads' | 'moderate';
 
 const formatDateTime = (value: number | null | undefined): string => {
   if (!value) return '—';
@@ -64,6 +64,10 @@ export function MyProjects() {
   const [downloadsLoading, setDownloadsLoading] = useState(false);
   const [downloadsLoaded, setDownloadsLoaded] = useState(false);
   const [downloadsError, setDownloadsError] = useState<string | null>(null);
+  const [moderationCollabs, setModerationCollabs] = useState<Array<{ id: string; name: string; status: string }>>([]);
+  const [moderationLoading, setModerationLoading] = useState(false);
+  const [moderationLoaded, setModerationLoaded] = useState(false);
+  const [moderationError, setModerationError] = useState<string | null>(null);
 
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
@@ -136,11 +140,40 @@ export function MyProjects() {
     }
   }, [user, downloadsLoading]);
 
+  const fetchModeration = useCallback(async () => {
+    if (!user || moderationLoading) return;
+    setModerationLoading(true);
+    setModerationError(null);
+    try {
+      const all = await CollaborationService.listAllCollaborations();
+      const filtered = all.filter(collab => {
+        const requiresMod = Boolean((collab as any).requiresModeration);
+        const hasPending = Boolean((collab as any).unmoderatedSubmissions);
+        return requiresMod && (hasPending || collab.status === 'submission');
+      });
+      const normalized = filtered.map(collab => ({
+        id: collab.id,
+        name: collab.name || 'untitled',
+        status: collab.status || 'pending'
+      }));
+      setModerationCollabs(normalized);
+      setModerationLoaded(true);
+    } catch (e: any) {
+      setModerationError(e?.message || 'failed to load moderation queue');
+    } finally {
+      setModerationLoading(false);
+    }
+  }, [user, moderationLoading]);
+
   useEffect(() => {
     if (!user) {
       setProjects([]);
       setSubmissionSummaries([]);
       setDownloadSummaries([]);
+      setModerationCollabs([]);
+      setDownloadsLoaded(false);
+      setSubmissionsLoaded(false);
+      setModerationLoaded(false);
       return;
     }
     void fetchProjects();
@@ -154,11 +187,14 @@ export function MyProjects() {
     if (activeTab === 'downloads' && !downloadsLoaded) {
       void fetchDownloads();
     }
-  }, [activeTab, user, submissionsLoaded, downloadsLoaded, fetchSubmissions, fetchDownloads]);
+    if (activeTab === 'moderate' && !moderationLoaded) {
+      void fetchModeration();
+    }
+  }, [activeTab, user, submissionsLoaded, downloadsLoaded, moderationLoaded, fetchSubmissions, fetchDownloads, fetchModeration]);
 
   return (
-    <div className="project-history card" style={{ maxWidth: 420, width: '100%' }}>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+    <div className="project-history card" style={{ width: '100%' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
         <button onClick={() => setActiveTab('projects')} disabled={activeTab === 'projects'}>
           my projects
         </button>
@@ -167,6 +203,9 @@ export function MyProjects() {
         </button>
         <button onClick={() => setActiveTab('downloads')} disabled={activeTab === 'downloads'}>
           my downloads
+        </button>
+        <button onClick={() => setActiveTab('moderate')} disabled={activeTab === 'moderate'}>
+          to moderate
         </button>
       </div>
 
@@ -294,6 +333,42 @@ export function MyProjects() {
                   }}
                 >
                   manage
+                </span>
+              </Link>
+            ))}
+      </div>
+    </>
+  )}
+
+      {activeTab === 'moderate' && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h4 className="project-history-title card__title" style={{ marginBottom: 0 }}>to moderate</h4>
+          </div>
+          <div className="collab-list list" style={{ marginTop: 8 }}>
+            {!user && <div style={{ color: 'var(--white)' }}>login to see moderation queue</div>}
+            {user && moderationLoading && <div style={{ color: 'var(--white)' }}>loading...</div>}
+            {user && moderationError && <div style={{ color: 'var(--white)' }}>{moderationError}</div>}
+            {user && !moderationLoading && !moderationError && moderationCollabs.length === 0 && (
+              <div style={{ color: 'var(--white)' }}>no collaborations need moderation</div>
+            )}
+            {user && moderationCollabs.map(item => (
+              <Link key={item.id} to={`/collab/${encodeURIComponent(item.id)}/moderate`} className="collab-history-item list__item" style={{ textDecoration: 'none' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span className="collab-name list__title">{item.name}</span>
+                  <span className="collab-stage list__subtitle">{item.status}</span>
+                </div>
+                <span
+                  style={{
+                    marginLeft: 'auto',
+                    padding: '4px 8px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border-color, #333)',
+                    background: 'var(--primary1-800)',
+                    color: 'var(--white)'
+                  }}
+                >
+                  review
                 </span>
               </Link>
             ))}

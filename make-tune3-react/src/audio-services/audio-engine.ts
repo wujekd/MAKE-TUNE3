@@ -388,6 +388,44 @@ export class AudioEngine {
     });
   }
 
+  async playBackingOnly(src: string): Promise<void> {
+    if (!src) return;
+    this.initAudioContext();
+    await this.resumeIfSuspended();
+    this.loadSource(2, src);
+    await this.ensureLoaded(this.player2, src);
+    this.player1.pause();
+    this.player2.currentTime = 0;
+    this.player2.playbackRate = 1;
+    try { await this.player2.play(); } catch {}
+    this.state.playerController.pastStagePlayback = true;
+    this.state.playerController.playingFavourite = false;
+    this.state.playerController.currentTrackId = -1;
+    this.updateState({
+      player1: { ...this.state.player1, isPlaying: false },
+      player2: { ...this.state.player2, isPlaying: true },
+      playerController: { ...this.state.playerController }
+    });
+  }
+
+  stopBackingPlayback(resetTime: boolean = true): void {
+    this.player2.pause();
+    if (resetTime) {
+      this.player2.currentTime = 0;
+    }
+    this.state.playerController.pastStagePlayback = false;
+    this.state.playerController.playingFavourite = false;
+    this.state.playerController.currentTrackId = -1;
+    this.updateState({
+      player2: { 
+        ...this.state.player2, 
+        isPlaying: false, 
+        currentTime: resetTime ? 0 : this.player2.currentTime 
+      },
+      playerController: { ...this.state.playerController }
+    });
+  }
+
   // preview submission with backing without altering track index or listened tracking
   async previewSubmission(submissionSrc: string, backingSrc: string): Promise<void> {
     this.initAudioContext();

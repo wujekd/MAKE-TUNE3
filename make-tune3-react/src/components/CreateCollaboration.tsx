@@ -7,6 +7,8 @@ import { TagInput } from './TagInput';
 import { TagUtils } from '../utils/tagUtils';
 import { TimerDisplay } from './TimerDisplay';
 import { TimeUtils } from '../utils/timeUtils';
+import { usePlaybackStore } from '../stores/usePlaybackStore';
+import { useAudioStore, useAppStore } from '../stores';
 
 type Props = {
   projectId: string;
@@ -28,6 +30,12 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
   const [progress, setProgress] = useState<number>(0);
   const [requiresModeration, setRequiresModeration] = useState<boolean>(true);
   const [replaceBacking, setReplaceBacking] = useState<boolean>(false);
+  const previewBackingFile = usePlaybackStore(s => s.previewBackingFile);
+  const playBackingTrack = usePlaybackStore(s => s.playBackingTrack);
+  const stopBackingPlayback = usePlaybackStore(s => s.stopBackingPlayback);
+  const backingPreview = usePlaybackStore(s => s.backingPreview);
+  const audioState = useAudioStore(s => s.state);
+  const togglePlayPause = useAppStore(s => s.playback.togglePlayPause);
 
   // removed textual duration display helper
 
@@ -42,6 +50,11 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, initial?.id]);
+  useEffect(() => {
+    return () => {
+      stopBackingPlayback();
+    };
+  }, [stopBackingPlayback]);
 
   const create = async () => {
     const trimmed = name.trim();
@@ -97,6 +110,7 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
         }
         onCreated(collab);
       }
+      stopBackingPlayback();
       setName('');
       setDescription('');
       setTags([]);
@@ -198,19 +212,57 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
             <div style={{ color: 'var(--white)', fontSize: 12, opacity: 0.85 }}>
               current track is: {decodeURIComponent((initial.backingTrackPath || '').split('/').pop() || '')}
             </div>
-            {!replaceBacking && (
-              <div>
-                <button onClick={() => { setReplaceBacking(true); setBackingFile(null); }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  const backingPath = initial.backingTrackPath;
+                  if (!backingPath) return;
+                  const isCurrent = backingPreview?.path === backingPath;
+                  const isPlaying = isCurrent && !!audioState?.player2.isPlaying;
+                  if (isCurrent) {
+                    if (isPlaying) {
+                      stopBackingPlayback();
+                    } else {
+                      togglePlayPause();
+                    }
+                  } else {
+                    playBackingTrack(backingPath, initial.name || 'backing');
+                  }
+                }}
+                disabled={!initial.backingTrackPath}
+              >
+                {initial.backingTrackPath
+                  ? (backingPreview?.path === initial.backingTrackPath
+                    ? (audioState?.player2.isPlaying ? 'pause backing' : 'resume backing')
+                    : 'play backing')
+                  : 'no backing'}
+              </button>
+              {!replaceBacking && (
+                <button
+                  onClick={() => { 
+                    setReplaceBacking(true); 
+                    setBackingFile(null); 
+                    stopBackingPlayback();
+                  }}
+                >
                   replace backing track
                 </button>
-              </div>
-            )}
+              )}
+            </div>
             {replaceBacking && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <input
                   type="file"
                   accept="audio/*"
-                  onChange={(e) => setBackingFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
+                  onChange={(e) => {
+                    const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                    setBackingFile(file);
+                    if (file) {
+                      previewBackingFile(file);
+                    } else {
+                      stopBackingPlayback();
+                    }
+                  }}
                   disabled={saving}
                   style={{ padding: 8, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)' }}
                 />
@@ -225,7 +277,15 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
             <input
               type="file"
               accept="audio/*"
-              onChange={(e) => setBackingFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
+              onChange={(e) => {
+                const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+                setBackingFile(file);
+                if (file) {
+                  previewBackingFile(file);
+                } else {
+                  stopBackingPlayback();
+                }
+              }}
               disabled={saving}
               style={{ padding: 8, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)' }}
             />

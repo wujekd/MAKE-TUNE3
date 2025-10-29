@@ -181,6 +181,130 @@ body {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
+.mixer-section--single {
+  padding: 10px;
+  max-width: 128px;
+  gap: 12px;
+  align-items: stretch;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25), 0 6px 16px rgba(0,0,0,0.25);
+  height: 100%;
+  justify-content: space-between;
+}
+
+.mixer1-transport {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mixer1-transport-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.mixer1-button {
+  flex: 1;
+  padding: 4px 0;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--white);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.mixer1-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mixer1-button:not(:disabled):hover {
+  background: rgba(255,255,255,0.16);
+  border-color: rgba(255,255,255,0.2);
+}
+
+.mixer1-timing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.mixer1-time-wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.mixer1-time-slider {
+  width: 100%;
+  height: 4px;
+}
+
+.mixer1-channel {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: 12px 8px 40px;
+  border-radius: 0.5rem;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.25) 100%);
+  border: 1px solid rgba(0,0,0,0.4);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 4px 12px rgba(0,0,0,0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.mixer1-meter {
+  display: flex;
+  justify-content: center;
+}
+
+.mixer1-channel-label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 10px;
+  color: rgba(255,255,255,0.75);
+}
+
+.mixer1-led {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.mixer1-fader {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-90deg);
+  width: 150px;
+  height: 12px;
+}
+
+.mixer1-status {
+  text-align: center;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  opacity: 0.65;
+  min-height: 20px;
+}
+
 .channels-container {
   display: flex;
   justify-content: center;
@@ -262,6 +386,11 @@ body {
   cursor: pointer;
   border: 2px solid var(--white);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.mixer-section--single .mixer1-fader {
+  width: 150px;
+  height: 10px;
 }
 
 /* Transport controls */
