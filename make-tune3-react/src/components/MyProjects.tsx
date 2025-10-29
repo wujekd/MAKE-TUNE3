@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardService, ProjectService, SubmissionService, CollaborationService } from '../services';
 import type { ProjectOverviewItem, DownloadSummaryItem } from '../services/dashboardService';
@@ -64,7 +64,7 @@ export function MyProjects() {
   const [downloadsLoading, setDownloadsLoading] = useState(false);
   const [downloadsLoaded, setDownloadsLoaded] = useState(false);
   const [downloadsError, setDownloadsError] = useState<string | null>(null);
-  const [moderationCollabs, setModerationCollabs] = useState<Array<{ id: string; name: string; status: string }>>([]);
+  const [moderationCollabs, setModerationCollabs] = useState<Array<{ id: string; name: string }>>([]);
   const [moderationLoading, setModerationLoading] = useState(false);
   const [moderationLoaded, setModerationLoaded] = useState(false);
   const [moderationError, setModerationError] = useState<string | null>(null);
@@ -76,11 +76,7 @@ export function MyProjects() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const fetchProjects = useCallback(async () => {
-    if (!user) {
-      setProjects([]);
-      return;
-    }
+  const loadProjects = async (userId: string) => {
     setProjectsLoading(true);
     setProjectsError(null);
     try {
@@ -89,7 +85,7 @@ export function MyProjects() {
     } catch (e: any) {
       console.error('failed to load projects overview', e);
       try {
-        const fallback = await ProjectService.listUserProjects(user.uid);
+        const fallback = await ProjectService.listUserProjects(userId);
         const normalized: ProjectOverviewItem[] = fallback.map((p) => ({
           projectId: p.id,
           projectName: p.name,
@@ -108,10 +104,10 @@ export function MyProjects() {
     } finally {
       setProjectsLoading(false);
     }
-  }, [user]);
+  };
 
-  const fetchSubmissions = useCallback(async () => {
-    if (!user || submissionsLoading) return;
+  const loadSubmissions = async () => {
+    if (submissionsLoading || submissionsLoaded) return;
     setSubmissionsLoading(true);
     setSubmissionsError(null);
     try {
@@ -123,10 +119,10 @@ export function MyProjects() {
     } finally {
       setSubmissionsLoading(false);
     }
-  }, [user, submissionsLoading]);
+  };
 
-  const fetchDownloads = useCallback(async () => {
-    if (!user || downloadsLoading) return;
+  const loadDownloads = async () => {
+    if (downloadsLoading || downloadsLoaded) return;
     setDownloadsLoading(true);
     setDownloadsError(null);
     try {
@@ -138,10 +134,10 @@ export function MyProjects() {
     } finally {
       setDownloadsLoading(false);
     }
-  }, [user, downloadsLoading]);
+  };
 
-  const fetchModeration = useCallback(async () => {
-    if (!user || moderationLoading) return;
+  const loadModeration = async () => {
+    if (moderationLoading || moderationLoaded) return;
     setModerationLoading(true);
     setModerationError(null);
     try {
@@ -149,12 +145,11 @@ export function MyProjects() {
       const filtered = all.filter(collab => {
         const requiresMod = Boolean((collab as any).requiresModeration);
         const hasPending = Boolean((collab as any).unmoderatedSubmissions);
-        return requiresMod && (hasPending || collab.status === 'submission');
+        return requiresMod && hasPending;
       });
       const normalized = filtered.map(collab => ({
         id: collab.id,
-        name: collab.name || 'untitled',
-        status: collab.status || 'pending'
+        name: collab.name || 'untitled'
       }));
       setModerationCollabs(normalized);
       setModerationLoaded(true);
@@ -163,7 +158,7 @@ export function MyProjects() {
     } finally {
       setModerationLoading(false);
     }
-  }, [user, moderationLoading]);
+  };
 
   useEffect(() => {
     if (!user) {
@@ -176,21 +171,19 @@ export function MyProjects() {
       setModerationLoaded(false);
       return;
     }
-    void fetchProjects();
-  }, [user, fetchProjects]);
+    void loadProjects(user.uid);
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
-    if (activeTab === 'submissions' && !submissionsLoaded) {
-      void fetchSubmissions();
+    if (activeTab === 'submissions') {
+      void loadSubmissions();
+    } else if (activeTab === 'downloads') {
+      void loadDownloads();
+    } else if (activeTab === 'moderate') {
+      void loadModeration();
     }
-    if (activeTab === 'downloads' && !downloadsLoaded) {
-      void fetchDownloads();
-    }
-    if (activeTab === 'moderate' && !moderationLoaded) {
-      void fetchModeration();
-    }
-  }, [activeTab, user, submissionsLoaded, downloadsLoaded, moderationLoaded, fetchSubmissions, fetchDownloads, fetchModeration]);
+  }, [activeTab, user]);
 
   return (
     <div className="project-history card" style={{ width: '100%' }}>
@@ -282,7 +275,7 @@ export function MyProjects() {
                           tagsKey: normalized.keys
                         });
                         setShowForm(false); setName(''); setDescription(''); setTags([]);
-                        await fetchProjects();
+                        await loadProjects(user.uid);
                       } catch (e: any) {
                         const msg = e?.message || 'failed to create';
                         if (/name already taken/i.test(msg)) {
@@ -356,7 +349,7 @@ export function MyProjects() {
               <Link key={item.id} to={`/collab/${encodeURIComponent(item.id)}/moderate`} className="collab-history-item list__item" style={{ textDecoration: 'none' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <span className="collab-name list__title">{item.name}</span>
-                  <span className="collab-stage list__subtitle">{item.status}</span>
+                  <span className="collab-stage list__subtitle">pending moderation</span>
                 </div>
                 <span
                   style={{

@@ -130,29 +130,37 @@ export class DashboardService {
   }
 
   static async listMyDownloadedCollabs(): Promise<DownloadSummaryItem[]> {
-    const auth = await import('./authService');
-    const currentUser = auth.AuthService.getCurrentUser?.();
-    const uid = currentUser?.uid;
+    const uid = auth.currentUser?.uid;
     if (!uid) return [];
 
-    const downloadsQuery = query(
-      collection(db, COLLECTIONS.USER_DOWNLOADS),
-      where('userId', '==', uid),
-      orderBy('lastDownloadedAt', 'desc'),
-      limit(20)
-    );
-
-    const snapshot = await getDocs(downloadsQuery).catch(async (err) => {
-      if (err?.code === 'failed-precondition') {
+    let snapshot;
+    try {
+      const downloadsQuery = query(
+        collection(db, COLLECTIONS.USER_DOWNLOADS),
+        where('userId', '==', uid),
+        orderBy('lastDownloadedAt', 'desc'),
+        limit(20)
+      );
+      snapshot = await getDocs(downloadsQuery);
+    } catch (err) {
+      if ((err as any)?.code === 'permission-denied') {
         const fallbackQuery = query(
           collection(db, COLLECTIONS.USER_DOWNLOADS),
           where('userId', '==', uid),
           limit(20)
         );
-        return getDocs(fallbackQuery);
+        snapshot = await getDocs(fallbackQuery);
+      } else if ((err as any)?.code === 'failed-precondition') {
+        const fallbackQuery = query(
+          collection(db, COLLECTIONS.USER_DOWNLOADS),
+          where('userId', '==', uid),
+          limit(20)
+        );
+        snapshot = await getDocs(fallbackQuery);
+      } else {
+        throw err;
       }
-      throw err;
-    });
+    }
 
     const downloads = snapshot.docs.map((docSnap) => docSnap.data() as any);
 
