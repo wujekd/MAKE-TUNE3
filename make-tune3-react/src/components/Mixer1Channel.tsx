@@ -183,7 +183,7 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
         
         <div style={{ flex: 1 }} />
         
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: isCompactMode ? 0 : 12 }}>
           {isCompactMode ? (
             <Potentiometer
               value={state.master.volume}
@@ -219,6 +219,8 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
             <SmallLEDMeter value={channelLevel} min={0} max={1} vertical={true} />
           </div>
         </div>
+        
+        {isCompactMode && <div style={{ flex: 1 }} />}
       </div>
 
       <div className="mixer1-status">

@@ -3,7 +3,12 @@ import { Potentiometer } from './Potentiometer';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { DeskToggle } from './DeskToggle';
 
-export function SubmissionEQ() {
+interface SubmissionEQProps {
+  muted: boolean;
+  onMuteChange: (muted: boolean) => void;
+}
+
+export function SubmissionEQ({ muted, onMuteChange }: SubmissionEQProps) {
   const ctx = useContext(AudioEngineContext);
   const state = ctx?.state;
   const engine = ctx?.engine;
@@ -75,7 +80,7 @@ export function SubmissionEQ() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 8, alignItems: 'center' }}>
         <DeskToggle
           checked={enabled}
           onChange={toggleEq}
@@ -83,6 +88,15 @@ export function SubmissionEQ() {
           onText="eq on"
           offText="eq off"
           disabled={disabled}
+        />
+        <DeskToggle
+          checked={muted}
+          onChange={onMuteChange}
+          label={undefined}
+          size={12}
+          colorOn="#d33"
+          onText="mute"
+          offText="unmute"
         />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

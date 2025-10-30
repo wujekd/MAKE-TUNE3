@@ -209,28 +209,20 @@ export function Mixer({ state }: MixerProps) {
           <div className="volume-indicator"></div>
           <span className="channel-label">Submission</span>
 
-          <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}>
-            <SubmissionEQ />
-          </div>
-          <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}>
-            <DeskToggle
-              checked={submissionMuted}
-              onChange={(next) => {
+          <div style={{ marginBottom: 8 }}>
+            <SubmissionEQ
+              muted={submissionMuted}
+              onMuteChange={(next) => {
                 if (!audioCtx?.engine) return;
                 setSubmissionMuted(next);
                 audioCtx.engine.setSubmissionMuted(next);
               }}
-              label={undefined}
-              size={12}
-              colorOn="#d33"
-              onText="mute"
-              offText="unmute"
             />
           </div>
           
           <div style={{ flex: 1 }} />
           
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: isSubmissionCompact ? 0 : 12 }}>
             {isSubmissionCompact ? (
               <Potentiometer
                 value={state.player1.volume}
@@ -266,6 +258,8 @@ export function Mixer({ state }: MixerProps) {
               <SmallLEDMeter value={player1Level} min={0} max={1} vertical={true} />
             </div>
           </div>
+          
+          {isSubmissionCompact && <div style={{ flex: 1 }} />}
         </div>
 
         <div className="channel">
@@ -277,7 +271,7 @@ export function Mixer({ state }: MixerProps) {
           
           <div style={{ flex: 1 }} />
           
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: isMasterCompact ? 0 : 12 }}>
             {isMasterCompact ? (
               <Potentiometer
                 value={state.master.volume}
@@ -313,6 +307,8 @@ export function Mixer({ state }: MixerProps) {
               <SmallLEDMeter value={player2Level} min={0} max={1} vertical={true} />
             </div>
           </div>
+          
+          {isMasterCompact && <div style={{ flex: 1 }} />}
         </div>
       </div>
     </section>
