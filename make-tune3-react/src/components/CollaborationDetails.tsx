@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Collaboration, Project } from '../types/collaboration';
 import { CollaborationService } from '../services';
 import { CreateCollaboration } from './CreateCollaboration';
@@ -31,6 +31,10 @@ export function CollaborationDetails({
   const backingPreview = usePlaybackStore(s => s.backingPreview);
   const audioState = useAudioStore(s => s.state);
   const togglePlayPause = useAppStore(s => s.playback.togglePlayPause);
+  
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [publishSuccess, setPublishSuccess] = useState(false);
 
   const refreshSelected = useCallback(async () => {
     if (!selectedId) return;
@@ -45,6 +49,11 @@ export function CollaborationDetails({
   }, [selectedId, collabs, onCollabsUpdate]);
 
   useEffect(() => {
+    // Reset publish state when selection changes
+    setIsPublishing(false);
+    setPublishError(null);
+    setPublishSuccess(false);
+    
     return () => {
       stopBackingPlayback();
     };
@@ -125,18 +134,36 @@ export function CollaborationDetails({
           </button>
           <button disabled={!canEdit} onClick={() => onModeChange('edit')}>edit</button>
           <button
-            disabled={col.status !== 'unpublished'}
+            disabled={col.status !== 'unpublished' || isPublishing}
             onClick={async () => {
               if (!project) return;
+              setIsPublishing(true);
+              setPublishError(null);
+              setPublishSuccess(false);
+              
               try {
                 await CollaborationService.publishCollaboration(col.id);
                 await refreshSelected();
+                setPublishSuccess(true);
+                setPublishError(null);
               } catch (error: any) {
-                const message = error?.message || error?.code ? `${error.code}: ${error.message}` : 'failed to publish collaboration';
-                window.alert(message);
+                console.error('Publish error:', error);
+                
+                // Handle specific error cases
+                if (error?.code === 'functions/failed-precondition') {
+                  setPublishError('Uh no no no, another collaboration is already active.');
+                } else {
+                  const message = error?.message || 'Something didnt work. Please try again. But if it still doesnt work lmk pls';
+                  setPublishError(message);
+                }
+                setPublishSuccess(false);
+              } finally {
+                setIsPublishing(false);
               }
             }}
-          >publish</button>
+          >
+            {isPublishing ? '⟳ publishing...' : 'publish'}
+          </button>
           <button
             disabled={col.status !== 'unpublished'}
             onClick={async () => {
@@ -186,6 +213,33 @@ export function CollaborationDetails({
             download winner
           </button>
         </div>
+        
+        {/* Publish feedback messages */}
+        {publishSuccess && (
+          <div style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 6,
+            background: 'rgba(34, 197, 94, 0.15)',
+            border: '1px solid rgba(34, 197, 94, 0.3)',
+            color: 'var(--white)'
+          }}>
+            ✓ Collaboration published successfully!
+          </div>
+        )}
+        {publishError && (
+          <div style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 6,
+            background: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: 'var(--white)',
+            fontSize: 14
+          }}>
+            {publishError}
+          </div>
+        )}
       </div>
     );
   }

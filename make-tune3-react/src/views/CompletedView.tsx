@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { useAppStore } from '../stores/appStore';
 import './MainView.css';
@@ -12,12 +12,28 @@ export function CompletedView() {
   const { currentCollaboration, loadCollaboration, loadCollaborationAnonymousById } = useAppStore(s => s.collaboration);
   const audioCtx = useContext(AudioEngineContext);
   const engine = audioCtx?.engine;
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!collaborationId) return;
     if (user) loadCollaboration(user.uid, collaborationId);
     else loadCollaborationAnonymousById(collaborationId);
   }, [collaborationId, user, loadCollaboration, loadCollaborationAnonymousById]);
+
+  // Redirect if collaboration is in wrong stage
+  useEffect(() => {
+    if (!currentCollaboration || !collaborationId) return;
+    
+    const collabStatus = currentCollaboration.status;
+    
+    if (collabStatus === 'submission') {
+      console.log('[CompletedView] Collaboration is in submission stage, redirecting...');
+      navigate(`/collab/${collaborationId}/submit`, { replace: true });
+    } else if (collabStatus === 'voting') {
+      console.log('[CompletedView] Collaboration is in voting stage, redirecting...');
+      navigate(`/collab/${collaborationId}`, { replace: true });
+    }
+  }, [currentCollaboration, collaborationId, navigate]);
 
   useEffect(() => {
     if (!engine) return;

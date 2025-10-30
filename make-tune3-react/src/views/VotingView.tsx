@@ -63,6 +63,21 @@ export function VotingView() {
     }
   }, [collabId, user, loadCollaboration, loadCollaborationAnonymousById]);
 
+  // Redirect if collaboration is in wrong stage
+  useEffect(() => {
+    if (!currentCollaboration || !collabId) return;
+    
+    const collabStatus = currentCollaboration.status;
+    
+    if (collabStatus === 'submission') {
+      console.log('[VotingView] Collaboration is in submission stage, redirecting...');
+      navigate(`/collab/${collabId}/submit`, { replace: true });
+    } else if (collabStatus === 'completed') {
+      console.log('[VotingView] Collaboration is in completed stage, redirecting...');
+      navigate(`/collab/${collabId}/completed`, { replace: true });
+    }
+  }, [currentCollaboration, collabId, navigate]);
+
   useEffect(() => {
     if (!engine) return;
     const srcToFilePath = (src: string): string => {
@@ -203,7 +218,7 @@ export function VotingView() {
             <div className="mv-subtitle">collaboration description: {currentCollaboration?.description || ''}</div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
           <ProjectHistory />
           <CollabHeader collaboration={currentCollaboration} onStageChange={handleStageChange} />
         </div>

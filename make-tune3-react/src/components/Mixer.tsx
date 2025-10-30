@@ -6,6 +6,7 @@ import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { AnalogVUMeter } from './AnalogVUMeter';
 import { SmallLEDMeter } from './SmallLEDMeter';
 import { SubmissionEQ } from './SubmissionEQ';
+import { Potentiometer } from './Potentiometer';
 
 interface MixerProps {
   state: AudioState;
@@ -17,12 +18,24 @@ export function Mixer({ state }: MixerProps) {
   const [player1Level, setPlayer1Level] = useState(0);
   const [player2Level, setPlayer2Level] = useState(0);
   const [submissionMuted, setSubmissionMuted] = useState(false);
+  const [isSubmissionCompact, setIsSubmissionCompact] = useState(window.innerHeight < 850);
+  const [isMasterCompact, setIsMasterCompact] = useState(window.innerHeight < 700);
   const masterLevelRef = useRef(0);
   const player1LevelRef = useRef(0);
   const player2LevelRef = useRef(0);
   const masterLastTsRef = useRef<number | null>(null);
   const player1LastTsRef = useRef<number | null>(null);
   const player2LastTsRef = useRef<number | null>(null);
+  
+  // Window height responsive behavior
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSubmissionCompact(window.innerHeight < 850);
+      setIsMasterCompact(window.innerHeight < 700);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Master level monitoring
   useEffect(() => {
@@ -214,19 +227,45 @@ export function Mixer({ state }: MixerProps) {
               offText="unmute"
             />
           </div>
-          <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}>
-            <SmallLEDMeter value={player1Level} min={0} max={1} />
+          
+          <div style={{ flex: 1 }} />
+          
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
+            {isSubmissionCompact ? (
+              <Potentiometer
+                value={state.player1.volume}
+                min={0}
+                max={2}
+                step={0.01}
+                size={64}
+                onChange={handleSubmissionVolumeChange}
+                showValue={false}
+              />
+            ) : (
+              <input 
+                type="range"
+                className="vertical-slider"
+                id="submission-volume" 
+                min="0" 
+                max="2"
+                step="0.01"
+                value={state.player1.volume}
+                onChange={handleSubmissionVolumeChangeEvent}
+              />
+            )}
+            <div 
+              style={{ 
+                position: 'absolute',
+                right: isSubmissionCompact ? '-30px' : '-25px',
+                bottom: 0,
+                height: '100%',
+                display: 'flex',
+                alignItems: 'flex-end'
+              }}
+            >
+              <SmallLEDMeter value={player1Level} min={0} max={1} vertical={true} />
+            </div>
           </div>
-          <input 
-            type="range"
-            className="vertical-slider"
-            id="submission-volume" 
-            min="0" 
-            max="2"
-            step="0.01"
-            value={state.player1.volume}
-            onChange={handleSubmissionVolumeChangeEvent}
-          />
         </div>
 
         <div className="channel">
@@ -235,19 +274,45 @@ export function Mixer({ state }: MixerProps) {
           </div>
           <div className="volume-indicator"></div>
           <span className="channel-label">Master</span>
-          <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}>
-            <SmallLEDMeter value={player2Level} min={0} max={1} />
+          
+          <div style={{ flex: 1 }} />
+          
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
+            {isMasterCompact ? (
+              <Potentiometer
+                value={state.master.volume}
+                min={0}
+                max={1}
+                step={0.01}
+                size={64}
+                onChange={handleMasterVolumeChange}
+                showValue={false}
+              />
+            ) : (
+              <input 
+                type="range"
+                className="vertical-slider"
+                id="master-volume" 
+                min="0" 
+                max="1"
+                step="0.01"
+                value={state.master.volume}
+                onChange={handleMasterVolumeChangeEvent}
+              />
+            )}
+            <div 
+              style={{ 
+                position: 'absolute',
+                right: isMasterCompact ? '-30px' : '-25px',
+                bottom: 0,
+                height: '100%',
+                display: 'flex',
+                alignItems: 'flex-end'
+              }}
+            >
+              <SmallLEDMeter value={player2Level} min={0} max={1} vertical={true} />
+            </div>
           </div>
-          <input 
-            type="range"
-            className="vertical-slider"
-            id="master-volume" 
-            min="0" 
-            max="1"
-            step="0.01"
-            value={state.master.volume}
-            onChange={handleMasterVolumeChangeEvent}
-          />
         </div>
       </div>
     </section>

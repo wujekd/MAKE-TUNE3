@@ -4,9 +4,10 @@ interface SmallLEDMeterProps {
   value: number;  // 0 to 1
   min?: number;
   max?: number;
+  vertical?: boolean;
 }
 
-export function SmallLEDMeter({ value, min = 0, max = 1 }: SmallLEDMeterProps) {
+export function SmallLEDMeter({ value, min = 0, max = 1, vertical = false }: SmallLEDMeterProps) {
   const clamped = Math.min(max, Math.max(min, value));
   const normalized = (clamped - min) / (max - min || 1);
   
@@ -32,22 +33,45 @@ export function SmallLEDMeter({ value, min = 0, max = 1 }: SmallLEDMeterProps) {
   const led4Brightness = getLEDBrightness(3); // 0.75-1.0
 
   return (
-    <div className="small-led-meter">
+    <div 
+      className="small-led-meter" 
+      style={{ 
+        flexDirection: vertical ? 'column-reverse' : 'row',
+        height: vertical ? '70px' : 'auto',
+        width: vertical ? '14px' : 'auto'
+      }}
+    >
       <div 
         className="small-led-meter__led small-led-meter__led--green"
-        style={{ opacity: Math.max(0.15, led1Brightness) }}
+        style={{ 
+          opacity: Math.max(0.15, led1Brightness),
+          width: vertical ? '8px' : '8px',
+          height: vertical ? '14px' : '5px'
+        }}
       />
       <div 
         className="small-led-meter__led small-led-meter__led--green"
-        style={{ opacity: Math.max(0.15, led2Brightness) }}
+        style={{ 
+          opacity: Math.max(0.15, led2Brightness),
+          width: vertical ? '8px' : '8px',
+          height: vertical ? '14px' : '5px'
+        }}
       />
       <div 
         className="small-led-meter__led small-led-meter__led--green"
-        style={{ opacity: Math.max(0.15, led3Brightness) }}
+        style={{ 
+          opacity: Math.max(0.15, led3Brightness),
+          width: vertical ? '8px' : '8px',
+          height: vertical ? '14px' : '5px'
+        }}
       />
       <div 
         className="small-led-meter__led small-led-meter__led--red"
-        style={{ opacity: Math.max(0.15, led4Brightness) }}
+        style={{ 
+          opacity: Math.max(0.15, led4Brightness),
+          width: vertical ? '8px' : '8px',
+          height: vertical ? '14px' : '5px'
+        }}
       />
     </div>
   );

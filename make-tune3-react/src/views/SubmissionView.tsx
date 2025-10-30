@@ -77,6 +77,21 @@ export function SubmissionView() {
     else loadCollaborationAnonymousById(collaborationId);
   }, [collaborationId, user, loadCollaboration, loadCollaborationAnonymousById]);
 
+  // Redirect if collaboration is in wrong stage
+  useEffect(() => {
+    if (!currentCollaboration || !collaborationId) return;
+    
+    const collabStatus = currentCollaboration.status;
+    
+    if (collabStatus === 'voting') {
+      console.log('[SubmissionView] Collaboration is in voting stage, redirecting...');
+      navigate(`/collab/${collaborationId}`, { replace: true });
+    } else if (collabStatus === 'completed') {
+      console.log('[SubmissionView] Collaboration is in completed stage, redirecting...');
+      navigate(`/collab/${collaborationId}/completed`, { replace: true });
+    }
+  }, [currentCollaboration, collaborationId, navigate]);
+
   const handleStageChange = useCallback(async (nextStatus: 'voting' | 'completed') => {
     if (stageCheckInFlightRef.current) {
       return;
@@ -216,9 +231,9 @@ export function SubmissionView() {
 
   return (
     <div className="main-container">
-      <div className="info-top">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', gap: 16 }}>
-          <div>
+      <div className="info-top" style={{ maxHeight: '200px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', width: '100%', gap: 16, height: '100%', minHeight: 0 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             {projectInfo && (
               <div style={{ marginBottom: 8, color: 'var(--white)', opacity: 0.85 }}>
                 <div style={{ fontSize: 20, fontWeight: 600 }}>{projectInfo.name}</div>
@@ -230,7 +245,7 @@ export function SubmissionView() {
             <h2 style={{ color: 'var(--white)', margin: 0 }}>{currentCollaboration?.name || 'Submission'}</h2>
           </div>
           <ProjectHistory />
-          <div>
+          <div style={{ minWidth: 0 }}>
             <CollabHeader collaboration={currentCollaboration} onStageChange={handleStageChange} />
           </div>
         </div>

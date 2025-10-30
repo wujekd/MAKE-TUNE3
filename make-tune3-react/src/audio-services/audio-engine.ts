@@ -287,7 +287,7 @@ export class AudioEngine {
     }
   }
   // playback methods
-  private async ensureLoaded(player: HTMLAudioElement, src: string, timeoutMs: number = 150): Promise<void> {
+  private async ensureLoaded(player: HTMLAudioElement, src: string, timeoutMs: number = 500): Promise<void> {
     if (!src) return;
     if (player.src !== src) {
       player.src = src;

@@ -15,8 +15,28 @@ import {
   SubmissionService
 } from '../services';
 import { TrackUtils } from '../utils';
+import { AudioUrlUtils } from '../utils/audioUrlUtils';
 
 const DEBUG_LOGS = true;
+
+// Helper to pre-cache all audio URLs for faster playback
+async function precacheAudioUrls(collaboration: Collaboration): Promise<void> {
+  const paths: string[] = [
+    collaboration.backingTrackPath,
+    ...(collaboration.submissions?.map(s => s.path) || []),
+    ...(collaboration.submissions?.map(s => s.optimizedPath).filter(Boolean) || [])
+  ].filter(Boolean) as string[];
+  
+  if (paths.length === 0) return;
+  
+  const startTime = performance.now();
+  // Fetch all URLs in parallel
+  await Promise.allSettled(
+    paths.map(path => AudioUrlUtils.resolveAudioUrl(path))
+  );
+  const duration = (performance.now() - startTime).toFixed(0);
+  if (DEBUG_LOGS) console.log(`Pre-cached ${paths.length} audio URLs in ${duration}ms`);
+}
 
 const createTrackFromFilePath = TrackUtils.createTrackFromFilePath;
 
@@ -158,6 +178,11 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
         get().loadProject(collaborationData.collaboration.projectId);
       }
       
+      // Pre-cache all audio URLs for faster playback
+      precacheAudioUrls(collab).catch(err => {
+        if (DEBUG_LOGS) console.warn('Failed to pre-cache audio URLs:', err);
+      });
+      
       if (DEBUG_LOGS) console.log('collaboration data loaded successfully');
     } catch (error) {
       if (DEBUG_LOGS) console.error('error loading collaboration data:', error);
@@ -218,6 +243,11 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
         get().loadProject(collaborationData.collaboration.projectId);
       }
       
+      // Pre-cache all audio URLs for faster playback
+      precacheAudioUrls(collab).catch(err => {
+        if (DEBUG_LOGS) console.warn('Failed to pre-cache audio URLs:', err);
+      });
+      
       if (DEBUG_LOGS) console.log('collaboration data loaded successfully for anonymous user');
     } catch (error) {
       if (DEBUG_LOGS) console.error('error loading collaboration data for anonymous user:', error);
@@ -268,6 +298,11 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
       if (collaborationData.collaboration.projectId) {
         get().loadProject(collaborationData.collaboration.projectId);
       }
+      
+      // Pre-cache all audio URLs for faster playback
+      precacheAudioUrls(collab).catch(err => {
+        if (DEBUG_LOGS) console.warn('Failed to pre-cache audio URLs:', err);
+      });
     } catch (error) {
       if (DEBUG_LOGS) console.error('error loading anonymous collab by id:', error);
       set({ isLoadingCollaboration: false });

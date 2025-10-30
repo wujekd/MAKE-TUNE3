@@ -5,6 +5,7 @@ import { useAppStore } from '../stores/appStore';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { AnalogVUMeter } from './AnalogVUMeter';
 import { SmallLEDMeter } from './SmallLEDMeter';
+import { Potentiometer } from './Potentiometer';
 
 interface Mixer1ChannelProps {
   state: AudioState | null;
@@ -14,6 +15,7 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
   const audioCtx = useContext(AudioEngineContext);
   const [masterLevel, setMasterLevel] = useState(0);
   const [channelLevel, setChannelLevel] = useState(0);
+  const [isCompactMode, setIsCompactMode] = useState(window.innerHeight < 700);
   const masterLevelRef = useRef(0);
   const channelLevelRef = useRef(0);
   const masterLastTsRef = useRef<number | null>(null);
@@ -29,6 +31,15 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
   } = useAppStore(s => s.playback);
   const stopBackingPlayback = usePlaybackStore(s => s.stopBackingPlayback);
   const backingPreview = usePlaybackStore(s => s.backingPreview);
+
+  // Window height responsive behavior
+  useEffect(() => {
+    const handleResize = () => {
+      setIsCompactMode(window.innerHeight < 700);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (!audioCtx?.engine) return;
@@ -164,24 +175,50 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
         />
       </div>
 
-      <div className="mixer1-channel">
+      <div className="mixer1-channel" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
         <div className="mixer1-meter">
           <AnalogVUMeter value={masterLevel} min={0} max={1} size={72} />
         </div>
         <span className="mixer1-channel-label">master</span>
-        <div className="mixer1-led">
-          <SmallLEDMeter value={channelLevel} min={0} max={1} />
+        
+        <div style={{ flex: 1 }} />
+        
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 8 }}>
+          {isCompactMode ? (
+            <Potentiometer
+              value={state.master.volume}
+              min={0}
+              max={1}
+              step={0.01}
+              size={64}
+              onChange={handleMasterVolumeChange}
+              showValue={false}
+            />
+          ) : (
+            <input
+              type="range"
+              className="vertical-slider mixer1-fader"
+              id="mixer1-master-volume"
+              min="0"
+              max="1"
+              step="0.01"
+              value={state.master.volume}
+              onChange={handleMasterVolumeChangeEvent}
+            />
+          )}
+          <div 
+            style={{ 
+              position: 'absolute',
+              right: isCompactMode ? '-30px' : '-25px',
+              bottom: 0,
+              height: '100%',
+              display: 'flex',
+              alignItems: 'flex-end'
+            }}
+          >
+            <SmallLEDMeter value={channelLevel} min={0} max={1} vertical={true} />
+          </div>
         </div>
-        <input
-          type="range"
-          className="vertical-slider mixer1-fader"
-          id="mixer1-master-volume"
-          min="0"
-          max="1"
-          step="0.01"
-          value={state.master.volume}
-          onChange={handleMasterVolumeChangeEvent}
-        />
       </div>
 
       <div className="mixer1-status">

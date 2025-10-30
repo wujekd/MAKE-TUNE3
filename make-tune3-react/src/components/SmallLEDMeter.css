@@ -1,18 +1,18 @@
 .small-led-meter {
   display: flex;
   flex-direction: row;
-  gap: 3px;
-  padding: 4px;
+  gap: 2px;
+  padding: 3px;
   background: linear-gradient(180deg, #0a0a0a, #1a1a1a);
-  border-radius: 4px;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+  border-radius: 3px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
   align-items: center;
 }
 
 .small-led-meter__led {
-  width: 12px;
-  height: 6px;
-  border-radius: 2px;
+  width: 8px;
+  height: 5px;
+  border-radius: 1px;
   transition: opacity 0.05s ease-out;
   box-shadow: 0 0 2px currentColor;
   flex-shrink: 0;

@@ -46,8 +46,8 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
   return (
     <>
       {/* Audio elements controlled by AudioEngine - visible for debugging */}
-      <audio ref={player1Ref} crossOrigin="anonymous" preload="auto" />
-      <audio ref={player2Ref} crossOrigin="anonymous" preload="auto" />
+      <audio ref={player1Ref} crossOrigin="anonymous" preload="metadata" />
+      <audio ref={player2Ref} crossOrigin="anonymous" preload="metadata" />
       {/* Only provide context to children when engine and state are ready */}
       {engineRef.current && state && (
         <AudioEngineContext.Provider value={{ engine: engineRef.current, state }}>
