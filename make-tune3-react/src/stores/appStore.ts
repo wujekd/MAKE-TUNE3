@@ -499,9 +499,21 @@ export const useAppStore = create<AppState>((set, get) => ({
         
         if (project) {
           // Extract past stage tracks from project.pastCollaborations
-          const pastStageTracks = project.pastCollaborations.map(pastCollab => 
-            createTrackFromFilePath(pastCollab.pastStageTrackPath, 'pastStage', pastCollab.collaborationId)
-          );
+          const pastStageTracks = project.pastCollaborations
+            .map(pastCollab => {
+              const path =
+                pastCollab.winnerTrackPath ||
+                pastCollab.pastStageTrackPath ||
+                pastCollab.backingTrackPath ||
+                '';
+              if (!path) return null;
+              return createTrackFromFilePath(
+                path,
+                'pastStage',
+                pastCollab.collaborationId
+              );
+            })
+            .filter((track): track is ReturnType<typeof createTrackFromFilePath> => !!track);
           
           set(state => ({
             collaboration: {
@@ -817,7 +829,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         );
 
         set(state => {
-          const updateEntries = (entries?: SubmissionEntry[]) => {
+          const updateEntries = (entries?: SubmissionEntry[]): SubmissionEntry[] | undefined => {
             if (!entries) return entries;
             return entries.map(entry => {
               const matches = (entry.submissionId && entry.submissionId === track.submissionId)
@@ -826,7 +838,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               return {
                 ...entry,
                 submissionId: entry.submissionId || track.submissionId,
-                moderationStatus: 'approved',
+                moderationStatus: 'approved' as const,
                 moderatedBy: user.uid
               };
             });
@@ -878,7 +890,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         );
 
         set(state => {
-          const updateEntries = (entries?: SubmissionEntry[]) => {
+          const updateEntries = (entries?: SubmissionEntry[]): SubmissionEntry[] | undefined => {
             if (!entries) return entries;
             return entries.map(entry => {
               const matches = (entry.submissionId && entry.submissionId === track.submissionId)
@@ -887,7 +899,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               return {
                 ...entry,
                 submissionId: entry.submissionId || track.submissionId,
-                moderationStatus: 'rejected',
+                moderationStatus: 'rejected' as const,
                 moderatedBy: user.uid
               };
             });

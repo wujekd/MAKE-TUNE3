@@ -21,10 +21,17 @@ export interface PastCollaboration {
   collaborationId: string;
   name: string;
   winnerTrackPath: string;     // winning submission path
-  totalVotes: number;
-  participationCount: number;  // participant count
-  completedAt: Timestamp;
-  pastStageTrackPath: string;  // past stage track
+  backingTrackPath?: string;   // backing track used during collaboration
+  winnerUserId?: string | null;
+  winnerUserName?: string;
+  winnerVotes?: number;
+  totalVotes?: number;
+  participationCount?: number;  // participant count
+  publishedAt?: Timestamp | null;
+  submissionCloseAt?: Timestamp | null;
+  votingCloseAt?: Timestamp | null;
+  completedAt?: Timestamp | null;
+  pastStageTrackPath: string;  // past stage track (fallback for playback)
 }
 
 export interface Project {
@@ -64,6 +71,11 @@ export interface Collaboration {
   unmoderatedSubmissions?: boolean; // has pending unmoderated submissions
   // results (set by CF on completion)
   winnerPath?: string;
+  winnerUserId?: string | null;
+  winnerUserName?: string;
+  winnerVotes?: number;
+  totalVotes?: number;
+  participationCount?: number;
   results?: { path: string; votes: number }[];
   resultsComputedAt?: Timestamp;
   completedAt?: Timestamp;

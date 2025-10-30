@@ -1,5 +1,6 @@
 import { doc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, limit as firestoreLimit, Timestamp, setDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import app, { db } from './firebase';
 import type { Collaboration, CollaborationDetail, CollaborationId, ProjectId } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 
@@ -119,6 +120,20 @@ export class CollaborationService {
     );
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ ...(d.data() as any), id: d.id } as Collaboration));
+  }
+
+  static async publishCollaboration(collaborationId: CollaborationId): Promise<{
+    submissionCloseAt: number | null;
+    votingCloseAt: number | null;
+  }> {
+    const functions = getFunctions(app, 'europe-west1');
+    const callable = httpsCallable(functions, 'publishCollaboration');
+    const response: any = await callable({ collaborationId });
+    const data = response?.data ?? {};
+    return {
+      submissionCloseAt: typeof data.submissionCloseAt === 'number' ? data.submissionCloseAt : null,
+      votingCloseAt: typeof data.votingCloseAt === 'number' ? data.votingCloseAt : null
+    };
   }
 
   static filterCollaborationsByTags(collaborations: Collaboration[], tagKeys: string[]): Collaboration[] {

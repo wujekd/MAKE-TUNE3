@@ -199,33 +199,58 @@ async function setupFirebaseCollections() {
     }
 
     // create past collaborations for demo purposes (one for each mock file)
+    const publishedAt = Timestamp.now();
+    const submissionCloseAt = Timestamp.fromMillis(publishedAt.toMillis() + 3 * 24 * 3600 * 1000);
+    const votingCloseAt = Timestamp.fromMillis(submissionCloseAt.toMillis() + 2 * 24 * 3600 * 1000);
+    const completedAt = Timestamp.fromMillis(votingCloseAt.toMillis() + 2 * 3600 * 1000);
     const pastCollaborations = [
       {
         collaborationId: 'demo-past-collab-1',
         name: 'Demo Past Collaboration 1',
-        winnerTrackPath: 'Rudi%20demo%20arr1%20acc%20copy.mp3', // first mock file as winner
+        winnerTrackPath: 'Rudi%20demo%20arr1%20acc%20copy.mp3',
+        pastStageTrackPath: 'Rudi%20demo%20arr1%20acc%20copy.mp3',
+        backingTrackPath: 'collabs/demo-collab/backing.mp3',
+        winnerUserId: 've8DfsfgtjbCV9MdWyCwwwtqCf02',
+        winnerUserName: 'demo-artist',
+        winnerVotes: 9,
         totalVotes: 15,
         participationCount: 8,
-        completedAt: Timestamp.now(),
-        pastStageTrackPath: 'Rudi%20demo%20arr1%20acc%20copy.mp3'
+        publishedAt,
+        submissionCloseAt,
+        votingCloseAt,
+        completedAt
       },
       {
         collaborationId: 'demo-past-collab-2',
         name: 'Demo Past Collaboration 2',
-        winnerTrackPath: 'Kuba.mp3', // second mock file as winner
+        winnerTrackPath: 'Kuba.mp3',
+        pastStageTrackPath: 'Kuba.mp3',
+        backingTrackPath: 'collabs/demo-collab/backing.mp3',
+        winnerUserId: 've8DfsfgtjbCV9MdWyCwwwtqCf02',
+        winnerUserName: 'demo-artist',
+        winnerVotes: 7,
         totalVotes: 12,
         participationCount: 6,
-        completedAt: Timestamp.now(),
-        pastStageTrackPath: 'Kuba.mp3'
+        publishedAt,
+        submissionCloseAt,
+        votingCloseAt,
+        completedAt
       },
       {
         collaborationId: 'demo-past-collab-3',
         name: 'Demo Past Collaboration 3',
-        winnerTrackPath: 'tomas%20demo1%20instrumental.mp3', // third mock file as winner
+        winnerTrackPath: 'tomas%20demo1%20instrumental.mp3',
+        pastStageTrackPath: 'tomas%20demo1%20instrumental.mp3',
+        backingTrackPath: 'collabs/demo-collab/backing.mp3',
+        winnerUserId: 've8DfsfgtjbCV9MdWyCwwwtqCf02',
+        winnerUserName: 'demo-artist',
+        winnerVotes: 10,
         totalVotes: 18,
         participationCount: 10,
-        completedAt: Timestamp.now(),
-        pastStageTrackPath: 'tomas%20demo1%20instrumental.mp3'
+        publishedAt,
+        submissionCloseAt,
+        votingCloseAt,
+        completedAt
       }
     ];
 

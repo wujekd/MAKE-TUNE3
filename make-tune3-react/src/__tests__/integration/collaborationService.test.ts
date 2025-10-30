@@ -74,7 +74,9 @@ describe('CollaborationService Integration Tests', () => {
         description: 'Testing timestamps',
         ownerId: 'test-user-timestamp',
         isActive: true,
-        pastCollaborations: []
+        pastCollaborations: [],
+        tags: [],
+        tagsKey: []
       };
 
       const createdProject = await ProjectService.createProject(projectData);
@@ -100,7 +102,9 @@ describe('CollaborationService Integration Tests', () => {
         description: 'Testing retrieval',
         ownerId: 'test-user-get',
         isActive: true,
-        pastCollaborations: []
+        pastCollaborations: [],
+        tags: [],
+        tagsKey: []
       };
 
       const created = await ProjectService.createProject(projectData);
@@ -126,7 +130,9 @@ describe('CollaborationService Integration Tests', () => {
         description: 'Testing timestamp retrieval',
         ownerId: 'test-user-timestamps',
         isActive: true,
-        pastCollaborations: []
+        pastCollaborations: [],
+        tags: [],
+        tagsKey: []
       };
 
       const created = await ProjectService.createProject(projectData);
@@ -147,7 +153,9 @@ describe('CollaborationService Integration Tests', () => {
         description: 'Original description for testing',
         ownerId: 'test-user-update',
         isActive: true,
-        pastCollaborations: []
+        pastCollaborations: [],
+        tags: [],
+        tagsKey: []
       };
 
       const created = await ProjectService.createProject(projectData);
@@ -173,7 +181,9 @@ describe('CollaborationService Integration Tests', () => {
         description: 'This project will be deleted',
         ownerId: 'test-user-delete',
         isActive: true,
-        pastCollaborations: []
+        pastCollaborations: [],
+        tags: [],
+        tagsKey: []
       };
 
       const created = await ProjectService.createProject(projectData);
@@ -230,7 +240,9 @@ describe('CollaborationService Integration Tests', () => {
         description: 'Project for get collaboration test',
         ownerId: 'test-user',
         isActive: true,
-        pastCollaborations: []
+        pastCollaborations: [],
+        tags: [],
+        tagsKey: []
       });
 
       const collabData = {
@@ -243,7 +255,9 @@ describe('CollaborationService Integration Tests', () => {
         votingDuration: 3,
         publishedAt: null,
         participantIds: [],
-        submissions: []
+        submissions: [],
+        tags: [],
+        tagsKey: []
       };
 
       const created = await CollaborationService.createCollaboration(collabData);
@@ -267,7 +281,9 @@ describe('CollaborationService Integration Tests', () => {
         description: 'Project for update collaboration test',
         ownerId: 'test-user',
         isActive: true,
-        pastCollaborations: []
+        pastCollaborations: [],
+        tags: [],
+        tagsKey: []
       });
 
       const created = await CollaborationService.createCollaboration({
@@ -280,7 +296,9 @@ describe('CollaborationService Integration Tests', () => {
         votingDuration: 3,
         publishedAt: null,
         participantIds: [],
-        submissions: []
+        submissions: [],
+        tags: [],
+        tagsKey: []
       });
 
       await CollaborationService.updateCollaboration(created.id, {
@@ -302,7 +320,9 @@ describe('CollaborationService Integration Tests', () => {
         description: 'Project for delete collaboration test',
         ownerId: 'test-user',
         isActive: true,
-        pastCollaborations: []
+        pastCollaborations: [],
+        tags: [],
+        tagsKey: []
       });
 
       const created = await CollaborationService.createCollaboration({
@@ -315,7 +335,9 @@ describe('CollaborationService Integration Tests', () => {
         votingDuration: 3,
         publishedAt: null,
         participantIds: [],
-        submissions: []
+        submissions: [],
+        tags: [],
+        tagsKey: []
       });
 
       await CollaborationService.deleteCollaboration(created.id);
@@ -333,7 +355,9 @@ describe('CollaborationService Integration Tests', () => {
         description: 'Project with no collaborations',
         ownerId: 'test-user',
         isActive: true,
-        pastCollaborations: []
+        pastCollaborations: [],
+        tags: [],
+        tagsKey: []
       });
 
       const collabs = await CollaborationService.getCollaborationsByProject(project.id);

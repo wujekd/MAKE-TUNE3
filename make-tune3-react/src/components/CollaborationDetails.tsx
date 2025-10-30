@@ -128,22 +128,13 @@ export function CollaborationDetails({
             disabled={col.status !== 'unpublished'}
             onClick={async () => {
               if (!project) return;
-              const now = Date.now();
-              const submissionCloseAt = new Date(now + (col.submissionDuration || 0) * 1000);
-              const votingCloseAt = new Date(submissionCloseAt.getTime() + (col.votingDuration || 0) * 1000);
-              await CollaborationService.updateCollaboration(col.id, {
-                status: 'submission',
-                publishedAt: new Date() as any,
-                submissionCloseAt: submissionCloseAt as any,
-                votingCloseAt: votingCloseAt as any
-              });
-              onCollabsUpdate(collabs.map(x => x.id === col.id ? {
-                ...x,
-                status: 'submission',
-                publishedAt: new Date() as any,
-                submissionCloseAt: submissionCloseAt as any,
-                votingCloseAt: votingCloseAt as any
-              } as any : x));
+              try {
+                await CollaborationService.publishCollaboration(col.id);
+                await refreshSelected();
+              } catch (error: any) {
+                const message = error?.message || error?.code ? `${error.code}: ${error.message}` : 'failed to publish collaboration';
+                window.alert(message);
+              }
             }}
           >publish</button>
           <button

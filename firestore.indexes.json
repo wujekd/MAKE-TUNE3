@@ -25,6 +25,14 @@
       ]
     },
     {
+      "collectionGroup": "collaborations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "projects",
       "queryScope": "COLLECTION",
       "fields": [
@@ -55,6 +63,14 @@
       "fields": [
         { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "submissionUsers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "collaborationId", "order": "ASCENDING" },
+        { "fieldPath": "path", "order": "ASCENDING" }
       ]
     },
     {

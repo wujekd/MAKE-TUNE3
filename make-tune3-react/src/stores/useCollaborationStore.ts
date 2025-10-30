@@ -241,7 +241,13 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
       const submissionTracks = (collab.submissions && collab.submissions.length > 0)
         ? collab.submissions.map((s: SubmissionEntry) => {
             if (DEBUG_LOGS) console.log('tracks from submissions[] (anon by id)', s);
-            return createTrackFromFilePath(s.path, 'submission', collab.id, s.settings, s.optimizedPath);
+            const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
+            return createTrackFromFilePath(s.path, 'submission', collab.id, {
+              settings: s.settings,
+              optimizedPath: s.optimizedPath,
+              submissionId: s.submissionId,
+              moderationStatus
+            });
           })
         : (collab as any).submissionPaths?.map((path: string) => {
             if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon by id)', path);
@@ -276,9 +282,21 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
       const project = await ProjectService.getProject(projectId);
       
       if (project) {
-        const pastStageTracks = project.pastCollaborations.map(pastCollab => 
-          createTrackFromFilePath(pastCollab.pastStageTrackPath, 'pastStage', pastCollab.collaborationId)
-        );
+        const pastStageTracks = project.pastCollaborations
+          .map(pastCollab => {
+            const path =
+              pastCollab.winnerTrackPath ||
+              pastCollab.pastStageTrackPath ||
+              pastCollab.backingTrackPath ||
+              '';
+            if (!path) return null;
+            return createTrackFromFilePath(
+              path,
+              'pastStage',
+              pastCollab.collaborationId
+            );
+          })
+          .filter((track): track is ReturnType<typeof createTrackFromFilePath> => !!track);
         
         set({
           currentProject: project,

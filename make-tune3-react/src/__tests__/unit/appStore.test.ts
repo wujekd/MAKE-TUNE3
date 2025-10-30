@@ -120,6 +120,8 @@ describe('AppStore - Collaboration Slice', () => {
       ownerId: 'user-1',
       isActive: true,
       pastCollaborations: [],
+      tags: [],
+      tagsKey: [],
       createdAt: new Date() as any,
       updatedAt: new Date() as any
     };
@@ -143,6 +145,8 @@ describe('AppStore - Collaboration Slice', () => {
       publishedAt: null,
       participantIds: [],
       submissions: [],
+      tags: [],
+      tagsKey: [],
       createdAt: new Date() as any,
       updatedAt: new Date() as any
     };

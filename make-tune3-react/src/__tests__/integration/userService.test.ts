@@ -31,7 +31,9 @@ describe('UserService Integration', () => {
       description: 'Test project',
       ownerId: testUserId,
       isActive: true,
-      pastCollaborations: []
+      pastCollaborations: [],
+      tags: [],
+      tagsKey: []
     };
     const createdProject = await ProjectService.createProject(project);
     testProjectId = createdProject.id;
@@ -46,7 +48,9 @@ describe('UserService Integration', () => {
       votingDuration: 3,
       publishedAt: null,
       participantIds: [],
-      submissions: []
+      submissions: [],
+      tags: [],
+      tagsKey: []
     };
     const createdCollaboration = await CollaborationService.createCollaboration(collaboration);
     testCollaborationId = createdCollaboration.id;
