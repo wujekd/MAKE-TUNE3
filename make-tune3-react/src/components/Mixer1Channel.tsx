@@ -33,8 +33,8 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
   useEffect(() => {
     if (!audioCtx?.engine) return;
     const tauAttack = 0.1;
-    const tauRelease = 0.4;
-    const sensitivity = 4.5;
+    const tauRelease = 0.3;
+    const sensitivity = 8.5;
     const unsubscribe = audioCtx.engine.onMasterLevel(({ rms }) => {
       const now = performance.now();
       const last = masterLastTsRef.current ?? now;
@@ -91,8 +91,31 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
   const isPlaying = state.player2.isPlaying;
   const hasSource = Boolean(state.player2.source);
 
+  // Brightness effect strength controls
+  const brightnessMultiplier = 0.1;  // How much brighter (0.4 = up to 1.4x at peak)
+  const glowSpread = 70;              // Glow spread in pixels
+  const glowOpacity = 0.3;            // Glow opacity (0-1)
+  const peakThreshold = 0.75;          // Only react to audio above this level (0-1)
+  
+  // Calculate how much above threshold (0 if below threshold)
+  const aboveThreshold = Math.max(0, masterLevel - peakThreshold);
+  // Scale to full range (0-1) based on remaining headroom
+  const peakIntensity = aboveThreshold / (1 - peakThreshold);
+  
+  const brightnessValue = 1 + (peakIntensity * brightnessMultiplier);
+  const glowIntensity = peakIntensity * glowSpread;
+  const currentGlowOpacity = peakIntensity * glowOpacity;
+  
   return (
-    <section className="mixer-section mixer-section--single" id="mixer-1-channel">
+    <section 
+      className="mixer-section mixer-section--single" 
+      id="mixer-1-channel"
+      style={{
+        filter: `brightness(${brightnessValue})`,
+        boxShadow: `inset 0 0 ${glowIntensity}px rgba(255, 255, 255, ${currentGlowOpacity})`,
+        transition: 'filter 0.05s ease-out, box-shadow 0.05s ease-out'
+      }}
+    >
       <div className="mixer1-transport">
         <div className="mixer1-transport-buttons">
           <button 
