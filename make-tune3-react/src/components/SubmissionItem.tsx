@@ -3,6 +3,7 @@ import './SubmissionItem.css';
 import { AudioEngineContext } from "../audio-services/AudioEngineContext";
 import { useAppStore } from "../stores/appStore";
 import type { Track } from "../types/collaboration";
+import { LoadingSpinner } from "./LoadingSpinner";
 
 interface SubmissionItemProps {
   track: Track;
@@ -81,7 +82,9 @@ export default function SubmissionItem({
         onClick={handlePlayClick}
       >
         <div className="progress-bar" style={{ width: `${displayProgress}%` }}></div>
-        <span className="play-icon">{pendingPlay ? '…' : (isCurrentTrack && isPlaying ? '❚❚' : '▶')}</span>
+        <span className="play-icon">
+          {pendingPlay ? <LoadingSpinner size={14} /> : (isCurrentTrack && isPlaying ? '❚❚' : '▶')}
+        </span>
       </button>
       
       {favorite ? (

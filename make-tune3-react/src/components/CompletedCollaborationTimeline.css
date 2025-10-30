@@ -1,0 +1,112 @@
+.completed-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  color: var(--white);
+  height: 100%;
+}
+
+.completed-timeline__header {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.completed-timeline__track {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  position: relative;
+}
+
+.completed-timeline__point {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  min-width: 70px;
+  position: relative;
+}
+
+.completed-timeline__point-marker {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--white);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+  position: relative;
+  z-index: 2;
+}
+
+.completed-timeline__point--start .completed-timeline__point-marker {
+  background: var(--primary1-400);
+  box-shadow: 0 0 6px var(--primary1-400);
+}
+
+.completed-timeline__point--middle .completed-timeline__point-marker {
+  background: var(--accent1);
+  box-shadow: 0 0 6px var(--accent1);
+}
+
+.completed-timeline__point--end .completed-timeline__point-marker {
+  background: var(--secondary1-400);
+  box-shadow: 0 0 6px var(--secondary1-400);
+}
+
+.completed-timeline__point-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.9;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.completed-timeline__point-date {
+  font-size: 0.6rem;
+  opacity: 0.7;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.completed-timeline__segment {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.25rem;
+  position: relative;
+  min-width: 50px;
+  padding-top: 4px;
+}
+
+.completed-timeline__line {
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.4);
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.completed-timeline__progress {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--primary);
+  transition: none;
+  will-change: width;
+}
+
+.completed-timeline__duration {
+  font-size: 0.6rem;
+  opacity: 0.6;
+  white-space: nowrap;
+  font-weight: 500;
+}
+

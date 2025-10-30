@@ -192,6 +192,7 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
               step={0.01}
               size={64}
               onChange={handleMasterVolumeChange}
+              onInput={handleMasterVolumeChange}
               showValue={false}
             />
           ) : (

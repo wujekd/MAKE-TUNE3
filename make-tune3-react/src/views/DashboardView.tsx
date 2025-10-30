@@ -95,8 +95,7 @@ export function DashboardView() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <div style={{ fontSize: 13, opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.12em' }}>dashboard</div>
-            <div style={{ fontSize: 22, fontWeight: 700 }}>collaboration overview</div>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>track active projects, submissions, and moderation.</div>
+            <div style={{ fontSize: 12, opacity: 0.75 }}>here ill make some kinda collab recommendations based on user and collab tags i think...</div>
           </div>
           <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <StatCard value={totalCollabs} label="total collabs" />
