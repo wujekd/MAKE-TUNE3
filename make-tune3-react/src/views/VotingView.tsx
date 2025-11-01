@@ -8,7 +8,6 @@ import './MainView.css';
 import SubmissionItem from '../components/SubmissionItem';
 import Favorites from '../components/Favorites';
 import { Mixer } from '../components/Mixer';
-// import { SubmissionEQ } from '../components/SubmissionEQ';
 import { DebugInfo } from '../components/DebugInfo';
 import ProjectHistory from '../components/ProjectHistory';
 import { CollabHeader } from '../components/CollabHeader';

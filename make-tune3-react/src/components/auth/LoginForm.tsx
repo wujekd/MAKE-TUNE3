@@ -66,7 +66,6 @@ export function LoginForm({ onSwitchToSignUp, onSwitchToForgotPassword }: LoginF
       <div className="oauth-center">
       <button
         className="gsi-material-button"
-        style={{ width: 220 as any }}
         type="button"
         aria-label="Sign in with Google"
         disabled={loading}

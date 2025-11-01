@@ -231,6 +231,7 @@ export function Mixer({ state }: MixerProps) {
                 step={0.01}
                 size={64}
                 onChange={handleSubmissionVolumeChange}
+                onInput={handleSubmissionVolumeChange}
                 showValue={false}
               />
             ) : (
@@ -280,6 +281,7 @@ export function Mixer({ state }: MixerProps) {
                 step={0.01}
                 size={64}
                 onChange={handleMasterVolumeChange}
+                onInput={handleMasterVolumeChange}
                 showValue={false}
               />
             ) : (

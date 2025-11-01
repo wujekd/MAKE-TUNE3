@@ -298,7 +298,9 @@ export function MyProjects() {
               </div>
             )}
             {!user && (
-              <div style={{ color: 'var(--white)' }}>login to see your projects</div>
+              <div style={{ color: 'var(--white)' }}>
+                <Link to="/auth?mode=login" style={{ color: 'var(--contrast-600)', textDecoration: 'underline' }}>login</Link> to see your projects
+              </div>
             )}
             {user && projectsLoading && <div style={{ color: 'var(--white)' }}>loading...</div>}
             {user && projectsError && <div style={{ color: 'var(--white)' }}>{projectsError}</div>}
@@ -342,7 +344,11 @@ export function MyProjects() {
             <h4 className="project-history-title card__title" style={{ marginBottom: 0 }}>to moderate</h4>
           </div>
           <div className="collab-list list" style={{ marginTop: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
-            {!user && <div style={{ color: 'var(--white)' }}>login to see moderation queue</div>}
+            {!user && (
+              <div style={{ color: 'var(--white)' }}>
+                <Link to="/auth?mode=login" style={{ color: 'var(--contrast-600)', textDecoration: 'underline' }}>login</Link> to see moderation queue
+              </div>
+            )}
             {user && moderationLoading && <div style={{ color: 'var(--white)' }}>loading...</div>}
             {user && moderationError && <div style={{ color: 'var(--white)' }}>{moderationError}</div>}
             {user && !moderationLoading && !moderationError && moderationCollabs.length === 0 && (
@@ -378,7 +384,11 @@ export function MyProjects() {
             <h4 className="project-history-title card__title" style={{ marginBottom: 0 }}>my submissions</h4>
           </div>
           <div className="collab-list list" style={{ marginTop: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
-            {!user && <div style={{ color: 'var(--white)' }}>login to see submissions</div>}
+            {!user && (
+              <div style={{ color: 'var(--white)' }}>
+                <Link to="/auth?mode=login" style={{ color: 'var(--contrast-600)', textDecoration: 'underline' }}>login</Link> to see submissions
+              </div>
+            )}
             {user && submissionsLoading && <div style={{ color: 'var(--white)' }}>loading...</div>}
             {user && submissionsError && <div style={{ color: 'var(--white)' }}>{submissionsError}</div>}
             {user && !submissionsLoading && !submissionsError && submissionSummaries.length === 0 && (
@@ -412,7 +422,11 @@ export function MyProjects() {
             <h4 className="project-history-title card__title" style={{ marginBottom: 0 }}>downloaded backings</h4>
           </div>
           <div className="collab-list list" style={{ marginTop: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
-            {!user && <div style={{ color: 'var(--white)' }}>login to see downloads</div>}
+            {!user && (
+              <div style={{ color: 'var(--white)' }}>
+                <Link to="/auth?mode=login" style={{ color: 'var(--contrast-600)', textDecoration: 'underline' }}>login</Link> to see downloads
+              </div>
+            )}
             {user && downloadsLoading && <div style={{ color: 'var(--white)' }}>loading...</div>}
             {user && downloadsError && <div style={{ color: 'var(--white)' }}>{downloadsError}</div>}
             {user && !downloadsLoading && !downloadsError && downloadSummaries.length === 0 && (
