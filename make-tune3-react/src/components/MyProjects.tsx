@@ -187,8 +187,8 @@ export function MyProjects() {
 
   return (
     <div
-      className="project-history card"
-      style={{ minWidth: 0, maxWidth: 'none', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1, overflow: 'hidden' }}
+      className="project-history"
+      style={{ minWidth: 0, maxWidth: 'none', width: '100%', height: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1, overflow: 'hidden' }}
     >
       <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
         <button onClick={() => setActiveTab('projects')} disabled={activeTab === 'projects'}>

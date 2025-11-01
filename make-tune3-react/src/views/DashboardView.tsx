@@ -23,6 +23,16 @@ export function DashboardView() {
   const backingPreview = usePlaybackStore(s => s.backingPreview);
   const togglePlayPause = useAppStore(s => s.playback.togglePlayPause);
   
+  useEffect(() => {
+    useAppStore.setState(state => ({
+      ...state,
+      collaboration: {
+        ...state.collaboration,
+        currentCollaboration: null,
+        currentProject: null
+      }
+    }));
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -107,9 +117,9 @@ export function DashboardView() {
 
       <div style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', flex: 1, minWidth: 0, gap: 10, minHeight: 0, overflow: 'hidden' }}>
-          <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}> */}
             <MyProjects />
-          </div>
+          {/* </div> */}
           <div
             className="project-history"
             style={{
@@ -119,7 +129,8 @@ export function DashboardView() {
               display: 'flex',
               flexDirection: 'column',
               minHeight: 0,
-              overflow: 'hidden'
+              overflow: 'hidden',
+              width: '50%'
             }}
           >
             <h4 className="project-history-title">collaborations</h4>
