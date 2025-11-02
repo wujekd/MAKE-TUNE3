@@ -88,7 +88,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => {
           if (currentTrackIndex > 0) {
             const track = pastStageTracks[currentTrackIndex - 1];
             const src = await resolveAudioUrl(track.optimizedPath || track.filePath);
-            engine.playPastStage(src, currentTrackIndex - 1);
+            engine.playPastStage(src, '', currentTrackIndex - 1);
           }
         })();
       } else {
@@ -134,7 +134,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => {
           if (currentTrackIndex < pastStageTracks.length - 1) {
             const track = pastStageTracks[currentTrackIndex + 1];
             const src = await resolveAudioUrl(track.optimizedPath || track.filePath);
-            engine.playPastStage(src, currentTrackIndex + 1);
+            engine.playPastStage(src, '', currentTrackIndex + 1);
           }
         })();
       } else {
@@ -236,7 +236,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => {
 
       (async () => {
         const src = await resolveAudioUrl(pastStageTracks[index].filePath);
-        engine.playPastStage(src, index);
+        engine.playPastStage(src, '', index);
       })();
     },
 

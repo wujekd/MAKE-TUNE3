@@ -154,7 +154,7 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // submissionUsers: create by the submitting user; reads restricted (owner or self)
+    // submissionUsers: create by the submitting user; reads restricted (private)
     match /submissionUsers/{docId} {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow read: if false;

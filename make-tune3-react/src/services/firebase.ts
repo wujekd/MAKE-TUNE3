@@ -2,6 +2,7 @@ import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator, type Firestore } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -32,6 +33,8 @@ if (process.env.NODE_ENV === 'test' && globalThis.firebaseDb && globalThis.fireb
   const storageBucketUrl = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ? `gs://${import.meta.env.VITE_FIREBASE_STORAGE_BUCKET}` : undefined;
   storage = storageBucketUrl ? getStorage(app, storageBucketUrl) : getStorage(app);
 }
+
+export const functions = getFunctions(app, 'europe-west1');
 
 export { db, storage };
 export default app; 

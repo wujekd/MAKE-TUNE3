@@ -10,7 +10,8 @@ import {
   orderBy,
   Timestamp 
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from './firebase';
 import type { Report, ReportStatus } from '../types/collaboration';
 
 export class ReportService {
@@ -43,8 +44,7 @@ export class ReportService {
     try {
       const q = query(
         collection(db, 'reports'),
-        where('status', '==', 'pending'),
-        orderBy('createdAt', 'desc')
+        where('status', '==', 'pending')
       );
       
       const snapshot = await getDocs(q);
@@ -52,26 +52,11 @@ export class ReportService {
       
       for (const docSnap of snapshot.docs) {
         const data = docSnap.data();
-        
-        let reportedUserId: string | undefined;
-        try {
-          const submissionUserQuery = query(
-            collection(db, 'submissionUsers'),
-            where('filePath', '==', data.submissionPath),
-            where('collaborationId', '==', data.collaborationId)
-          );
-          const submissionUserSnap = await getDocs(submissionUserQuery);
-          if (!submissionUserSnap.empty) {
-            reportedUserId = submissionUserSnap.docs[0].data().userId;
-          }
-        } catch (e) {
-        }
 
         reports.push({
           id: docSnap.id,
           submissionPath: data.submissionPath,
           collaborationId: data.collaborationId,
-          reportedUserId,
           reportedBy: data.reportedBy,
           reportedByUsername: data.reportedByUsername,
           reason: data.reason,
@@ -82,8 +67,15 @@ export class ReportService {
         });
       }
       
+      reports.sort((a, b) => {
+        const aTime = a.createdAt?.toMillis?.() || 0;
+        const bTime = b.createdAt?.toMillis?.() || 0;
+        return bTime - aTime;
+      });
+      
       return reports;
     } catch (error) {
+      console.error('Error loading reports:', error);
       throw error;
     }
   }
@@ -103,35 +95,20 @@ export class ReportService {
 
   static async banUserAndResolveReport(
     reportId: string, 
-    adminUserId: string,
-    reportedUserId: string,
     submissionPath: string,
     collaborationId: string
   ): Promise<void> {
     try {
-      const submissionUserQuery = query(
-        collection(db, 'submissionUsers'),
-        where('userId', '==', reportedUserId),
-        where('filePath', '==', submissionPath),
-        where('collaborationId', '==', collaborationId)
-      );
-      
-      const snapshot = await getDocs(submissionUserQuery);
-      
-      if (!snapshot.empty) {
-        const submissionUserRef = doc(db, 'submissionUsers', snapshot.docs[0].id);
-        await updateDoc(submissionUserRef, {
-          isBanned: true
-        });
-      }
-
-      const reportRef = doc(db, 'reports', reportId);
-      await updateDoc(reportRef, {
-        status: 'user-banned',
-        resolvedAt: new Date(),
-        resolvedBy: adminUserId
+      const banUserBySubmission = httpsCallable(functions, 'banUserBySubmission');
+      const result = await banUserBySubmission({
+        reportId,
+        submissionPath,
+        collaborationId
       });
+      
+      return result.data as any;
     } catch (error) {
+      console.error('Error banning user:', error);
       throw error;
     }
   }

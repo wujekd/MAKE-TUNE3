@@ -842,3 +842,79 @@ export const ensureCollaborationDetail = onDocumentCreated(
     });
   }
 );
+
+export const banUserBySubmission = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+
+  const userRef = db.collection("users").doc(uid);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) {
+    throw new HttpsError("permission-denied", "user not found");
+  }
+  const userData = userSnap.data() as any;
+  if (!userData.isAdmin) {
+    throw new HttpsError("permission-denied", "admin access required");
+  }
+
+  const reportId = String(request.data?.reportId || "").trim();
+  const submissionPath = String(request.data?.submissionPath || "").trim();
+  const collaborationId = String(request.data?.collaborationId || "").trim();
+
+  if (!reportId || !submissionPath || !collaborationId) {
+    throw new HttpsError("invalid-argument", "reportId, submissionPath, and collaborationId required");
+  }
+
+  return db.runTransaction(async (tx) => {
+    const submissionUserQuery = db
+      .collection("submissionUsers")
+      .where("path", "==", submissionPath)
+      .where("collaborationId", "==", collaborationId)
+      .limit(1);
+    
+    const submissionUserSnap = await tx.get(submissionUserQuery);
+    
+    if (submissionUserSnap.empty) {
+      throw new HttpsError("not-found", "submission user not found");
+    }
+
+    const submissionUserData = submissionUserSnap.docs[0].data() as any;
+    const reportedUserId = String(submissionUserData.userId || "");
+    
+    if (!reportedUserId) {
+      throw new HttpsError("not-found", "user ID not found in submission");
+    }
+
+    const reportedUserRef = db.collection("users").doc(reportedUserId);
+    const reportedUserSnap = await tx.get(reportedUserRef);
+    
+    if (!reportedUserSnap.exists) {
+      throw new HttpsError("not-found", "reported user profile not found");
+    }
+
+    tx.update(reportedUserRef, {
+      banned: true,
+      bannedAt: Timestamp.now(),
+      bannedBy: uid
+    });
+
+    const reportRef = db.collection("reports").doc(reportId);
+    const reportSnap = await tx.get(reportRef);
+    
+    if (!reportSnap.exists) {
+      throw new HttpsError("not-found", "report not found");
+    }
+
+    tx.update(reportRef, {
+      status: "user-banned",
+      resolvedAt: Timestamp.now(),
+      resolvedBy: uid,
+      reportedUserId
+    });
+
+    return {
+      success: true,
+      bannedUserId: reportedUserId
+    };
+  });
+});

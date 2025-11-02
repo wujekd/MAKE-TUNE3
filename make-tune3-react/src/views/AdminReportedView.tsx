@@ -45,8 +45,8 @@ export function AdminReportedView() {
   };
 
   const handleBanUser = async (report: Report) => {
-    if (!user || !report.reportedUserId) {
-      alert('Cannot ban user: User information not available');
+    if (!user) {
+      alert('You must be logged in to ban users');
       return;
     }
     
@@ -59,15 +59,14 @@ export function AdminReportedView() {
     try {
       await ReportService.banUserAndResolveReport(
         report.id,
-        user.uid,
-        report.reportedUserId,
         report.submissionPath,
         report.collaborationId
       );
       await loadReports();
       alert('User has been banned and report resolved.');
     } catch (error) {
-      alert('Failed to ban user');
+      alert('Failed to ban user. Please check console for details.');
+      console.error('Ban error:', error);
     } finally {
       setProcessing(null);
     }
@@ -180,9 +179,6 @@ export function AdminReportedView() {
                   <strong>Collaboration ID:</strong> {report.collaborationId}
                 </div>
                 <div>
-                  <strong>Reported User ID:</strong> {report.reportedUserId || 'N/A'}
-                </div>
-                <div>
                   <strong>Reported At:</strong> {report.createdAt?.toDate?.()?.toLocaleString() || 'N/A'}
                 </div>
               </div>
@@ -212,7 +208,7 @@ export function AdminReportedView() {
                 
                 <button
                   onClick={() => handleBanUser(report)}
-                  disabled={processing === report.id || !report.reportedUserId}
+                  disabled={processing === report.id}
                   style={{
                     flex: 1,
                     padding: '0.75rem',
@@ -220,23 +216,13 @@ export function AdminReportedView() {
                     border: '1px solid rgba(200, 50, 50, 0.5)',
                     borderRadius: '4px',
                     color: 'var(--white)',
-                    cursor: processing === report.id || !report.reportedUserId ? 'default' : 'pointer',
-                    opacity: processing === report.id || !report.reportedUserId ? 0.5 : 1
+                    cursor: processing === report.id ? 'default' : 'pointer',
+                    opacity: processing === report.id ? 0.5 : 1
                   }}
                 >
                   {processing === report.id ? 'Processing...' : 'Ban User'}
                 </button>
               </div>
-
-              {!report.reportedUserId && (
-                <div style={{ 
-                  marginTop: '0.5rem',
-                  fontSize: '0.75rem',
-                  color: 'rgba(255, 150, 150, 0.8)'
-                }}>
-                  ⚠ User information not available for this submission
-                </div>
-              )}
             </div>
           ))}
         </div>
