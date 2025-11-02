@@ -6,6 +6,7 @@ import '../components/ProjectHistory.css';
 import { MyProjects } from '../components/MyProjects';
 import { TagFilter } from '../components/TagFilter';
 import { Mixer1Channel } from '../components/Mixer1Channel';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useAudioStore } from '../stores';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { useAppStore } from '../stores/appStore';
@@ -151,6 +152,11 @@ export function DashboardView() {
                 style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}
                 aria-busy={!hasLoaded}
               >
+                  {!hasLoaded && !error && (
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
+                      <LoadingSpinner size={24} />
+                    </div>
+                  )}
                   {error && <div style={{ color: 'var(--white)' }}>{error}</div>}
                   {hasLoaded && !error && filteredCollabs.length === 0 && (
                     <div style={{ color: 'var(--white)' }}>

@@ -5,6 +5,7 @@ import type { ProjectOverviewItem, DownloadSummaryItem } from '../services/dashb
 import { useAppStore } from '../stores/appStore';
 import { TagInput } from './TagInput';
 import { TagUtils } from '../utils/tagUtils';
+import { LoadingSpinner } from './LoadingSpinner';
 import './ProjectHistory.css';
 
 type SubmissionSummaryItem = {
@@ -47,12 +48,13 @@ const formatCountdownLabel = (
 };
 
 export function MyProjects() {
-  const { user } = useAppStore(state => state.auth);
+  const { user, loading: authLoading } = useAppStore(state => state.auth);
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('projects');
 
   const [projects, setProjects] = useState<ProjectOverviewItem[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
   const [projectsError, setProjectsError] = useState<string | null>(null);
 
   const [submissionSummaries, setSubmissionSummaries] = useState<SubmissionSummaryItem[]>([]);
@@ -82,6 +84,7 @@ export function MyProjects() {
     try {
       const items = await DashboardService.listMyProjectsOverview();
       setProjects(items);
+      setProjectsLoaded(true);
     } catch (e: any) {
       console.error('failed to load projects overview', e);
       try {
@@ -95,11 +98,13 @@ export function MyProjects() {
           currentCollaboration: null,
         }));
         setProjects(normalized);
+        setProjectsLoaded(true);
         const friendlyMessage = e?.message || 'failed to load projects overview';
         setProjectsError(`${friendlyMessage}. Showing basic project info.`);
       } catch (fallbackErr: any) {
         console.error('failed to load fallback projects', fallbackErr);
         setProjectsError(fallbackErr?.message || 'failed to load projects');
+        setProjectsLoaded(true);
       }
     } finally {
       setProjectsLoading(false);
@@ -166,6 +171,7 @@ export function MyProjects() {
       setSubmissionSummaries([]);
       setDownloadSummaries([]);
       setModerationCollabs([]);
+      setProjectsLoaded(false);
       setDownloadsLoaded(false);
       setSubmissionsLoaded(false);
       setModerationLoaded(false);
@@ -217,10 +223,10 @@ export function MyProjects() {
                 border: '1px solid var(--border-color, #333)',
                 background: 'var(--primary1-700)',
                 color: 'var(--white)',
-                opacity: user ? 1 : 0.6,
-                cursor: user ? 'pointer' : 'not-allowed'
+                opacity: user && !authLoading ? 1 : 0.6,
+                cursor: user && !authLoading ? 'pointer' : 'not-allowed'
               }}
-              disabled={!user}
+              disabled={!user || authLoading}
               onClick={() => setShowForm(v => !v)}
             >
               + create project
@@ -297,17 +303,21 @@ export function MyProjects() {
                 </div>
               </div>
             )}
-            {!user && (
+            {(authLoading || (user && !projectsLoaded)) && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
+                <LoadingSpinner size={24} />
+              </div>
+            )}
+            {!authLoading && !user && (
               <div style={{ color: 'var(--white)' }}>
                 <Link to="/auth?mode=login" style={{ color: 'var(--contrast-600)', textDecoration: 'underline' }}>login</Link> to see your projects
               </div>
             )}
-            {user && projectsLoading && <div style={{ color: 'var(--white)' }}>loading...</div>}
-            {user && projectsError && <div style={{ color: 'var(--white)' }}>{projectsError}</div>}
-            {user && !projectsLoading && !projectsError && projects.length === 0 && (
+            {!authLoading && user && projectsLoaded && projectsError && <div style={{ color: 'var(--white)' }}>{projectsError}</div>}
+            {!authLoading && user && projectsLoaded && !projectsError && projects.length === 0 && (
               <div style={{ color: 'var(--white)' }}>no projects</div>
             )}
-            {user && projects.map(project => (
+            {!authLoading && user && projectsLoaded && projects.map(project => (
               <Link key={project.projectId} to={`/project/${project.projectId}`} className="collab-history-item list__item" style={{ textDecoration: 'none' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <div className="collab-name list__title">{project.projectName}</div>
@@ -344,17 +354,21 @@ export function MyProjects() {
             <h4 className="project-history-title card__title" style={{ marginBottom: 0 }}>to moderate</h4>
           </div>
           <div className="collab-list list" style={{ marginTop: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
-            {!user && (
+            {(authLoading || (user && !moderationLoaded)) && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
+                <LoadingSpinner size={24} />
+              </div>
+            )}
+            {!authLoading && !user && (
               <div style={{ color: 'var(--white)' }}>
                 <Link to="/auth?mode=login" style={{ color: 'var(--contrast-600)', textDecoration: 'underline' }}>login</Link> to see moderation queue
               </div>
             )}
-            {user && moderationLoading && <div style={{ color: 'var(--white)' }}>loading...</div>}
-            {user && moderationError && <div style={{ color: 'var(--white)' }}>{moderationError}</div>}
-            {user && !moderationLoading && !moderationError && moderationCollabs.length === 0 && (
+            {!authLoading && user && moderationLoaded && moderationError && <div style={{ color: 'var(--white)' }}>{moderationError}</div>}
+            {!authLoading && user && moderationLoaded && !moderationError && moderationCollabs.length === 0 && (
               <div style={{ color: 'var(--white)' }}>no collaborations need moderation</div>
             )}
-            {user && moderationCollabs.map(item => (
+            {!authLoading && user && moderationLoaded && moderationCollabs.map(item => (
               <Link key={item.id} to={`/collab/${encodeURIComponent(item.id)}/moderate`} className="collab-history-item list__item" style={{ textDecoration: 'none' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <span className="collab-name list__title">{item.name}</span>
@@ -384,17 +398,21 @@ export function MyProjects() {
             <h4 className="project-history-title card__title" style={{ marginBottom: 0 }}>my submissions</h4>
           </div>
           <div className="collab-list list" style={{ marginTop: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
-            {!user && (
+            {(authLoading || (user && !submissionsLoaded)) && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
+                <LoadingSpinner size={24} />
+              </div>
+            )}
+            {!authLoading && !user && (
               <div style={{ color: 'var(--white)' }}>
                 <Link to="/auth?mode=login" style={{ color: 'var(--contrast-600)', textDecoration: 'underline' }}>login</Link> to see submissions
               </div>
             )}
-            {user && submissionsLoading && <div style={{ color: 'var(--white)' }}>loading...</div>}
-            {user && submissionsError && <div style={{ color: 'var(--white)' }}>{submissionsError}</div>}
-            {user && !submissionsLoading && !submissionsError && submissionSummaries.length === 0 && (
+            {!authLoading && user && submissionsLoaded && submissionsError && <div style={{ color: 'var(--white)' }}>{submissionsError}</div>}
+            {!authLoading && user && submissionsLoaded && !submissionsError && submissionSummaries.length === 0 && (
               <div style={{ color: 'var(--white)' }}>no submissions</div>
             )}
-            {user && submissionSummaries.map(item => {
+            {!authLoading && user && submissionsLoaded && submissionSummaries.map(item => {
               const status = item.status || 'unknown';
               const route = status === 'completed'
                 ? `/collab/${encodeURIComponent(item.collabId)}/completed`
@@ -422,17 +440,21 @@ export function MyProjects() {
             <h4 className="project-history-title card__title" style={{ marginBottom: 0 }}>downloaded backings</h4>
           </div>
           <div className="collab-list list" style={{ marginTop: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
-            {!user && (
+            {(authLoading || (user && !downloadsLoaded)) && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
+                <LoadingSpinner size={24} />
+              </div>
+            )}
+            {!authLoading && !user && (
               <div style={{ color: 'var(--white)' }}>
                 <Link to="/auth?mode=login" style={{ color: 'var(--contrast-600)', textDecoration: 'underline' }}>login</Link> to see downloads
               </div>
             )}
-            {user && downloadsLoading && <div style={{ color: 'var(--white)' }}>loading...</div>}
-            {user && downloadsError && <div style={{ color: 'var(--white)' }}>{downloadsError}</div>}
-            {user && !downloadsLoading && !downloadsError && downloadSummaries.length === 0 && (
+            {!authLoading && user && downloadsLoaded && downloadsError && <div style={{ color: 'var(--white)' }}>{downloadsError}</div>}
+            {!authLoading && user && downloadsLoaded && !downloadsError && downloadSummaries.length === 0 && (
               <div style={{ color: 'var(--white)' }}>no downloads yet</div>
             )}
-            {user && downloadSummaries.map(item => {
+            {!authLoading && user && downloadsLoaded && downloadSummaries.map(item => {
               const status = item.status || 'unknown';
               const route = status === 'completed'
                 ? `/collab/${encodeURIComponent(item.collabId)}/completed`
