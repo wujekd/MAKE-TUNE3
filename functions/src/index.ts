@@ -872,10 +872,19 @@ export const banUserBySubmission = onCall(async (request) => {
       .where("collaborationId", "==", collaborationId)
       .limit(1);
     
-    const submissionUserSnap = await tx.get(submissionUserQuery);
+    const reportRef = db.collection("reports").doc(reportId);
+    
+    const [submissionUserSnap, reportSnap] = await Promise.all([
+      tx.get(submissionUserQuery),
+      tx.get(reportRef)
+    ]);
     
     if (submissionUserSnap.empty) {
       throw new HttpsError("not-found", "submission user not found");
+    }
+    
+    if (!reportSnap.exists) {
+      throw new HttpsError("not-found", "report not found");
     }
 
     const submissionUserData = submissionUserSnap.docs[0].data() as any;
@@ -892,24 +901,31 @@ export const banUserBySubmission = onCall(async (request) => {
       throw new HttpsError("not-found", "reported user profile not found");
     }
 
+    const now = Timestamp.now();
+    const reportData = reportSnap.data() as any;
+
     tx.update(reportedUserRef, {
       banned: true,
-      bannedAt: Timestamp.now(),
+      bannedAt: now,
       bannedBy: uid
     });
 
-    const reportRef = db.collection("reports").doc(reportId);
-    const reportSnap = await tx.get(reportRef);
-    
-    if (!reportSnap.exists) {
-      throw new HttpsError("not-found", "report not found");
-    }
-
     tx.update(reportRef, {
       status: "user-banned",
-      resolvedAt: Timestamp.now(),
+      resolvedAt: now,
       resolvedBy: uid,
       reportedUserId
+    });
+
+    const resolvedReportRef = db.collection("resolvedReports").doc();
+    tx.set(resolvedReportRef, {
+      ...reportData,
+      originalReportId: reportId,
+      status: "user-banned",
+      resolvedAt: now,
+      resolvedBy: uid,
+      reportedUserId,
+      bannedUserId: reportedUserId
     });
 
     return {

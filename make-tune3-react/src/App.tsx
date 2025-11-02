@@ -7,6 +7,7 @@ import { SubmissionView } from './views/SubmissionView'
 import { AdminTagsView } from './views/AdminTagsView'
 import { AdminProjectsView } from './views/AdminProjectsView'
 import { AdminReportedView } from './views/AdminReportedView'
+import { AdminResolvedReportsView } from './views/AdminResolvedReportsView'
 import { useAppStore } from './stores/appStore'
 import { useUIStore } from './stores'
 import { ModerationView } from './views/ModerationView'
@@ -142,6 +143,15 @@ function App() {
           handle: {
             title: 'Reported Submissions',
             breadcrumb: 'Reported',
+            actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
+          }
+        },
+        {
+          path: 'admin/resolved',
+          element: <AdminRoute><AdminResolvedReportsView /></AdminRoute>,
+          handle: {
+            title: 'Resolved Reports',
+            breadcrumb: 'Resolved',
             actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
           }
         },

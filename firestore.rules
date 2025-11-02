@@ -185,5 +185,12 @@ service cloud.firestore {
         && request.resource.data.status == 'pending';
       allow read, update, delete: if isAdmin();
     }
+
+    // resolvedReports: historical record of resolved reports, admin-only
+    match /resolvedReports/{resolvedReportId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
   }
 }

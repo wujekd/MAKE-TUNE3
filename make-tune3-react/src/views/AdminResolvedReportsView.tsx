@@ -4,12 +4,11 @@ import { ReportService } from '../services';
 import { useAppStore } from '../stores/appStore';
 import type { Report } from '../types/collaboration';
 
-export function AdminReportedView() {
+export function AdminResolvedReportsView() {
   const navigate = useNavigate();
   const { user } = useAppStore(state => state.auth);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState<string | null>(null);
 
   useEffect(() => {
     loadReports();
@@ -18,57 +17,12 @@ export function AdminReportedView() {
   const loadReports = async () => {
     setLoading(true);
     try {
-      const pendingReports = await ReportService.getPendingReports();
-      setReports(pendingReports);
+      const resolvedReports = await ReportService.getResolvedReports();
+      setReports(resolvedReports);
     } catch (error) {
-      alert('Failed to load reports');
+      alert('Failed to load resolved reports');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDismiss = async (reportId: string) => {
-    if (!user) return;
-    
-    const confirmed = window.confirm('Dismiss this report? The submission will remain visible.');
-    if (!confirmed) return;
-
-    setProcessing(reportId);
-    try {
-      await ReportService.dismissReport(reportId, user.uid);
-      await loadReports();
-    } catch (error) {
-      alert('Failed to dismiss report');
-    } finally {
-      setProcessing(null);
-    }
-  };
-
-  const handleBanUser = async (report: Report) => {
-    if (!user) {
-      alert('You must be logged in to ban users');
-      return;
-    }
-    
-    const confirmed = window.confirm(
-      `Ban the user who submitted this? This action will mark them as banned in the system.`
-    );
-    if (!confirmed) return;
-
-    setProcessing(report.id);
-    try {
-      await ReportService.banUserAndResolveReport(
-        report.id,
-        report.submissionPath,
-        report.collaborationId
-      );
-      await loadReports();
-      alert('User has been banned and report resolved.');
-    } catch (error) {
-      alert('Failed to ban user. Please check console for details.');
-      console.error('Ban error:', error);
-    } finally {
-      setProcessing(null);
     }
   };
 
@@ -93,10 +47,10 @@ export function AdminReportedView() {
         alignItems: 'center',
         marginBottom: '2rem'
       }}>
-        <h1 style={{ margin: 0 }}>Reported Submissions</h1>
+        <h1 style={{ margin: 0 }}>Resolved Reports History</h1>
         <div style={{ display: 'flex', gap: '1rem' }}>
           <button
-            onClick={() => navigate('/admin/resolved')}
+            onClick={() => navigate('/admin/reported')}
             style={{
               padding: '0.5rem 1rem',
               backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -106,7 +60,7 @@ export function AdminReportedView() {
               cursor: 'pointer'
             }}
           >
-            View Resolved Reports
+            View Pending Reports
           </button>
           <button
             onClick={() => navigate('/collabs')}
@@ -127,7 +81,7 @@ export function AdminReportedView() {
       {loading ? (
         <p>Loading reports...</p>
       ) : reports.length === 0 ? (
-        <p style={{ opacity: 0.7 }}>No pending reports.</p>
+        <p style={{ opacity: 0.7 }}>No resolved reports.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {reports.map((report) => (
@@ -140,6 +94,43 @@ export function AdminReportedView() {
                 padding: '1.5rem'
               }}
             >
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                marginBottom: '1rem'
+              }}>
+                <div
+                  style={{
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '12px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    backgroundColor: report.status === 'user-banned' 
+                      ? 'rgba(200, 50, 50, 0.3)' 
+                      : 'rgba(100, 100, 100, 0.3)',
+                    border: report.status === 'user-banned'
+                      ? '1px solid rgba(200, 50, 50, 0.5)'
+                      : '1px solid rgba(150, 150, 150, 0.5)'
+                  }}
+                >
+                  {report.status === 'user-banned' ? '🚫 User Banned' : '✓ Dismissed'}
+                </div>
+                {report.reportedUserId && (
+                  <div
+                    style={{
+                      padding: '0.25rem 0.75rem',
+                      borderRadius: '12px',
+                      fontSize: '0.75rem',
+                      backgroundColor: 'rgba(255, 140, 0, 0.2)',
+                      border: '1px solid rgba(255, 140, 0, 0.4)'
+                    }}
+                  >
+                    User ID: {report.reportedUserId.substring(0, 8)}...
+                  </div>
+                )}
+              </div>
+
               <div style={{ 
                 display: 'grid', 
                 gridTemplateColumns: '1fr 1fr',
@@ -184,9 +175,8 @@ export function AdminReportedView() {
 
               <div style={{ 
                 display: 'grid', 
-                gridTemplateColumns: '1fr 1fr',
+                gridTemplateColumns: '1fr 1fr 1fr',
                 gap: '1rem',
-                marginBottom: '1rem',
                 fontSize: '0.875rem',
                 opacity: 0.7
               }}>
@@ -196,47 +186,12 @@ export function AdminReportedView() {
                 <div>
                   <strong>Reported At:</strong> {report.createdAt?.toDate?.()?.toLocaleString() || 'N/A'}
                 </div>
-              </div>
-
-              <div style={{ 
-                display: 'flex', 
-                gap: '1rem',
-                paddingTop: '1rem',
-                borderTop: '1px solid rgba(255, 255, 255, 0.1)'
-              }}>
-                <button
-                  onClick={() => handleDismiss(report.id)}
-                  disabled={processing === report.id}
-                  style={{
-                    flex: 1,
-                    padding: '0.75rem',
-                    backgroundColor: 'rgba(100, 100, 100, 0.3)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    borderRadius: '4px',
-                    color: 'var(--white)',
-                    cursor: processing === report.id ? 'default' : 'pointer',
-                    opacity: processing === report.id ? 0.5 : 1
-                  }}
-                >
-                  {processing === report.id ? 'Processing...' : 'Dismiss Report'}
-                </button>
-                
-                <button
-                  onClick={() => handleBanUser(report)}
-                  disabled={processing === report.id}
-                  style={{
-                    flex: 1,
-                    padding: '0.75rem',
-                    backgroundColor: 'rgba(200, 50, 50, 0.3)',
-                    border: '1px solid rgba(200, 50, 50, 0.5)',
-                    borderRadius: '4px',
-                    color: 'var(--white)',
-                    cursor: processing === report.id ? 'default' : 'pointer',
-                    opacity: processing === report.id ? 0.5 : 1
-                  }}
-                >
-                  {processing === report.id ? 'Processing...' : 'Ban User'}
-                </button>
+                <div>
+                  <strong>Resolved At:</strong> {report.resolvedAt?.toDate?.()?.toLocaleString() || 'N/A'}
+                </div>
+                <div>
+                  <strong>Resolved By:</strong> {report.resolvedBy || 'N/A'}
+                </div>
               </div>
             </div>
           ))}

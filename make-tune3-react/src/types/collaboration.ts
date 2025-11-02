@@ -192,7 +192,8 @@ export const COLLECTIONS = {
   USER_DOWNLOADS: 'userDownloads',
   PROJECT_NAME_INDEX: 'projectNameIndex',
   TAGS: 'tags',
-  REPORTS: 'reports'
+  REPORTS: 'reports',
+  RESOLVED_REPORTS: 'resolvedReports'
 } as const;
 
 // helper types

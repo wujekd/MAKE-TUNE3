@@ -8,7 +8,9 @@ import {
   updateDoc,
   getDoc,
   orderBy,
-  Timestamp 
+  Timestamp,
+  writeBatch,
+  serverTimestamp
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from './firebase';
@@ -83,12 +85,34 @@ export class ReportService {
   static async dismissReport(reportId: string, adminUserId: string): Promise<void> {
     try {
       const reportRef = doc(db, 'reports', reportId);
-      await updateDoc(reportRef, {
+      const reportSnap = await getDoc(reportRef);
+      
+      if (!reportSnap.exists()) {
+        throw new Error('Report not found');
+      }
+
+      const reportData = reportSnap.data();
+      
+      const batch = writeBatch(db);
+      
+      batch.update(reportRef, {
         status: 'dismissed',
-        resolvedAt: new Date(),
+        resolvedAt: serverTimestamp(),
         resolvedBy: adminUserId
       });
+
+      const resolvedReportRef = doc(collection(db, 'resolvedReports'));
+      batch.set(resolvedReportRef, {
+        ...reportData,
+        originalReportId: reportId,
+        status: 'dismissed',
+        resolvedAt: serverTimestamp(),
+        resolvedBy: adminUserId
+      });
+
+      await batch.commit();
     } catch (error) {
+      console.error('Error dismissing report:', error);
       throw error;
     }
   }
@@ -131,6 +155,46 @@ export class ReportService {
       return !snapshot.empty;
     } catch (error) {
       return false;
+    }
+  }
+
+  static async getResolvedReports(): Promise<Report[]> {
+    try {
+      const q = query(
+        collection(db, 'resolvedReports')
+      );
+      
+      const snapshot = await getDocs(q);
+      const reports: Report[] = [];
+      
+      for (const docSnap of snapshot.docs) {
+        const data = docSnap.data();
+
+        reports.push({
+          id: docSnap.id,
+          submissionPath: data.submissionPath,
+          collaborationId: data.collaborationId,
+          reportedBy: data.reportedBy,
+          reportedByUsername: data.reportedByUsername,
+          reason: data.reason,
+          status: data.status,
+          createdAt: data.createdAt,
+          resolvedAt: data.resolvedAt,
+          resolvedBy: data.resolvedBy,
+          reportedUserId: data.reportedUserId
+        });
+      }
+      
+      reports.sort((a, b) => {
+        const aTime = a.resolvedAt?.toMillis?.() || 0;
+        const bTime = b.resolvedAt?.toMillis?.() || 0;
+        return bTime - aTime;
+      });
+      
+      return reports;
+    } catch (error) {
+      console.error('Error loading resolved reports:', error);
+      throw error;
     }
   }
 }
