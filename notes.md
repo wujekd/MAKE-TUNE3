@@ -27,5 +27,9 @@ if there is no new mix uploaded and no following collabs original backing track 
 if theres a mix uploaded that mix will be played and optionally original track +
  submission + winning submission can be played?
 
- quick fix: for now just play submission and backing in respective players
+ v quick fix: for now just play submission and backing in respective players
 ~~~~~~~~~~
+
+## administration system
+v - only allow admins to admin paths
+v - add report submission (offensive etc) + view to review reports

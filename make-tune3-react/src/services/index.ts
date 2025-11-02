@@ -9,3 +9,4 @@ export { InteractionService } from './interactionService';
 export { DataService } from './dataService';
 export { TagService } from './tagService';
 export { DashboardService } from './dashboardService';
+export { ReportService } from './reportService';

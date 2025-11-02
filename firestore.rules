@@ -2,6 +2,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isSignedIn() { return request.auth != null; }
+    function isAdmin() { 
+      return isSignedIn() 
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true; 
+    }
     function isOwner(project) { return isSignedIn() && project.data.ownerId == request.auth.uid; }
     function validateProjectData(data) {
       return data.name is string && data.name.size() >= 3 && data.name.size() <= 100
@@ -167,10 +172,18 @@ service cloud.firestore {
         && resource.data.ownerId == request.auth.uid;
     }
 
-    // tags: read by all, write by authenticated users (admin)
+    // tags: read by all, write by admin only
     match /tags/{tagKey} {
       allow read: if true;
-      allow create, update, delete: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // reports: create by authenticated users, manage by admin only
+    match /reports/{reportId} {
+      allow create: if isSignedIn()
+        && request.resource.data.reportedBy == request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow read, update, delete: if isAdmin();
     }
   }
 }

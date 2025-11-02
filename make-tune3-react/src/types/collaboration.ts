@@ -126,6 +126,23 @@ export interface SubmissionUser {
   collaborationId: string;
   artist: string; // real artist name
   createdAt: Timestamp;
+  isBanned?: boolean;
+}
+
+export type ReportStatus = 'pending' | 'dismissed' | 'user-banned';
+
+export interface Report {
+  id: string;
+  submissionPath: string;
+  collaborationId: string;
+  reportedUserId?: string;
+  reportedBy: string;
+  reportedByUsername?: string;
+  reason: string;
+  status: ReportStatus;
+  createdAt: Timestamp;
+  resolvedAt?: Timestamp;
+  resolvedBy?: string;
 }
 
 export interface UserCollaboration {
@@ -174,7 +191,8 @@ export const COLLECTIONS = {
   SUBMISSION_USERS: 'submissionUsers', // private collection
   USER_DOWNLOADS: 'userDownloads',
   PROJECT_NAME_INDEX: 'projectNameIndex',
-  TAGS: 'tags'
+  TAGS: 'tags',
+  REPORTS: 'reports'
 } as const;
 
 // helper types

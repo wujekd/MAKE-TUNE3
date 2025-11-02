@@ -6,13 +6,16 @@ import { ProjectEditView } from './views/ProjectEditView'
 import { SubmissionView } from './views/SubmissionView'
 import { AdminTagsView } from './views/AdminTagsView'
 import { AdminProjectsView } from './views/AdminProjectsView'
+import { AdminReportedView } from './views/AdminReportedView'
 import { useAppStore } from './stores/appStore'
 import { useUIStore } from './stores'
 import { ModerationView } from './views/ModerationView'
 import { AppShell } from './components/AppShell';
 import { AuthRoute } from './components/AuthRoute';
+import { AdminRoute } from './components/AdminRoute';
 import { CompletedView } from './views/CompletedView';
 import { UsernameOnboarding } from './views/UsernameOnboarding';
+import { AccessDeniedView } from './views/AccessDeniedView';
 import { ProjectService } from './services';
 
 function App() {
@@ -117,7 +120,7 @@ function App() {
         },
         {
           path: 'admin/tags',
-          element: <AdminTagsView />,
+          element: <AdminRoute><AdminTagsView /></AdminRoute>,
           handle: {
             title: 'Manage Tags',
             breadcrumb: 'Tags',
@@ -126,11 +129,28 @@ function App() {
         },
         {
           path: 'admin/projects',
-          element: <AdminProjectsView />,
+          element: <AdminRoute><AdminProjectsView /></AdminRoute>,
           handle: {
             title: 'Manage Projects',
             breadcrumb: 'Projects',
             actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
+          }
+        },
+        {
+          path: 'admin/reported',
+          element: <AdminRoute><AdminReportedView /></AdminRoute>,
+          handle: {
+            title: 'Reported Submissions',
+            breadcrumb: 'Reported',
+            actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
+          }
+        },
+        {
+          path: 'access-denied',
+          element: <AccessDeniedView />,
+          handle: {
+            title: 'Access Denied',
+            breadcrumb: 'Access Denied'
           }
         },
         { path: '*', element: <Navigate to="/collabs" replace /> }

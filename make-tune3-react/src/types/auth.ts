@@ -6,6 +6,7 @@ export interface User {
   createdAt: Timestamp;
   collaborationIds: string[]; // List of collaboration IDs user has interacted with
   username?: string;
+  isAdmin?: boolean;
 }
 
 export interface AuthError {
