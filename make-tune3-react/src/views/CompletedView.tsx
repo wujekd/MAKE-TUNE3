@@ -193,16 +193,13 @@ export function CompletedView() {
             <div className="favorites-header"><h2 className="favorites-title">Collaboration Results</h2></div>
             <div className="favorites-container" style={{ justifyContent: 'center' }}>
               <div 
-                className={isWinnerPlaying && audioCtx?.state.player1.isPlaying ? 'currently-playing' : ''}
+                className={`collab-history-item ${isWinnerPlaying && audioCtx?.state.player1.isPlaying ? 'currently-playing' : ''}`}
                 style={{
-                  backgroundColor: 'var(--primary1-600)',
                   padding: '0.5rem',
-                  borderRadius: '0.5rem',
-                  boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.2)',
-                  border: '3px solid transparent',
                   minWidth: 280,
                   maxWidth: 400,
-                  transition: 'all 0.2s ease'
+                  cursor: 'default',
+                  marginBottom: 0
                 }}
               >
                 <div

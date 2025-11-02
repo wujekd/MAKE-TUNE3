@@ -165,13 +165,26 @@ export function DashboardView() {
                     const hasBacking = Boolean((c as any).backingTrackPath);
                     const backingPath = (c as any).backingTrackPath as string | undefined;
                     const isCurrentBacking = hasBacking && backingPreview?.path === backingPath;
-                    const isPlaying = isCurrentBacking && !!audioState?.player2.isPlaying;
+                    
+                    // Calculate progress for the overlay
+                    const displayProgress = isCurrentBacking && audioState?.player2.duration && audioState.player2.duration > 0
+                      ? ((audioState?.player2.currentTime ?? 0) / audioState.player2.duration) * 100
+                      : 0;
+                    
                     return (
                       <Link 
                         key={c.id} 
                         to={to} 
-                        className={`collab-history-item list__item ${isPlaying ? 'currently-playing' : ''}`}
+                        className={`collab-history-item list__item ${isCurrentBacking ? 'currently-playing' : ''}`}
                       >
+                        {/* Progress overlay - shrinks from right to left revealing background */}
+                        {isCurrentBacking && displayProgress > 0 && (
+                          <div 
+                            className="collab-progress-overlay" 
+                            style={{ width: `${100 - displayProgress}%` }}
+                          />
+                        )}
+                        
                         <div className="collab-info" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                             <span className="collab-name list__title">{c.name}</span>
@@ -182,8 +195,8 @@ export function DashboardView() {
                                 event.stopPropagation();
                                 if (!hasBacking || !backingPath) return;
                                 if (isCurrentBacking) {
-                                  if (isPlaying) {
-                                    stopBackingPlayback();
+                                  if (audioState?.player2.isPlaying) {
+                                    togglePlayPause();
                                   } else {
                                     togglePlayPause();
                                   }
@@ -192,9 +205,9 @@ export function DashboardView() {
                                 }
                               }}
                               disabled={!hasBacking}
-                              style={{ fontSize: 12 }}
+                              style={{ fontSize: 12, position: 'relative', zIndex: 1 }}
                             >
-                              {isCurrentBacking ? (isPlaying ? 'pause' : 'resume') : 'play backing'}
+                              {isCurrentBacking ? (audioState?.player2.isPlaying ? 'pause' : 'resume') : 'play backing'}
                             </button>
                           </div>
                           <span className="collab-stage list__subtitle">{c.status}</span>

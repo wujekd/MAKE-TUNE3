@@ -61,6 +61,7 @@
   margin-bottom: 0.25rem;
   color: var(--white);
   text-decoration: none;
+  position: relative;
 }
 
 .collab-history-item:hover {
@@ -68,9 +69,14 @@
   text-decoration: none;
 }
 
+.collab-history-item.currently-playing:hover,
+.collab-history-item.selected:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
 .collab-history-item.selected {
-  background-color: var(--contrast-600);
-  border-color: var(--contrast-700);
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: var(--contrast-600);
 }
 
 .collab-history-item.active {
@@ -87,6 +93,20 @@
   background-color: var(--primary1-900);
   border-color: var(--contrast-600);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Progress overlay for collaboration items - shrinks to reveal background */
+.collab-progress-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  transition: none;
+  will-change: width;
+  border-radius: 4px;
+  z-index: 0;
 }
 
 .collab-status-indicator {
@@ -110,6 +130,8 @@
   gap: 0.125rem;
   flex: 1;
   min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .collab-name {
