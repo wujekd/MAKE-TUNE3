@@ -499,21 +499,22 @@ export const useAppStore = create<AppState>((set, get) => ({
         
         if (project) {
           // Extract past stage tracks from project.pastCollaborations
-          const pastStageTracks = project.pastCollaborations
-            .map(pastCollab => {
-              const path =
-                pastCollab.winnerTrackPath ||
-                pastCollab.pastStageTrackPath ||
-                pastCollab.backingTrackPath ||
-                '';
-              if (!path) return null;
-              return createTrackFromFilePath(
-                path,
-                'pastStage',
-                pastCollab.collaborationId
-              );
-            })
-            .filter((track): track is ReturnType<typeof createTrackFromFilePath> => !!track);
+        const pastStageTracks = project.pastCollaborations
+          .map(pastCollab => {
+            const winnerPath =
+              pastCollab.winnerTrackPath ||
+              pastCollab.pastStageTrackPath ||
+              '';
+            if (!winnerPath) return null;
+            const track = createTrackFromFilePath(
+              winnerPath,
+              'pastStage',
+              pastCollab.collaborationId
+            );
+            track.backingTrackPath = pastCollab.backingTrackPath;
+            return track;
+          })
+          .filter((track): track is ReturnType<typeof createTrackFromFilePath> => !!track);
           
           set(state => ({
             collaboration: {
@@ -988,8 +989,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         (async () => {
           if (currentTrackIndex > 0) {
             const track = pastStageTracks[currentTrackIndex - 1];
-            const src = await resolveAudioUrl(track.optimizedPath || track.filePath);
-            engine.playPastStage(src, currentTrackIndex - 1);
+            const submissionSrc = await resolveAudioUrl(track.optimizedPath || track.filePath);
+            const backingSrc = track.backingTrackPath 
+              ? await resolveAudioUrl(track.backingTrackPath)
+              : '';
+            if (backingSrc) {
+              engine.playPastStage(submissionSrc, backingSrc, currentTrackIndex - 1);
+            }
           }
         })();
       } else {
@@ -1034,8 +1040,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         (async () => {
           if (currentTrackIndex < pastStageTracks.length - 1) {
             const track = pastStageTracks[currentTrackIndex + 1];
-            const src = await resolveAudioUrl(track.optimizedPath || track.filePath);
-            engine.playPastStage(src, currentTrackIndex + 1);
+            const submissionSrc = await resolveAudioUrl(track.optimizedPath || track.filePath);
+            const backingSrc = track.backingTrackPath 
+              ? await resolveAudioUrl(track.backingTrackPath)
+              : '';
+            if (backingSrc) {
+              engine.playPastStage(submissionSrc, backingSrc, currentTrackIndex + 1);
+            }
           }
         })();
       } else {
@@ -1135,8 +1146,16 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (!engine || !pastStageTracks[index]) return;
 
       (async () => {
-        const src = await resolveAudioUrl(pastStageTracks[index].filePath);
-        engine.playPastStage(src, index);
+        const track = pastStageTracks[index];
+        const submissionSrc = await resolveAudioUrl(track.filePath);
+        const backingSrc = track.backingTrackPath 
+          ? await resolveAudioUrl(track.backingTrackPath)
+          : '';
+        if (!backingSrc) {
+          console.warn('No backing track for past collaboration, playing submission only');
+          return;
+        }
+        engine.playPastStage(submissionSrc, backingSrc, index);
       })();
     },
     getCurrentTime: (state) => {

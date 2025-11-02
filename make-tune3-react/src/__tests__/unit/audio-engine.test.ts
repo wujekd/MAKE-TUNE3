@@ -121,21 +121,39 @@ describe('AudioEngine', () => {
   });
 
   describe('playPastStage', () => {
-    it('should load source to player 2 and start playback', async () => {
-      const pastStageSrc = '/test-audio/past-stage.mp3';
+    it('should load both submission and backing sources and start playback', async () => {
+      const submissionSrc = '/test-audio/winner-submission.mp3';
+      const backingSrc = '/test-audio/past-backing.mp3';
       
-      await audioEngine.playPastStage(pastStageSrc, 0);
+      await audioEngine.playPastStage(submissionSrc, backingSrc, 0);
       
-      expect(mockPlayer2.src).toBe(pastStageSrc);
-      expect(mockPlayer1.pause).toHaveBeenCalled();
+      expect(mockPlayer1.src).toBe(submissionSrc);
+      expect(mockPlayer2.src).toBe(backingSrc);
+      expect(mockPlayer1.play).toHaveBeenCalled();
       expect(mockPlayer2.play).toHaveBeenCalled();
     });
 
-    it('should update player2 state to playing', async () => {
-      await audioEngine.playPastStage('/test-audio/past-stage.mp3', 0);
+    it('should update both players state to playing', async () => {
+      await audioEngine.playPastStage('/test-audio/winner.mp3', '/test-audio/backing.mp3', 0);
       
       const state = audioEngine.getState();
+      expect(state.player1.isPlaying).toBe(true);
       expect(state.player2.isPlaying).toBe(true);
+    });
+
+    it('should set pastStagePlayback flag to true', async () => {
+      await audioEngine.playPastStage('/test-audio/winner.mp3', '/test-audio/backing.mp3', 0);
+      
+      const state = audioEngine.getState();
+      expect(state.playerController.pastStagePlayback).toBe(true);
+    });
+
+    it('should set currentTrackId to provided index', async () => {
+      const trackIndex = 3;
+      await audioEngine.playPastStage('/test-audio/winner.mp3', '/test-audio/backing.mp3', trackIndex);
+      
+      const state = audioEngine.getState();
+      expect(state.playerController.currentTrackId).toBe(trackIndex);
     });
   });
 

@@ -6,6 +6,7 @@ export interface Track {
   title: string;
   filePath: string;
   optimizedPath?: string;
+  backingTrackPath?: string;
   submissionId?: string;
   duration: number;
   createdAt: Timestamp;

@@ -167,7 +167,11 @@ export function DashboardView() {
                     const isCurrentBacking = hasBacking && backingPreview?.path === backingPath;
                     const isPlaying = isCurrentBacking && !!audioState?.player2.isPlaying;
                     return (
-                      <Link key={c.id} to={to} className="collab-history-item list__item">
+                      <Link 
+                        key={c.id} 
+                        to={to} 
+                        className={`collab-history-item list__item ${isPlaying ? 'currently-playing' : ''}`}
+                      >
                         <div className="collab-info" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                             <span className="collab-name list__title">{c.name}</span>

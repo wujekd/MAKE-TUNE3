@@ -100,8 +100,12 @@ export function ProjectEditView() {
             {!loading && !error && collabs.length === 0 && (
               <div style={{ color: 'var(--white)' }}>no collaborations yet</div>
             )}
-            {collabs.map(col => (
-              <div key={col.id} className="collab-history-item" onClick={() => { setSelectedId(col.id); setMode('view'); }}>
+                  {collabs.map(col => (
+                    <div 
+                      key={col.id} 
+                      className={`collab-history-item ${selectedId === col.id ? 'selected' : ''}`}
+                      onClick={() => { setSelectedId(col.id); setMode('view'); }}
+                    >
                 <div className="collab-status-indicator">●</div>
                 <div className="collab-info">
                   <span className="collab-name">{col.name}</span>

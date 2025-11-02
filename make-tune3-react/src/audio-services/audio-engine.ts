@@ -372,19 +372,27 @@ export class AudioEngine {
     }
     this.synchronizePlayers(1500, 0.005);
   } 
-  playPastStage(src: string, index: number){
+  async playPastStage(submissionSrc: string, backingSrc: string, index: number): Promise<void> {
     this.initAudioContext();
-    this.resumeIfSuspended();
-    this.loadSource(2, src);
-    this.player1.pause();
-    this.player2.play();
+    await this.resumeIfSuspended();
+    this.loadSource(1, submissionSrc);
+    this.loadSource(2, backingSrc);
+    await this.ensureLoaded(this.player1, submissionSrc);
+    await this.ensureLoaded(this.player2, backingSrc);
+    this.player1.currentTime = 0;
+    this.player2.currentTime = 0;
     this.state.playerController.pastStagePlayback = true;
+    this.state.playerController.playingFavourite = false;
     this.state.playerController.currentTrackId = index;
+    this.player1.playbackRate = 1;
+    this.player2.playbackRate = 1;
+    await Promise.all([
+      this.player1.play(),
+      this.player2.play()
+    ]);
     this.updateState({
-      player2: {
-        ...this.state.player2,
-        isPlaying: true
-      }
+      player1: { ...this.state.player1, isPlaying: true },
+      player2: { ...this.state.player2, isPlaying: true }
     });
   }
 
@@ -500,11 +508,7 @@ export class AudioEngine {
     player.currentTime = 0;
   }
   togglePlayback(): void {
-    if (!this.state.playerController.pastStagePlayback) {
-      this.toggleBoth();
-    } else {
-      this.toggleP2();
-    }
+    this.toggleBoth();
   }
   toggleP2(): void {
     this.initAudioContext();
