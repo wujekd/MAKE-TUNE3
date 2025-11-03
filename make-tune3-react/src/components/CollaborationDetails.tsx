@@ -3,6 +3,7 @@ import type { Collaboration, Project } from '../types/collaboration';
 import { CollaborationService } from '../services';
 import { CreateCollaboration } from './CreateCollaboration';
 import { CollaborationTimeline } from './CollaborationTimeline';
+import { ListPlayButton } from './ListPlayButton';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { useAudioStore, useAppStore } from '../stores';
 
@@ -113,25 +114,20 @@ export function CollaborationDetails({
         )}
 
         <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-          <button
+          <ListPlayButton
+            label="backing"
+            isPlaying={!!isPlaying}
+            isCurrentTrack={!!isCurrentBacking}
             disabled={!backingPath}
-            onClick={() => {
+            onPlay={() => {
               if (!backingPath) return;
               if (isCurrentBacking) {
-                if (isPlaying) {
-                  stopBackingPlayback();
-                } else {
-                  togglePlayPause();
-                }
+                togglePlayPause();
               } else {
                 playBackingTrack(backingPath, col.name || 'backing');
               }
             }}
-          >
-            {isCurrentBacking
-              ? (isPlaying ? 'pause backing' : 'resume backing')
-              : 'play backing'}
-          </button>
+          />
           <button disabled={!canEdit} onClick={() => onModeChange('edit')}>edit</button>
           <button
             disabled={col.status !== 'unpublished' || isPublishing}

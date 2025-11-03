@@ -7,6 +7,7 @@ import { MyProjects } from '../components/MyProjects';
 import { TagFilter } from '../components/TagFilter';
 import { Mixer1Channel } from '../components/Mixer1Channel';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { ListPlayButton } from '../components/ListPlayButton';
 import { useAudioStore } from '../stores';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { useAppStore } from '../stores/appStore';
@@ -191,31 +192,8 @@ export function DashboardView() {
                           />
                         )}
                         
-                        <div className="collab-info" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                            <span className="collab-name list__title">{c.name}</span>
-                            <button
-                              type="button"
-                              onClick={event => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                if (!hasBacking || !backingPath) return;
-                                if (isCurrentBacking) {
-                                  if (audioState?.player2.isPlaying) {
-                                    togglePlayPause();
-                                  } else {
-                                    togglePlayPause();
-                                  }
-                                } else {
-                                  playBackingTrack(backingPath, c.name || 'backing');
-                                }
-                              }}
-                              disabled={!hasBacking}
-                              style={{ fontSize: 12, position: 'relative', zIndex: 1 }}
-                            >
-                              {isCurrentBacking ? (audioState?.player2.isPlaying ? 'pause' : 'resume') : 'play backing'}
-                            </button>
-                          </div>
+                        <div className="collab-info" style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
+                          <span className="collab-name list__title">{c.name}</span>
                           <span className="collab-stage list__subtitle">{c.status}</span>
                           {c.tags && c.tags.length > 0 && (
                             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -235,6 +213,21 @@ export function DashboardView() {
                               ))}
                             </div>
                           )}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '12px' }}>
+                          <ListPlayButton
+                            isPlaying={audioState?.player2.isPlaying || false}
+                            isCurrentTrack={isCurrentBacking}
+                            disabled={!hasBacking}
+                            onPlay={() => {
+                              if (!hasBacking || !backingPath) return;
+                              if (isCurrentBacking) {
+                                togglePlayPause();
+                              } else {
+                                playBackingTrack(backingPath, c.name || 'backing');
+                              }
+                            }}
+                          />
                         </div>
                       </Link>
                     );
