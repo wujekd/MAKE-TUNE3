@@ -124,10 +124,14 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
       style={{
         filter: `brightness(${brightnessValue})`,
         boxShadow: `inset 0 0 ${glowIntensity}px rgba(255, 255, 255, ${currentGlowOpacity})`,
-        transition: 'filter 0.05s ease-out, box-shadow 0.05s ease-out'
+        transition: 'filter 0.05s ease-out, box-shadow 0.05s ease-out',
+        maxHeight: '100%',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column'
       }}
     >
-      <div className="mixer1-transport">
+      <div className="mixer1-transport" style={{ flexShrink: 0 }}>
         <div className="mixer1-transport-buttons">
           <button 
             id="mixer1-play-btn" 
@@ -162,7 +166,7 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
         </div>
       </div>
 
-      <div className="mixer1-time-wrapper">
+      <div className="mixer1-time-wrapper" style={{ flexShrink: 0 }}>
         <input
           type="range"
           className="time-slider mixer1-time-slider"
@@ -175,15 +179,15 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
         />
       </div>
 
-      <div className="mixer1-channel" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-        <div className="mixer1-meter">
+      <div className="mixer1-channel" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <div className="mixer1-meter" style={{ flexShrink: 0 }}>
           <AnalogVUMeter value={masterLevel} min={0} max={1} size={72} />
         </div>
-        <span className="mixer1-channel-label">master</span>
+        <span className="mixer1-channel-label" style={{ flexShrink: 0 }}>master</span>
         
-        <div style={{ flex: 1 }} />
+        <div style={{ flex: 1, minHeight: 0 }} />
         
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: isCompactMode ? 0 : 12 }}>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: isCompactMode ? 0 : 12, flexShrink: 0 }}>
           {isCompactMode ? (
             <Potentiometer
               value={state.master.volume}
@@ -221,11 +225,7 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
           </div>
         </div>
         
-        {isCompactMode && <div style={{ flex: 1 }} />}
-      </div>
-
-      <div className="mixer1-status">
-        {backingPreview ? `now playing: ${backingPreview.label}` : 'load a backing track to listen'}
+        {isCompactMode && <div style={{ flex: 1, minHeight: 0 }} />}
       </div>
     </section>
   );

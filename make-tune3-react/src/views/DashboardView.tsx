@@ -176,8 +176,8 @@ export function DashboardView() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        <div style={{ display: 'flex', flex: 1, minWidth: 0, gap: 10, minHeight: 0, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flex: 1, minWidth: 0, gap: 10, minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
           {/* <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}> */}
             <MyProjects />
           {/* </div> */}
@@ -190,6 +190,7 @@ export function DashboardView() {
               display: 'flex',
               flexDirection: 'column',
               minHeight: 0,
+              maxHeight: '100%',
               overflow: 'hidden',
               width: '50%'
             }}
@@ -295,7 +296,7 @@ export function DashboardView() {
             </div>
           </div>
         </div>
-        <div style={{ width: 140, flexShrink: 0, display: 'flex', height: '100%' }}>
+        <div style={{ width: 140, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
           <Mixer1Channel state={audioState} />
         </div>
       </div>

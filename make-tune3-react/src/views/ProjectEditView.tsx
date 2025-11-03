@@ -90,9 +90,9 @@ export function ProjectEditView() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
         {/* Manager - narrower width */}
-        <div className="project-history" style={{ width: '26%', maxWidth: 240, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div className="project-history" style={{ width: '26%', maxWidth: 240, display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: '100%' }}>
           <h4 className="project-history-title">collaboration manager</h4>
           <div className="collab-list" style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
             {loading && <div style={{ color: 'var(--white)' }}>loading...</div>}
@@ -121,13 +121,14 @@ export function ProjectEditView() {
           </div>
         </div>
         {/* Details + Mixer */}
-        <div style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
           <div className="project-history" style={{ 
             flex: 1,
             maxWidth: 'none', 
             display: 'flex', 
             flexDirection: 'column', 
             minHeight: 0,
+            maxHeight: '100%',
             overflow: 'hidden' // Contain overflow at this level
           }}>
             <h4 className="project-history-title">details</h4>
@@ -157,7 +158,7 @@ export function ProjectEditView() {
               </div>
             </div>
           </div>
-          <div style={{ width: 140, flexShrink: 0, display: 'flex', height: '100%' }}>
+          <div style={{ width: 140, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
             <Mixer1Channel state={audioState} />
           </div>
         </div>
