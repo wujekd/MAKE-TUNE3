@@ -2,6 +2,7 @@ import { ref, getDownloadURL } from 'firebase/storage';
 import { storage } from '../services/firebase';
 
 const urlCache = new Map<string, string>();
+const DEBUG_PERFORMANCE = true;
 
 export class AudioUrlUtils {
   static async resolveAudioUrl(path: string): Promise<string> {
@@ -11,11 +12,24 @@ export class AudioUrlUtils {
     if (!path.startsWith('collabs/')) return `/test-audio/${path}`;
     
     const cached = urlCache.get(path);
-    if (cached) return cached;
+    if (cached) {
+      if (DEBUG_PERFORMANCE) console.log('[AudioUrlUtils] Cache HIT:', path.substring(0, 50) + '...');
+      return cached;
+    }
     
-    const url = await getDownloadURL(ref(storage, path));
-    urlCache.set(path, url);
-    return url;
+    if (DEBUG_PERFORMANCE) {
+      console.log('[AudioUrlUtils] Cache MISS - fetching from Firebase:', path.substring(0, 50) + '...');
+      const start = performance.now();
+      const url = await getDownloadURL(ref(storage, path));
+      const duration = performance.now() - start;
+      console.log(`[AudioUrlUtils] Firebase fetch took ${duration.toFixed(0)}ms`);
+      urlCache.set(path, url);
+      return url;
+    } else {
+      const url = await getDownloadURL(ref(storage, path));
+      urlCache.set(path, url);
+      return url;
+    }
   }
 
   static clearCache(): void {

@@ -246,10 +246,26 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => {
       if (!engine) return;
 
       (async () => {
+        const startTime = performance.now();
         try {
           cleanupBackingPreview();
+          
+          // Measure URL resolution time
+          const urlResolveStart = performance.now();
           const resolved = await resolveAudioUrl(filePath);
+          const urlResolveTime = performance.now() - urlResolveStart;
+          
+          // Measure play start time
+          const playStart = performance.now();
           await engine.playBackingOnly(resolved);
+          const playTime = performance.now() - playStart;
+          
+          const totalTime = performance.now() - startTime;
+          console.log(`[usePlaybackStore] 🎵 Backing track play timing:
+  - URL resolution: ${urlResolveTime.toFixed(0)}ms
+  - Play start: ${playTime.toFixed(0)}ms
+  - Total: ${totalTime.toFixed(0)}ms`);
+          
           set({
             backingPreview: {
               label: label || decodeURIComponent(filePath.split('/').pop() || 'backing'),
