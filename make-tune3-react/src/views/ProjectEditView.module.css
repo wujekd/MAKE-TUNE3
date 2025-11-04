@@ -1,0 +1,114 @@
+.container {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.hero {
+  width: 100%;
+  margin-top: 7px;
+  min-height: 128px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--primary1-700), var(--primary1-900));
+  color: var(--white);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-soft);
+}
+
+.heroTitle {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.heroDescription {
+  opacity: 0.8;
+  font-size: 14px;
+}
+
+.heroMeta {
+  opacity: 0.7;
+  font-size: 11px;
+}
+
+.layout {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.managerColumn {
+  width: 26%;
+  max-width: 240px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.managerList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 8px;
+}
+
+.detailsArea {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.detailsColumn {
+  flex: 1;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.detailsPanel {
+  padding: 8px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.detailsScroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+.emptyState {
+  color: var(--white);
+  margin-top: 8px;
+}
+
+.mixerColumn {
+  width: 140px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}

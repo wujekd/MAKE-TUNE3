@@ -8,6 +8,7 @@ import '../components/ProjectHistory.css';
 import { Mixer } from '../components/Mixer';
 import { CollabData } from '../components/CollabData';
 import ProjectHistory from '../components/ProjectHistory';
+import { CollabViewShell } from '../components/CollabViewShell';
 import { CompletedCollaborationTimeline } from '../components/CompletedCollaborationTimeline';
 import { AudioUrlUtils } from '../utils/audioUrlUtils';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -138,128 +139,81 @@ export function CompletedView() {
 
   if (!audioCtx || !audioCtx.state) return <div>audio engine not available</div>;
   const state = audioCtx.state;
+  const headerLeft = (
+    <>
+      <div className="mv-header-col">
+        <div className="mv-title">{currentProject?.name || ''}</div>
+        <div className="mv-subtitle">project: {currentProject?.description || ''}</div>
+      </div>
+      <div className="mv-header-col">
+        <div className="mv-title">{currentCollaboration?.name || ''}</div>
+        <div className="mv-subtitle">collaboration: {currentCollaboration?.description || ''}</div>
+      </div>
+    </>
+  );
+
+  const headerRight = (
+    <>
+      <ProjectHistory />
+      <div className="card collab-timeline">
+        <div className="collab-timeline__inner">
+          <CompletedCollaborationTimeline
+            publishedAt={currentCollaboration?.publishedAt}
+            submissionCloseAt={(currentCollaboration as any)?.submissionCloseAt}
+            votingCloseAt={(currentCollaboration as any)?.votingCloseAt}
+            progress={displayProgress}
+          />
+        </div>
+      </div>
+    </>
+  );
+
+  const winnerCardClass = [
+    'collab-history-item',
+    isWinnerPlaying && audioCtx?.state.player1.isPlaying ? 'currently-playing' : '',
+    'winner-card'
+  ].filter(Boolean).join(' ');
 
   return (
-    <div className="main-container">
-      <div className="info-top mv-fixed">
-        <div className="mv-header-left">
-          <div className="mv-header-col">
-            <div className="mv-title">{currentProject?.name || ''}</div>
-            <div className="mv-subtitle">project: {currentProject?.description || ''}</div>
-          </div>
-          <div className="mv-header-col">
-            <div className="mv-title">{currentCollaboration?.name || ''}</div>
-            <div className="mv-subtitle">collaboration: {currentCollaboration?.description || ''}</div>
-          </div>
+    <CollabViewShell
+      headerClassName="mv-fixed"
+      headerLeft={headerLeft}
+      headerRight={headerRight}
+      mainClassName="active-playback"
+      mixer={state && <Mixer state={state} />}
+    >
+      <section className="favorites-section">
+        <div className="favorites-header">
+          <h2 className="favorites-title">Collaboration Results</h2>
         </div>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
-          <ProjectHistory />
-          <div
-            style={{
-              backgroundColor: 'var(--primary1-600)',
-              padding: '0.5rem',
-              borderRadius: '0.5rem',
-              boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.2)',
-              minWidth: '400px',
-              color: 'var(--white)',
-              border: '3px solid transparent'
-            }}
-          >
-            <div
-              style={{
-                backgroundColor: 'var(--primary1-700)',
-                padding: '0.75rem',
-                borderRadius: '0.25rem',
-                boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.1)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.75rem'
-              }}
-            >
-              <CompletedCollaborationTimeline
-                publishedAt={currentCollaboration?.publishedAt}
-                submissionCloseAt={(currentCollaboration as any)?.submissionCloseAt}
-                votingCloseAt={(currentCollaboration as any)?.votingCloseAt}
-                progress={displayProgress}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="submissions-section active-playback">
-        <div className="audio-player-section">
-          <section className="favorites-section">
-            <div className="favorites-header"><h2 className="favorites-title">Collaboration Results</h2></div>
-            <div className="favorites-container" style={{ justifyContent: 'center' }}>
-              <div 
-                className={`collab-history-item ${isWinnerPlaying && audioCtx?.state.player1.isPlaying ? 'currently-playing' : ''}`}
-                style={{
-                  padding: '0.5rem',
-                  minWidth: 280,
-                  maxWidth: 400,
-                  cursor: 'default',
-                  marginBottom: 0
-                }}
+        <div className="favorites-container favorites-container--center">
+          <div className={winnerCardClass}>
+            <div className="winner-card__inner">
+              <div className="winner-card__title">Winner</div>
+              <div className="winner-card__name">{currentCollaboration?.winnerUserName || 'Anonymous'}</div>
+              <button
+                onClick={playWinner}
+                disabled={!winner?.path}
+                className="play-button winner-card__play"
               >
-                <div
-                  style={{
-                    backgroundColor: 'var(--primary1-700)',
-                    padding: '1rem',
-                    borderRadius: '0.25rem',
-                    boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.1)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.75rem',
-                    alignItems: 'center'
-                  }}
-                >
-                  <div style={{ 
-                    color: 'var(--white)', 
-                    fontSize: '0.875rem', 
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    opacity: 0.9
-                  }}>
-                    Winner
-                  </div>
-                  <div style={{ 
-                    color: 'var(--accent1)', 
-                    fontSize: '1rem', 
-                    fontWeight: 600,
-                    textAlign: 'center'
-                  }}>
-                    {currentCollaboration?.winnerUserName || 'Anonymous'}
-                  </div>
-                  <button
-                    onClick={playWinner}
-                    disabled={!winner?.path}
-                    className="play-button"
-                    style={{ width: '100%', height: '48px', position: 'relative' }}
-                  >
-                    <div className="progress-bar" style={{ width: `${displayProgress}%` }}></div>
-                    <span className="play-icon">
-                      {isPlayingWinner ? (
-                        <LoadingSpinner size={16} />
-                      ) : (
-                        isWinnerPlaying && audioCtx?.state.player1.isPlaying ? '❚❚' : '▶'
-                      )}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
-          <div className="submissions-scroll" style={{ overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
-            <div className="row gap-16 wrap" style={{ justifyContent: 'center' }}>
-              <CollabData collab={currentCollaboration as any} />
+                <div className="progress-bar" style={{ width: `${displayProgress}%` }}></div>
+                <span className="play-icon">
+                  {isPlayingWinner ? (
+                    <LoadingSpinner size={16} />
+                  ) : (
+                    isWinnerPlaying && audioCtx?.state.player1.isPlaying ? '❚❚' : '▶'
+                  )}
+                </span>
+              </button>
             </div>
           </div>
         </div>
+      </section>
+      <div className="submissions-scroll submissions-scroll--centered">
+        <div className="row gap-16 wrap justify-center">
+          <CollabData collab={currentCollaboration as any} />
+        </div>
       </div>
-      {state && <Mixer state={state} />}
-    </div>
+    </CollabViewShell>
   );
 }
-

@@ -1,4 +1,4 @@
 .row { display: flex; }
 .gap-16 { gap: 16px; }
 .wrap { flex-wrap: wrap; }
-
+.justify-center { justify-content: center; }

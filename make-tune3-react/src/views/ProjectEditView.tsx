@@ -8,6 +8,7 @@ import { CollaborationDetails } from '../components/CollaborationDetails';
 import { Mixer1Channel } from '../components/Mixer1Channel';
 import { useAudioStore } from '../stores';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
+import styles from './ProjectEditView.module.css';
 
 export function ProjectEditView() {
   const { projectId } = useParams();
@@ -101,37 +102,30 @@ export function ProjectEditView() {
   }, [stopBackingPlayback]);
 
   return (
-    <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, height: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
-      <div style={{
-        width: '100%',
-        marginTop: 7,
-        minHeight: 128,
-        borderRadius: 12,
-        background: 'linear-gradient(135deg, var(--primary1-700), var(--primary1-900))',
-        color: 'var(--white)',
-        padding: 12,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 6,
-        flexShrink: 0
-      }}>
-        <div style={{ fontSize: 20, fontWeight: 700 }}>{project?.name || 'project'}</div>
-        <div style={{ opacity: 0.8, fontSize: 14 }}>{project?.description}</div>
-        <div style={{ opacity: 0.7, fontSize: 11 }}>
-          {project ? new Date((project as any).createdAt?.toMillis ? (project as any).createdAt.toMillis() : (project as any).createdAt).toLocaleString() : ''}
+    <div className={styles.container}>
+      <div className={styles.hero}>
+        <div className={styles.heroTitle}>{project?.name || 'project'}</div>
+        <div className={styles.heroDescription}>{project?.description}</div>
+        <div className={styles.heroMeta}>
+          {project
+            ? new Date(
+                (project as any).createdAt?.toMillis
+                  ? (project as any).createdAt.toMillis()
+                  : (project as any).createdAt
+              ).toLocaleString()
+            : ''}
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
-        {/* Manager - narrower width */}
-        <div className="project-history" style={{ width: '26%', maxWidth: 240, display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: '100%' }}>
+      <div className={styles.layout}>
+        <div className={`project-history ${styles.managerColumn}`}>
           <h4 className="project-history-title">collaboration manager</h4>
-          <div className="collab-list" style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
-            {loading && <div style={{ color: 'var(--white)' }}>loading...</div>}
-            {error && <div style={{ color: 'var(--white)' }}>{error}</div>}
+          <div className={`collab-list ${styles.managerList}`}>
+            {loading && <div className={styles.emptyState}>loading...</div>}
+            {error && <div className={styles.emptyState}>{error}</div>}
             {!loading && !error && (
               <>
-                <div 
+                <div
                   className={`collab-history-item ${mode === 'create' ? 'selected' : ''}`}
                   onClick={() => { setSelectedId(null); setMode('create'); }}
                 >
@@ -140,11 +134,11 @@ export function ProjectEditView() {
                   </div>
                 </div>
                 {sortedCollabs.length === 0 ? (
-                  <div style={{ color: 'var(--white)', marginTop: 8 }}>no collaborations yet</div>
+                  <div className={styles.emptyState}>no collaborations yet</div>
                 ) : (
                   sortedCollabs.map(col => (
-                    <div 
-                      key={col.id} 
+                    <div
+                      key={col.id}
                       className={`collab-history-item ${selectedId === col.id ? 'selected' : ''}`}
                       onClick={() => { setSelectedId(col.id); setMode('view'); }}
                     >
@@ -160,45 +154,24 @@ export function ProjectEditView() {
             )}
           </div>
         </div>
-        {/* Details + Mixer */}
-        <div style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
-          <div className="project-history" style={{ 
-            flex: 1,
-            maxWidth: 'none', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            minHeight: 0,
-            maxHeight: '100%',
-            overflow: 'hidden' // Contain overflow at this level
-          }}>
+        <div className={styles.detailsArea}>
+          <div className={`project-history ${styles.detailsColumn}`}>
             <h4 className="project-history-title">details</h4>
-            <div className="collab-list" style={{ 
-              padding: 8, 
-              flex: 1,
-              minHeight: 0, // Important for nested flex scroll
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden' // Contain overflow at this level too
-            }}>
-              <div style={{
-                flex: 1,
-                overflowY: 'auto',
-                overflowX: 'hidden',
-                width: '100%'
-              }}>
-              <CollaborationDetails
-                mode={mode}
-                selectedId={selectedId}
-                collabs={collabs}
-                project={project}
-                onModeChange={setMode}
-                onCollabsUpdate={setCollabs}
-                onSelectedIdChange={setSelectedId}
-              />
+            <div className={`collab-list ${styles.detailsPanel}`}>
+              <div className={styles.detailsScroll}>
+                <CollaborationDetails
+                  mode={mode}
+                  selectedId={selectedId}
+                  collabs={collabs}
+                  project={project}
+                  onModeChange={setMode}
+                  onCollabsUpdate={setCollabs}
+                  onSelectedIdChange={setSelectedId}
+                />
               </div>
             </div>
           </div>
-          <div style={{ width: 140, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
+          <div className={styles.mixerColumn}>
             <Mixer1Channel state={audioState} />
           </div>
         </div>

@@ -8,3 +8,8 @@ declare global {
     var firebaseDb: any;
     var firebaseStorage: any;
   }
+
+declare module '*.module.css' {
+  const classes: Record<string, string>;
+  export default classes;
+}

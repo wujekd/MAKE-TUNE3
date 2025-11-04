@@ -18,38 +18,6 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Primary colors */
-  --primary: #1b3031;
-  --primary1-400: #59a8a7;
-  --primary1-500: #3f8d8d;
-  --primary1-600: #307071;
-  --primary1-700: #2a595b;
-  --primary1-800: #25494a;
-  --primary1-900: #1b3031;
-  
-  /* Secondary colors */
-  --secondary: #2d5052;
-  
-  /* Contrast colors */
-  --contrast-600: #d55f21;
-  --contrast-700: #b1481d;
-  
-  /* Background colors */
-  --background: #3f7072;
-  --offblue: #488083;
-  
-  /* Utility colors */
-  --gray-300: #d1d5db;
-  --gray-500: #6b7280;
-  --slate-700: #334155;
-  --red-700: #b91c1c;
-  --yellow-900: #713f12;
-  
-  /* Common colors */
-  --white: #EEEEEE;
-  --bone: #F2EBE3;
-  --accent: #691313;
-  --warning: #8F3739;
 }
 
 a {

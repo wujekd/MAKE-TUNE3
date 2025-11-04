@@ -13,6 +13,7 @@ import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { useAppStore } from '../stores/appStore';
 import { AudioUrlUtils } from '../utils';
 import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
+import styles from './DashboardView.module.css';
 
 export function DashboardView() {
   const [allCollabs, setAllCollabs] = useState<Collaboration[]>([]);
@@ -144,26 +145,16 @@ export function DashboardView() {
   const pendingModeration = needsMod.length;
 
   return (
-    <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, height: '100%', boxSizing: 'border-box', overflow: 'hidden', background: 'var(--primary1-800)' }}>
-      <div style={{
-        width: '100%',
-        marginTop: 7,
-        minHeight: 128,
-        borderRadius: 12,
-        background: 'linear-gradient(135deg, var(--primary1-600), var(--primary1-900))',
-        color: 'var(--white)',
-        padding: 16,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        flexShrink: 0
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ fontSize: 13, opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.12em' }}>dashboard</div>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>here ill make some kinda collab recommendations based on user and collab tags i think...</div>
+    <div className={styles.container}>
+      <div className={styles.hero}>
+        <div className={styles.heroHeader}>
+          <div className={styles.heroIntro}>
+            <div className={styles.heroLabel}>dashboard</div>
+            <div className={styles.heroDescription}>
+              here ill make some kinda collab recommendations based on user and collab tags i think...
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <div className={styles.stats}>
             <StatCard value={totalCollabs} label="total collabs" />
             <StatCard value={filteredCount} label="visible" />
             <StatCard value={pendingModeration} label="pending mod" />
@@ -171,127 +162,87 @@ export function DashboardView() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', flex: 1, minWidth: 0, gap: 10, minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
-          {/* <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}> */}
-            <MyProjects />
-          {/* </div> */}
-          <div
-            className="project-history"
-            style={{
-              flex: 1,
-              minWidth: 0,
-              maxWidth: 'none',
-              display: 'flex',
-              flexDirection: 'column',
-              minHeight: 0,
-              maxHeight: '100%',
-              overflow: 'hidden',
-              width: '50%'
-            }}
-          >
+      <div className={styles.content}>
+        <div className={styles.mainSplit}>
+          <MyProjects />
+          <div className={`project-history ${styles.historyColumn}`}>
             <h4 className="project-history-title">collaborations</h4>
-            <div
-              style={{
-                padding: 8,
-                flex: 1,
-                minHeight: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-                overflow: 'hidden'
-              }}
-            >
+            <div className={styles.historyPanel}>
               <TagFilter selectedTags={selectedTags} onTagsChange={handleTagsChange} />
-              <div
-                className="collab-list"
-                style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}
-                aria-busy={!hasLoaded}
-              >
-                  {!hasLoaded && !error && (
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
-                      <LoadingSpinner size={24} />
-                    </div>
-                  )}
-                  {error && <div style={{ color: 'var(--white)' }}>{error}</div>}
-                  {hasLoaded && !error && filteredCollabs.length === 0 && (
-                    <div style={{ color: 'var(--white)' }}>
-                      {selectedTags.length > 0 ? 'no collaborations with selected tags' : 'no collaborations'}
-                    </div>
-                  )}
-                  {filteredCollabs.map(c => {
-                    const s = String(c.status || '').toLowerCase().trim();
-                    const id = encodeURIComponent(c.id);
-                    const to =
-                      s === 'submission' ? `/collab/${id}/submit` : s === 'completed' ? `/collab/${id}/completed` : `/collab/${id}`;
-                    const hasBacking = Boolean((c as any).backingTrackPath);
-                    const backingPath = (c as any).backingTrackPath as string | undefined;
-                    const isCurrentBacking = hasBacking && backingPreview?.path === backingPath;
-                    
-                    // Calculate progress for the overlay
-                    const displayProgress = isCurrentBacking && audioState?.player2.duration && audioState.player2.duration > 0
-                      ? ((audioState?.player2.currentTime ?? 0) / audioState.player2.duration) * 100
-                      : 0;
-                    
-                    return (
-                      <Link 
-                        key={c.id} 
-                        to={to} 
-                        className={`collab-history-item list__item ${isCurrentBacking ? 'currently-playing' : ''}`}
-                      >
-                        {/* Progress overlay - shrinks from right to left revealing background */}
-                        {isCurrentBacking && displayProgress > 0 && (
-                          <div 
-                            className="collab-progress-overlay" 
-                            style={{ width: `${100 - displayProgress}%` }}
-                          />
+              <div className={`collab-list ${styles.collabList}`} aria-busy={!hasLoaded}>
+                {!hasLoaded && !error && (
+                  <div className={styles.spinnerContainer}>
+                    <LoadingSpinner size={24} />
+                  </div>
+                )}
+                {error && <div className={styles.emptyState}>{error}</div>}
+                {hasLoaded && !error && filteredCollabs.length === 0 && (
+                  <div className={styles.emptyState}>
+                    {selectedTags.length > 0 ? 'no collaborations with selected tags' : 'no collaborations'}
+                  </div>
+                )}
+                {filteredCollabs.map(c => {
+                  const s = String(c.status || '').toLowerCase().trim();
+                  const id = encodeURIComponent(c.id);
+                  const to =
+                    s === 'submission' ? `/collab/${id}/submit` : s === 'completed' ? `/collab/${id}/completed` : `/collab/${id}`;
+                  const hasBacking = Boolean((c as any).backingTrackPath);
+                  const backingPath = (c as any).backingTrackPath as string | undefined;
+                  const isCurrentBacking = hasBacking && backingPreview?.path === backingPath;
+
+                  const displayProgress = isCurrentBacking && audioState?.player2.duration && audioState.player2.duration > 0
+                    ? ((audioState?.player2.currentTime ?? 0) / audioState.player2.duration) * 100
+                    : 0;
+
+                  return (
+                    <Link
+                      key={c.id}
+                      to={to}
+                      className={`collab-history-item list__item ${isCurrentBacking ? 'currently-playing' : ''}`}
+                    >
+                      {isCurrentBacking && displayProgress > 0 && (
+                        <div
+                          className="collab-progress-overlay"
+                          style={{ width: `${100 - displayProgress}%` }}
+                        />
+                      )}
+
+                      <div className={`collab-info ${styles.collabInfo}`}>
+                        <span className="collab-name list__title">{c.name}</span>
+                        <span className="collab-stage list__subtitle">{c.status}</span>
+                        {c.tags && c.tags.length > 0 && (
+                          <div className={styles.tagRow}>
+                            {c.tags.map((tag, i) => (
+                              <span key={i} className={styles.tagChip}>
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
                         )}
-                        
-                        <div className="collab-info" style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 0 }}>
-                          <span className="collab-name list__title">{c.name}</span>
-                          <span className="collab-stage list__subtitle">{c.status}</span>
-                          {c.tags && c.tags.length > 0 && (
-                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                              {c.tags.map((tag, i) => (
-                                <span
-                                  key={i}
-                                  style={{
-                                    fontSize: 11,
-                                    background: 'var(--primary1-600)',
-                                    padding: '2px 8px',
-                                    borderRadius: 8,
-                                    opacity: 0.8,
-                                  }}
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '12px' }}>
-                          <ListPlayButton
-                            isPlaying={audioState?.player2.isPlaying || false}
-                            isCurrentTrack={isCurrentBacking}
-                            disabled={!hasBacking}
-                            onPlay={() => {
-                              if (!hasBacking || !backingPath) return;
-                              if (isCurrentBacking) {
-                                togglePlayPause();
-                              } else {
-                                playBackingTrack(backingPath, c.name || 'backing');
-                              }
-                            }}
-                          />
-                        </div>
-                      </Link>
-                    );
-                  })}
+                      </div>
+                      <div className={styles.listPlay}>
+                        <ListPlayButton
+                          isPlaying={audioState?.player2.isPlaying || false}
+                          isCurrentTrack={isCurrentBacking}
+                          disabled={!hasBacking}
+                          onPlay={() => {
+                            if (!hasBacking || !backingPath) return;
+                            if (isCurrentBacking) {
+                              togglePlayPause();
+                            } else {
+                              playBackingTrack(backingPath, c.name || 'backing');
+                            }
+                          }}
+                        />
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           </div>
         </div>
-        <div style={{ width: 140, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
+        <div className={styles.mixerColumn}>
           <Mixer1Channel state={audioState} />
         </div>
       </div>
@@ -301,9 +252,9 @@ export function DashboardView() {
 
 function StatCard({ value, label }: { value: number; label: string }) {
   return (
-    <div style={{ minWidth: 90, textAlign: 'right' as const }}>
-      <div style={{ fontSize: 28, fontWeight: 700 }}>{value}</div>
-      <div style={{ fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.08em', opacity: 0.75 }}>{label}</div>
+    <div className={styles.statCard}>
+      <div className={styles.statValue}>{value}</div>
+      <div className={styles.statLabel}>{label}</div>
     </div>
   );
 }

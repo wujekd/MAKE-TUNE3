@@ -1,0 +1,171 @@
+.container {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: var(--primary1-800);
+}
+
+.hero {
+  width: 100%;
+  margin-top: 7px;
+  min-height: 128px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--primary1-600), var(--primary1-900));
+  color: var(--white);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-soft);
+}
+
+.heroHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.heroIntro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.heroLabel {
+  font-size: 13px;
+  opacity: 0.75;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.heroDescription {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.stats {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.content {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.mainSplit {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 10px;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.historyColumn {
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  width: 50%;
+}
+
+.historyPanel {
+  padding: 8px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.collabList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.spinnerContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+}
+
+.emptyState {
+  color: var(--white);
+}
+
+.tagRow {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tagChip {
+  font-size: 11px;
+  background: var(--primary1-600);
+  padding: 2px 8px;
+  border-radius: 8px;
+  opacity: 0.8;
+}
+
+.mixerColumn {
+  width: 140px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.statCard {
+  min-width: 90px;
+  text-align: right;
+}
+
+.statValue {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.statLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.75;
+}
+
+.collabInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.listPlay {
+  display: flex;
+  align-items: center;
+  padding-left: 12px;
+}
