@@ -11,12 +11,14 @@ import ProjectHistory from '../components/ProjectHistory';
 import { CollabViewShell } from '../components/CollabViewShell';
 import { CompletedCollaborationTimeline } from '../components/CompletedCollaborationTimeline';
 import { AudioUrlUtils } from '../utils/audioUrlUtils';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { useCollaborationLoader } from '../hooks/useCollaborationLoader';
+import { useStageRedirect } from '../hooks/useStageRedirect';
+import { WinnerCard } from '../components/WinnerCard';
 
 export function CompletedView() {
   const { collaborationId } = useParams();
   const { user } = useAppStore(s => s.auth);
-  const { currentCollaboration, currentProject, loadCollaboration, loadCollaborationAnonymousById } = useAppStore(s => s.collaboration);
+  const { currentCollaboration, currentProject } = useAppStore(s => s.collaboration);
   const audioCtx = useContext(AudioEngineContext);
   const engine = audioCtx?.engine;
   const navigate = useNavigate();
@@ -24,26 +26,13 @@ export function CompletedView() {
   const playInFlightRef = useRef(false);
   const winnerResolvedUrlRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (!collaborationId) return;
-    if (user) loadCollaboration(user.uid, collaborationId);
-    else loadCollaborationAnonymousById(collaborationId);
-  }, [collaborationId, user, loadCollaboration, loadCollaborationAnonymousById]);
-
-  // Redirect if collaboration is in wrong stage
-  useEffect(() => {
-    if (!currentCollaboration || !collaborationId) return;
-    
-    const collabStatus = currentCollaboration.status;
-    
-    if (collabStatus === 'submission') {
-      console.log('[CompletedView] Collaboration is in submission stage, redirecting...');
-      navigate(`/collab/${collaborationId}/submit`, { replace: true });
-    } else if (collabStatus === 'voting') {
-      console.log('[CompletedView] Collaboration is in voting stage, redirecting...');
-      navigate(`/collab/${collaborationId}`, { replace: true });
-    }
-  }, [currentCollaboration, collaborationId, navigate]);
+  useCollaborationLoader(collaborationId);
+  useStageRedirect({
+    expected: 'completed',
+    collaboration: currentCollaboration,
+    collabId: collaborationId,
+    navigate
+  });
 
   useEffect(() => {
     if (!engine) return;
@@ -188,24 +177,14 @@ export function CompletedView() {
         </div>
         <div className="favorites-container favorites-container--center">
           <div className={winnerCardClass}>
-            <div className="winner-card__inner">
-              <div className="winner-card__title">Winner</div>
-              <div className="winner-card__name">{currentCollaboration?.winnerUserName || 'Anonymous'}</div>
-              <button
-                onClick={playWinner}
-                disabled={!winner?.path}
-                className="play-button winner-card__play"
-              >
-                <div className="progress-bar" style={{ width: `${displayProgress}%` }}></div>
-                <span className="play-icon">
-                  {isPlayingWinner ? (
-                    <LoadingSpinner size={16} />
-                  ) : (
-                    isWinnerPlaying && audioCtx?.state.player1.isPlaying ? '❚❚' : '▶'
-                  )}
-                </span>
-              </button>
-            </div>
+            <WinnerCard
+              name={currentCollaboration?.winnerUserName || 'Anonymous'}
+              progressPercent={displayProgress}
+              isPlaying={isWinnerPlaying && audioCtx?.state.player1.isPlaying}
+              isLoading={isPlayingWinner}
+              disabled={!winner?.path}
+              onPlay={playWinner}
+            />
           </div>
         </div>
       </section>

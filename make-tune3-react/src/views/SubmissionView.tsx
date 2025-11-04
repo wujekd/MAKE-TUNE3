@@ -5,7 +5,6 @@ import { useAudioStore } from '../stores';
 import { Mixer } from '../components/Mixer';
 import './MainView.css';
 import ProjectHistory from '../components/ProjectHistory';
-import { CollabViewShell } from '../components/CollabViewShell';
 import '../components/ProjectHistory.css';
 import { CollabHeader } from '../components/CollabHeader';
 import { UserService, SubmissionService, ProjectService } from '../services';
@@ -16,7 +15,6 @@ import { ref, getDownloadURL } from 'firebase/storage';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
 import '../components/Favorites.css';
-import styles from './SubmissionView.module.css';
 
 export function SubmissionView() {
   const audioContext = useContext(AudioEngineContext);
@@ -231,40 +229,37 @@ export function SubmissionView() {
     return null;
   };
 
-  const headerLeft = (
-    <div className={styles.headerInfo}>
-      {projectInfo && (
-        <div className={styles.projectMeta}>
-          <div className={styles.projectName}>{projectInfo.name}</div>
-          {projectInfo.description && (
-            <div className={styles.projectDescription}>{projectInfo.description}</div>
-          )}
-        </div>
-      )}
-      <h2 className={styles.collabTitle}>{currentCollaboration?.name || 'Submission'}</h2>
-    </div>
-  );
-
-  const headerRight = (
-    <>
-      <ProjectHistory />
-      <div className={styles.headerActions}>
-        <CollabHeader collaboration={currentCollaboration} onStageChange={handleStageChange} />
-      </div>
-    </>
-  );
-
   return (
-    <CollabViewShell
-      headerClassName={styles.header}
-      headerLeft={headerLeft}
-      headerRight={headerRight}
-      mainClassName="active-playback"
-      mixer={state && <Mixer state={state} />}
-    >
-      <div className="submission-pane-wrapper">
-        {renderPane()}
+    <div className="main-container">
+      <div className="info-top" style={{ maxHeight: '200px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', width: '100%', gap: 16, height: '100%', minHeight: 0 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {projectInfo && (
+              <div style={{ marginBottom: 8, color: 'var(--white)', opacity: 0.85 }}>
+                <div style={{ fontSize: 20, fontWeight: 600 }}>{projectInfo.name}</div>
+                {projectInfo.description && (
+                  <div style={{ fontSize: 13, opacity: 0.75 }}>{projectInfo.description}</div>
+                )}
+              </div>
+            )}
+            <h2 style={{ color: 'var(--white)', margin: 0 }}>{currentCollaboration?.name || 'Submission'}</h2>
+          </div>
+          <ProjectHistory />
+          <div style={{ minWidth: 0 }}>
+            <CollabHeader collaboration={currentCollaboration} onStageChange={handleStageChange} />
+          </div>
+        </div>
       </div>
-    </CollabViewShell>
+
+      <div className="submissions-section active-playback">
+        <div className="audio-player-section">
+          <div className="submission-pane-wrapper">
+            {renderPane()}
+          </div>
+        </div>
+      </div>
+
+      {state && <Mixer state={state} />}
+    </div>
   );
 }

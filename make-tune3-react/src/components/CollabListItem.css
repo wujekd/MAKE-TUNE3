@@ -1,0 +1,20 @@
+.collab-history-item {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.collab-history-item.list__item {
+  color: inherit;
+  text-decoration: none;
+}
+
+.collab-list-item--button {
+  border: none;
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+}
+
+.collab-list-item__right {
+  display: flex;
+  align-items: center;
+  padding-left: 12px;
+}

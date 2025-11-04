@@ -10,9 +10,11 @@ import { Mixer } from '../components/Mixer';
 import { DebugInfo } from '../components/DebugInfo';
 import ProjectHistory from '../components/ProjectHistory';
 import { CollabHeader } from '../components/CollabHeader';
-import { storage } from '../services/firebase';
-import { ref, getDownloadURL } from 'firebase/storage';
 import { CollabViewShell } from '../components/CollabViewShell';
+import { useCollaborationLoader } from '../hooks/useCollaborationLoader';
+import { useStageRedirect } from '../hooks/useStageRedirect';
+import { useResolvedAudioUrl } from '../hooks/useResolvedAudioUrl';
+import { useAudioPreload } from '../hooks/useAudioPreload';
 
 export function VotingView() {
   const audioContext = useContext(AudioEngineContext);
@@ -42,7 +44,6 @@ export function VotingView() {
     return <div>Audio engine not available</div>;
   }
   const { engine, state } = audioContext;
-  const pendingBackingUrlRef = useRef<string>('');
   const stageCheckInFlightRef = useRef(false);
 
   // read collabId from url
@@ -52,30 +53,16 @@ export function VotingView() {
     return match ? decodeURIComponent(match[1]) : null;
   }, [location.pathname]);
 
-  // load collaboration data based on url and auth
-  useEffect(() => {
-    if (!collabId) return;
-    if (user) {
-      loadCollaboration(user.uid, collabId);
-    } else {
-      loadCollaborationAnonymousById(collabId);
-    }
-  }, [collabId, user, loadCollaboration, loadCollaborationAnonymousById]);
+  useCollaborationLoader(collabId);
+  useStageRedirect({
+    expected: 'voting',
+    collaboration: currentCollaboration,
+    collabId: collabId ?? undefined,
+    navigate
+  });
 
-  // Redirect if collaboration is in wrong stage
-  useEffect(() => {
-    if (!currentCollaboration || !collabId) return;
-    
-    const collabStatus = currentCollaboration.status;
-    
-    if (collabStatus === 'submission') {
-      console.log('[VotingView] Collaboration is in submission stage, redirecting...');
-      navigate(`/collab/${collabId}/submit`, { replace: true });
-    } else if (collabStatus === 'completed') {
-      console.log('[VotingView] Collaboration is in completed stage, redirecting...');
-      navigate(`/collab/${collabId}/completed`, { replace: true });
-    }
-  }, [currentCollaboration, collabId, navigate]);
+  const { url: backingUrl } = useResolvedAudioUrl(backingTrack?.filePath);
+  useAudioPreload(backingUrl);
 
   useEffect(() => {
     if (!engine) return;
@@ -111,43 +98,6 @@ export function VotingView() {
     engine.setTrackListenedCallback(onListened, 7, isListened);
     return () => {
       engine.clearTrackListenedCallback();
-    };
-  }, [engine]);
-
-  // Resolve and preload backing track for faster first play
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!engine) return;
-      const path = backingTrack?.filePath || '';
-      if (!path) return;
-      try {
-        let url = '';
-        if (path.startsWith('/test-audio/')) url = path;
-        else if (!path.startsWith('collabs/')) url = `/test-audio/${path}`;
-        else url = await getDownloadURL(ref(storage, path));
-        if (!cancelled && url) {
-          pendingBackingUrlRef.current = url;
-          engine.preloadBacking(url);
-        }
-      } catch {}
-    })();
-    return () => { cancelled = true; };
-  }, [engine, backingTrack?.filePath]);
-
-  // Fallback: on first user gesture after refresh, unlock and re-preload backing
-  useEffect(() => {
-    if (!engine) return;
-    const handler = async () => {
-      await engine.unlock?.();
-      const url = pendingBackingUrlRef.current;
-      if (url) engine.preloadBacking(url);
-    };
-    window.addEventListener('pointerdown', handler, { once: true });
-    window.addEventListener('keydown', handler, { once: true });
-    return () => {
-      window.removeEventListener('pointerdown', handler as any);
-      window.removeEventListener('keydown', handler as any);
     };
   }, [engine]);
 

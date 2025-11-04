@@ -11,8 +11,9 @@ import { ListPlayButton } from '../components/ListPlayButton';
 import { useAudioStore } from '../stores';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { useAppStore } from '../stores/appStore';
-import { AudioUrlUtils } from '../utils';
 import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
+import { CollabListItem } from '../components/CollabListItem';
+import { useCollabBackingsPrefetch } from '../hooks/useCollabBackingsPrefetch';
 import styles from './DashboardView.module.css';
 
 export function DashboardView() {
@@ -22,13 +23,13 @@ export function DashboardView() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [prefetchedUrls, setPrefetchedUrls] = useState<string[]>([]);
   const audioState = useAudioStore(s => s.state);
   const playBackingTrack = usePlaybackStore(s => s.playBackingTrack);
   const stopBackingPlayback = usePlaybackStore(s => s.stopBackingPlayback);
   const backingPreview = usePlaybackStore(s => s.backingPreview);
   const togglePlayPause = useAppStore(s => s.playback.togglePlayPause);
 
+  const prefetchedUrls = useCollabBackingsPrefetch(filteredCollabs);
   usePrefetchAudio(prefetchedUrls[0]);
   usePrefetchAudio(prefetchedUrls[1]);
   usePrefetchAudio(prefetchedUrls[2]);
@@ -78,53 +79,6 @@ export function DashboardView() {
       setFilteredCollabs(filtered);
     }
   }, [selectedTags, allCollabs]);
-
-  // Prefetch Firebase URLs for visible collabs (Issue #1: URL Resolution Bottleneck)
-  useEffect(() => {
-    if (filteredCollabs.length === 0) return;
-
-    let cancelled = false;
-
-    const prefetchUrls = async () => {
-      const urls: string[] = [];
-      
-      // Prefetch first 10 visible collabs with backing tracks
-      const collabsToPrefetch = filteredCollabs
-        .filter(c => (c as any).backingTrackPath)
-        .slice(0, 10);
-
-      if (collabsToPrefetch.length > 0) {
-        console.log(`[DashboardView] 🚀 Prefetching Firebase URLs for ${collabsToPrefetch.length} collabs...`);
-        const startTime = performance.now();
-
-        for (const collab of collabsToPrefetch) {
-          if (cancelled) break;
-          const backingPath = (collab as any).backingTrackPath;
-          if (backingPath) {
-            try {
-              // This populates the AudioUrlUtils cache
-              const url = await AudioUrlUtils.resolveAudioUrl(backingPath);
-              urls.push(url);
-            } catch (err) {
-              console.warn('[DashboardView] Failed to prefetch URL for:', backingPath, err);
-            }
-          }
-        }
-
-        if (!cancelled) {
-          const totalTime = performance.now() - startTime;
-          console.log(`[DashboardView] ✅ Prefetched ${urls.length} URLs in ${totalTime.toFixed(0)}ms`);
-          setPrefetchedUrls(urls);
-        }
-      }
-    };
-
-    prefetchUrls();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [filteredCollabs]);
 
   const handleTagsChange = (tagKeys: string[]) => {
     setSelectedTags(tagKeys);
@@ -195,32 +149,15 @@ export function DashboardView() {
                     : 0;
 
                   return (
-                    <Link
+                    <CollabListItem
                       key={c.id}
                       to={to}
-                      className={`collab-history-item list__item ${isCurrentBacking ? 'currently-playing' : ''}`}
-                    >
-                      {isCurrentBacking && displayProgress > 0 && (
-                        <div
-                          className="collab-progress-overlay"
-                          style={{ width: `${100 - displayProgress}%` }}
-                        />
-                      )}
-
-                      <div className={`collab-info ${styles.collabInfo}`}>
-                        <span className="collab-name list__title">{c.name}</span>
-                        <span className="collab-stage list__subtitle">{c.status}</span>
-                        {c.tags && c.tags.length > 0 && (
-                          <div className={styles.tagRow}>
-                            {c.tags.map((tag, i) => (
-                              <span key={i} className={styles.tagChip}>
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div className={styles.listPlay}>
+                      title={c.name}
+                      subtitle={c.status}
+                      isActive={isCurrentBacking}
+                      progressPercent={isCurrentBacking ? displayProgress : undefined}
+                      listVariant
+                      rightSlot={
                         <ListPlayButton
                           isPlaying={audioState?.player2.isPlaying || false}
                           isCurrentTrack={isCurrentBacking}
@@ -234,8 +171,18 @@ export function DashboardView() {
                             }
                           }}
                         />
-                      </div>
-                    </Link>
+                      }
+                    >
+                      {c.tags && c.tags.length > 0 && (
+                        <div className={styles.tagRow}>
+                          {c.tags.map((tag, i) => (
+                            <span key={i} className={styles.tagChip}>
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </CollabListItem>
                   );
                 })}
               </div>

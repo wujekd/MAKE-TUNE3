@@ -8,6 +8,7 @@ import { CollaborationDetails } from '../components/CollaborationDetails';
 import { Mixer1Channel } from '../components/Mixer1Channel';
 import { useAudioStore } from '../stores';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
+import { CollabListItem } from '../components/CollabListItem';
 import styles from './ProjectEditView.module.css';
 
 export function ProjectEditView() {
@@ -125,29 +126,26 @@ export function ProjectEditView() {
             {error && <div className={styles.emptyState}>{error}</div>}
             {!loading && !error && (
               <>
-                <div
-                  className={`collab-history-item ${mode === 'create' ? 'selected' : ''}`}
-                  onClick={() => { setSelectedId(null); setMode('create'); }}
-                >
-                  <div className="collab-info">
-                    <span className="collab-name">+ add collaboration</span>
-                  </div>
-                </div>
+                <CollabListItem
+                  title="+ add collaboration"
+                  onClick={() => {
+                    setSelectedId(null);
+                    setMode('create');
+                  }}
+                  isSelected={mode === 'create'}
+                />
                 {sortedCollabs.length === 0 ? (
                   <div className={styles.emptyState}>no collaborations yet</div>
                 ) : (
                   sortedCollabs.map(col => (
-                    <div
+                    <CollabListItem
                       key={col.id}
-                      className={`collab-history-item ${selectedId === col.id ? 'selected' : ''}`}
+                      title={col.name}
+                      subtitle={col.status}
+                      statusIndicator="●"
+                      isSelected={selectedId === col.id}
                       onClick={() => { setSelectedId(col.id); setMode('view'); }}
-                    >
-                      <div className="collab-status-indicator">●</div>
-                      <div className="collab-info">
-                        <span className="collab-name">{col.name}</span>
-                        <span className="collab-stage">{col.status}</span>
-                      </div>
-                    </div>
+                    />
                   ))
                 )}
               </>

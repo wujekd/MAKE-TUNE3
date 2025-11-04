@@ -1,3 +1,3 @@
 export const DEBUG_ALLOW_MULTIPLE_SUBMISSIONS = true;
 export const MAX_SUBMISSION_FILE_SIZE = 131072000;
-export const REFRESH_INTERVAL_MS = 15_000; // stage update timer in collab timeline component
+export const REFRESH_INTERVAL_MS = 10_000; // stage update timer in collab timeline component
