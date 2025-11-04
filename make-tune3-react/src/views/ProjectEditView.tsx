@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import type { Project, Collaboration } from '../types/collaboration';
 import { ProjectService, CollaborationService } from '../services';
@@ -22,6 +22,14 @@ export function ProjectEditView() {
   const [initialSelectionApplied, setInitialSelectionApplied] = useState(false);
   const audioState = useAudioStore(s => s.state);
   const stopBackingPlayback = usePlaybackStore(s => s.stopBackingPlayback);
+
+  const sortedCollabs = useMemo(() => {
+    return [...collabs].sort((a, b) => {
+      const aTime = (a as any).createdAt?.toMillis ? (a as any).createdAt.toMillis() : 0;
+      const bTime = (b as any).createdAt?.toMillis ? (b as any).createdAt.toMillis() : 0;
+      return bTime - aTime;
+    });
+  }, [collabs]);
 
   useEffect(() => {
     let mounted = true;
@@ -47,19 +55,43 @@ export function ProjectEditView() {
 
   useEffect(() => {
     if (initialSelectionApplied) return;
+    if (loading || collabs.length === 0) return;
+
     const collabParam = searchParams.get('collab');
-    if (!collabParam) {
+    
+    if (collabParam) {
+      const match = collabs.find(c => c.id === collabParam);
+      if (match) {
+        setSelectedId(collabParam);
+        setMode('view');
+        setInitialSelectionApplied(true);
+        return;
+      }
+    }
+
+    const activeCollab = collabs.find(c => 
+      c.status !== 'unpublished' && c.status !== 'completed'
+    );
+
+    if (activeCollab) {
+      setSelectedId(activeCollab.id);
+      setMode('view');
       setInitialSelectionApplied(true);
       return;
     }
-    const match = collabs.find(c => c.id === collabParam);
-    if (match) {
-      setSelectedId(collabParam);
+
+    const sortedCollabs = [...collabs].sort((a, b) => {
+      const aTime = (a as any).createdAt?.toMillis ? (a as any).createdAt.toMillis() : 0;
+      const bTime = (b as any).createdAt?.toMillis ? (b as any).createdAt.toMillis() : 0;
+      return bTime - aTime;
+    });
+
+    if (sortedCollabs.length > 0) {
+      setSelectedId(sortedCollabs[0].id);
       setMode('view');
-      setInitialSelectionApplied(true);
-    } else if (!loading) {
-      setInitialSelectionApplied(true);
     }
+
+    setInitialSelectionApplied(true);
   }, [collabs, searchParams, initialSelectionApplied, loading]);
 
   useEffect(() => {
@@ -97,27 +129,35 @@ export function ProjectEditView() {
           <div className="collab-list" style={{ flex: 1, overflowY: 'auto', padding: '6px 8px' }}>
             {loading && <div style={{ color: 'var(--white)' }}>loading...</div>}
             {error && <div style={{ color: 'var(--white)' }}>{error}</div>}
-            {!loading && !error && collabs.length === 0 && (
-              <div style={{ color: 'var(--white)' }}>no collaborations yet</div>
-            )}
-                  {collabs.map(col => (
+            {!loading && !error && (
+              <>
+                <div 
+                  className={`collab-history-item ${mode === 'create' ? 'selected' : ''}`}
+                  onClick={() => { setSelectedId(null); setMode('create'); }}
+                >
+                  <div className="collab-info">
+                    <span className="collab-name">+ add collaboration</span>
+                  </div>
+                </div>
+                {sortedCollabs.length === 0 ? (
+                  <div style={{ color: 'var(--white)', marginTop: 8 }}>no collaborations yet</div>
+                ) : (
+                  sortedCollabs.map(col => (
                     <div 
                       key={col.id} 
                       className={`collab-history-item ${selectedId === col.id ? 'selected' : ''}`}
                       onClick={() => { setSelectedId(col.id); setMode('view'); }}
                     >
-                <div className="collab-status-indicator">●</div>
-                <div className="collab-info">
-                  <span className="collab-name">{col.name}</span>
-                  <span className="collab-stage">{col.status}</span>
-                </div>
-              </div>
-            ))}
-            <div className="collab-history-item" onClick={() => { setSelectedId(null); setMode('create'); }}>
-              <div className="collab-info">
-                <span className="collab-name">+ add collaboration</span>
-              </div>
-            </div>
+                      <div className="collab-status-indicator">●</div>
+                      <div className="collab-info">
+                        <span className="collab-name">{col.name}</span>
+                        <span className="collab-stage">{col.status}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </>
+            )}
           </div>
         </div>
         {/* Details + Mixer */}

@@ -12,6 +12,7 @@ export function usePrefetchAudio(src?: string) {
     audioRef.current = audio;
     const onCanPlay = () => {
       /* ready */
+      console.log("onCanPlay loaded in track: " + src);
     };
     const onError = () => {
       /* ignore */

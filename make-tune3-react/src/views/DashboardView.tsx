@@ -28,11 +28,6 @@ export function DashboardView() {
   const backingPreview = usePlaybackStore(s => s.backingPreview);
   const togglePlayPause = useAppStore(s => s.playback.togglePlayPause);
 
-  // Prefetch audio for first 3 visible items with backing tracks
-  const firstCollab = filteredCollabs.find(c => (c as any).backingTrackPath);
-  const secondCollab = filteredCollabs.slice(1).find(c => (c as any).backingTrackPath);
-  const thirdCollab = filteredCollabs.slice(2).find(c => (c as any).backingTrackPath);
-  
   usePrefetchAudio(prefetchedUrls[0]);
   usePrefetchAudio(prefetchedUrls[1]);
   usePrefetchAudio(prefetchedUrls[2]);

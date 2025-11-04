@@ -31,10 +31,32 @@ if theres a mix uploaded that mix will be played and optionally original track +
 ~~~~~~~~~~
 
 ## administration system
-v - only allow admins to admin paths
+v - only allow admins to admin paths 
 v - add report submission (offensive etc) + view to review reports
 
 ~~~~
 ## The Real Solution to the audio sync problem:
 deactivate play buttons untill the item link not fetched!!!!
 WOW, pragmatic innit :D
+£££ OR ||
+check if generating the links server side isnt a better idea ( if thats possible then its clearly more efficien )
+§§§§
+
+Master plan:
+- minimal fixes to the exsisting UX:
+        add collabListProgressionBar to display current collabs state in my collabs
+        clear up on hover colors;
+        make sure the mental path to goal is always clear and that all the affordables have their signifiers
+- organise (and urderstand lol) the styling
+- get feedback from the ux ppl
+- implement improvements
+- release a beta version
+
+
+IDEAS:
+create a rag chatbot that will answer the questions about the system. 
+improve accessibility! ( blind ppl are often very good at music )
+
+
+
+Todo list before showing the system to the ux people
