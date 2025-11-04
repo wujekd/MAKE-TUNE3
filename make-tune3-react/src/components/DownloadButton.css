@@ -1,0 +1,103 @@
+.download-button-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.download-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--contrast-600);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--contrast-600);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.download-button:hover:not(.disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--contrast-500);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.download-button.success {
+  background: var(--contrast-600);
+  border-color: var(--contrast-600);
+  color: var(--white);
+}
+
+.download-button.error {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: rgba(239, 68, 68, 1);
+}
+
+.download-button.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.download-button--compact {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+.download-button--compact.with-label {
+  width: auto;
+  min-width: 70px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  gap: 6px;
+}
+
+.download-button--full {
+  width: 100%;
+  padding: 12px 20px;
+  border-radius: 8px;
+  gap: 10px;
+  font-size: 14px;
+  min-height: 44px;
+}
+
+.download-button__label {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.download-button__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.download-button--full .download-button__icon {
+  font-size: 16px;
+}
+
+.download-button__text {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.download-button__error-message {
+  padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  color: var(--white);
+  font-size: 13px;
+  text-align: center;
+}
+

@@ -33,3 +33,8 @@ if theres a mix uploaded that mix will be played and optionally original track +
 ## administration system
 v - only allow admins to admin paths
 v - add report submission (offensive etc) + view to review reports
+
+~~~~
+## The Real Solution to the audio sync problem:
+deactivate play buttons untill the item link not fetched!!!!
+WOW, pragmatic innit :D

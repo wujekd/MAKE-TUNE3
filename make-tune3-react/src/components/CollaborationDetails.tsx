@@ -4,6 +4,7 @@ import { CollaborationService } from '../services';
 import { CreateCollaboration } from './CreateCollaboration';
 import { CollaborationTimeline } from './CollaborationTimeline';
 import { ListPlayButton } from './ListPlayButton';
+import { DownloadButton } from './DownloadButton';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { useAudioStore, useAppStore } from '../stores';
 
@@ -128,6 +129,36 @@ export function CollaborationDetails({
               }
             }}
           />
+          <DownloadButton
+            label="backing"
+            variant="compact"
+            disabled={!backingPath}
+            onDownload={async () => {
+              if (!backingPath) return;
+              const { storage } = await import('../services/firebase');
+              const { ref, getBlob } = await import('firebase/storage');
+              let filename = backingPath.split('/').pop() || 'backing';
+              if (backingPath.startsWith('collabs/')) {
+                const storageRef = ref(storage, backingPath);
+                const blob = await getBlob(storageRef);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+              } else {
+                const a = document.createElement('a');
+                a.href = backingPath;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+              }
+            }}
+          />
           <button disabled={!canEdit} onClick={() => onModeChange('edit')}>edit</button>
           <button
             disabled={col.status !== 'unpublished' || isPublishing}
@@ -173,41 +204,37 @@ export function CollaborationDetails({
           >
             delete
           </button>
-          <button
+          <DownloadButton
+            label="winner"
+            variant="compact"
             disabled={col.status !== 'completed' || !(col as any).winnerPath}
-            onClick={async () => {
+            onDownload={async () => {
               const path = (col as any).winnerPath as string | undefined;
-              if (!path) return;
-              try {
-                const { storage } = await import('../services/firebase');
-                const { ref, getBlob } = await import('firebase/storage');
-                let filename = path.split('/').pop() || 'winner';
-                if (path.startsWith('collabs/')) {
-                  const storageRef = ref(storage, path);
-                  const blob = await getBlob(storageRef);
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = filename;
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
-                  URL.revokeObjectURL(url);
-                } else {
-                  const a = document.createElement('a');
-                  a.href = path;
-                  a.download = filename;
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
-                }
-              } catch (e) {
-                alert('could not download winner');
+              if (!path) throw new Error('No winner path available');
+              const { storage } = await import('../services/firebase');
+              const { ref, getBlob } = await import('firebase/storage');
+              let filename = path.split('/').pop() || 'winner';
+              if (path.startsWith('collabs/')) {
+                const storageRef = ref(storage, path);
+                const blob = await getBlob(storageRef);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+              } else {
+                const a = document.createElement('a');
+                a.href = path;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
               }
             }}
-          >
-            download winner
-          </button>
+          />
         </div>
         
         {/* Publish feedback messages */}
