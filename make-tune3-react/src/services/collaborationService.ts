@@ -36,13 +36,18 @@ export class CollaborationService {
   static async getCollaboration(collaborationId: CollaborationId): Promise<Collaboration | null> {
     const docRef = doc(db, COLLECTIONS.COLLABORATIONS, collaborationId);
     const docSnap = await getDoc(docRef);
-    
+    console.log("GET COLLAB TRIGGERED");
     if (!docSnap.exists()) {
       return null;
     }
 
-    const base = { ...(docSnap.data() as any), id: docSnap.id } as Collaboration;
+    return { ...(docSnap.data() as any), id: docSnap.id } as Collaboration;
+  }
 
+  static async getCollaborationWithDetails(collaborationId: CollaborationId): Promise<Collaboration | null> {
+    const base = await CollaborationService.getCollaboration(collaborationId);
+    if (!base) return null;
+    console.log("GET COLLAB WITH DETAILS TRIGGERED")
     try {
       const detailRef = doc(db, COLLECTIONS.COLLABORATION_DETAILS, collaborationId);
       const detailSnap = await getDoc(detailRef);
@@ -50,12 +55,12 @@ export class CollaborationService {
         const detail = detailSnap.data() as CollaborationDetail;
         return {
           ...base,
-          submissions: Array.isArray(detail.submissions) ? detail.submissions : base.submissions,
+          submissions: Array.isArray(detail.submissions) ? detail.submissions : (base as any).submissions,
           submissionPaths: Array.isArray(detail.submissionPaths) ? detail.submissionPaths : (base as any).submissionPaths
         } as Collaboration;
       }
     } catch (err) {
-      // ignore detail fetch errors and fallback to base data
+      console.log("ERROR KURWA");
     }
 
     return base;

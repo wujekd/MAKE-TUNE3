@@ -9,7 +9,7 @@ export class DataService {
     userProfile: UserProfile | null;
   }> {
     const [collaboration, userCollaboration, userProfile] = await Promise.all([
-      CollaborationService.getCollaboration(collaborationId),
+      CollaborationService.getCollaborationWithDetails(collaborationId),
       UserService.getUserCollaboration(userId, collaborationId),
       UserService.getUserProfile(userId),
     ]);
@@ -19,8 +19,14 @@ export class DataService {
   static async loadCollaborationDataAnonymous(collaborationId: CollaborationId): Promise<{
     collaboration: Collaboration | null;
   }> {
+    const collaboration = await CollaborationService.getCollaborationWithDetails(collaborationId);
+    return { collaboration };
+  }
+
+  static async loadCollaborationStatus(collaborationId: CollaborationId): Promise<{
+    collaboration: Collaboration | null;
+  }> {
     const collaboration = await CollaborationService.getCollaboration(collaborationId);
     return { collaboration };
   }
 }
-

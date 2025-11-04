@@ -19,7 +19,7 @@ import '../components/Favorites.css';
 export function SubmissionView() {
   const audioContext = useContext(AudioEngineContext);
   const { user } = useAppStore(s => s.auth);
-  const { currentCollaboration, loadCollaboration, loadCollaborationAnonymousById } = useAppStore(s => s.collaboration);
+  const { currentCollaboration, refreshCollaborationStatus } = useAppStore(s => s.collaboration);
   const { collaborationId } = useParams();
 
   const [backingUrl, setBackingUrl] = useState<string>('');
@@ -73,9 +73,8 @@ export function SubmissionView() {
 
   useEffect(() => {
     if (!collaborationId) return;
-    if (user) loadCollaboration(user.uid, collaborationId);
-    else loadCollaborationAnonymousById(collaborationId);
-  }, [collaborationId, user, loadCollaboration, loadCollaborationAnonymousById]);
+    refreshCollaborationStatus(collaborationId);
+  }, [collaborationId, refreshCollaborationStatus]);
 
   // Redirect if collaboration is in wrong stage
   useEffect(() => {
@@ -101,11 +100,7 @@ export function SubmissionView() {
     try {
       const current = useAppStore.getState().collaboration.currentCollaboration;
       if (!current) return;
-      if (user) {
-        await loadCollaboration(user.uid, current.id);
-      } else {
-        await loadCollaborationAnonymousById(current.id);
-      }
+      await refreshCollaborationStatus(current.id);
       const updated = useAppStore.getState().collaboration.currentCollaboration;
       if (updated?.status === nextStatus) {
         if (nextStatus === 'voting') {
@@ -121,7 +116,7 @@ export function SubmissionView() {
     } finally {
       stageCheckInFlightRef.current = false;
     }
-  }, [user, loadCollaboration, loadCollaborationAnonymousById, navigate]);
+  }, [refreshCollaborationStatus, navigate]);
 
   useEffect(() => {
     (async () => {

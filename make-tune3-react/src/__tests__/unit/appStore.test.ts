@@ -42,7 +42,8 @@ vi.mock('../../services', async (importOriginal) => {
     },
     DataService: {
       loadCollaborationData: vi.fn(),
-      loadCollaborationDataAnonymous: vi.fn()
+      loadCollaborationDataAnonymous: vi.fn(),
+      loadCollaborationStatus: vi.fn()
     },
     SubmissionService: {
       setSubmissionModeration: vi.fn()
@@ -90,6 +91,7 @@ describe('AppStore - Collaboration Slice', () => {
         loadCollaboration: useAppStore.getState().collaboration.loadCollaboration,
         loadCollaborationAnonymous: useAppStore.getState().collaboration.loadCollaborationAnonymous,
         loadCollaborationAnonymousById: useAppStore.getState().collaboration.loadCollaborationAnonymousById,
+        refreshCollaborationStatus: useAppStore.getState().collaboration.refreshCollaborationStatus,
         loadProject: useAppStore.getState().collaboration.loadProject,
         isTrackListened: useAppStore.getState().collaboration.isTrackListened,
         isTrackFavorite: useAppStore.getState().collaboration.isTrackFavorite,

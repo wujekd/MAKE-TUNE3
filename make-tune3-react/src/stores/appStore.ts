@@ -80,6 +80,7 @@ interface AppState {
     loadCollaboration: (userId: string, collaborationId: string) => Promise<void>;
     loadCollaborationAnonymous: () => Promise<void>;
     loadCollaborationAnonymousById: (collaborationId: string) => Promise<void>;
+    refreshCollaborationStatus: (collaborationId: string) => Promise<void>;
     loadProject: (projectId: string) => Promise<void>;
     
     // computed
@@ -366,6 +367,24 @@ export const useAppStore = create<AppState>((set, get) => ({
         if (DEBUG_LOGS) console.error('error message:', error?.message);
         if (DEBUG_LOGS) console.error('error code:', error?.code);
         set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
+      }
+    },
+
+    refreshCollaborationStatus: async (collaborationId: string) => {
+      try {
+        const { collaboration } = await DataService.loadCollaborationStatus(collaborationId);
+        if (!collaboration) return;
+        set(state => {
+          const prev = state.collaboration.currentCollaboration || {} as Collaboration;
+          return {
+            collaboration: {
+              ...state.collaboration,
+              currentCollaboration: { ...prev, ...collaboration }
+            }
+          };
+        });
+      } catch (error) {
+        if (DEBUG_LOGS) console.warn('refreshCollaborationStatus failed', error);
       }
     },
 
