@@ -34,6 +34,7 @@ if theres a mix uploaded that mix will be played and optionally original track +
 v - only allow admins to admin paths 
 v - add report submission (offensive etc) + view to review reports
 
+## the fucking audio delay
 ~~~~
 ## The Real Solution to the audio sync problem:
 deactivate play buttons untill the item link not fetched!!!!
@@ -41,6 +42,12 @@ WOW, pragmatic innit :D
 £££ OR ||
 check if generating the links server side isnt a better idea ( if thats possible then its clearly more efficien )
 §§§§
+the real real solution: the problem was never there lol
+non invasively test storing the token urls in the database
+@@@@@@@
+
+
+
 
 Master plan:
 - minimal fixes to the exsisting UX:
@@ -51,6 +58,11 @@ Master plan:
 - get feedback from the ux ppl
 - implement improvements
 - release a beta version
+
+
+
+@@ save plenty lines - dont repeat selected tab structure in 'my projects' component
+
 
 
 IDEAS:

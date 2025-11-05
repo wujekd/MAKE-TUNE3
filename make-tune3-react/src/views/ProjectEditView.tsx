@@ -8,7 +8,7 @@ import { CollaborationDetails } from '../components/CollaborationDetails';
 import { Mixer1Channel } from '../components/Mixer1Channel';
 import { useAudioStore } from '../stores';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
-import { CollabListItem } from '../components/CollabListItem';
+import { SimpleListItem } from '../components/SimpleListItem';
 import styles from './ProjectEditView.module.css';
 
 export function ProjectEditView() {
@@ -120,13 +120,13 @@ export function ProjectEditView() {
 
       <div className={styles.layout}>
         <div className={`project-history ${styles.managerColumn}`}>
-          <h4 className="project-history-title">collaboration manager</h4>
+          <h4 className="project-history-title">collaborations</h4>
           <div className={`collab-list ${styles.managerList}`}>
             {loading && <div className={styles.emptyState}>loading...</div>}
             {error && <div className={styles.emptyState}>{error}</div>}
             {!loading && !error && (
               <>
-                <CollabListItem
+                <SimpleListItem
                   title="+ add collaboration"
                   onClick={() => {
                     setSelectedId(null);
@@ -138,7 +138,7 @@ export function ProjectEditView() {
                   <div className={styles.emptyState}>no collaborations yet</div>
                 ) : (
                   sortedCollabs.map(col => (
-                    <CollabListItem
+                    <SimpleListItem
                       key={col.id}
                       title={col.name}
                       subtitle={col.status}

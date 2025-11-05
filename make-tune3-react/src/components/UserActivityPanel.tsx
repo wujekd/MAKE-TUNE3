@@ -6,6 +6,7 @@ import { useAppStore } from '../stores/appStore';
 import { TagInput } from './TagInput';
 import { TagUtils } from '../utils/tagUtils';
 import { LoadingSpinner } from './LoadingSpinner';
+import { ProjectListItem } from './ProjectListItem';
 import './ProjectHistory.css';
 
 type SubmissionSummaryItem = {
@@ -47,7 +48,40 @@ const formatCountdownLabel = (
   return status || 'unpublished';
 };
 
-export function MyProjects() {
+const computeStageWindow = (
+  current: NonNullable<ProjectOverviewItem['currentCollaboration']>
+): { status: string; startAt: number | null; endAt: number | null } => {
+  const status = String(current.status || '').toLowerCase();
+
+  if (status === 'submission') {
+    const end = current.submissionCloseAt ?? null;
+    const durationMs =
+      typeof current.submissionDuration === 'number' && current.submissionDuration > 0
+        ? current.submissionDuration * 1000
+        : null;
+    const start = end && durationMs ? end - durationMs : current.publishedAt ?? null;
+    return { status, startAt: start, endAt: end };
+  }
+
+  if (status === 'voting') {
+    const end = current.votingCloseAt ?? null;
+    const durationMs =
+      typeof current.votingDuration === 'number' && current.votingDuration > 0
+        ? current.votingDuration * 1000
+        : null;
+    const start = end && durationMs ? end - durationMs : current.submissionCloseAt ?? null;
+    return { status, startAt: start, endAt: end };
+  }
+
+  if (status === 'completed') {
+    const end = current.votingCloseAt ?? current.submissionCloseAt ?? current.updatedAt ?? null;
+    return { status, startAt: end, endAt: end };
+  }
+
+  return { status, startAt: null, endAt: null };
+};
+
+export function UserActivityPanel() {
   const { user, loading: authLoading } = useAppStore(state => state.auth);
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('projects');
@@ -317,33 +351,40 @@ export function MyProjects() {
             {!authLoading && user && projectsLoaded && !projectsError && projects.length === 0 && (
               <div style={{ color: 'var(--white)' }}>no projects</div>
             )}
-            {!authLoading && user && projectsLoaded && projects.map(project => (
-              <Link key={project.projectId} to={`/project/${project.projectId}`} className="collab-history-item list__item" style={{ textDecoration: 'none' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <div className="collab-name list__title">{project.projectName}</div>
-                  <div className="collab-stage list__subtitle">created {formatDateTime(project.createdAt)}</div>
-                  {project.currentCollaboration ? (
-                    <div style={{ fontSize: 12, opacity: 0.75 }}>
-                      current: {project.currentCollaboration.name} · {formatCountdownLabel(project.currentCollaboration.status, project.currentCollaboration.submissionCloseAt, project.currentCollaboration.votingCloseAt)}
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: 12, opacity: 0.6 }}>no active collaboration</div>
-                  )}
-                </div>
-                <span
-                  style={{
-                    marginLeft: 'auto',
-                    padding: '4px 8px',
-                    borderRadius: 6,
-                    border: '1px solid var(--border-color, #333)',
-                    background: 'var(--primary1-800)',
-                    color: 'var(--white)'
-                  }}
-                >
-                  manage
-                </span>
-              </Link>
-            ))}
+            {!authLoading && user && projectsLoaded && projects.map(project => {
+              const current = project.currentCollaboration;
+              const stageWindow = current ? computeStageWindow(current) : null;
+              const normalizedStatus =
+                stageWindow && ['submission', 'voting', 'completed'].includes(stageWindow.status)
+                  ? stageWindow.status
+                  : null;
+
+              const stageInfo =
+                current && normalizedStatus
+                  ? {
+                      status: normalizedStatus,
+                      label: formatCountdownLabel(
+                        current.status,
+                        current.submissionCloseAt,
+                        current.votingCloseAt
+                      ),
+                      startAt: stageWindow?.startAt ?? null,
+                      endAt: stageWindow?.endAt ?? null
+                    }
+                  : null;
+
+              return (
+                <ProjectListItem
+                  key={project.projectId}
+                  to={`/project/${project.projectId}`}
+                  projectName={project.projectName || 'untitled project'}
+                  description={project.description}
+                  createdLabel={`created ${formatDateTime(project.createdAt)}`}
+                  currentCollabName={current?.name ?? null}
+                  stageInfo={stageInfo}
+                />
+              );
+            })}
       </div>
     </>
   )}

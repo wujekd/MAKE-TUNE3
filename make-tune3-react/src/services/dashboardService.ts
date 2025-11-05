@@ -21,8 +21,11 @@ type ProjectOverviewItem = {
     collabId: string;
     name: string;
     status: string;
+    publishedAt: number | null;
     submissionCloseAt: number | null;
     votingCloseAt: number | null;
+    submissionDuration: number | null;
+    votingDuration: number | null;
     backingPath: string;
     updatedAt: number | null;
   };
@@ -115,12 +118,21 @@ export class DashboardService {
               collabId: currentCollabId,
               name: String(current.name || ''),
               status: String(current.status || ''),
+              publishedAt: current.publishedAt?.toMillis
+                ? current.publishedAt.toMillis()
+                : null,
               submissionCloseAt: current.submissionCloseAt?.toMillis
                 ? current.submissionCloseAt.toMillis()
                 : null,
               votingCloseAt: current.votingCloseAt?.toMillis
                 ? current.votingCloseAt.toMillis()
                 : null,
+              submissionDuration:
+                typeof current.submissionDuration === 'number'
+                  ? current.submissionDuration
+                  : null,
+              votingDuration:
+                typeof current.votingDuration === 'number' ? current.votingDuration : null,
               backingPath: String(current.backingTrackPath || ''),
               updatedAt: current.updatedAt?.toMillis ? current.updatedAt.toMillis() : null,
             }
