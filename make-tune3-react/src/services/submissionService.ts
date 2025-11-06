@@ -7,6 +7,29 @@ import { DEBUG_ALLOW_MULTIPLE_SUBMISSIONS } from '../config';
 import type { Collaboration, CollaborationDetail, CollaborationId, UserId, SubmissionSettings, SubmissionModerationStatus } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 
+export interface SubmissionCollabSummary {
+  projectId: string;
+  projectName: string;
+  collabId: string;
+  collabName: string;
+  status: string;
+  submissionCloseAt: number | null;
+  votingCloseAt: number | null;
+  backingPath: string;
+  mySubmissionPath: string;
+  winnerPath: string | null;
+  submittedAt: number | null;
+  submissionDurationSeconds: number | null;
+  votingDurationSeconds: number | null;
+  collaborationDeleted: boolean;
+  collaborationDeletedAt: number | null;
+  storageDeletionPending: boolean;
+  storageDeletedAt: number | null;
+  storageDeletionError: string | null;
+  lastKnownProjectName: string;
+  lastKnownCollaborationName: string;
+}
+
 export class SubmissionService {
   static async uploadBackingTrack(
     file: File,
@@ -142,25 +165,35 @@ export class SubmissionService {
     return { filePath: path, submissionId };
   }
 
-  static async listMySubmissionCollabs(): Promise<Array<{
-    projectId: string;
-    projectName: string;
-    collabId: string;
-    collabName: string;
-    status: Collaboration['status'];
-    submissionCloseAt: number | null;
-    votingCloseAt: number | null;
-    backingPath: string;
-    mySubmissionPath: string;
-    winnerPath: string | null;
-    submittedAt: number | null;
-  }>> {
+  static async listMySubmissionCollabs(): Promise<SubmissionCollabSummary[]> {
     const functions = getFunctions(app, 'europe-west1');
     const getMine = httpsCallable(functions, 'getMySubmissionCollabs');
     const res: any = await getMine({});
     const data = (res?.data as any) || {};
     if (data?.unauthenticated) return [];
-    return Array.isArray(data.items) ? data.items : [];
+    const items: any[] = Array.isArray(data.items) ? data.items : [];
+    return items.map(item => ({
+      projectId: typeof item?.projectId === 'string' ? item.projectId : '',
+      projectName: typeof item?.projectName === 'string' ? item.projectName : '',
+      collabId: typeof item?.collabId === 'string' ? item.collabId : '',
+      collabName: typeof item?.collabName === 'string' ? item.collabName : '',
+      status: typeof item?.status === 'string' ? item.status : '',
+      submissionCloseAt: typeof item?.submissionCloseAt === 'number' ? item.submissionCloseAt : null,
+      votingCloseAt: typeof item?.votingCloseAt === 'number' ? item.votingCloseAt : null,
+      backingPath: typeof item?.backingPath === 'string' ? item.backingPath : '',
+      mySubmissionPath: typeof item?.mySubmissionPath === 'string' ? item.mySubmissionPath : '',
+      winnerPath: typeof item?.winnerPath === 'string' ? item.winnerPath : null,
+      submittedAt: typeof item?.submittedAt === 'number' ? item.submittedAt : null,
+      submissionDurationSeconds: typeof item?.submissionDurationSeconds === 'number' ? item.submissionDurationSeconds : null,
+      votingDurationSeconds: typeof item?.votingDurationSeconds === 'number' ? item.votingDurationSeconds : null,
+      collaborationDeleted: item?.collaborationDeleted === true,
+      collaborationDeletedAt: typeof item?.collaborationDeletedAt === 'number' ? item.collaborationDeletedAt : null,
+      storageDeletionPending: item?.storageDeletionPending === true,
+      storageDeletedAt: typeof item?.storageDeletedAt === 'number' ? item.storageDeletedAt : null,
+      storageDeletionError: typeof item?.storageDeletionError === 'string' ? item.storageDeletionError : null,
+      lastKnownProjectName: typeof item?.lastKnownProjectName === 'string' ? item.lastKnownProjectName : '',
+      lastKnownCollaborationName: typeof item?.lastKnownCollaborationName === 'string' ? item.lastKnownCollaborationName : ''
+    }));
   }
 
   static async setSubmissionModeration(

@@ -6,7 +6,9 @@ import { TagInput } from './TagInput';
 import { TagUtils } from '../utils/tagUtils';
 import { LoadingSpinner } from './LoadingSpinner';
 import { ProjectListItem } from './ProjectListItem';
+import { computeStageInfo } from '../utils/stageUtils';
 import './ProjectHistory.css';
+import './UserActivityStyles.css';
 
 interface ProjectsTabProps {
   user: { uid: string } | null;
@@ -17,56 +19,6 @@ const formatDateTime = (value: number | null | undefined): string => {
   if (!value) return '—';
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
-};
-
-const formatCountdownLabel = (
-  status: string,
-  submissionCloseAt: number | null,
-  votingCloseAt: number | null
-): string => {
-  if (status === 'submission') {
-    return submissionCloseAt ? `submission ends ${formatDateTime(submissionCloseAt)}` : 'submission running';
-  }
-  if (status === 'voting') {
-    return votingCloseAt ? `voting ends ${formatDateTime(votingCloseAt)}` : 'voting running';
-  }
-  if (status === 'completed') {
-    return votingCloseAt ? `completed ${formatDateTime(votingCloseAt)}` : 'completed';
-  }
-  return status || 'unpublished';
-};
-
-const computeStageWindow = (
-  current: NonNullable<ProjectOverviewItem['currentCollaboration']>
-): { status: string; startAt: number | null; endAt: number | null } => {
-  const status = String(current.status || '').toLowerCase();
-
-  if (status === 'submission') {
-    const end = current.submissionCloseAt ?? null;
-    const durationMs =
-      typeof current.submissionDuration === 'number' && current.submissionDuration > 0
-        ? current.submissionDuration * 1000
-        : null;
-    const start = end && durationMs ? end - durationMs : current.publishedAt ?? null;
-    return { status, startAt: start, endAt: end };
-  }
-
-  if (status === 'voting') {
-    const end = current.votingCloseAt ?? null;
-    const durationMs =
-      typeof current.votingDuration === 'number' && current.votingDuration > 0
-        ? current.votingDuration * 1000
-        : null;
-    const start = end && durationMs ? end - durationMs : current.submissionCloseAt ?? null;
-    return { status, startAt: start, endAt: end };
-  }
-
-  if (status === 'completed') {
-    const end = current.votingCloseAt ?? current.submissionCloseAt ?? current.updatedAt ?? null;
-    return { status, startAt: end, endAt: end };
-  }
-
-  return { status, startAt: null, endAt: null };
 };
 
 export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
@@ -169,35 +121,25 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
   };
 
   return (
-    <>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h4 className="project-history-title card__title" style={{ marginBottom: 0 }}>my projects</h4>
+    <section className="user-activity__section">
+      <div className="user-activity__section-header">
+        <h4 className="project-history-title card__title user-activity__section-title">my projects</h4>
         <button
-          style={{
-            marginLeft: 8,
-            padding: '6px 10px',
-            borderRadius: 6,
-            border: '1px solid var(--border-color, #333)',
-            background: 'var(--primary1-700)',
-            color: 'var(--white)',
-            opacity: user && !authLoading ? 1 : 0.6,
-            cursor: user && !authLoading ? 'pointer' : 'not-allowed'
-          }}
+          className="user-activity__action-button"
           disabled={!user || authLoading}
           onClick={() => setShowForm(v => !v)}
         >
           + create project
         </button>
       </div>
-      <div className="collab-list list" style={{ marginTop: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
+      <div className="collab-list list user-activity__list">
         {showForm && (
-          <div className="collab-history-item list__item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+          <div className="collab-history-item list__item user-activity__form-card">
             <input
               placeholder="project name"
               value={name}
               onChange={e => setName(e.target.value)}
               disabled={!user || saving}
-              style={{ padding: 8, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)' }}
             />
             <textarea
               placeholder="description (optional)"
@@ -205,7 +147,6 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
               onChange={e => setDescription(e.target.value)}
               disabled={!user || saving}
               rows={3}
-              style={{ padding: 8, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)', resize: 'vertical' }}
             />
             <TagInput
               tags={tags}
@@ -213,8 +154,8 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
               disabled={saving}
               placeholder="Add tags..."
             />
-            {formError && <div style={{ color: 'var(--white)' }}>{formError}</div>}
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            {formError && <div className="user-activity__form-error">{formError}</div>}
+            <div className="user-activity__form-actions">
               <button onClick={handleCancelForm} disabled={saving}>
                 cancel
               </button>
@@ -225,40 +166,49 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
           </div>
         )}
         {(authLoading || (user && !projectsLoaded)) && (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
+          <div className="user-activity__loading">
             <LoadingSpinner size={24} />
           </div>
         )}
         {!authLoading && !user && (
-          <div style={{ color: 'var(--white)' }}>
-            <Link to="/auth?mode=login" style={{ color: 'var(--contrast-600)', textDecoration: 'underline' }}>login</Link> to see your projects
+          <div className="user-activity__message">
+            <Link to="/auth?mode=login">login</Link> to see your projects
           </div>
         )}
-        {!authLoading && user && projectsLoaded && projectsError && <div style={{ color: 'var(--white)' }}>{projectsError}</div>}
+        {!authLoading && user && projectsLoaded && projectsError && (
+          <div className="user-activity__message">{projectsError}</div>
+        )}
         {!authLoading && user && projectsLoaded && !projectsError && projects.length === 0 && (
-          <div style={{ color: 'var(--white)' }}>no projects</div>
+          <div className="user-activity__message user-activity__message--muted">no projects</div>
         )}
         {!authLoading && user && projectsLoaded && projects.map(project => {
           const current = project.currentCollaboration;
-          const stageWindow = current ? computeStageWindow(current) : null;
-          const normalizedStatus =
-            stageWindow && ['submission', 'voting', 'completed'].includes(stageWindow.status)
-              ? stageWindow.status
-              : null;
+          const rawStageInfo = current
+            ? computeStageInfo({
+                status: current.status,
+                submissionCloseAt: current.submissionCloseAt,
+                votingCloseAt: current.votingCloseAt,
+                submissionDurationMs:
+                  typeof current.submissionDuration === 'number'
+                    ? current.submissionDuration * 1000
+                    : null,
+                votingDurationMs:
+                  typeof current.votingDuration === 'number'
+                    ? current.votingDuration * 1000
+                    : null,
+                publishedAt: current.publishedAt,
+                updatedAt: current.updatedAt
+              })
+            : null;
 
-          const stageInfo =
-            current && normalizedStatus
-              ? {
-                  status: normalizedStatus,
-                  label: formatCountdownLabel(
-                    current.status,
-                    current.submissionCloseAt,
-                    current.votingCloseAt
-                  ),
-                  startAt: stageWindow?.startAt ?? null,
-                  endAt: stageWindow?.endAt ?? null
-                }
-              : null;
+          const stageInfo = rawStageInfo
+            ? {
+                status: rawStageInfo.status,
+                startAt: rawStageInfo.startAt ?? null,
+                endAt: rawStageInfo.endAt ?? null,
+                label: rawStageInfo.label ?? undefined
+              }
+            : null;
 
           return (
             <ProjectListItem
@@ -276,4 +226,3 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
     </>
   );
 }
-

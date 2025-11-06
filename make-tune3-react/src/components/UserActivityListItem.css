@@ -1,0 +1,109 @@
+.user-activity-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid transparent;
+  color: var(--white);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  margin-bottom: 0.25rem;
+}
+
+.user-activity-list-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.1);
+  text-decoration: none;
+}
+
+.user-activity-list-item--disabled,
+.user-activity-list-item--disabled:hover {
+  cursor: default;
+  opacity: 0.7;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.user-activity-list-item__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.user-activity-list-item__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.user-activity-list-item__title {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--bone);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-activity-list-item__subtitle {
+  font-size: 0.7rem;
+  opacity: 0.85;
+  color: var(--white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-activity-list-item__meta-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.user-activity-list-item__meta {
+  font-size: 0.65rem;
+  opacity: 0.75;
+  color: var(--white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-activity-list-item__meta--muted {
+  opacity: 0.6;
+}
+
+.user-activity-list-item__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.user-activity-list-item__progress-label {
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+
+.user-activity-list-item__action {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--white);
+  font-size: 0.7rem;
+  font-weight: 500;
+  flex-shrink: 0;
+  text-transform: lowercase;
+}
+
+.user-activity-list-item--disabled .user-activity-list-item__action {
+  display: none;
+}

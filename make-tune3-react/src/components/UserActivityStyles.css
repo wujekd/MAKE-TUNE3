@@ -1,0 +1,131 @@
+.project-history.user-activity {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 0.75rem;
+}
+
+.user-activity__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.user-activity__tabs button {
+  text-transform: lowercase;
+}
+
+.user-activity__section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.user-activity__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.user-activity__section-title {
+  margin: 0;
+}
+
+.user-activity__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin-top: 0.5rem;
+}
+
+.user-activity__loading,
+.user-activity__message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  color: var(--white);
+  text-align: center;
+}
+
+.user-activity__message a {
+  color: var(--contrast-600);
+  text-decoration: underline;
+}
+
+.user-activity__message--muted {
+  opacity: 0.85;
+}
+
+.user-activity__action-button {
+  margin-left: 0.5rem;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #333);
+  background: var(--primary1-700);
+  color: var(--white);
+  transition: opacity 0.2s ease;
+}
+
+.user-activity__action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.user-activity__action-button:not(:disabled) {
+  cursor: pointer;
+}
+
+.user-activity__form-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.user-activity__form-card input,
+.user-activity__form-card textarea {
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--primary1-800);
+  background: var(--primary1-800);
+  color: var(--white);
+  resize: vertical;
+}
+
+.user-activity__form-error {
+  color: var(--white);
+  font-size: 0.75rem;
+}
+
+.user-activity__form-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.user-activity__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.user-activity__list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+
+.user-activity__list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.24);
+  border-radius: 3px;
+}
+
+.user-activity__list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.36);
+}

@@ -6,6 +6,7 @@ import { CollabListItem } from './CollabListItem';
 import { useAudioStore } from '../stores';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { useAppStore } from '../stores/appStore';
+import { computeStageInfo } from '../utils/stageUtils';
 import styles from '../views/DashboardView.module.css';
 
 interface CollaborationsPanelProps {
@@ -58,39 +59,23 @@ export function CollaborationsPanel({
               ? ((audioState?.player2.currentTime ?? 0) / audioState.player2.duration) * 100
               : 0;
 
-            const formatCountdownLabel = (status: string, submissionCloseAt: any, votingCloseAt: any) => {
-              const formatTime = (value: any) => {
-                if (!value) return null;
-                const timestamp = value?.toMillis ? value.toMillis() : value;
-                return new Date(timestamp).toLocaleString();
-              };
-
-              if (status === 'submission') {
-                return submissionCloseAt ? `submission ends ${formatTime(submissionCloseAt)}` : 'submission running';
-              }
-              if (status === 'voting') {
-                return votingCloseAt ? `voting ends ${formatTime(votingCloseAt)}` : 'voting running';
-              }
-              if (status === 'completed') {
-                return votingCloseAt ? `completed ${formatTime(votingCloseAt)}` : 'completed';
-              }
-              return status || 'unpublished';
-            };
-
-            const stageInfo = ['submission', 'voting', 'completed'].includes(c.status) ? {
+            const rawStageInfo = computeStageInfo({
               status: c.status,
-              label: formatCountdownLabel(c.status, (c as any).submissionCloseAt, (c as any).votingCloseAt),
-              startAt: c.status === 'submission' 
-                ? ((c as any).publishedAt?.toMillis?.() ?? null)
-                : c.status === 'voting'
-                  ? ((c as any).submissionCloseAt?.toMillis?.() ?? null)
-                  : null,
-              endAt: c.status === 'submission' 
-                ? ((c as any).submissionCloseAt?.toMillis?.() ?? null) 
-                : c.status === 'voting' 
-                  ? ((c as any).votingCloseAt?.toMillis?.() ?? null) 
-                  : null
-            } : null;
+              submissionCloseAt: (c as any).submissionCloseAt,
+              votingCloseAt: (c as any).votingCloseAt,
+              submissionDurationMs: typeof c.submissionDuration === 'number' ? c.submissionDuration * 1000 : null,
+              votingDurationMs: typeof c.votingDuration === 'number' ? c.votingDuration * 1000 : null,
+              publishedAt: (c as any).publishedAt,
+              updatedAt: (c as any).updatedAt
+            });
+            const stageInfo = rawStageInfo
+              ? {
+                  status: rawStageInfo.status,
+                  startAt: rawStageInfo.startAt ?? null,
+                  endAt: rawStageInfo.endAt ?? null,
+                  label: rawStageInfo.label ?? undefined
+                }
+              : null;
 
             return (
               <CollabListItem
@@ -135,4 +120,3 @@ export function CollaborationsPanel({
     </div>
   );
 }
-

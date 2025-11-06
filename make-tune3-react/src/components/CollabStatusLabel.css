@@ -34,3 +34,14 @@
   color: #d1d5db;
 }
 
+.collab-status-label--deleted {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.28);
+  color: #fecaca;
+}
+
+.collab-status-label--deleting {
+  background: rgba(234, 179, 8, 0.2);
+  border-color: rgba(234, 179, 8, 0.32);
+  color: #fef08a;
+}
