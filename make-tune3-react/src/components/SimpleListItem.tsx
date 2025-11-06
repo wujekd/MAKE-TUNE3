@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { CollabStatusLabel } from './CollabStatusLabel';
 import './CollabListItem.css';
 
 interface SimpleListItemProps {
@@ -22,12 +23,11 @@ export function SimpleListItem({
     <button
       type="button"
       onClick={onClick}
-      className={merge('collab-history-item', 'collab-list-item--button', isSelected && 'selected')}
+      className={merge('simple-list-item', isSelected && 'simple-list-item--selected')}
     >
-      {statusIndicator && <div className="collab-status-indicator">{statusIndicator}</div>}
-      <div className="collab-info">
-        <span className="collab-name">{title}</span>
-        {subtitle && <span className="collab-stage">{subtitle}</span>}
+      <div className="simple-list-item__content">
+        <span className="simple-list-item__title">{title}</span>
+        {subtitle && <CollabStatusLabel status={subtitle} />}
       </div>
     </button>
   );

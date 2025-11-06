@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ItemStageProgressBar } from './ItemStageProgressBar';
+import { CollabStatusLabel } from './CollabStatusLabel';
 import './ProjectListItem.css';
 
 type StageInfo = {
@@ -21,12 +22,6 @@ interface ProjectListItemProps {
   footerLabel?: ReactNode;
 }
 
-const capitalizeStatus = (value: string) => {
-  const trimmed = value.trim();
-  if (!trimmed) return '';
-  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
-};
-
 export function ProjectListItem({
   projectName,
   to,
@@ -37,8 +32,6 @@ export function ProjectListItem({
   stageInfo,
   footerLabel = 'manage'
 }: ProjectListItemProps) {
-  const status = stageInfo?.status ? capitalizeStatus(stageInfo.status) : '';
-  const statusKey = stageInfo?.status ? stageInfo.status.toLowerCase().replace(/\s+/g, '-') : 'none';
 
   const content = (
     <>
@@ -69,9 +62,7 @@ export function ProjectListItem({
         {stageInfo ? (
           <>
             <div className="project-list-item__stage-row">
-              <span className={`project-list-item__status-chip project-list-item__status-chip--${statusKey}`}>
-                {status || '—'}
-              </span>
+              <CollabStatusLabel status={stageInfo.status} />
               {stageInfo.label ? (
                 <span className="project-list-item__stage-label">{stageInfo.label}</span>
               ) : null}

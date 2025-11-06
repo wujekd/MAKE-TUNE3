@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ItemStageProgressBar } from './ItemStageProgressBar';
+import { CollabStatusLabel } from './CollabStatusLabel';
 import './CollabListItem.css';
 
 type StageInfo = {
@@ -56,44 +57,37 @@ export function CollabListItem({
       ? { width: `${100 - Math.min(progressPercent, 100)}%` }
       : undefined;
 
-  const capitalizeStatus = (value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed) return '';
-    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
-  };
-
-  const status = stageInfo?.status ? capitalizeStatus(stageInfo.status) : subtitle ? capitalizeStatus(String(subtitle)) : '';
-  const statusKey = stageInfo?.status ? stageInfo.status.toLowerCase().replace(/\s+/g, '-') : '';
+  const status = stageInfo?.status || (subtitle ? String(subtitle) : '');
 
   const content = (
     <>
       {typeof progressPercent === 'number' && progressPercent > 0 ? (
         <div className="collab-progress-overlay" style={progressStyle} />
       ) : null}
-      <div className="collab-list-item__header">
-        <div className="collab-list-item__title-block">
-          <span className="collab-list-item__title">{title}</span>
+      <div className="collab-list-item__main">
+        <div className="collab-list-item__header">
+          <div className="collab-list-item__title-block">
+            <span className="collab-list-item__title">{title}</span>
+          </div>
+          {rightSlot && <div className="collab-list-item__right">{rightSlot}</div>}
         </div>
-        {rightSlot && <div className="collab-list-item__right">{rightSlot}</div>}
-      </div>
 
-      {children}
+        {children}
 
-      <div className="collab-list-item__stage-row">
-        <span className={`collab-list-item__status-chip collab-list-item__status-chip--${statusKey}`}>
-          {status || '—'}
-        </span>
-        {stageInfo?.label && (
-          <span className="collab-list-item__stage-label">{stageInfo.label}</span>
+        <div className="collab-list-item__stage-row">
+          {status && <CollabStatusLabel status={status} />}
+          {stageInfo?.label && (
+            <span className="collab-list-item__stage-label">{stageInfo.label}</span>
+          )}
+        </div>
+        {stageInfo && (stageInfo.status === 'submission' || stageInfo.status === 'voting') && (
+          <ItemStageProgressBar
+            status={stageInfo.status}
+            startAt={stageInfo.startAt}
+            endAt={stageInfo.endAt}
+          />
         )}
       </div>
-      {stageInfo && (
-        <ItemStageProgressBar
-          status={stageInfo.status}
-          startAt={stageInfo.startAt}
-          endAt={stageInfo.endAt}
-        />
-      )}
     </>
   );
 
