@@ -1,6 +1,7 @@
 import {onDocumentCreated,
   onDocumentUpdated,
-  onDocumentWritten} from "firebase-functions/v2/firestore";
+  onDocumentWritten,
+  onDocumentDeleted} from "firebase-functions/v2/firestore";
 import {initializeApp} from "firebase-admin/app";
 import {getFirestore, Timestamp} from "firebase-admin/firestore";
 import {setGlobalOptions} from "firebase-functions";
@@ -22,6 +23,7 @@ const storageAdmin = getStorage();
 const HISTORY_LIMIT = 100;
 const DEFAULT_WINNER_NAME = "no name";
 const ACTIVE_COLLAB_STATUSES = new Set(["submission", "voting"]);
+const PROJECT_DELETION_HISTORY_COLLECTION = "projectDeletionHistory";
 
 const BAD = ["foo", "bar"];
 const sanitize = (s: string) =>
@@ -821,6 +823,387 @@ export const syncTagsOnCollaborationWrite = onDocumentWritten(
     }
 
     await Promise.all(updates);
+  }
+);
+
+export const cleanupProjectOnDelete = onDocumentDeleted(
+  "projects/{projectId}",
+  async (event) => {
+    const projectId = event.params.projectId;
+    if (!projectId) return;
+
+    const projectData = event.data?.data() as any | undefined;
+    const projectName = typeof projectData?.name === "string" ? projectData.name : "";
+    const ownerId = typeof projectData?.ownerId === "string" ? projectData.ownerId : "";
+    const startedAt = Timestamp.now();
+
+    console.log(`[cleanupProjectOnDelete] started for project=${projectId}`);
+
+    const historyRef = db.collection(PROJECT_DELETION_HISTORY_COLLECTION).doc();
+    await historyRef.set({
+      projectId,
+      projectName,
+      ownerId,
+      startedAt,
+      lastUpdatedAt: startedAt,
+      status: "started",
+      collaborationCount: 0,
+      submissionUserCount: 0,
+      userCollaborationCount: 0,
+      userDownloadCount: 0,
+      reportCount: 0,
+      resolvedReportCount: 0,
+      storagePathCount: 0,
+      storagePathSample: [],
+    });
+
+    try {
+      const collabSnap = await db
+        .collection("collaborations")
+        .where("projectId", "==", projectId)
+        .get();
+
+      if (collabSnap.empty) {
+        const finishedAt = Timestamp.now();
+        await historyRef.update({
+          status: "completed",
+          collaborationCount: 0,
+          submissionUserCount: 0,
+          dbCleanupCompletedAt: finishedAt,
+          storageCleanupCompletedAt: finishedAt,
+          lastUpdatedAt: finishedAt,
+          notes: "project had no collaborations",
+        });
+        console.log(`[cleanupProjectOnDelete] no collaborations for project=${projectId}`);
+        return;
+      }
+
+      type CollabCleanupContext = {
+        id: string;
+        name: string;
+        docRef: FirebaseFirestore.DocumentReference;
+        detailRef: FirebaseFirestore.DocumentReference;
+        detailExists: boolean;
+        submissionUserDocs: FirebaseFirestore.QueryDocumentSnapshot[];
+        userCollaborationDocs: FirebaseFirestore.QueryDocumentSnapshot[];
+        userDownloadDocs: FirebaseFirestore.QueryDocumentSnapshot[];
+        reportDocs: FirebaseFirestore.QueryDocumentSnapshot[];
+        resolvedReportDocs: FirebaseFirestore.QueryDocumentSnapshot[];
+        storagePrefix: string;
+        orphanPaths: string[];
+      };
+
+      const contexts: CollabCleanupContext[] = [];
+      const storagePathSet = new Set<string>();
+      const storagePathSample: string[] = [];
+
+      let totalSubmissionUsers = 0;
+      let totalUserCollaborations = 0;
+      let totalUserDownloads = 0;
+      let totalReports = 0;
+      let totalResolvedReports = 0;
+
+      for (const collabDoc of collabSnap.docs) {
+        const collabData = collabDoc.data() as any;
+        const collabId = collabDoc.id;
+        const collabName = typeof collabData?.name === "string" ? collabData.name : "";
+        const storagePrefix = `collabs/${collabId}/`;
+
+        const detailRef = db.collection("collaborationDetails").doc(collabId);
+        const detailSnap = await detailRef.get();
+
+        const collabOrphanPaths = new Set<string>();
+        const recordPath = (raw: unknown) => {
+          const path = typeof raw === "string" ? raw.trim() : "";
+          if (!path) return;
+          if (!storagePathSet.has(path)) {
+            storagePathSet.add(path);
+            if (storagePathSample.length < 25) {
+              storagePathSample.push(path);
+            }
+          }
+          if (!path.startsWith(storagePrefix)) {
+            collabOrphanPaths.add(path);
+          }
+        };
+
+        recordPath(collabData?.backingTrackPath);
+        recordPath(collabData?.winnerPath);
+        if (Array.isArray(collabData?.submissionPaths)) {
+          for (const p of collabData.submissionPaths) {
+            recordPath(p);
+          }
+        }
+
+        let detailExists = false;
+        if (detailSnap.exists) {
+          detailExists = true;
+          const detailData = detailSnap.data() as any;
+          if (Array.isArray(detailData?.submissions)) {
+            for (const submission of detailData.submissions) {
+              recordPath((submission as any)?.path);
+              recordPath((submission as any)?.optimizedPath);
+            }
+          }
+          if (Array.isArray(detailData?.submissionPaths)) {
+            for (const p of detailData.submissionPaths) {
+              recordPath(p);
+            }
+          }
+        }
+
+        const submissionUsersSnap = await db
+          .collection("submissionUsers")
+          .where("collaborationId", "==", collabId)
+          .get();
+        totalSubmissionUsers += submissionUsersSnap.size;
+        for (const subDoc of submissionUsersSnap.docs) {
+          const subData = subDoc.data() as any;
+          recordPath(subData?.path);
+          recordPath(subData?.optimizedPath);
+        }
+
+        const userCollaborationSnap = await db
+          .collection("userCollaborations")
+          .where("collaborationId", "==", collabId)
+          .get();
+        totalUserCollaborations += userCollaborationSnap.size;
+
+        const userDownloadsSnap = await db
+          .collection("userDownloads")
+          .where("collaborationId", "==", collabId)
+          .get();
+        totalUserDownloads += userDownloadsSnap.size;
+
+        const reportsSnap = await db
+          .collection("reports")
+          .where("collaborationId", "==", collabId)
+          .get();
+        totalReports += reportsSnap.size;
+
+        const resolvedReportsSnap = await db
+          .collection("resolvedReports")
+          .where("collaborationId", "==", collabId)
+          .get();
+        totalResolvedReports += resolvedReportsSnap.size;
+
+        contexts.push({
+          id: collabId,
+          name: collabName,
+          docRef: collabDoc.ref,
+          detailRef,
+          detailExists,
+          submissionUserDocs: submissionUsersSnap.docs,
+          userCollaborationDocs: userCollaborationSnap.docs,
+          userDownloadDocs: userDownloadsSnap.docs,
+          reportDocs: reportsSnap.docs,
+          resolvedReportDocs: resolvedReportsSnap.docs,
+          storagePrefix,
+          orphanPaths: Array.from(collabOrphanPaths),
+        });
+      }
+
+      await historyRef.update({
+        collaborationCount: contexts.length,
+        collaborationIds: contexts.map((ctx) => ctx.id),
+        submissionUserCount: totalSubmissionUsers,
+        userCollaborationCount: totalUserCollaborations,
+        userDownloadCount: totalUserDownloads,
+        reportCount: totalReports,
+        resolvedReportCount: totalResolvedReports,
+        storagePathCount: storagePathSet.size,
+        storagePathSample,
+        lastUpdatedAt: Timestamp.now(),
+      });
+
+      const deletionMarker = Timestamp.now();
+
+      let updatedSubmissionUsers = 0;
+      let deletedCollaborationDocs = 0;
+      let deletedDetailDocs = 0;
+      let deletedUserCollaborationDocs = 0;
+      let deletedUserDownloadDocs = 0;
+      let deletedReportDocs = 0;
+      let deletedResolvedReportDocs = 0;
+
+      const dbErrors: Array<{collabId: string; stage: string; message: string}> = [];
+      const noteDbError = (collabId: string, stage: string, err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        dbErrors.push({collabId, stage, message});
+        console.error(`[cleanupProjectOnDelete] Firestore cleanup error project=${projectId} collab=${collabId} stage=${stage}: ${message}`);
+      };
+
+      for (const ctx of contexts) {
+        const submissionUpdateTime = Timestamp.now();
+        for (const submissionDoc of ctx.submissionUserDocs) {
+          try {
+            await submissionDoc.ref.update({
+              collaborationDeleted: true,
+              collaborationDeletedAt: deletionMarker,
+              collaborationDeletedByProjectId: projectId,
+              lastKnownProjectName: projectName,
+              lastKnownCollaborationName: ctx.name,
+              storageDeletionPending: true,
+              storageDeletionError: null,
+              storageDeletionLastCheckedAt: submissionUpdateTime,
+            });
+            updatedSubmissionUsers++;
+          } catch (err) {
+            noteDbError(ctx.id, "update-submission-user", err);
+          }
+        }
+
+        if (ctx.detailExists) {
+          try {
+            await ctx.detailRef.delete();
+            deletedDetailDocs++;
+          } catch (err) {
+            noteDbError(ctx.id, "delete-collaboration-detail", err);
+          }
+        }
+
+        for (const doc of ctx.userCollaborationDocs) {
+          try {
+            await doc.ref.delete();
+            deletedUserCollaborationDocs++;
+          } catch (err) {
+            noteDbError(ctx.id, "delete-user-collaboration", err);
+          }
+        }
+
+        for (const doc of ctx.userDownloadDocs) {
+          try {
+            await doc.ref.delete();
+            deletedUserDownloadDocs++;
+          } catch (err) {
+            noteDbError(ctx.id, "delete-user-download", err);
+          }
+        }
+
+        for (const doc of ctx.reportDocs) {
+          try {
+            await doc.ref.delete();
+            deletedReportDocs++;
+          } catch (err) {
+            noteDbError(ctx.id, "delete-report", err);
+          }
+        }
+
+        for (const doc of ctx.resolvedReportDocs) {
+          try {
+            await doc.ref.delete();
+            deletedResolvedReportDocs++;
+          } catch (err) {
+            noteDbError(ctx.id, "delete-resolved-report", err);
+          }
+        }
+
+        try {
+          await ctx.docRef.delete();
+          deletedCollaborationDocs++;
+        } catch (err) {
+          noteDbError(ctx.id, "delete-collaboration", err);
+        }
+      }
+
+      const dbStageCompletedAt = Timestamp.now();
+      await historyRef.update({
+        dbCleanupCompletedAt: dbStageCompletedAt,
+        lastUpdatedAt: dbStageCompletedAt,
+        updatedSubmissionUsers,
+        deletedCollaborationDocs,
+        deletedDetailDocs,
+        deletedUserCollaborationDocs,
+        deletedUserDownloadDocs,
+        deletedReportDocs,
+        deletedResolvedReportDocs,
+        dbErrors,
+        status: dbErrors.length ? "db-error" : "storage-pending",
+      });
+
+      if (dbErrors.length) {
+        throw new Error(`Firestore cleanup incomplete for project ${projectId}`);
+      }
+
+      const bucket = storageAdmin.bucket();
+      let storagePrefixesDeleted = 0;
+      let orphanFilesDeleted = 0;
+      const storageErrors: Array<{collabId: string; stage: string; message: string; path?: string}> = [];
+      const collabStorageErrors = new Map<string, string[]>();
+      const noteStorageError = (collabId: string, stage: string, err: unknown, path?: string) => {
+        const message = err instanceof Error ? err.message : String(err);
+        storageErrors.push({collabId, stage, message, path});
+        const existing = collabStorageErrors.get(collabId) ?? [];
+        existing.push(path ? `${stage}:${path}:${message}` : `${stage}:${message}`);
+        collabStorageErrors.set(collabId, existing);
+        console.error(`[cleanupProjectOnDelete] Storage cleanup error project=${projectId} collab=${collabId} stage=${stage}: ${message}`);
+      };
+
+      for (const ctx of contexts) {
+        try {
+          await bucket.deleteFiles({prefix: ctx.storagePrefix, force: true});
+          storagePrefixesDeleted++;
+        } catch (err) {
+          noteStorageError(ctx.id, "prefix", err);
+        }
+
+        for (const orphanPath of ctx.orphanPaths) {
+          try {
+            await bucket.file(orphanPath).delete({ignoreNotFound: true});
+            orphanFilesDeleted++;
+          } catch (err) {
+            noteStorageError(ctx.id, "orphan", err, orphanPath);
+          }
+        }
+
+        const storageUpdateTime = Timestamp.now();
+        const collabErrors = collabStorageErrors.get(ctx.id) ?? [];
+        const submissionStorageUpdate: Record<string, unknown> = {
+          storageDeletionPending: false,
+          storageDeletionLastCheckedAt: storageUpdateTime,
+        };
+        if (collabErrors.length === 0) {
+          submissionStorageUpdate.storageDeletedAt = storageUpdateTime;
+          submissionStorageUpdate.storageDeletionError = null;
+        } else {
+          submissionStorageUpdate.storageDeletionError = collabErrors.join(" | ").slice(0, 900);
+        }
+
+        for (const submissionDoc of ctx.submissionUserDocs) {
+          try {
+            await submissionDoc.ref.update(submissionStorageUpdate);
+          } catch (err) {
+            noteStorageError(ctx.id, "update-submission-user-post-storage", err);
+          }
+        }
+      }
+
+      const storageCompletedAt = Timestamp.now();
+      await historyRef.update({
+        storageCleanupCompletedAt: storageCompletedAt,
+        storagePrefixesRequested: contexts.length,
+        storagePrefixesDeleted,
+        storageOrphanFilesAttempted: contexts.reduce((acc, ctx) => acc + ctx.orphanPaths.length, 0),
+        storageOrphanFilesDeleted: orphanFilesDeleted,
+        storageErrors,
+        lastUpdatedAt: storageCompletedAt,
+        status: storageErrors.length ? "storage-error" : "completed",
+      });
+
+      if (storageErrors.length) {
+        throw new Error(`Storage cleanup incomplete for project ${projectId}`);
+      }
+
+      console.log(`[cleanupProjectOnDelete] completed project=${projectId}`);
+    } catch (err) {
+      console.error(`[cleanupProjectOnDelete] failed for project=${projectId}`, err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      await historyRef.set({
+        failureMessage: errorMessage,
+        lastUpdatedAt: Timestamp.now(),
+      }, {merge: true}).catch(() => {});
+      throw err;
+    }
   }
 );
 
