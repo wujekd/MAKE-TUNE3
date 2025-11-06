@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import './ItemStageProgressBar.css';
 
 type StageStatus = 'submission' | 'voting' | 'completed' | 'unpublished' | 'pending' | string;
@@ -38,9 +38,25 @@ const computeProgress = (status: StageStatus, startAt?: number | null, endAt?: n
 };
 
 export function ItemStageProgressBar({ status, startAt, endAt, className }: ItemStageProgressBarProps) {
-  const [progress, setProgress] = useState(() => computeProgress(status, startAt, endAt));
+  const targetProgress = useMemo(() => computeProgress(status, startAt, endAt), [status, startAt, endAt]);
+  const [progress, setProgress] = useState(0);
+  const hasAnimated = useRef(false);
 
   useEffect(() => {
+    hasAnimated.current = false;
+    setProgress(0);
+    
+    const timeoutId = window.setTimeout(() => {
+      setProgress(targetProgress);
+      hasAnimated.current = true;
+    }, 10);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [status, startAt, endAt, targetProgress]);
+
+  useEffect(() => {
+    if (!hasAnimated.current) return;
+    
     const next = computeProgress(status, startAt, endAt);
     setProgress(next);
 

@@ -223,6 +223,6 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
           );
         })}
       </div>
-    </>
+    </section>
   );
 }

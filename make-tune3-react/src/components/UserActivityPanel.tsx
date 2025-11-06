@@ -243,11 +243,11 @@ export function UserActivityPanel() {
       const submissionCloseAt = item.submissionCloseAt ?? collabInfo?.submissionCloseAtMs ?? null;
       const votingCloseAt = item.votingCloseAt ?? collabInfo?.votingCloseAtMs ?? null;
       const submissionDurationMs =
-        (item.submissionDurationSeconds ?? null)
+        typeof item.submissionDurationSeconds === 'number'
           ? item.submissionDurationSeconds * 1000
           : collabInfo?.submissionDurationMs ?? null;
       const votingDurationMs =
-        (item.votingDurationSeconds ?? null)
+        typeof item.votingDurationSeconds === 'number'
           ? item.votingDurationSeconds * 1000
           : collabInfo?.votingDurationMs ?? null;
       const publishedAtMs = collabInfo?.publishedAtMs ?? null;
