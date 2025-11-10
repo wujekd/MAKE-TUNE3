@@ -52,6 +52,7 @@
   border-radius: 4px;
   color: var(--white);
   font-size: 14px;
+  box-sizing: border-box;
 }
 
 .tag-input__input:focus {
@@ -99,4 +100,3 @@
   color: var(--error, #ff4444);
   font-size: 12px;
 }
-

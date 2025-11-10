@@ -71,10 +71,18 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
     if (!user) {
       setProjects([]);
       setProjectsLoaded(false);
+      setShowForm(false);
       return;
     }
     void loadProjects(user.uid);
   }, [user]);
+
+  useEffect(() => {
+    if (!user || projectsLoading || !projectsLoaded) return;
+    if (projects.length === 0 && !showForm) {
+      setShowForm(true);
+    }
+  }, [user, projectsLoading, projectsLoaded, projects.length, showForm]);
 
   const handleCreateProject = async () => {
     if (!user) return;
@@ -129,7 +137,7 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
           disabled={!user || authLoading}
           onClick={() => setShowForm(v => !v)}
         >
-          + create project
+          create project
         </button>
       </div>
       <div className="collab-list list user-activity__list">
@@ -179,7 +187,12 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
           <div className="user-activity__message">{projectsError}</div>
         )}
         {!authLoading && user && projectsLoaded && !projectsError && projects.length === 0 && (
-          <div className="user-activity__message user-activity__message--muted">no projects</div>
+          <div className="user-activity__empty-card">
+            <p className="user-activity__empty-title">Create your first project</p>
+            <p className="user-activity__empty-body">
+              Projects collect collaborations, submissions, and voting. Spin one up to start hosting new music.
+            </p>
+          </div>
         )}
         {!authLoading && user && projectsLoaded && projects.map(project => {
           const current = project.currentCollaboration;
