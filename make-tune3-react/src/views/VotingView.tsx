@@ -2,35 +2,32 @@ import { useContext, useEffect, useState, useRef, useMemo, useCallback } from 'r
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { useAppStore } from '../stores/appStore';
-import { useUIStore } from '../stores';
 import './MainView.css';
 import SubmissionItem from '../components/SubmissionItem';
 import Favorites from '../components/Favorites';
 import { Mixer } from '../components/Mixer';
-import { DebugInfo } from '../components/DebugInfo';
 import ProjectHistory from '../components/ProjectHistory';
 import { CollabData } from '../components/CollabData';
 import { CollabHeader } from '../components/CollabHeader';
-import { CollabViewShell } from '../components/CollabViewShell';
 import { useCollaborationLoader } from '../hooks/useCollaborationLoader';
 import { useStageRedirect } from '../hooks/useStageRedirect';
 import { useResolvedAudioUrl } from '../hooks/useResolvedAudioUrl';
 import { useAudioPreload } from '../hooks/useAudioPreload';
+import styles from './VotingView.module.css';
 
 export function VotingView() {
   const audioContext = useContext(AudioEngineContext);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-  
+
   // get data from different slices
-  const { user, signOut } = useAppStore(state => state.auth);
-  const { 
+  const { user } = useAppStore(state => state.auth);
+  const {
     regularTracks,
     favorites,
     backingTrack,
     loadCollaboration,
     loadCollaborationAnonymousById,
-    // markAsListened,
     addToFavorites,
     removeFromFavorites,
     voteFor,
@@ -39,7 +36,6 @@ export function VotingView() {
   } = useAppStore(state => state.collaboration);
   const { playSubmission } = useAppStore(state => state.playback);
   const { currentProject, currentCollaboration } = useAppStore(state => state.collaboration);
-  const { setShowAuth } = useUIStore();
 
   if (!audioContext) {
     return <div>Audio engine not available</div>;
@@ -106,7 +102,7 @@ export function VotingView() {
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 100);
-    
+
     return () => clearTimeout(timer);
   }, [user?.uid]);
 
@@ -134,83 +130,73 @@ export function VotingView() {
   }, [user, loadCollaboration, loadCollaborationAnonymousById, navigate]);
 
   if (isLoading) {
-    return <div style={{ 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      height: '100vh',
-      backgroundColor: 'var(--background)',
-      color: 'var(--white)'
-    }}>
-      Loading...
-    </div>;
+    return <div className={styles.loading}>Loading...</div>;
   }
 
-  const headerLeft = (
-    <>
-      <div className="mv-header-col">
-        <div className="mv-title">{currentProject?.name || ''}</div>
-        <div className="mv-subtitle">project description: {currentProject?.description || ''}</div>
-      </div>
-      <div className="mv-header-col">
-        <div className="mv-title">{currentCollaboration?.name || ''}</div>
-        <div className="mv-subtitle">collaboration description: {currentCollaboration?.description || ''}</div>
-      </div>
-    </>
-  );
-
-  const headerRight = (
-    <>
-      <ProjectHistory />
-      <CollabData collab={currentCollaboration as any} />
-      <CollabHeader collaboration={currentCollaboration} onStageChange={handleStageChange} />
-    </>
-  );
-
-  const mainClassName = !state.playerController.pastStagePlayback ? 'active-playback' : undefined;
-
   return (
-    <CollabViewShell
-      headerClassName="mv-fixed"
-      headerLeft={headerLeft}
-      headerRight={headerRight}
-      mainClassName={mainClassName}
-      mixer={state ? <Mixer state={state} /> : null}
-    >
-      <Favorites
-        onRemoveFromFavorites={(trackId) => removeFromFavorites(trackId)}
-        favorites={favorites}
-        onAddToFavorites={(trackId) => addToFavorites(trackId)}
-        onPlay={(trackId, index, favorite) => playSubmission(trackId, index, favorite)}
-        voteFor={voteFor}
-        listenedRatio={7}
-        finalVote={useAppStore.getState().collaboration.userCollaboration?.finalVote || null}
-      />
-      <div className="audio-player-title">Submissions</div>
-      <div className="submissions-scroll submissions-scroll--grid">
-        {regularTracks
-          .filter(track => !isTrackFavorite(track.filePath))
-          .map((track, index) => (
-            <SubmissionItem
-              key={track.id}
-              track={track}
-              index={index}
-              isCurrentTrack={
-                !state.playerController.pastStagePlayback &&
-                !state.playerController.playingFavourite &&
-                state.playerController.currentTrackId === index
-              }
-              isPlaying={state.player1.isPlaying}
-              listened={isTrackListened(track.filePath)}
-              favorite={isTrackFavorite(track.filePath)}
-              onAddToFavorites={() => addToFavorites(track.filePath)}
-              onPlay={(filePath, idx) => playSubmission(filePath, idx, false)}
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
+          <div className={styles.headerCol}>
+            <div className={styles.title}>{currentProject?.name || ''}</div>
+            <div className={styles.subtitle}>{currentProject?.description || ''}</div>
+          </div>
+          <div className={styles.headerCol}>
+            <div className={styles.title}>{currentCollaboration?.name || ''}</div>
+            <div className={styles.subtitle}>{currentCollaboration?.description || ''}</div>
+          </div>
+        </div>
+        <div className={styles.headerRight}>
+          <ProjectHistory />
+          <CollabData collab={currentCollaboration as any} />
+          <CollabHeader collaboration={currentCollaboration} onStageChange={handleStageChange} />
+        </div>
+      </div>
+
+      <div className={styles.content}>
+        <div className={styles.submissionsSection}>
+          <div className={styles.audioPlayerSection}>
+            <Favorites
+              onRemoveFromFavorites={(trackId) => removeFromFavorites(trackId)}
+              favorites={favorites}
+              onAddToFavorites={(trackId) => addToFavorites(trackId)}
+              onPlay={(trackId, index, favorite) => playSubmission(trackId, index, favorite)}
               voteFor={voteFor}
               listenedRatio={7}
-              isFinal={false}
+              finalVote={useAppStore.getState().collaboration.userCollaboration?.finalVote || null}
             />
-          ))}
+            <div className={styles.audioPlayerTitle}>Submissions</div>
+            <div className={styles.submissionsScroll}>
+              {regularTracks
+                .filter(track => !isTrackFavorite(track.filePath))
+                .map((track, index) => (
+                  <SubmissionItem
+                    key={track.id}
+                    track={track}
+                    index={index}
+                    isCurrentTrack={
+                      !state.playerController.pastStagePlayback &&
+                      !state.playerController.playingFavourite &&
+                      state.playerController.currentTrackId === index
+                    }
+                    isPlaying={state.player1.isPlaying}
+                    listened={isTrackListened(track.filePath)}
+                    favorite={isTrackFavorite(track.filePath)}
+                    onAddToFavorites={() => addToFavorites(track.filePath)}
+                    onPlay={(filePath, idx) => playSubmission(filePath, idx, false)}
+                    voteFor={voteFor}
+                    listenedRatio={7}
+                    isFinal={false}
+                  />
+                ))}
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.mixerSection}>
+          {state && <Mixer state={state} />}
+        </div>
       </div>
-    </CollabViewShell>
+    </div>
   );
 }

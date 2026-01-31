@@ -30,12 +30,12 @@ export class AudioEngine {
   private state: AudioState;
   private onStateChange?: (state: AudioState) => void;
   private playbackTracker: PlaybackTracker;
-  private onTrackListened?: (trackSrc: string)=>void;
+  private onTrackListened?: (trackSrc: string) => void;
   private listenedRatio?: number;
   private isTrackListened?: (trackSrc: string) => boolean;
   private playbackTrackingEnabled: boolean = true;
 
-  constructor(player1: HTMLAudioElement, player2: HTMLAudioElement, ) {
+  constructor(player1: HTMLAudioElement, player2: HTMLAudioElement,) {
     this.player1 = player1;
     this.player2 = player2;
     // dont create right away, wait for user interaction - thanks chrome
@@ -89,7 +89,7 @@ export class AudioEngine {
   }
   private setupAudioRouting(): void {
     if (!this.audioContext) return;
-    
+
     this.player1Gain = this.audioContext.createGain();
     this.player2Gain = this.audioContext.createGain();
     this.player1MuteGain = this.audioContext.createGain();
@@ -98,21 +98,21 @@ export class AudioEngine {
     this.eq.param1 = this.audioContext.createBiquadFilter();
     this.eq.param2 = this.audioContext.createBiquadFilter();
     this.eq.highshelf = this.audioContext.createBiquadFilter();
-    
+
     this.masterGain = this.audioContext.createGain();
     this.masterAnalyser = this.audioContext.createAnalyser();
     this.masterAnalyser.fftSize = 1024;
     this.masterAnalyser.smoothingTimeConstant = 0.8;
-    
+
     // Create individual channel analysers
     this.player1Analyser = this.audioContext.createAnalyser();
     this.player1Analyser.fftSize = 512;
     this.player1Analyser.smoothingTimeConstant = 0.8;
-    
+
     this.player2Analyser = this.audioContext.createAnalyser();
     this.player2Analyser.fftSize = 512;
     this.player2Analyser.smoothingTimeConstant = 0.8;
-    
+
     // player1 chain: gain -> highpass -> param1 -> param2 -> highshelf -> mute -> master
     this.player1Gain.connect(this.eq.highpass);
     this.eq.highpass.connect(this.eq.param1);
@@ -128,7 +128,7 @@ export class AudioEngine {
     // split: to destination and to analyser
     this.masterGain.connect(this.audioContext.destination);
     this.masterGain.connect(this.masterAnalyser);
-    
+
     this.player1Gain.gain.value = this.state.player1.volume;
     this.player1MuteGain.gain.value = 1;
     if (this.eq.highpass) {
@@ -160,7 +160,7 @@ export class AudioEngine {
   private async resumeIfSuspended(): Promise<void> {
     if (!this.audioContext) return;
     if (this.audioContext.state !== 'running') {
-      try { await this.audioContext.resume(); } catch {}
+      try { await this.audioContext.resume(); } catch { }
     }
   }
 
@@ -173,7 +173,7 @@ export class AudioEngine {
     if (!this.audioContext || !this.player1Gain || !this.player1MuteGain) return;
     try {
       this.player1Gain.disconnect();
-    } catch {}
+    } catch { }
     if (enabled) {
       if (this.eq.highpass) {
         this.player1Gain.connect(this.eq.highpass);
@@ -186,15 +186,15 @@ export class AudioEngine {
   private startLevelLoop() {
     if (!this.audioContext || !this.masterAnalyser || !this.player1Analyser || !this.player2Analyser) return;
     if (this.rafId !== null) return;
-    
+
     const masterAnalyser = this.masterAnalyser;
     const player1Analyser = this.player1Analyser;
     const player2Analyser = this.player2Analyser;
-    
+
     const masterBuffer = new Float32Array(masterAnalyser.fftSize);
     const player1Buffer = new Float32Array(player1Analyser.fftSize);
     const player2Buffer = new Float32Array(player2Analyser.fftSize);
-    
+
     const notify = () => {
       // Master level
       masterAnalyser.getFloatTimeDomainData(masterBuffer);
@@ -208,7 +208,7 @@ export class AudioEngine {
       }
       const rms = Math.sqrt(sum / masterBuffer.length);
       this.levelListeners.forEach(cb => cb({ peak, rms }));
-      
+
       // Player1 level
       player1Analyser.getFloatTimeDomainData(player1Buffer);
       let peak1 = 0;
@@ -221,7 +221,7 @@ export class AudioEngine {
       }
       const rms1 = Math.sqrt(sum1 / player1Buffer.length);
       this.player1LevelListeners.forEach(cb => cb({ peak: peak1, rms: rms1 }));
-      
+
       // Player2 level
       player2Analyser.getFloatTimeDomainData(player2Buffer);
       let peak2 = 0;
@@ -234,16 +234,16 @@ export class AudioEngine {
       }
       const rms2 = Math.sqrt(sum2 / player2Buffer.length);
       this.player2LevelListeners.forEach(cb => cb({ peak: peak2, rms: rms2 }));
-      
+
       this.rafId = window.requestAnimationFrame(notify);
     };
     this.rafId = window.requestAnimationFrame(notify);
   }
   private stopLevelLoopIfIdle() {
-    if (this.levelListeners.size === 0 && 
-        this.player1LevelListeners.size === 0 && 
-        this.player2LevelListeners.size === 0 && 
-        this.rafId !== null) {
+    if (this.levelListeners.size === 0 &&
+      this.player1LevelListeners.size === 0 &&
+      this.player2LevelListeners.size === 0 &&
+      this.rafId !== null) {
       window.cancelAnimationFrame(this.rafId);
       this.rafId = null;
     }
@@ -275,7 +275,7 @@ export class AudioEngine {
   private connectPlayerToAudioContext(playerId: 1 | 2): void {
     const player = playerId === 1 ? this.player1 : this.player2;
     const gainNode = playerId === 1 ? this.player1Gain : this.player2Gain;
-    
+
     const source = this.audioContext.createMediaElementSource(player);
     if (gainNode) {
       source.connect(gainNode);
@@ -305,7 +305,7 @@ export class AudioEngine {
       player.addEventListener('error', onErr, { once: true });
     });
     const timed = new Promise<void>((resolve) => setTimeout(resolve, timeoutMs));
-    await Promise.race([ready, timed]).catch(() => {});
+    await Promise.race([ready, timed]).catch(() => { });
   }
   loadSource(playerId: 1 | 2, src: string): void {
     const player = playerId === 1 ? this.player1 : this.player2;
@@ -318,8 +318,8 @@ export class AudioEngine {
       this.player2.currentTime = 0;
     }
     this.updateState({
-      [`player${playerId}`]: { 
-        ...this.state[`player${playerId}`], 
+      [`player${playerId}`]: {
+        ...this.state[`player${playerId}`],
         source: src,
         isPlaying: false,
         hasEnded: false,
@@ -358,12 +358,12 @@ export class AudioEngine {
     this.player2.playbackRate = 1;
     this.player2.muted = false;
     this.resumeIfSuspended();
-    try { await this.player2.play(); } catch {}
+    try { await this.player2.play(); } catch { }
     try {
       await this.player1.play();
-    } catch {}
+    } catch { }
     if (this.player2.paused) {
-      try { await this.resumeIfSuspended(); await this.player2.play(); } catch {}
+      try { await this.resumeIfSuspended(); await this.player2.play(); } catch { }
     }
     {
       const t = Math.max(this.player1.currentTime, this.player2.currentTime);
@@ -371,7 +371,7 @@ export class AudioEngine {
       this.player2.currentTime = t;
     }
     this.synchronizePlayers(1500, 0.005);
-  } 
+  }
   async playPastStage(submissionSrc: string, backingSrc: string, index: number): Promise<void> {
     this.initAudioContext();
     await this.resumeIfSuspended();
@@ -405,7 +405,7 @@ export class AudioEngine {
     this.player1.pause();
     this.player2.currentTime = 0;
     this.player2.playbackRate = 1;
-    try { await this.player2.play(); } catch {}
+    try { await this.player2.play(); } catch { }
     this.state.playerController.pastStagePlayback = true;
     this.state.playerController.playingFavourite = false;
     this.state.playerController.currentTrackId = -1;
@@ -425,10 +425,10 @@ export class AudioEngine {
     this.state.playerController.playingFavourite = false;
     this.state.playerController.currentTrackId = -1;
     this.updateState({
-      player2: { 
-        ...this.state.player2, 
-        isPlaying: false, 
-        currentTime: resetTime ? 0 : this.player2.currentTime 
+      player2: {
+        ...this.state.player2,
+        isPlaying: false,
+        currentTime: resetTime ? 0 : this.player2.currentTime
       },
       playerController: { ...this.state.playerController }
     });
@@ -451,12 +451,12 @@ export class AudioEngine {
     this.player2.playbackRate = 1;
     this.player2.muted = false;
     this.resumeIfSuspended();
-    try { await this.player2.play(); } catch {}
+    try { await this.player2.play(); } catch { }
     try {
       await this.player1.play();
-    } catch {}
+    } catch { }
     if (this.player2.paused) {
-      try { await this.resumeIfSuspended(); await this.player2.play(); } catch {}
+      try { await this.resumeIfSuspended(); await this.player2.play(); } catch { }
     }
     {
       const t = Math.max(this.player1.currentTime, this.player2.currentTime);
@@ -479,7 +479,7 @@ export class AudioEngine {
     } catch {
       // ignore autoplay failures; ensureLoaded already primed buffer
     } finally {
-      try { this.player2.pause(); } catch {}
+      try { this.player2.pause(); } catch { }
       this.player2.currentTime = 0;
       this.player2.muted = wasMuted;
     }
@@ -532,7 +532,7 @@ export class AudioEngine {
     const state = this.getState();
     const player1Playing = state.player1.isPlaying;
     const player2Playing = state.player2.isPlaying;
-    
+
     if (player1Playing || player2Playing) {
       this.pause();
     } else {
@@ -553,7 +553,7 @@ export class AudioEngine {
     this.updateState({
       [`player${playerId}`]: {
         ...this.state[`player${playerId}`],
-        volume: volume 
+        volume: volume
       }
     });
   }
@@ -631,9 +631,9 @@ export class AudioEngine {
       // seek player2 when in pastStagePlayback mode
       this.player2.currentTime = time;
       this.updateState({
-        player2: { 
-          ...this.state.player2, 
-          currentTime: time 
+        player2: {
+          ...this.state.player2,
+          currentTime: time
         }
       });
     } else {
@@ -641,17 +641,59 @@ export class AudioEngine {
       this.player1.currentTime = time;
       this.player2.currentTime = time;
       this.updateState({
-        player1: { 
-          ...this.state.player1, 
-          currentTime: time 
+        player1: {
+          ...this.state.player1,
+          currentTime: time
         },
-        player2: { 
-          ...this.state.player2, 
-          currentTime: time 
+        player2: {
+          ...this.state.player2,
+          currentTime: time
         }
       });
       this.playbackTracker.stopTracking();
     }
+  }
+  seekBacking(time: number): void {
+    // Seek only player2 (backing track) - used when no submission is loaded
+    this.player2.currentTime = time;
+    this.updateState({
+      player2: {
+        ...this.state.player2,
+        currentTime: time
+      }
+    });
+  }
+  resetPlayback(): void {
+    // Stop and reset both players without clearing the loaded sources (cache)
+    this.player1.pause();
+    this.player2.pause();
+    this.player1.currentTime = 0;
+    this.player2.currentTime = 0;
+
+    // Reset controller state
+    this.state.playerController.pastStagePlayback = false;
+    this.state.playerController.playingFavourite = false;
+    this.state.playerController.currentTrackId = -1;
+
+    // Stop playback tracking
+    this.playbackTracker.stopTracking();
+
+    // Update state - preserves source so audio cache remains intact
+    this.updateState({
+      player1: {
+        ...this.state.player1,
+        isPlaying: false,
+        currentTime: 0,
+        hasEnded: false
+      },
+      player2: {
+        ...this.state.player2,
+        isPlaying: false,
+        currentTime: 0,
+        hasEnded: false
+      },
+      playerController: { ...this.state.playerController }
+    });
   }
   // state methods
   setCallbacks(onStateChange: (state: AudioState) => void) {
@@ -685,8 +727,8 @@ export class AudioEngine {
     });
     this.player1.addEventListener('timeupdate', () => {
       this.updateState({
-        player1: { 
-          ...this.state.player1, 
+        player1: {
+          ...this.state.player1,
           currentTime: this.player1.currentTime,
           duration: this.player1.duration || 0
         }
@@ -697,10 +739,10 @@ export class AudioEngine {
     });
     this.player1.addEventListener('ended', () => {
       this.updateState({
-        player1: { 
-          ...this.state.player1, 
-          isPlaying: false, 
-          hasEnded: true 
+        player1: {
+          ...this.state.player1,
+          isPlaying: false,
+          hasEnded: true
         }
       });
     });
@@ -717,8 +759,8 @@ export class AudioEngine {
     });
     this.player2.addEventListener('timeupdate', () => {
       this.updateState({
-        player2: { 
-          ...this.state.player2, 
+        player2: {
+          ...this.state.player2,
           currentTime: this.player2.currentTime,
           duration: this.player2.duration || 0
         }
@@ -726,10 +768,10 @@ export class AudioEngine {
     });
     this.player2.addEventListener('ended', () => {
       this.updateState({
-        player2: { 
-          ...this.state.player2, 
-          isPlaying: false, 
-          hasEnded: true 
+        player2: {
+          ...this.state.player2,
+          isPlaying: false,
+          hasEnded: true
         }
       });
     });

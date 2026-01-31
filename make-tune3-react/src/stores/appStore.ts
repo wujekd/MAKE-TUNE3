@@ -990,10 +990,16 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (!engine || !state) return;
 
       const pastStagePlayback = state.playerController.pastStagePlayback;
-      const duration = pastStagePlayback ? state.player2.duration : state.player1.duration;
+      // Check if we should use player2 (backing track) when player1 has no duration
+      const useBackingOnly = !pastStagePlayback && state.player1.duration === 0 && state.player2.duration > 0;
+      const duration = pastStagePlayback || useBackingOnly ? state.player2.duration : state.player1.duration;
       if (duration > 0) {
         const newTime = (value / 100) * duration;
-        engine.seek(newTime, pastStagePlayback);
+        if (useBackingOnly) {
+          engine.seekBacking(newTime);
+        } else {
+          engine.seek(newTime, pastStagePlayback);
+        }
       }
     },
 
@@ -1182,18 +1188,24 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
     getCurrentTime: (state) => {
       const pastStagePlayback = state.playerController.pastStagePlayback;
-      const currentTime = pastStagePlayback ? state.player2.currentTime : state.player1.currentTime;
+      // Fallback to player2 when player1 has no duration (backing track only mode)
+      const useBackingOnly = !pastStagePlayback && state.player1.duration === 0 && state.player2.duration > 0;
+      const currentTime = pastStagePlayback || useBackingOnly ? state.player2.currentTime : state.player1.currentTime;
       return formatTime(currentTime);
     },
     getTotalTime: (state) => {
       const pastStagePlayback = state.playerController.pastStagePlayback;
-      const duration = pastStagePlayback ? state.player2.duration : state.player1.duration;
+      // Fallback to player2 when player1 has no duration (backing track only mode)
+      const useBackingOnly = !pastStagePlayback && state.player1.duration === 0 && state.player2.duration > 0;
+      const duration = pastStagePlayback || useBackingOnly ? state.player2.duration : state.player1.duration;
       return formatTime(duration);
     },
     getTimeSliderValue: (state) => {
       const pastStagePlayback = state.playerController.pastStagePlayback;
-      const currentTime = pastStagePlayback ? state.player2.currentTime : state.player1.currentTime;
-      const duration = pastStagePlayback ? state.player2.duration : state.player1.duration;
+      // Fallback to player2 when player1 has no duration (backing track only mode)
+      const useBackingOnly = !pastStagePlayback && state.player1.duration === 0 && state.player2.duration > 0;
+      const currentTime = pastStagePlayback || useBackingOnly ? state.player2.currentTime : state.player1.currentTime;
+      const duration = pastStagePlayback || useBackingOnly ? state.player2.duration : state.player1.duration;
 
       if (duration > 0) {
         return (currentTime / duration) * 100;

@@ -57,9 +57,9 @@ function App() {
             breadcrumb: 'Project',
             actions: ({ navigate: nav, project }: any) => ([
               { key: 'back', label: 'Back', onClick: () => nav('/collabs') },
-              project ? { 
-                key: 'delete', 
-                label: 'Delete Project', 
+              project ? {
+                key: 'delete',
+                label: 'Delete Project',
                 onClick: async () => {
                   const ok = window.confirm('Delete this project? This cannot be undone.');
                   if (!ok) return;
@@ -113,9 +113,8 @@ function App() {
           handle: {
             title: 'Submit',
             breadcrumb: 'Submit',
-            actions: ({ navigate, params }: any) => ([
-              { key: 'back', label: 'Back', onClick: () => navigate('/collabs') },
-              { key: 'to-collab', label: 'To voting', onClick: () => navigate(`/collab/${params.collaborationId}`) }
+            actions: ({ navigate }: any) => ([
+              { key: 'back', label: 'Back', onClick: () => navigate('/collabs') }
             ])
           }
         },

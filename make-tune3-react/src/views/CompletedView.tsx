@@ -8,12 +8,12 @@ import '../components/ProjectHistory.css';
 import { Mixer } from '../components/Mixer';
 import { CollabData } from '../components/CollabData';
 import ProjectHistory from '../components/ProjectHistory';
-import { CollabViewShell } from '../components/CollabViewShell';
 import { CompletedCollaborationTimeline } from '../components/CompletedCollaborationTimeline';
 import { AudioUrlUtils } from '../utils/audioUrlUtils';
 import { useCollaborationLoader } from '../hooks/useCollaborationLoader';
 import { useStageRedirect } from '../hooks/useStageRedirect';
 import { WinnerCard } from '../components/WinnerCard';
+import styles from './CompletedView.module.css';
 
 export function CompletedView() {
   const { collaborationId } = useParams();
@@ -49,7 +49,7 @@ export function CompletedView() {
 
   useEffect(() => {
     if (!winner?.path || !currentCollaboration?.backingTrackPath) return;
-    
+
     Promise.all([
       AudioUrlUtils.resolveAudioUrl(winner.path),
       AudioUrlUtils.resolveAudioUrl(currentCollaboration.backingTrackPath)
@@ -67,15 +67,15 @@ export function CompletedView() {
 
   const playWinner = useCallback(async () => {
     if (!engine || !winner?.path || !currentCollaboration?.backingTrackPath || playInFlightRef.current) return;
-    
+
     if (isWinnerPlaying && audioCtx?.state.player1.isPlaying) {
       engine.pause();
       return;
     }
-    
+
     playInFlightRef.current = true;
     setIsPlayingWinner(true);
-    
+
     try {
       if (winner.settings) {
         const s = winner.settings;
@@ -87,12 +87,12 @@ export function CompletedView() {
           highshelf: { frequency: s.eq.highshelf.frequency, gain: s.eq.highshelf.gain }
         } as any);
       }
-      
+
       const subUrl = await AudioUrlUtils.resolveAudioUrl(winner.path);
       const backUrl = await AudioUrlUtils.resolveAudioUrl(currentCollaboration.backingTrackPath);
-      
+
       winnerResolvedUrlRef.current = subUrl;
-      
+
       engine.playSubmission(subUrl, backUrl, 0);
     } catch (err) {
       console.error('[CompletedView] Failed to play winner', err);
@@ -107,92 +107,73 @@ export function CompletedView() {
       setIsPlayingWinner(false);
     }
   }, [isWinnerPlaying, audioCtx?.state.player1.isPlaying]);
-  
+
   useEffect(() => {
     if (audioCtx?.state.player1.source !== winnerResolvedUrlRef.current && winnerResolvedUrlRef.current !== null) {
       winnerResolvedUrlRef.current = null;
     }
   }, [audioCtx?.state.player1.source]);
 
-  const results = useMemo(() => {
-    const listRaw: any = currentCollaboration?.results;
-    const list: Array<{ path: string; votes: number }> = Array.isArray(listRaw) ? listRaw : [];
-    const total = list.reduce((a, b) => a + (b?.votes || 0), 0) || 1;
-    return list.slice().sort((a, b) => (b?.votes || 0) - (a?.votes || 0)).map((r, i) => ({
-      rank: i + 1,
-      path: r?.path || '',
-      votes: r?.votes || 0,
-      pct: Math.round(((r.votes || 0) / total) * 100)
-    }));
-  }, [currentCollaboration?.results]);
-
-  if (!audioCtx || !audioCtx.state) return <div>audio engine not available</div>;
+  if (!audioCtx || !audioCtx.state) return <div className={styles.loading}>Audio engine not available</div>;
   const state = audioCtx.state;
-  const headerLeft = (
-    <>
-      <div className="mv-header-col">
-        <div className="mv-title">{currentProject?.name || ''}</div>
-        <div className="mv-subtitle">project: {currentProject?.description || ''}</div>
-      </div>
-      <div className="mv-header-col">
-        <div className="mv-title">{currentCollaboration?.name || ''}</div>
-        <div className="mv-subtitle">collaboration: {currentCollaboration?.description || ''}</div>
-      </div>
-    </>
-  );
 
-  const headerRight = (
-    <>
-      <ProjectHistory />
-      <div className="card collab-timeline">
-        <div className="collab-timeline__inner">
-          <CompletedCollaborationTimeline
-            publishedAt={currentCollaboration?.publishedAt}
-            submissionCloseAt={(currentCollaboration as any)?.submissionCloseAt}
-            votingCloseAt={(currentCollaboration as any)?.votingCloseAt}
-            progress={displayProgress}
-          />
-        </div>
-      </div>
-    </>
-  );
-
-  const winnerCardClass = [
-    'collab-history-item',
-    isWinnerPlaying && audioCtx?.state.player1.isPlaying ? 'currently-playing' : '',
-    'winner-card'
+  const winnerCardWrapperClass = [
+    styles.winnerCardWrapper,
+    isWinnerPlaying && audioCtx?.state.player1.isPlaying ? styles.playing : ''
   ].filter(Boolean).join(' ');
 
   return (
-    <CollabViewShell
-      headerClassName="mv-fixed"
-      headerLeft={headerLeft}
-      headerRight={headerRight}
-      mainClassName="active-playback"
-      mixer={state && <Mixer state={state} />}
-    >
-      <section className="favorites-section">
-        <div className="favorites-header">
-          <h2 className="favorites-title">Collaboration Results</h2>
-        </div>
-        <div className="favorites-container favorites-container--center">
-          <div className={winnerCardClass}>
-            <WinnerCard
-              name={currentCollaboration?.winnerUserName || 'Anonymous'}
-              progressPercent={displayProgress}
-              isPlaying={isWinnerPlaying && audioCtx?.state.player1.isPlaying}
-              isLoading={isPlayingWinner}
-              disabled={!winner?.path}
-              onPlay={playWinner}
-            />
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
+          <div className={styles.headerCol}>
+            <div className={styles.title}>{currentProject?.name || ''}</div>
+            <div className={styles.subtitle}>{currentProject?.description || ''}</div>
+          </div>
+          <div className={styles.headerCol}>
+            <div className={styles.title}>{currentCollaboration?.name || ''}</div>
+            <div className={styles.subtitle}>{currentCollaboration?.description || ''}</div>
           </div>
         </div>
-      </section>
-      <div className="submissions-scroll submissions-scroll--centered">
-        <div className="row gap-16 wrap justify-center">
-          <CollabData collab={currentCollaboration as any} />
+        <div className={styles.headerRight}>
+          <ProjectHistory />
+          <div className="card collab-timeline">
+            <div className="collab-timeline__inner">
+              <CompletedCollaborationTimeline
+                publishedAt={currentCollaboration?.publishedAt}
+                submissionCloseAt={(currentCollaboration as any)?.submissionCloseAt}
+                votingCloseAt={(currentCollaboration as any)?.votingCloseAt}
+                progress={displayProgress}
+              />
+            </div>
+          </div>
         </div>
       </div>
-    </CollabViewShell>
+
+      <div className={styles.content}>
+        <div className={styles.resultsSection}>
+          <div className={styles.winnerSection}>
+            <h2 className={styles.sectionTitle}>Collaboration Results</h2>
+            <div className={winnerCardWrapperClass}>
+              <WinnerCard
+                name={currentCollaboration?.winnerUserName || 'Anonymous'}
+                progressPercent={displayProgress}
+                isPlaying={isWinnerPlaying && audioCtx?.state.player1.isPlaying}
+                isLoading={isPlayingWinner}
+                disabled={!winner?.path}
+                onPlay={playWinner}
+              />
+            </div>
+          </div>
+          <div className={styles.collabDataSection}>
+            <CollabData collab={currentCollaboration as any} />
+          </div>
+        </div>
+
+        <div className={styles.mixerSection}>
+          {state && <Mixer state={state} />}
+        </div>
+      </div>
+    </div>
   );
 }

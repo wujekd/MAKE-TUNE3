@@ -16,6 +16,7 @@ import { ref, getDownloadURL } from 'firebase/storage';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
 import '../components/Favorites.css';
+import styles from './SubmissionView.module.css';
 
 export function SubmissionView() {
   const audioContext = useContext(AudioEngineContext);
@@ -80,9 +81,9 @@ export function SubmissionView() {
   // Redirect if collaboration is in wrong stage
   useEffect(() => {
     if (!currentCollaboration || !collaborationId) return;
-    
+
     const collabStatus = currentCollaboration.status;
-    
+
     if (collabStatus === 'voting') {
       console.log('[SubmissionView] Collaboration is in voting stage, redirecting...');
       navigate(`/collab/${collaborationId}`, { replace: true });
@@ -167,10 +168,10 @@ export function SubmissionView() {
   const renderPane = () => {
     if (status === 'loading') {
       return (
-        <div className="submission-pane">
-          <h4 className="card__title">Preparing submission flow</h4>
-          <div className="card__body">
-            <div style={{ color: 'var(--white)', opacity: 0.8 }}>
+        <div className={styles.submissionPane}>
+          <h4 className={styles.cardTitle}>Preparing submission flow</h4>
+          <div className={styles.cardBody}>
+            <div className={styles.statusMessage}>
               Checking your download and submission status...
             </div>
           </div>
@@ -180,10 +181,10 @@ export function SubmissionView() {
 
     if (status === 'submitted' && user) {
       return (
-        <div className="submission-pane">
-          <h4 className="card__title">Submission complete</h4>
-          <div className="card__body">
-            <div style={{ color: 'var(--white)', opacity: 0.8 }}>
+        <div className={styles.submissionPane}>
+          <h4 className={styles.cardTitle}>Submission complete</h4>
+          <div className={styles.cardBody}>
+            <div className={styles.statusMessage}>
               You have already submitted to this collaboration.
             </div>
           </div>
@@ -228,37 +229,37 @@ export function SubmissionView() {
   };
 
   return (
-    <div className="main-container">
-      <div className="info-top" style={{ maxHeight: '200px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', width: '100%', gap: 16, height: '100%', minHeight: 0 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {projectInfo && (
-              <div style={{ marginBottom: 8, color: 'var(--white)', opacity: 0.85 }}>
-                <div style={{ fontSize: 20, fontWeight: 600 }}>{projectInfo.name}</div>
-                {projectInfo.description && (
-                  <div style={{ fontSize: 13, opacity: 0.75 }}>{projectInfo.description}</div>
-                )}
-              </div>
-            )}
-            <h2 style={{ color: 'var(--white)', margin: 0 }}>{currentCollaboration?.name || 'Submission'}</h2>
-          </div>
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
+          {projectInfo && (
+            <div className={styles.projectMeta}>
+              <h3 className={styles.projectName}>{projectInfo.name}</h3>
+              {projectInfo.description && (
+                <p className={styles.projectDescription}>{projectInfo.description}</p>
+              )}
+            </div>
+          )}
+          <h2 className={styles.collabTitle}>{currentCollaboration?.name || 'Submission'}</h2>
+        </div>
+        <div className={styles.headerRight}>
           <ProjectHistory />
           <CollabData collab={currentCollaboration as any} />
-          <div style={{ minWidth: 0 }}>
-            <CollabHeader collaboration={currentCollaboration} onStageChange={handleStageChange} />
-          </div>
+          <CollabHeader collaboration={currentCollaboration} onStageChange={handleStageChange} />
         </div>
       </div>
 
-      <div className="submissions-section active-playback">
-        <div className="audio-player-section">
-          <div className="submission-pane-wrapper">
+      <div className={styles.content}>
+        <div className={styles.submissionsSection}>
+          <div className={styles.submissionPaneWrapper}>
             {renderPane()}
           </div>
         </div>
-      </div>
 
-      {state && <Mixer state={state} />}
+        <div className={styles.mixerSection}>
+          {state && <Mixer state={state} />}
+        </div>
+      </div>
     </div>
   );
 }

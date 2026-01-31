@@ -1,9 +1,11 @@
-import { Outlet, useMatches, useNavigate, useParams } from 'react-router-dom';
+import { Outlet, useMatches, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
 import './AppShell.css';
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
+import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { DebugInfo } from './DebugInfo';
 import { StorePanel } from './StorePanel';
+import { SHOW_DEBUG_TOOLS } from '../config';
 
 type Action = { key: string; label: string; onClick: () => void; visible?: boolean; disabled?: boolean };
 
@@ -58,6 +60,17 @@ export function AppShell() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userBtnRef = useRef<HTMLButtonElement | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Reset playback when route changes (most DRY approach - single location for all routes)
+  const location = useLocation();
+  const audioContext = useContext(AudioEngineContext);
+  const prevPathnameRef = useRef(location.pathname);
+  useEffect(() => {
+    if (prevPathnameRef.current !== location.pathname) {
+      prevPathnameRef.current = location.pathname;
+      audioContext?.engine?.resetPlayback();
+    }
+  }, [location.pathname, audioContext?.engine]);
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
       const t = e.target as Node;
@@ -90,10 +103,12 @@ export function AppShell() {
           </nav>
           <h3 style={{ margin: 0, color: 'var(--white)' }}>{headerTitle}</h3>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, flex: 1 }}>
-          <button onClick={() => setShowStore(v => !v)}>{showStore ? 'Hide store' : 'Show store'}</button>
-          <button onClick={() => setShowDebug(v => !v)}>{showDebug ? 'Hide debug' : 'Show debug'}</button>
-        </div>
+        {SHOW_DEBUG_TOOLS && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, flex: 1 }}>
+            <button onClick={() => setShowStore(v => !v)}>{showStore ? 'Hide store' : 'Show store'}</button>
+            <button onClick={() => setShowDebug(v => !v)}>{showDebug ? 'Hide debug' : 'Show debug'}</button>
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', position: 'relative' }}>
           {currentUser && (
             <div style={{ position: 'relative' }}>

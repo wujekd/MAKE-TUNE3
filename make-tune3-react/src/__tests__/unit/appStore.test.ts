@@ -352,6 +352,63 @@ describe('AppStore - Playback Slice', () => {
         expect(sliderValue).toBe(0);
     });
 
+    // Backing-only mode tests (when player1 has no duration but player2 does)
+    it('should use player2 for slider value when player1 has no duration (backing-only mode)', () => {
+        const { playback } = useAppStore.getState();
+        const mockState = {
+            player1: { currentTime: 0, duration: 0 },
+            player2: { currentTime: 60, duration: 180 },
+            playerController: { pastStagePlayback: false }
+        } as any;
+
+        const sliderValue = playback.getTimeSliderValue(mockState);
+        expect(sliderValue).toBeCloseTo(33.33, 1); // 60/180 * 100
+    });
+
+    it('should use player2 for getCurrentTime when player1 has no duration (backing-only mode)', () => {
+        const { playback } = useAppStore.getState();
+        const mockState = {
+            player1: { currentTime: 0, duration: 0 },
+            player2: { currentTime: 90, duration: 180 },
+            playerController: { pastStagePlayback: false }
+        } as any;
+
+        const currentTime = playback.getCurrentTime(mockState);
+        expect(currentTime).toBe('1:30');
+    });
+
+    it('should use player2 for getTotalTime when player1 has no duration (backing-only mode)', () => {
+        const { playback } = useAppStore.getState();
+        const mockState = {
+            player1: { currentTime: 0, duration: 0 },
+            player2: { currentTime: 0, duration: 240 },
+            playerController: { pastStagePlayback: false }
+        } as any;
+
+        const totalTime = playback.getTotalTime(mockState);
+        expect(totalTime).toBe('4:00');
+    });
+
+    it('should call seekBacking when player1 has no duration (backing-only mode)', () => {
+        const mockEngine = {
+            seekBacking: vi.fn()
+        };
+
+        useAudioStore.setState({
+            engine: mockEngine as any,
+            state: {
+                player1: { currentTime: 0, duration: 0 },
+                player2: { currentTime: 0, duration: 180 },
+                playerController: { pastStagePlayback: false }
+            } as any
+        });
+
+        const { playback } = useAppStore.getState();
+        playback.handleTimeSliderChange(50); // 50% of 180 = 90 seconds
+
+        expect(mockEngine.seekBacking).toHaveBeenCalledWith(90);
+    });
+
     it('should handle submission volume change', () => {
         const mockEngine = {
             setVolume: vi.fn()
