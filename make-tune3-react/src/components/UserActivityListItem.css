@@ -4,9 +4,9 @@
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.625rem 0.75rem;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid transparent;
+  border-radius: var(--list-item-radius, 4px);
+  background: var(--list-item-bg, rgba(255, 255, 255, 0.05));
+  border: var(--list-item-border, 1px solid transparent);
   color: var(--white);
   text-decoration: none;
   transition: all 0.2s ease;
@@ -14,8 +14,8 @@
 }
 
 .user-activity-list-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: var(--list-item-hover-bg, rgba(255, 255, 255, 0.1));
+  border: var(--list-item-hover-border, 1px solid rgba(255, 255, 255, 0.1));
   text-decoration: none;
 }
 

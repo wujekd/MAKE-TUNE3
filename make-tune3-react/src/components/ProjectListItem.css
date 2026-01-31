@@ -3,9 +3,9 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border-radius: 8px;
-  background: var(--primary1-600);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--list-item-radius, 8px);
+  background: var(--list-item-bg, var(--primary1-600));
+  border: var(--list-item-border, 1px solid rgba(255, 255, 255, 0.08));
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
   color: var(--white);
   text-decoration: none;
@@ -15,7 +15,8 @@
 .project-list-item:hover {
   text-decoration: none;
   transform: translateY(-1px);
-  border-color: var(--contrast-600);
+  background: var(--list-item-hover-bg, var(--primary1-600));
+  border: var(--list-item-hover-border, 1px solid var(--contrast-600));
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 10px rgba(0, 0, 0, 0.25);
 }
 
@@ -58,7 +59,7 @@
   padding: 4px 10px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  background: var(--primary1-800);
+  background: rgba(255, 255, 255, 0.1);
   color: var(--white);
 }
 
@@ -66,10 +67,10 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: var(--primary1-800);
+  background: rgba(0, 0, 0, 0.2);
   border-radius: 6px;
   padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 

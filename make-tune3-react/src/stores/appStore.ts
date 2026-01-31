@@ -4,25 +4,25 @@ import type { AudioState } from '../types';
 
 // debug flag for console logs
 const DEBUG_LOGS = true;
-import type { 
-  Project, 
+import type {
+  Project,
   Collaboration,
-  Track, 
+  Track,
   UserCollaboration,
   SubmissionEntry
 } from '../types/collaboration';
 
-import { 
+import {
   onAuthStateChanged
 } from 'firebase/auth';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { AuthService } from '../services/authService';
-import { 
-  CollaborationService, 
-  ProjectService, 
-  UserService, 
-  InteractionService, 
+import {
+  CollaborationService,
+  ProjectService,
+  UserService,
+  InteractionService,
   DataService,
   SubmissionService
 } from '../services';
@@ -49,22 +49,22 @@ interface AppState {
     currentCollaboration: Collaboration | null;
     userCollaboration: UserCollaboration | null;
     userCollaborations: Collaboration[]; // user's collaborations
-    
+
     // track data from file paths
     allTracks: Track[];
     regularTracks: Track[];
     pastStageTracks: Track[];
     backingTrack: Track | null;
-    
+
     // favorites array
     favorites: Track[];
-    
+
     // loading states
     isLoadingCollaboration: boolean;
     isLoadingProject: boolean;
     isUpdatingFavorites: boolean;
     isUpdatingListened: boolean;
-    
+
     // actions
     setCurrentProject: (project: Project) => void;
     setCurrentCollaboration: (collaboration: Collaboration) => void;
@@ -82,7 +82,7 @@ interface AppState {
     loadCollaborationAnonymousById: (collaborationId: string) => Promise<void>;
     refreshCollaborationStatus: (collaborationId: string) => Promise<void>;
     loadProject: (projectId: string) => Promise<void>;
-    
+
     // computed
     isTrackListened: (filePath: string) => boolean;
     isTrackFavorite: (filePath: string) => boolean;
@@ -165,10 +165,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       try {
         set(state => ({ auth: { ...state.auth, loading: true } }));
         await AuthService.signOut();
-        set(state => ({ 
+        set(state => ({
           auth: { ...state.auth, user: null, loading: false },
-          collaboration: { 
-            ...state.collaboration, 
+          collaboration: {
+            ...state.collaboration,
             favorites: [],
             userCollaboration: null
           }
@@ -198,15 +198,15 @@ export const useAppStore = create<AppState>((set, get) => ({
             if (DEBUG_LOGS) console.log('fetching user profile for:', firebaseUser.uid);
             const userProfile = await AuthService.getUserProfile(firebaseUser.uid);
             if (DEBUG_LOGS) console.log('user profile fetched:', userProfile);
-            
+
             // Load user's collaborations
             const collaborations = await UserService.getUserCollaborations(firebaseUser.uid);
             if (DEBUG_LOGS) console.log('user collaborations loaded:', collaborations);
-            
-            set(state => ({ 
+
+            set(state => ({
               auth: { ...state.auth, user: userProfile, loading: false },
-              collaboration: { 
-                ...state.collaboration, 
+              collaboration: {
+                ...state.collaboration,
                 userCollaborations: collaborations,
                 userCollaboration: null, // will be set when user selects a collaboration
                 // clear favorites when user logs in
@@ -219,10 +219,10 @@ export const useAppStore = create<AppState>((set, get) => ({
           }
         } else {
           if (DEBUG_LOGS) console.log('no user, setting loading to false');
-          set(state => ({ 
+          set(state => ({
             auth: { ...state.auth, user: null, loading: false },
-            collaboration: { 
-              ...state.collaboration, 
+            collaboration: {
+              ...state.collaboration,
               userCollaboration: null,
               userCollaborations: [],
               favorites: []
@@ -250,51 +250,51 @@ export const useAppStore = create<AppState>((set, get) => ({
     isUpdatingFavorites: false,
     isUpdatingListened: false,
 
-    setCurrentProject: (project) => set(state => ({ 
-      collaboration: { ...state.collaboration, currentProject: project } 
+    setCurrentProject: (project) => set(state => ({
+      collaboration: { ...state.collaboration, currentProject: project }
     })),
 
-    setCurrentCollaboration: (collaboration) => set(state => ({ 
-      collaboration: { ...state.collaboration, currentCollaboration: collaboration } 
+    setCurrentCollaboration: (collaboration) => set(state => ({
+      collaboration: { ...state.collaboration, currentCollaboration: collaboration }
     })),
 
-    setUserCollaboration: (collaboration) => set(state => ({ 
-      collaboration: { ...state.collaboration, userCollaboration: collaboration } 
+    setUserCollaboration: (collaboration) => set(state => ({
+      collaboration: { ...state.collaboration, userCollaboration: collaboration }
     })),
 
-    setUserCollaborations: (collaborations) => set(state => ({ 
-      collaboration: { ...state.collaboration, userCollaborations: collaborations } 
+    setUserCollaborations: (collaborations) => set(state => ({
+      collaboration: { ...state.collaboration, userCollaborations: collaborations }
     })),
 
     setTracks: (tracks) => {
       const { userCollaboration } = get().collaboration;
       const favoriteFilePaths = userCollaboration?.favoriteTracks || [];
-      
+
       // Convert file paths to Track objects
-      const trackObjects = tracks.map(track => 
+      const trackObjects = tracks.map(track =>
         createTrackFromFilePath(track.filePath, 'submission', get().collaboration.currentCollaboration?.id || '')
       );
-      
+
       // For now, all tracks are considered regular submissions
       // Later we'll implement filtering based on user data
-      const regularTracks = trackObjects.filter(track => 
+      const regularTracks = trackObjects.filter(track =>
         !favoriteFilePaths.includes(track.filePath)
       );
-      
+
       // Past stage tracks will be loaded from project data later
       const pastStageTracks: Track[] = [];
-      
+
       // Backing track will be set separately from collaboration data
       const backingTrack: Track | null = null;
-      
-      set(state => ({ 
-        collaboration: { 
-          ...state.collaboration, 
-          allTracks: trackObjects, 
+
+      set(state => ({
+        collaboration: {
+          ...state.collaboration,
+          allTracks: trackObjects,
           regularTracks,
           pastStageTracks,
           backingTrack
-        } 
+        }
       }));
     },
 
@@ -302,47 +302,47 @@ export const useAppStore = create<AppState>((set, get) => ({
       try {
         if (DEBUG_LOGS) console.log('loading collaboration data for:', collaborationId);
         set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: true } }));
-        
+
         const collaborationData = await DataService.loadCollaborationData(userId, collaborationId);
         if (DEBUG_LOGS) console.log('loaded collaboration.submissions:', collaborationData.collaboration?.submissions);
-        
+
         if (!collaborationData.collaboration) {
           if (DEBUG_LOGS) console.error('collaboration data is null for collaborationId:', collaborationId);
           if (DEBUG_LOGS) console.error('Full response:', collaborationData);
           set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
           return;
         }
-        
+
         // Construct track objects from file paths
         const collab = collaborationData.collaboration;
         const submissionTracks = (collab.submissions && collab.submissions.length > 0)
           ? collab.submissions.map((s: SubmissionEntry) => {
-              if (DEBUG_LOGS) console.log('tracks from submissions[]', s);
-              const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
-              return createTrackFromFilePath(s.path, 'submission', collab.id, {
-                settings: s.settings,
-                optimizedPath: s.optimizedPath,
-                submissionId: s.submissionId,
-                multitrackZipPath: s.multitrackZipPath,
-                moderationStatus
-              });
-            })
+            if (DEBUG_LOGS) console.log('tracks from submissions[]', s);
+            const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
+            return createTrackFromFilePath(s.path, 'submission', collab.id, {
+              settings: s.settings,
+              optimizedPath: s.optimizedPath,
+              submissionId: s.submissionId,
+              multitrackZipPath: s.multitrackZipPath,
+              moderationStatus
+            });
+          })
           : (collab as any).submissionPaths?.map((path: string) => {
-              if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[]', path);
-              return createTrackFromFilePath(path, 'submission', collab.id);
-            }) || [];
-        const backingTrack = collab.backingTrackPath ? 
+            if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[]', path);
+            return createTrackFromFilePath(path, 'submission', collab.id);
+          }) || [];
+        const backingTrack = collab.backingTrackPath ?
           createTrackFromFilePath(collab.backingTrackPath, 'backing', collab.id) : null;
-        
+
         // calculate favorites and regular tracks
         const favoriteFilePaths = collaborationData.userCollaboration?.favoriteTracks || [];
-        const favorites = submissionTracks.filter((track: Track) => 
+        const favorites = submissionTracks.filter((track: Track) =>
           favoriteFilePaths.includes(track.filePath)
         );
-        const regularTracks = submissionTracks.filter((track: Track) => 
+        const regularTracks = submissionTracks.filter((track: Track) =>
           !favoriteFilePaths.includes(track.filePath)
         );
-        
+
         set(state => ({
           collaboration: {
             ...state.collaboration,
@@ -356,12 +356,12 @@ export const useAppStore = create<AppState>((set, get) => ({
             isLoadingCollaboration: false
           }
         }));
-        
+
         // Load project data in background
         if (collaborationData.collaboration.projectId) {
           get().collaboration.loadProject(collaborationData.collaboration.projectId);
         }
-        
+
         if (DEBUG_LOGS) console.log('collaboration data loaded successfully');
       } catch (error: any) {
         if (DEBUG_LOGS) console.error('error loading collaboration data:', error);
@@ -393,46 +393,46 @@ export const useAppStore = create<AppState>((set, get) => ({
       try {
         if (DEBUG_LOGS) console.log('loading collaboration data for anonymous user');
         set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: true } }));
-        
+
         // Get the first available collaboration
         const collaboration = await CollaborationService.getFirstCollaboration();
         if (!collaboration) {
           throw new Error('No collaborations found');
         }
-        
+
         const collaborationData = await DataService.loadCollaborationDataAnonymous(collaboration.id);
         if (DEBUG_LOGS) console.log('loaded (anon) collaboration.submissions:', collaborationData.collaboration?.submissions);
-        
+
         if (!collaborationData.collaboration) {
           if (DEBUG_LOGS) console.error('collaboration data is null (anon)');
           set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
           return;
         }
-        
+
         // Construct track objects from file paths
         const collab = collaborationData.collaboration;
         const submissionTracks = (collab.submissions && collab.submissions.length > 0)
           ? collab.submissions.map((s: SubmissionEntry) => {
-              if (DEBUG_LOGS) console.log('tracks from submissions[] (anon)', s);
-              const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
-              return createTrackFromFilePath(s.path, 'submission', collab.id, {
-                settings: s.settings,
-                optimizedPath: s.optimizedPath,
-                submissionId: s.submissionId,
-                multitrackZipPath: s.multitrackZipPath,
-                moderationStatus
-              });
-            })
+            if (DEBUG_LOGS) console.log('tracks from submissions[] (anon)', s);
+            const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
+            return createTrackFromFilePath(s.path, 'submission', collab.id, {
+              settings: s.settings,
+              optimizedPath: s.optimizedPath,
+              submissionId: s.submissionId,
+              multitrackZipPath: s.multitrackZipPath,
+              moderationStatus
+            });
+          })
           : (collab as any).submissionPaths?.map((path: string) => {
-              if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon)', path);
-              return createTrackFromFilePath(path, 'submission', collab.id);
-            }) || [];
-        const backingTrack = collab.backingTrackPath ? 
+            if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon)', path);
+            return createTrackFromFilePath(path, 'submission', collab.id);
+          }) || [];
+        const backingTrack = collab.backingTrackPath ?
           createTrackFromFilePath(collab.backingTrackPath, 'backing', collab.id) : null;
-        
+
         // For anonymous users, all tracks are regular tracks (no favorites)
         const regularTracks = submissionTracks;
-        
+
         set(state => ({
           collaboration: {
             ...state.collaboration,
@@ -445,12 +445,12 @@ export const useAppStore = create<AppState>((set, get) => ({
             isLoadingCollaboration: false
           }
         }));
-        
+
         // Load project data in background
         if (collaborationData.collaboration.projectId) {
           get().collaboration.loadProject(collaborationData.collaboration.projectId);
         }
-        
+
         if (DEBUG_LOGS) console.log('collaboration data loaded successfully for anonymous user');
       } catch (error) {
         if (DEBUG_LOGS) console.error('error loading collaboration data for anonymous user:', error);
@@ -461,35 +461,35 @@ export const useAppStore = create<AppState>((set, get) => ({
     loadCollaborationAnonymousById: async (collaborationId: string) => {
       try {
         if (DEBUG_LOGS) console.log('loading collaboration data for anonymous user by id');
-      set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: true } }));
-      const collaborationData = await DataService.loadCollaborationDataAnonymous(collaborationId);
-      if (DEBUG_LOGS) console.log('loaded (anon by id) collaboration.submissions:', collaborationData.collaboration?.submissions);
-      
-      if (!collaborationData.collaboration) {
-        if (DEBUG_LOGS) console.error('collaboration data is null (anon by id)');
-        set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
-        return;
-      }
-      
-      const collab = collaborationData.collaboration;
-      const submissionTracks = (collab.submissions && collab.submissions.length > 0)
+        set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: true } }));
+        const collaborationData = await DataService.loadCollaborationDataAnonymous(collaborationId);
+        if (DEBUG_LOGS) console.log('loaded (anon by id) collaboration.submissions:', collaborationData.collaboration?.submissions);
+
+        if (!collaborationData.collaboration) {
+          if (DEBUG_LOGS) console.error('collaboration data is null (anon by id)');
+          set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
+          return;
+        }
+
+        const collab = collaborationData.collaboration;
+        const submissionTracks = (collab.submissions && collab.submissions.length > 0)
           ? collab.submissions.map((s: SubmissionEntry) => {
-              if (DEBUG_LOGS) console.log('tracks from submissions[] (anon by id)', s);
-              const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
-              return createTrackFromFilePath(s.path, 'submission', collab.id, {
-                settings: s.settings,
-                optimizedPath: s.optimizedPath,
-                submissionId: s.submissionId,
-                multitrackZipPath: s.multitrackZipPath,
-                moderationStatus
-              });
-            })
+            if (DEBUG_LOGS) console.log('tracks from submissions[] (anon by id)', s);
+            const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
+            return createTrackFromFilePath(s.path, 'submission', collab.id, {
+              settings: s.settings,
+              optimizedPath: s.optimizedPath,
+              submissionId: s.submissionId,
+              multitrackZipPath: s.multitrackZipPath,
+              moderationStatus
+            });
+          })
           : (collab as any).submissionPaths?.map((path: string) => {
-              if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon by id)', path);
-              return createTrackFromFilePath(path, 'submission', collab.id);
-            }) || [];
-      const backingTrack = collab.backingTrackPath ? 
-        createTrackFromFilePath(collab.backingTrackPath, 'backing', collab.id) : null;
+            if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon by id)', path);
+            return createTrackFromFilePath(path, 'submission', collab.id);
+          }) || [];
+        const backingTrack = collab.backingTrackPath ?
+          createTrackFromFilePath(collab.backingTrackPath, 'backing', collab.id) : null;
         const regularTracks = submissionTracks;
         set(state => ({
           collaboration: {
@@ -516,28 +516,28 @@ export const useAppStore = create<AppState>((set, get) => ({
       try {
         if (DEBUG_LOGS) console.log('loading project data for:', projectId);
         set(state => ({ collaboration: { ...state.collaboration, isLoadingProject: true } }));
-        
+
         const project = await ProjectService.getProject(projectId);
-        
+
         if (project) {
           // Extract past stage tracks from project.pastCollaborations
-        const pastStageTracks = project.pastCollaborations
-          .map(pastCollab => {
-            const winnerPath =
-              pastCollab.winnerTrackPath ||
-              pastCollab.pastStageTrackPath ||
-              '';
-            if (!winnerPath) return null;
-            const track = createTrackFromFilePath(
-              winnerPath,
-              'pastStage',
-              pastCollab.collaborationId
-            );
-            track.backingTrackPath = pastCollab.backingTrackPath;
-            return track;
-          })
-          .filter((track): track is ReturnType<typeof createTrackFromFilePath> => !!track);
-          
+          const pastStageTracks = project.pastCollaborations
+            .map(pastCollab => {
+              const winnerPath =
+                pastCollab.winnerTrackPath ||
+                pastCollab.pastStageTrackPath ||
+                '';
+              if (!winnerPath) return null;
+              const track = createTrackFromFilePath(
+                winnerPath,
+                'pastStage',
+                pastCollab.collaborationId
+              );
+              track.backingTrackPath = pastCollab.backingTrackPath;
+              return track;
+            })
+            .filter((track): track is ReturnType<typeof createTrackFromFilePath> => !!track);
+
           set(state => ({
             collaboration: {
               ...state.collaboration,
@@ -546,7 +546,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               isLoadingProject: false
             }
           }));
-          
+
           if (DEBUG_LOGS) console.log('project data loaded successfully');
         }
       } catch (error) {
@@ -559,13 +559,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (DEBUG_LOGS) console.log('markAsListened called with filePath:', filePath);
       const { user } = get().auth;
       const { currentCollaboration } = get().collaboration;
-      
+
       if (!user) {
         // anonymous users can't mark as listened
         if (DEBUG_LOGS) console.log('anonymous user - cannot mark as listened');
         return;
       }
-      
+
       // authenticated: pessimistic firebase approach
       if (!currentCollaboration) {
         if (DEBUG_LOGS) console.log('no collaboration loaded, returning');
@@ -575,14 +575,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       try {
         if (DEBUG_LOGS) console.log('authenticated user - marking as listened in firebase');
         set(state => ({ collaboration: { ...state.collaboration, isUpdatingListened: true } }));
-        
+
         // firebase call first
         await InteractionService.markTrackAsListened(user.uid, currentCollaboration.id, filePath);
-        
+
         // update local state only after firebase success
         const { userCollaboration } = get().collaboration;
         const updatedListenedTracks = [...(userCollaboration?.listenedTracks || []), filePath];
-        
+
         set(state => ({
           collaboration: {
             ...state.collaboration,
@@ -606,88 +606,88 @@ export const useAppStore = create<AppState>((set, get) => ({
       const { user } = get().auth;
       const { currentCollaboration } = get().collaboration;
       const { engine, state: audioState } = useAudioStore.getState();
-      
+
       if (DEBUG_LOGS) console.log('user status:', user ? 'authenticated' : 'anonymous');
       if (DEBUG_LOGS) console.log('current collaboration:', currentCollaboration?.id);
-      
+
       if (!user) {
         // anonymous users can't add to favorites
         if (DEBUG_LOGS) console.log('anonymous user - cannot add to favorites');
         return;
       }
-        
-        // authenticated: pessimistic firebase approach
-        if (!currentCollaboration) {
-          if (DEBUG_LOGS) console.log('no collaboration loaded, returning');
-          return;
-        }
 
-        try {
-          if (DEBUG_LOGS) console.log('authenticated user - adding to firebase favorites');
-          set(state => ({ collaboration: { ...state.collaboration, isUpdatingFavorites: true } }));
-          
-          // firebase call first
-          if (DEBUG_LOGS) console.log('calling firebase addTrackToFavorites...');
-          await InteractionService.addTrackToFavorites(user.uid, currentCollaboration.id, filePath);
-          if (DEBUG_LOGS) console.log('firebase call successful');
-          
-          // update local state only after firebase success
-          const { userCollaboration } = get().collaboration;
-          const updatedFavorites = [...(userCollaboration?.favoriteTracks || []), filePath];
-          if (DEBUG_LOGS) console.log('updated favorites array:', updatedFavorites);
-          
-          // update favorites array
-          const track = get().collaboration.getTrackByFilePath(filePath);
-          const updatedFavoritesArray = track ? [...get().collaboration.favorites, track] : get().collaboration.favorites;
-          
-          set(state => ({
-            collaboration: {
-              ...state.collaboration,
-              userCollaboration: {
-                ...state.collaboration.userCollaboration!,
-                favoriteTracks: updatedFavorites,
-                lastInteraction: new Date() as any
-              },
-              regularTracks: updateRegularTracks(state.collaboration.allTracks, updatedFavorites),
-              favorites: updatedFavoritesArray,
-              isUpdatingFavorites: false
+      // authenticated: pessimistic firebase approach
+      if (!currentCollaboration) {
+        if (DEBUG_LOGS) console.log('no collaboration loaded, returning');
+        return;
+      }
+
+      try {
+        if (DEBUG_LOGS) console.log('authenticated user - adding to firebase favorites');
+        set(state => ({ collaboration: { ...state.collaboration, isUpdatingFavorites: true } }));
+
+        // firebase call first
+        if (DEBUG_LOGS) console.log('calling firebase addTrackToFavorites...');
+        await InteractionService.addTrackToFavorites(user.uid, currentCollaboration.id, filePath);
+        if (DEBUG_LOGS) console.log('firebase call successful');
+
+        // update local state only after firebase success
+        const { userCollaboration } = get().collaboration;
+        const updatedFavorites = [...(userCollaboration?.favoriteTracks || []), filePath];
+        if (DEBUG_LOGS) console.log('updated favorites array:', updatedFavorites);
+
+        // update favorites array
+        const track = get().collaboration.getTrackByFilePath(filePath);
+        const updatedFavoritesArray = track ? [...get().collaboration.favorites, track] : get().collaboration.favorites;
+
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            userCollaboration: {
+              ...state.collaboration.userCollaboration!,
+              favoriteTracks: updatedFavorites,
+              lastInteraction: new Date() as any
+            },
+            regularTracks: updateRegularTracks(state.collaboration.allTracks, updatedFavorites),
+            favorites: updatedFavoritesArray,
+            isUpdatingFavorites: false
+          }
+        }));
+
+        if (DEBUG_LOGS) console.log('track added to firebase favorites successfully');
+
+        // update playingFavourite and currentTrackId if this is the currently playing track
+        if (engine && audioState) {
+          const currentTrackSrc = audioState.player1.source as string;
+          const srcToFilePath = (src: string): string => {
+            if (!src) return '';
+            if (src.startsWith('/test-audio/')) return src.replace('/test-audio/', '');
+            if (src.startsWith('http')) {
+              const idx = src.indexOf('/o/');
+              if (idx !== -1) {
+                let rest = src.substring(idx + 3);
+                const q = rest.indexOf('?');
+                if (q !== -1) rest = rest.substring(0, q);
+                try { return decodeURIComponent(rest); } catch { return rest; }
+              }
             }
-          }));
-          
-          if (DEBUG_LOGS) console.log('track added to firebase favorites successfully');
-
-          // update playingFavourite and currentTrackId if this is the currently playing track
-          if (engine && audioState) {
-            const currentTrackSrc = audioState.player1.source as string;
-            const srcToFilePath = (src: string): string => {
-              if (!src) return '';
-              if (src.startsWith('/test-audio/')) return src.replace('/test-audio/', '');
-              if (src.startsWith('http')) {
-                const idx = src.indexOf('/o/');
-                if (idx !== -1) {
-                  let rest = src.substring(idx + 3);
-                  const q = rest.indexOf('?');
-                  if (q !== -1) rest = rest.substring(0, q);
-                  try { return decodeURIComponent(rest); } catch { return rest; }
-                }
-              }
-              return src;
-            };
-            const clean = srcToFilePath(currentTrackSrc);
-            if (track && (clean === track.filePath || (track.optimizedPath && clean === track.optimizedPath))) {
-              if (DEBUG_LOGS) console.log('updating playingFavourite to true for currently playing track');
-              engine.setPlayingFavourite(true);
-              const newFavoriteIndex = updatedFavoritesArray.findIndex(t => t.filePath === track.filePath);
-              if (newFavoriteIndex !== -1) {
-                if (DEBUG_LOGS) console.log('updating currentTrackId to:', newFavoriteIndex);
-                engine.updateCurrentTrackId(newFavoriteIndex);
-              }
+            return src;
+          };
+          const clean = srcToFilePath(currentTrackSrc);
+          if (track && (clean === track.filePath || (track.optimizedPath && clean === track.optimizedPath))) {
+            if (DEBUG_LOGS) console.log('updating playingFavourite to true for currently playing track');
+            engine.setPlayingFavourite(true);
+            const newFavoriteIndex = updatedFavoritesArray.findIndex(t => t.filePath === track.filePath);
+            if (newFavoriteIndex !== -1) {
+              if (DEBUG_LOGS) console.log('updating currentTrackId to:', newFavoriteIndex);
+              engine.updateCurrentTrackId(newFavoriteIndex);
             }
           }
-        } catch (error) {
-          if (DEBUG_LOGS) console.error('failed to add to firebase favorites:', error);
-          set(state => ({ collaboration: { ...state.collaboration, isUpdatingFavorites: false } }));
         }
+      } catch (error) {
+        if (DEBUG_LOGS) console.error('failed to add to firebase favorites:', error);
+        set(state => ({ collaboration: { ...state.collaboration, isUpdatingFavorites: false } }));
+      }
     },
 
     removeFromFavorites: async (filePath) => {
@@ -695,13 +695,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       const { user } = get().auth;
       const { currentCollaboration } = get().collaboration;
       const { engine, state: audioState } = useAudioStore.getState();
-      
+
       if (!user) {
         // anonymous users can't remove from favorites
         if (DEBUG_LOGS) console.log('anonymous user - cannot remove from favorites');
         return;
       }
-      
+
       // authenticated: pessimistic firebase approach
       if (!currentCollaboration) {
         if (DEBUG_LOGS) console.log('no collaboration loaded, returning');
@@ -711,17 +711,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       try {
         if (DEBUG_LOGS) console.log('authenticated user - removing from firebase favorites');
         set(state => ({ collaboration: { ...state.collaboration, isUpdatingFavorites: true } }));
-        
+
         // firebase call first
         await InteractionService.removeTrackFromFavorites(user.uid, currentCollaboration.id, filePath);
-        
+
         // update local state only after firebase success
         const { userCollaboration } = get().collaboration;
         const updatedFavorites = userCollaboration?.favoriteTracks.filter(path => path !== filePath) || [];
-        
+
         // update favorites array
         const updatedFavoritesArray = get().collaboration.favorites.filter(track => track.filePath !== filePath);
-        
+
         set(state => ({
           collaboration: {
             ...state.collaboration,
@@ -812,12 +812,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     isTrackListened: (filePath) => {
       const { user } = get().auth;
       const { userCollaboration } = get().collaboration;
-      
+
       if (!user) {
         // anonymous users can't have listened tracks
         return false;
       }
-      
+
       // authenticated: check firebase data
       return userCollaboration?.listenedTracks.includes(filePath) || false;
     },
@@ -1001,7 +1001,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const engine = useAudioStore.getState().engine;
       const audioState = useAudioStore.getState().state;
       const { regularTracks, favorites, pastStageTracks, backingTrack } = get().collaboration;
-      
+
       if (!engine || !audioState) return;
 
       const pastStagePlayback = audioState.playerController.pastStagePlayback;
@@ -1012,7 +1012,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           if (currentTrackIndex > 0) {
             const track = pastStageTracks[currentTrackIndex - 1];
             const submissionSrc = await resolveAudioUrl(track.optimizedPath || track.filePath);
-            const backingSrc = track.backingTrackPath 
+            const backingSrc = track.backingTrackPath
               ? await resolveAudioUrl(track.backingTrackPath)
               : '';
             if (backingSrc) {
@@ -1052,7 +1052,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const engine = useAudioStore.getState().engine;
       const audioState = useAudioStore.getState().state;
       const { regularTracks, favorites, pastStageTracks, backingTrack } = get().collaboration;
-      
+
       if (!engine || !audioState) return;
 
       const pastStagePlayback = audioState.playerController.pastStagePlayback;
@@ -1063,7 +1063,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           if (currentTrackIndex < pastStageTracks.length - 1) {
             const track = pastStageTracks[currentTrackIndex + 1];
             const submissionSrc = await resolveAudioUrl(track.optimizedPath || track.filePath);
-            const backingSrc = track.backingTrackPath 
+            const backingSrc = track.backingTrackPath
               ? await resolveAudioUrl(track.backingTrackPath)
               : '';
             if (backingSrc) {
@@ -1112,7 +1112,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const audioState = useAudioStore.getState().state as any;
       const { backingTrack, currentCollaboration } = get().collaboration;
       const track = get().collaboration.getTrackByFilePath(filePath);
-      
+
       if (!engine || !track) {
         if (DEBUG_LOGS) console.log('playSubmission - no engine or track found');
         return;
@@ -1164,13 +1164,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     playPastSubmission: (index) => {
       const engine = useAudioStore.getState().engine;
       const { pastStageTracks } = get().collaboration;
-      
+
       if (!engine || !pastStageTracks[index]) return;
 
       (async () => {
         const track = pastStageTracks[index];
         const submissionSrc = await resolveAudioUrl(track.filePath);
-        const backingSrc = track.backingTrackPath 
+        const backingSrc = track.backingTrackPath
           ? await resolveAudioUrl(track.backingTrackPath)
           : '';
         if (!backingSrc) {
@@ -1194,7 +1194,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const pastStagePlayback = state.playerController.pastStagePlayback;
       const currentTime = pastStagePlayback ? state.player2.currentTime : state.player1.currentTime;
       const duration = pastStagePlayback ? state.player2.duration : state.player1.duration;
-      
+
       if (duration > 0) {
         return (currentTime / duration) * 100;
       }

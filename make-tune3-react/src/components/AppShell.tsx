@@ -7,6 +7,8 @@ import { StorePanel } from './StorePanel';
 
 type Action = { key: string; label: string; onClick: () => void; visible?: boolean; disabled?: boolean };
 
+import '../styles/theme-abyssal.css';
+
 export function useToolbar() {
   const matches = useMatches();
   const navigate = useNavigate();
@@ -24,17 +26,17 @@ export function useToolbar() {
     ? (m as any).handle.breadcrumb(ctx)
     : ((m as any).handle?.breadcrumb || '')).filter(Boolean);
   const routeActionsRaw: Action[] = typeof handle.actions === 'function' ? (handle.actions(ctx) || []) : (handle.actions || []);
-  const routeActions: Action[] = routeActionsRaw.filter(a => !['login','register','logout','to-auth'].includes(a.key));
+  const routeActions: Action[] = routeActionsRaw.filter(a => !['login', 'register', 'logout', 'to-auth'].includes(a.key));
 
   const signOut = useAppStore(s => s.auth.signOut);
   const authActions: Action[] = user
     ? [
-        { key: 'logout', label: 'Logout', onClick: async () => { try { await signOut(); } finally { navigate('/collabs'); } } }
-      ]
+      { key: 'logout', label: 'Logout', onClick: async () => { try { await signOut(); } finally { navigate('/collabs'); } } }
+    ]
     : [
-        { key: 'login', label: 'Login', onClick: () => navigate('/auth?mode=login') },
-        { key: 'register', label: 'Register', onClick: () => navigate('/auth?mode=register') }
-      ];
+      { key: 'login', label: 'Login', onClick: () => navigate('/auth?mode=login') },
+      { key: 'register', label: 'Register', onClick: () => navigate('/auth?mode=register') }
+    ];
 
   return { title, crumbs, actions: [...routeActions, ...authActions] };
 }
@@ -77,7 +79,7 @@ export function AppShell() {
   }, [showUserMenu]);
 
   return (
-    <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="app-shell theme-abyssal" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--background)', color: 'var(--white)' }}>
       <header className="app-shell__header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {backAction && (

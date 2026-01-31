@@ -107,23 +107,23 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
   const glowSpread = 70;              // Glow spread in pixels
   const glowOpacity = 0.3;            // Glow opacity (0-1)
   const peakThreshold = 0.75;          // Only react to audio above this level (0-1)
-  
+
   // Calculate how much above threshold (0 if below threshold)
   const aboveThreshold = Math.max(0, masterLevel - peakThreshold);
   // Scale to full range (0-1) based on remaining headroom
   const peakIntensity = aboveThreshold / (1 - peakThreshold);
-  
+
   const brightnessValue = 1 + (peakIntensity * brightnessMultiplier);
   const glowIntensity = peakIntensity * glowSpread;
   const currentGlowOpacity = peakIntensity * glowOpacity;
-  
+
   return (
-    <section 
-      className="mixer-section mixer-section--single" 
+    <section
+      className="mixer-section mixer-section--single"
       id="mixer-1-channel"
       style={{
         filter: `brightness(${brightnessValue})`,
-        boxShadow: `inset 0 0 ${glowIntensity}px rgba(255, 255, 255, ${currentGlowOpacity})`,
+        boxShadow: `inset 0 0 ${glowIntensity}px rgba(var(--mixer-glow-rgb, 255, 255, 255), ${currentGlowOpacity})`,
         transition: 'filter 0.05s ease-out, box-shadow 0.05s ease-out',
         maxHeight: '100%',
         minHeight: 0,
@@ -133,8 +133,8 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
     >
       <div className="mixer1-transport" style={{ flexShrink: 0 }}>
         <div className="mixer1-transport-buttons">
-          <button 
-            id="mixer1-play-btn" 
+          <button
+            id="mixer1-play-btn"
             className="mixer1-button"
             onClick={togglePlayPause}
             disabled={!hasSource}
@@ -146,11 +146,11 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
               </svg>
             ) : (
               <svg width="20" height="20" viewBox="-3 0 28 28" fill="#ffffff">
-                <path d="M21.4,13.5L4.4,1.3C3.3,0.7,2,0.8,2,2.9v20.1c0,2,1.4,2.3,2.4,1.6l17-12.2C22.2,11.6,22.2,14.3,21.4,13.5"/>
+                <path d="M21.4,13.5L4.4,1.3C3.3,0.7,2,0.8,2,2.9v20.1c0,2,1.4,2.3,2.4,1.6l17-12.2C22.2,11.6,22.2,14.3,21.4,13.5" />
               </svg>
             )}
           </button>
-          <button 
+          <button
             id="mixer1-stop-btn"
             className="mixer1-button"
             onClick={() => stopBackingPlayback()}
@@ -184,9 +184,9 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
           <AnalogVUMeter value={masterLevel} min={0} max={1} size={72} />
         </div>
         <span className="mixer1-channel-label" style={{ flexShrink: 0 }}>master</span>
-        
+
         <div style={{ flex: 1, minHeight: 0 }} />
-        
+
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: isCompactMode ? 0 : 12, flexShrink: 0 }}>
           {isCompactMode ? (
             <Potentiometer
@@ -211,8 +211,8 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
               onChange={handleMasterVolumeChangeEvent}
             />
           )}
-          <div 
-            style={{ 
+          <div
+            style={{
               position: 'absolute',
               right: isCompactMode ? '-30px' : '-25px',
               bottom: 0,
@@ -224,7 +224,7 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
             <SmallLEDMeter value={channelLevel} min={0} max={1} vertical={true} />
           </div>
         </div>
-        
+
         {isCompactMode && <div style={{ flex: 1, minHeight: 0 }} />}
       </div>
     </section>

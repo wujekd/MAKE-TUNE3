@@ -1,7 +1,8 @@
 .tag-filter {
-  background: var(--primary1-700);
+  background: var(--dashboard-panel, var(--primary1-700));
   border-radius: 8px;
   padding: 16px;
+  border: var(--list-item-border, none);
 }
 
 .tag-filter__header {
@@ -41,22 +42,24 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background: var(--primary1-600);
+  background: var(--tag-bg, var(--primary1-600));
   border: 2px solid transparent;
+  border-color: var(--tag-border, transparent);
   border-radius: 16px;
-  color: var(--white);
+  color: var(--tag-text, var(--white));
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s;
 }
 
 .tag-filter__tag:hover {
-  background: var(--primary1-500);
+  background: var(--tag-hover-bg, var(--primary1-500));
+  border-color: var(--tag-hover-border, transparent);
 }
 
 .tag-filter__tag--selected {
-  background: var(--primary1-400);
-  border-color: var(--primary1-200);
+  background: var(--tag-selected-bg, var(--primary1-400));
+  border-color: var(--tag-border, var(--primary1-200));
 }
 
 .tag-filter__count {
@@ -69,4 +72,3 @@
   opacity: 0.7;
   font-size: 14px;
 }
-

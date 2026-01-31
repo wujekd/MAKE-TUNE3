@@ -1,0 +1,73 @@
+/* Abyssal Theme Definition */
+.theme-abyssal {
+    /* =========================================
+     GLOBAL PALETTE OVERRIDES
+     Mapping core --primary1-* tokens to Abyssal Theme
+     ========================================= */
+    --primary1-900: #050a0b;
+    /* Near Black */
+    --primary1-800: #0a1213;
+    /* Deep Teal - Main Surface */
+    --primary1-700: #121f21;
+    /* Lighter Teal - Secondary */
+    --primary1-600: #1a2a2c;
+    /* Component BG */
+    --primary1-500: #25393b;
+    /* Hover states */
+    --primary1-400: #304e50;
+    /* Borders/Separators */
+    --primary1-300: #4a7a7d;
+    --primary1-200: #7aaeb1;
+    /* Text Muted */
+    --primary1-100: #b0d4d6;
+    --primary1-50: #e0f2f2;
+
+    /* Global Backgrounds */
+    --background: radial-gradient(circle at top right, #1a2a2c 0%, #0a1213 60%);
+    --surface: rgba(18, 24, 28, 0.6);
+
+    /* Core Dashboard Colors */
+    --dashboard-bg: #0a1213;
+    --dashboard-panel: rgba(18, 24, 28, 0.6);
+    --dashboard-panel-border: rgba(48, 112, 113, 0.3);
+    --dashboard-accent: var(--contrast-500);
+    /* Orange */
+    --dashboard-text-muted: rgba(220, 230, 230, 0.6);
+    --dashboard-glow: 0 0 20px rgba(213, 95, 33, 0.15);
+
+    /* Unified List Item Variables */
+    --list-item-bg: rgba(255, 255, 255, 0.03);
+    --list-item-border: 1px solid rgba(48, 112, 113, 0.2);
+    --list-item-hover-bg: rgba(48, 112, 113, 0.1);
+    --list-item-hover-border: 1px solid var(--dashboard-accent);
+    --list-item-selected-bg: rgba(48, 112, 113, 0.25);
+    --list-item-radius: 8px;
+
+    /* Tag Filter Overrides */
+    --tag-bg: rgba(48, 112, 113, 0.3);
+    --tag-border: 1px solid rgba(48, 112, 113, 0.5);
+    --tag-text: var(--primary1-200);
+    --tag-hover-bg: rgba(48, 112, 113, 0.5);
+    --tag-hover-border: var(--dashboard-accent);
+    --tag-selected-bg: rgba(48, 112, 113, 0.6);
+
+    /* List Overrides */
+    --list-bg: transparent;
+    --list-border: none;
+
+    /* Component Specific Overrides */
+    --mixer-glow-rgb: 213, 95, 33;
+
+    /* Global Element Resets */
+    &,
+    & button,
+    & input {
+        font-family: 'Inter', system-ui, sans-serif;
+    }
+}
+
+/* Global backdrop for the theme */
+body:has(.theme-abyssal) {
+    background: #0a1213;
+    /* Fallback */
+}

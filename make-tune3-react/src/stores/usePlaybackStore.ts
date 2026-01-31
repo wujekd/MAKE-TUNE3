@@ -77,7 +77,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => {
       const engine = useAudioStore.getState().engine;
       const audioState = useAudioStore.getState().state;
       const { regularTracks, favorites, pastStageTracks, backingTrack } = useCollaborationStore.getState();
-      
+
       if (!engine || !audioState) return;
 
       const pastStagePlayback = audioState.playerController.pastStagePlayback;
@@ -123,7 +123,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => {
       const engine = useAudioStore.getState().engine;
       const audioState = useAudioStore.getState().state;
       const { regularTracks, favorites, pastStageTracks, backingTrack } = useCollaborationStore.getState();
-      
+
       if (!engine || !audioState) return;
 
       const pastStagePlayback = audioState.playerController.pastStagePlayback;
@@ -178,7 +178,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => {
       const audioState = useAudioStore.getState().state as any;
       const { backingTrack, currentCollaboration, getTrackByFilePath } = useCollaborationStore.getState();
       const track = getTrackByFilePath(filePath);
-      
+
       if (!engine || !track) {
         if (DEBUG_LOGS) console.log('playSubmission - no engine or track found');
         return;
@@ -228,7 +228,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => {
     playPastSubmission: (index) => {
       const engine = useAudioStore.getState().engine;
       const { pastStageTracks } = useCollaborationStore.getState();
-      
+
       if (!engine || !pastStageTracks[index]) return;
 
       cleanupBackingPreview();
@@ -249,23 +249,23 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => {
         const startTime = performance.now();
         try {
           cleanupBackingPreview();
-          
+
           // Measure URL resolution time
           const urlResolveStart = performance.now();
           const resolved = await resolveAudioUrl(filePath);
           const urlResolveTime = performance.now() - urlResolveStart;
-          
+
           // Measure play start time
           const playStart = performance.now();
           await engine.playBackingOnly(resolved);
           const playTime = performance.now() - playStart;
-          
+
           const totalTime = performance.now() - startTime;
           console.log(`[usePlaybackStore] 🎵 Backing track play timing:
   - URL resolution: ${urlResolveTime.toFixed(0)}ms
   - Play start: ${playTime.toFixed(0)}ms
   - Total: ${totalTime.toFixed(0)}ms`);
-          
+
           set({
             backingPreview: {
               label: label || decodeURIComponent(filePath.split('/').pop() || 'backing'),
@@ -334,7 +334,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => {
       const pastStagePlayback = state.playerController.pastStagePlayback;
       const currentTime = pastStagePlayback ? state.player2.currentTime : state.player1.currentTime;
       const duration = pastStagePlayback ? state.player2.duration : state.player1.duration;
-      
+
       if (duration > 0) {
         return (currentTime / duration) * 100;
       }

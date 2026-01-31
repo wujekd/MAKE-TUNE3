@@ -26,7 +26,7 @@ export function DashboardView() {
   usePrefetchAudio(prefetchedUrls[0]);
   usePrefetchAudio(prefetchedUrls[1]);
   usePrefetchAudio(prefetchedUrls[2]);
-  
+
   useEffect(() => {
     useAppStore.setState(state => ({
       ...state,
