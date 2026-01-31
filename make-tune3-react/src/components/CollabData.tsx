@@ -4,15 +4,29 @@ import type { Collaboration } from '../types/collaboration';
 type Props = { collab?: Collaboration | null };
 
 export function CollabData({ collab }: Props) {
-  const { submissionsCount, votesCount, results, winner } = useMemo(() => {
+  const { submissionsCount, votesCount, favoritesCount, participantsCount, results, winner } = useMemo(() => {
+    const status = (collab as any)?.status || 'unknown';
+    
+    // Submissions: use counter if available, fallback to array length
     const submissionsArr: any = (collab as any)?.submissions;
     const legacyArr: any = (collab as any)?.submissionPaths;
-    const submissionsCount = Array.isArray(submissionsArr)
-      ? submissionsArr.length
-      : (Array.isArray(legacyArr) ? legacyArr.length : 0);
+    const submissionsCount = typeof (collab as any)?.submissionsCount === 'number'
+      ? (collab as any).submissionsCount
+      : (Array.isArray(submissionsArr) ? submissionsArr.length : 
+         (Array.isArray(legacyArr) ? legacyArr.length : 0));
+    
+    // Favorites: use counter
+    const favoritesCount = (collab as any)?.favoritesCount || 0;
+    
+    // Votes: for completed use results array, otherwise use counter
     const resultsRaw: any = (collab as any)?.results;
-    const votesCount = Array.isArray(resultsRaw)
+    const votesCount = status === 'completed' && Array.isArray(resultsRaw)
       ? resultsRaw.reduce((acc: number, r: any) => acc + (r?.votes || 0), 0)
+      : ((collab as any)?.votesCount || 0);
+    
+    // Participants (users who submitted)
+    const participantsCount = Array.isArray((collab as any)?.participantIds) 
+      ? (collab as any).participantIds.length 
       : 0;
     
     const results = Array.isArray(resultsRaw) 
@@ -21,27 +35,30 @@ export function CollabData({ collab }: Props) {
     
     const winner = results.length > 0 ? results[0] : null;
     
-    return { submissionsCount, votesCount, results, winner };
+    return { submissionsCount, votesCount, favoritesCount, participantsCount, results, winner };
   }, [collab]);
 
   const status = (collab as any)?.status || 'unknown';
 
   return (
     <div className="card" style={{ maxWidth: 560 }}>
-      <h4 className="card__title">Collaboration Data</h4>
       <div className="card__body">
         <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--white)' }}>
           <tbody>
             <tr>
-              <td style={{ padding: '6px 8px', opacity: 0.8 }}>status</td>
-              <td style={{ padding: '6px 8px', textAlign: 'right', textTransform: 'capitalize' }}>{status}</td>
+              <td style={{ padding: '6px 8px', opacity: 0.8 }}>participants</td>
+              <td style={{ padding: '6px 8px', textAlign: 'right' }}>{participantsCount}</td>
             </tr>
             <tr>
               <td style={{ padding: '6px 8px', opacity: 0.8 }}>submissions</td>
               <td style={{ padding: '6px 8px', textAlign: 'right' }}>{submissionsCount}</td>
             </tr>
             <tr>
-              <td style={{ padding: '6px 8px', opacity: 0.8 }}>total votes</td>
+              <td style={{ padding: '6px 8px', opacity: 0.8 }}>favorites</td>
+              <td style={{ padding: '6px 8px', textAlign: 'right' }}>{favoritesCount}</td>
+            </tr>
+            <tr>
+              <td style={{ padding: '6px 8px', opacity: 0.8 }}>votes cast</td>
               <td style={{ padding: '6px 8px', textAlign: 'right' }}>{votesCount}</td>
             </tr>
             {winner && (

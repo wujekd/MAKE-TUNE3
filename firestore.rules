@@ -8,6 +8,7 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true; 
     }
     function isOwner(project) { return isSignedIn() && project.data.ownerId == request.auth.uid; }
+    function canCreateProject() { return isAdmin(); }
     function validateProjectData(data) {
       return data.name is string && data.name.size() >= 3 && data.name.size() <= 100
         && data.description is string && data.description.size() <= 500
@@ -45,7 +46,12 @@ service cloud.firestore {
         && (!('votingCloseAt' in data) || data.votingCloseAt is timestamp)
         && (!('winnerPath' in data) || data.winnerPath is string)
         && (!('tags' in data) || (data.tags is list && data.tags.size() <= 10))
-        && (!('tagsKey' in data) || (data.tagsKey is list && data.tagsKey.size() <= 10));
+        && (!('tagsKey' in data) || (data.tagsKey is list && data.tagsKey.size() <= 10))
+        && (!('pdfPath' in data) || data.pdfPath is string)
+        && (!('resourcesZipPath' in data) || data.resourcesZipPath is string)
+        && (!('submissionsCount' in data) || data.submissionsCount is number)
+        && (!('favoritesCount' in data) || data.favoritesCount is number)
+        && (!('votesCount' in data) || data.votesCount is number);
     }
 
     function validateCollaborationDetailData(data) {
@@ -80,9 +86,15 @@ service cloud.firestore {
         && data.createdAt is timestamp;
     }
 
+    function onlyIncrementingCounters(newData, oldData) {
+      let changedFields = newData.diff(oldData).affectedKeys();
+      let allowedFields = ['submissionsCount', 'favoritesCount', 'votesCount', 'updatedAt'];
+      return changedFields.hasOnly(allowedFields);
+    }
+
     match /projects/{projectId} {
       allow read: if true;
-      allow create: if isSignedIn() 
+      allow create: if canCreateProject() 
         && request.resource.data.ownerId == request.auth.uid
         && validateProjectData(request.resource.data);
       allow update: if isOwner(resource)
@@ -114,6 +126,10 @@ service cloud.firestore {
           || !('participantIds' in request.resource.data)
           || request.resource.data.participantIds.size() >= resource.data.participantIds.size()
         );
+
+      // Allow authenticated users to increment counters only
+      allow update: if isSignedIn() 
+        && onlyIncrementingCounters(request.resource.data, resource.data);
 
       allow delete: if get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.ownerId == request.auth.uid;
     }
@@ -149,8 +165,7 @@ service cloud.firestore {
         || (resource.data != null && resource.data.userId == request.auth.uid)
       );
       allow create, update: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid
-        && downloadId == request.auth.uid + '__' + request.resource.data.collaborationId;
+        && request.resource.data.userId == request.auth.uid;
       allow delete: if false;
     }
 

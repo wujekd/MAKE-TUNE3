@@ -159,6 +159,50 @@ export function CollaborationDetails({
               }
             }}
           />
+          {col.pdfPath && (
+            <DownloadButton
+              label="PDF"
+              variant="compact"
+              onDownload={async () => {
+                const path = col.pdfPath!;
+                const { storage } = await import('../services/firebase');
+                const { ref, getBlob } = await import('firebase/storage');
+                const filename = path.split('/').pop() || 'instructions.pdf';
+                const storageRef = ref(storage, path);
+                const blob = await getBlob(storageRef);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+              }}
+            />
+          )}
+          {col.resourcesZipPath && (
+            <DownloadButton
+              label="ZIP"
+              variant="compact"
+              onDownload={async () => {
+                const path = col.resourcesZipPath!;
+                const { storage } = await import('../services/firebase');
+                const { ref, getBlob } = await import('firebase/storage');
+                const filename = path.split('/').pop() || 'resources.zip';
+                const storageRef = ref(storage, path);
+                const blob = await getBlob(storageRef);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+              }}
+            />
+          )}
           <button disabled={!canEdit} onClick={() => onModeChange('edit')}>edit</button>
           <button
             disabled={col.status !== 'unpublished' || isPublishing}

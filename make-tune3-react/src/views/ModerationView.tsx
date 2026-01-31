@@ -5,6 +5,7 @@ import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { ModerationSubmissionItem } from '../components/ModerationSubmissionItem';
 import { Mixer } from '../components/Mixer';
 import { ModerationPanel } from '../components/ModerationPanel';
+import { CollabData } from '../components/CollabData';
 import { CollabHeader } from '../components/CollabHeader';
 import './MainView.css';
 import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
@@ -50,6 +51,7 @@ export function ModerationView() {
       <div className="info-top">
         <h2>Moderation</h2>
         <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+          <CollabData collab={currentCollaboration as any} />
           <CollabHeader collaboration={currentCollaboration} />
         </div>
       </div>

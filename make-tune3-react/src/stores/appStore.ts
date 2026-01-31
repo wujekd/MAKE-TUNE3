@@ -323,6 +323,7 @@ export const useAppStore = create<AppState>((set, get) => ({
                 settings: s.settings,
                 optimizedPath: s.optimizedPath,
                 submissionId: s.submissionId,
+                multitrackZipPath: s.multitrackZipPath,
                 moderationStatus
               });
             })
@@ -418,6 +419,7 @@ export const useAppStore = create<AppState>((set, get) => ({
                 settings: s.settings,
                 optimizedPath: s.optimizedPath,
                 submissionId: s.submissionId,
+                multitrackZipPath: s.multitrackZipPath,
                 moderationStatus
               });
             })
@@ -478,6 +480,7 @@ export const useAppStore = create<AppState>((set, get) => ({
                 settings: s.settings,
                 optimizedPath: s.optimizedPath,
                 submissionId: s.submissionId,
+                multitrackZipPath: s.multitrackZipPath,
                 moderationStatus
               });
             })

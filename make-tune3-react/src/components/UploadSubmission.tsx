@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useContext } from 'react';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { useAppStore } from '../stores/appStore';
+import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { SubmissionService } from '../services';
 
 interface UploadSubmissionProps {
@@ -12,11 +13,32 @@ interface UploadSubmissionProps {
 export function UploadSubmission({ collaborationId, backingUrl, onSubmitSuccess }: UploadSubmissionProps) {
   const audioContext = useContext(AudioEngineContext);
   const { user } = useAppStore(s => s.auth);
+  const { currentCollaboration } = useAppStore(s => s.collaboration);
+  const playBackingTrack = usePlaybackStore(s => s.playBackingTrack);
+  const togglePlayPause = useAppStore(s => s.playback.togglePlayPause);
+  
   const [file, setFile] = useState<File | null>(null);
+  const [multitrackZip, setMultitrackZip] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const blobUrlRef = useRef<string | null>(null);
+
+  const isBackingPlaying = audioContext?.state?.player2?.isPlaying || false;
+  const backingCurrentTime = audioContext?.state?.player2?.currentTime || 0;
+  const backingDuration = audioContext?.state?.player2?.duration || 0;
+  const playbackProgress = backingDuration > 0 ? (backingCurrentTime / backingDuration) * 100 : 0;
+  const isCurrentBacking = audioContext?.state?.player2?.source === backingUrl;
+
+  const handlePlayBacking = () => {
+    if (!backingUrl) return;
+    
+    if (isCurrentBacking) {
+      togglePlayPause();
+    } else {
+      playBackingTrack(backingUrl, currentCollaboration?.name || 'backing');
+    }
+  };
 
   useEffect(() => {
     return () => {
@@ -29,10 +51,80 @@ export function UploadSubmission({ collaborationId, backingUrl, onSubmitSuccess 
 
   return (
     <div className="submission-pane">
-      <h4 className="card__title">Upload your submission</h4>
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '12px', 
+        marginBottom: '12px',
+        padding: '10px',
+        background: 'var(--primary1-800)',
+        borderRadius: '6px',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        {/* Playback progress overlay - shrinks from right as playback progresses */}
+        {playbackProgress > 0 && (
+          <div 
+            className="collab-progress-overlay"
+            style={{
+              width: `${100 - Math.min(playbackProgress, 100)}%`
+            }}
+          />
+        )}
+        
+        <button 
+          onClick={handlePlayBacking}
+          style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            background: 'rgba(255, 255, 255, 0.1)',
+            color: 'var(--white)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '14px',
+            flexShrink: 0,
+            transition: 'all 0.2s ease',
+            position: 'relative',
+            zIndex: 1
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+          }}
+        >
+          {isBackingPlaying ? '⏸' : '▶'}
+        </button>
+        <div style={{ flex: 1, minWidth: 0, position: 'relative', zIndex: 1 }}>
+          <h4 className="card__title" style={{ margin: 0 }}>Upload your submission</h4>
+        </div>
+      </div>
       <div className="card__body">
         <div className="submission-pane__description">Choose an audio file to submit to the current collaboration</div>
         <input type="file" accept="audio/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+        <div style={{ marginTop: 12 }}>
+          <div className="submission-pane__description" style={{ marginBottom: 4, opacity: 0.8, fontSize: 12 }}>
+            Multitrack ZIP (optional - stems for project owner)
+          </div>
+          <input
+            type="file"
+            accept=".zip,application/zip,application/x-zip-compressed"
+            onChange={(e) => setMultitrackZip(e.target.files?.[0] || null)}
+          />
+          {multitrackZip && (
+            <div style={{ color: 'var(--white)', fontSize: 12, opacity: 0.75, marginTop: 4 }}>
+              {multitrackZip.name}
+            </div>
+          )}
+        </div>
         <div className="submission-pane__actions">
           {file && audioContext && (
             <button className="submission-pane__button" onClick={async () => {
@@ -80,8 +172,9 @@ export function UploadSubmission({ collaborationId, backingUrl, onSubmitSuccess 
                 },
                 volume: { gain: audioContext.state.player1.volume }
               } : undefined;
-              await SubmissionService.uploadSubmission(file, collaborationId, user.uid, (p) => setProgress(p), currentSettings);
+              await SubmissionService.uploadSubmission(file, collaborationId, user.uid, (p) => setProgress(p), currentSettings, multitrackZip);
               setFile(null);
+              setMultitrackZip(null);
               if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
               onSubmitSuccess?.();
             } catch (e: any) {

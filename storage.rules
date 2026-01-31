@@ -17,8 +17,19 @@ service firebase.storage {
     match /collabs/{collabId}/submissions/{fileId} {
       allow read: if true;
       allow write: if isSignedIn()
-        && request.resource.contentType.matches('audio/.*')
-        && request.resource.size < 131072000; // < 125MB
+        && (
+          (request.resource.contentType.matches('audio/.*') && request.resource.size < 131072000)
+          || (fileId.matches('^.*-multitracks\\.zip$') && request.resource.size < 314572800)
+        );
+    }
+
+    match /collabs/{collabId}/docs/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn()
+        && (
+          (fileName.matches('^.*\\.pdf$') && request.resource.size < 52428800)
+          || (fileName.matches('^.*\\.zip$') && request.resource.size < 314572800)
+        );
     }
 
     // Optimized/transcoded submission files

@@ -16,20 +16,22 @@ export class TrackUtils {
       settings?: SubmissionSettings;
       optimizedPath?: string;
       submissionId?: string;
+      multitrackZipPath?: string;
       moderationStatus?: SubmissionModerationStatus;
       createdAt?: Date;
     }
   ): Track {
     const fileName = filePath.split('/').pop() || filePath;
-    const title = fileName.replace(/\.[^/.]+$/, ''); // Remove extension
+    const title = fileName.replace(/\.[^/.]+$/, '');
     const moderationStatus = options?.moderationStatus ?? 'approved';
     return {
-      id: filePath, // Use filePath as id
+      id: filePath,
       title,
       filePath,
       optimizedPath: options?.optimizedPath,
       submissionId: options?.submissionId,
-      duration: 0, // Set by audio engine
+      multitrackZipPath: options?.multitrackZipPath,
+      duration: 0,
       createdAt: (options?.createdAt || new Date()) as any,
       collaborationId,
       category,

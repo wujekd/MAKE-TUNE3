@@ -153,6 +153,9 @@ export const advanceCollaborationStages = onSchedule(
         const participationCount = participantIds.length || submissions.length || votesSnap.size;
         const winnerVotes = winnerPath ? counts[winnerPath] ?? 0 : 0;
 
+        // Convert counts object to array format for frontend
+        const resultsArray = Object.entries(counts).map(([path, votes]) => ({ path, votes }));
+
         let winnerUserId: string | null = null;
         let winnerUserName = DEFAULT_WINNER_NAME;
         if (winnerPath) {
@@ -199,7 +202,7 @@ export const advanceCollaborationStages = onSchedule(
           status: "completed",
           completedAt: now,
           updatedAt: now,
-          results: counts,
+          results: resultsArray,
           winnerPath: winnerTrackPath || null,
           winnerUserId: winnerUserId ?? null,
           winnerUserName,

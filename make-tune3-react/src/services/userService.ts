@@ -1,6 +1,6 @@
 import { doc, getDoc, updateDoc, addDoc, collection, query, where, getDocs, Timestamp, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import type { UserProfile, UserCollaboration, UserId, CollaborationId } from '../types/collaboration';
+import type { UserProfile, UserCollaboration, UserId, CollaborationId, ResourceDocType } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 
 export class UserService {
@@ -83,19 +83,39 @@ export class UserService {
   }
 
   static async hasDownloadedBacking(userId: UserId, collaborationId: CollaborationId): Promise<boolean> {
-    const ref = doc(db, COLLECTIONS.USER_DOWNLOADS, `${userId}__${collaborationId}`);
+    return this.hasDownloadedResource(userId, collaborationId, 'backing');
+  }
+
+  static async markBackingDownloaded(userId: UserId, collaborationId: CollaborationId, backingPath: string): Promise<void> {
+    return this.markResourceDownloaded(userId, collaborationId, 'backing', backingPath);
+  }
+
+  static async hasDownloadedResource(
+    userId: UserId,
+    collaborationId: CollaborationId,
+    docType: ResourceDocType
+  ): Promise<boolean> {
+    const docId = `${userId}__${collaborationId}__${docType}`;
+    const ref = doc(db, COLLECTIONS.USER_DOWNLOADS, docId);
     const snap = await getDoc(ref);
     return snap.exists();
   }
 
-  static async markBackingDownloaded(userId: UserId, collaborationId: CollaborationId, backingPath: string): Promise<void> {
-    const ref = doc(db, COLLECTIONS.USER_DOWNLOADS, `${userId}__${collaborationId}`);
+  static async markResourceDownloaded(
+    userId: UserId,
+    collaborationId: CollaborationId,
+    docType: ResourceDocType,
+    path: string
+  ): Promise<void> {
+    const docId = `${userId}__${collaborationId}__${docType}`;
+    const ref = doc(db, COLLECTIONS.USER_DOWNLOADS, docId);
     const existing = await getDoc(ref);
     const downloadCount = existing.exists() ? (((existing.data() as any)?.downloadCount || 0) + 1) : 1;
     await setDoc(ref, {
       userId,
       collaborationId,
-      backingPath,
+      docType,
+      path,
       downloadCount,
       lastDownloadedAt: Timestamp.now()
     }, { merge: true });

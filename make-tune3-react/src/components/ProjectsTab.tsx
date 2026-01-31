@@ -7,11 +7,13 @@ import { TagUtils } from '../utils/tagUtils';
 import { LoadingSpinner } from './LoadingSpinner';
 import { ProjectListItem } from './ProjectListItem';
 import { computeStageInfo } from '../utils/stageUtils';
+import { canCreateProject } from '../utils/permissions';
+import type { User } from '../types/auth';
 import './ProjectHistory.css';
 import './UserActivityStyles.css';
 
 interface ProjectsTabProps {
-  user: { uid: string } | null;
+  user: User | null;
   authLoading: boolean;
 }
 
@@ -79,7 +81,7 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
 
   useEffect(() => {
     if (!user || projectsLoading || !projectsLoaded) return;
-    if (projects.length === 0 && !showForm) {
+    if (projects.length === 0 && !showForm && canCreateProject(user)) {
       setShowForm(true);
     }
   }, [user, projectsLoading, projectsLoaded, projects.length, showForm]);
@@ -132,13 +134,15 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
     <section className="user-activity__section">
       <div className="user-activity__section-header">
         <h4 className="project-history-title card__title user-activity__section-title">my projects</h4>
-        <button
-          className="user-activity__action-button"
-          disabled={!user || authLoading}
-          onClick={() => setShowForm(v => !v)}
-        >
-          create project
-        </button>
+        {canCreateProject(user) && (
+          <button
+            className="user-activity__action-button"
+            disabled={!user || authLoading}
+            onClick={() => setShowForm(v => !v)}
+          >
+            create project
+          </button>
+        )}
       </div>
       <div className="collab-list list user-activity__list">
         {showForm && (
@@ -186,13 +190,16 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
         {!authLoading && user && projectsLoaded && projectsError && (
           <div className="user-activity__message">{projectsError}</div>
         )}
-        {!authLoading && user && projectsLoaded && !projectsError && projects.length === 0 && (
+        {!authLoading && user && projectsLoaded && !projectsError && projects.length === 0 && canCreateProject(user) && (
           <div className="user-activity__empty-card">
             <p className="user-activity__empty-title">Create your first project</p>
             <p className="user-activity__empty-body">
               Projects collect collaborations, submissions, and voting. Spin one up to start hosting new music.
             </p>
           </div>
+        )}
+        {!authLoading && user && projectsLoaded && !projectsError && projects.length === 0 && !canCreateProject(user) && (
+          <div className="user-activity__message user-activity__message--muted">no projects</div>
         )}
         {!authLoading && user && projectsLoaded && projects.map(project => {
           const current = project.currentCollaboration;

@@ -6,6 +6,7 @@ import { Mixer } from '../components/Mixer';
 import './MainView.css';
 import ProjectHistory from '../components/ProjectHistory';
 import '../components/ProjectHistory.css';
+import { CollabData } from '../components/CollabData';
 import { CollabHeader } from '../components/CollabHeader';
 import { UserService, SubmissionService, ProjectService } from '../services';
 import { DownloadBacking } from '../components/DownloadBacking';
@@ -196,6 +197,8 @@ export function SubmissionView() {
           userId={user.uid}
           collaborationId={currentCollaboration.id}
           backingPath={currentCollaboration.backingTrackPath}
+          pdfPath={currentCollaboration.pdfPath}
+          resourcesZipPath={currentCollaboration.resourcesZipPath}
           onDownloaded={() => setStatus('downloaded')}
         />
       );
@@ -240,6 +243,7 @@ export function SubmissionView() {
             <h2 style={{ color: 'var(--white)', margin: 0 }}>{currentCollaboration?.name || 'Submission'}</h2>
           </div>
           <ProjectHistory />
+          <CollabData collab={currentCollaboration as any} />
           <div style={{ minWidth: 0 }}>
             <CollabHeader collaboration={currentCollaboration} onStageChange={handleStageChange} />
           </div>

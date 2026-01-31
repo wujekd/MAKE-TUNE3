@@ -145,6 +145,7 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
               settings: s.settings,
               optimizedPath: s.optimizedPath,
               submissionId: s.submissionId,
+              multitrackZipPath: s.multitrackZipPath,
               moderationStatus
             });
           })

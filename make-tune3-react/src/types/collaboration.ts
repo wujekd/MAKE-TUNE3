@@ -8,13 +8,13 @@ export interface Track {
   optimizedPath?: string;
   backingTrackPath?: string;
   submissionId?: string;
+  multitrackZipPath?: string;
   duration: number;
   createdAt: Timestamp;
   collaborationId: string;
   category: 'backing' | 'submission' | 'pastStage';
-  approved?: boolean; // submissions moderation
+  approved?: boolean;
   moderationStatus?: SubmissionModerationStatus;
-  // optional submission settings attached for voting playback
   submissionSettings?: SubmissionSettings;
 }
 
@@ -58,10 +58,15 @@ export interface Collaboration {
   description: string;
   tags: string[];
   tagsKey: string[];
-  backingTrackPath: string; // direct file path
-  // New model: submission entries with path and settings
+  backingTrackPath: string;
+  pdfPath?: string;
+  resourcesZipPath?: string;
   submissions?: SubmissionEntry[];
-  participantIds?: string[]; // user ids who submitted
+  participantIds?: string[];
+  // Real-time engagement counters
+  submissionsCount?: number;      // Total submissions uploaded
+  favoritesCount?: number;        // Total favorites across all users
+  votesCount?: number;            // Total votes cast
   // pastStageTrackPaths removed - now in Project.pastCollaborations
   submissionDuration: number; // duration in seconds
   votingDuration: number; // duration in seconds
@@ -99,6 +104,7 @@ export interface SubmissionSettings {
 export interface SubmissionEntry {
   path: string;
   optimizedPath?: string;
+  multitrackZipPath?: string;
   settings: SubmissionSettings;
   submissionId?: string;
   createdAt?: Timestamp;
@@ -200,4 +206,5 @@ export const COLLECTIONS = {
 export type TrackId = string;
 export type ProjectId = string;
 export type CollaborationId = string;
-export type UserId = string; 
+export type UserId = string;
+export type ResourceDocType = 'backing' | 'pdf' | 'zip'; 

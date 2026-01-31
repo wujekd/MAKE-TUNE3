@@ -9,6 +9,7 @@ import Favorites from '../components/Favorites';
 import { Mixer } from '../components/Mixer';
 import { DebugInfo } from '../components/DebugInfo';
 import ProjectHistory from '../components/ProjectHistory';
+import { CollabData } from '../components/CollabData';
 import { CollabHeader } from '../components/CollabHeader';
 import { CollabViewShell } from '../components/CollabViewShell';
 import { useCollaborationLoader } from '../hooks/useCollaborationLoader';
@@ -161,6 +162,7 @@ export function VotingView() {
   const headerRight = (
     <>
       <ProjectHistory />
+      <CollabData collab={currentCollaboration as any} />
       <CollabHeader collaboration={currentCollaboration} onStageChange={handleStageChange} />
     </>
   );

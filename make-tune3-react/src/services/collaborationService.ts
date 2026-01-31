@@ -12,6 +12,11 @@ export class CollaborationService {
       tags: collaboration.tags || [],
       tagsKey: collaboration.tagsKey || [],
       backingTrackPath: collaboration.backingTrackPath || '',
+      participantIds: [],
+      // Initialize counters
+      submissionsCount: 0,
+      favoritesCount: 0,
+      votesCount: 0,
       createdAt: now,
       publishedAt: (collaboration as any).publishedAt || null,
       updatedAt: now

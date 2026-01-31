@@ -1,6 +1,6 @@
 import { ref, uploadBytesResumable } from 'firebase/storage';
 import { storage } from './firebase';
-import { MAX_SUBMISSION_FILE_SIZE } from '../config';
+import { MAX_SUBMISSION_FILE_SIZE, MAX_PDF_FILE_SIZE, MAX_ZIP_FILE_SIZE } from '../config';
 
 export class FileService {
   static getPreferredAudioExtension(file: File): string {
@@ -29,6 +29,27 @@ export class FileService {
     }
   }
 
+  static validatePdfFile(file: File): void {
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (ext !== 'pdf' && file.type !== 'application/pdf') {
+      throw new Error('File must be a PDF.');
+    }
+    if (file.size >= MAX_PDF_FILE_SIZE) {
+      throw new Error(`PDF too large. Maximum size is ${Math.round(MAX_PDF_FILE_SIZE / 1024 / 1024)}MB.`);
+    }
+  }
+
+  static validateZipFile(file: File): void {
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const validTypes = ['application/zip', 'application/x-zip-compressed', 'application/x-zip'];
+    if (ext !== 'zip' && !validTypes.includes(file.type)) {
+      throw new Error('File must be a ZIP archive.');
+    }
+    if (file.size >= MAX_ZIP_FILE_SIZE) {
+      throw new Error(`ZIP too large. Maximum size is ${Math.round(MAX_ZIP_FILE_SIZE / 1024 / 1024)}MB.`);
+    }
+  }
+
   static async uploadFile(
     file: File,
     path: string,
@@ -50,6 +71,40 @@ export class FileService {
         () => resolve()
       );
     });
+  }
+
+  static async uploadPdf(
+    file: File,
+    collaborationId: string,
+    onProgress?: (percent: number) => void
+  ): Promise<string> {
+    this.validatePdfFile(file);
+    const path = `collabs/${collaborationId}/docs/instructions.pdf`;
+    await this.uploadFile(file, path, onProgress);
+    return path;
+  }
+
+  static async uploadResourcesZip(
+    file: File,
+    collaborationId: string,
+    onProgress?: (percent: number) => void
+  ): Promise<string> {
+    this.validateZipFile(file);
+    const path = `collabs/${collaborationId}/docs/resources.zip`;
+    await this.uploadFile(file, path, onProgress);
+    return path;
+  }
+
+  static async uploadSubmissionMultitracks(
+    file: File,
+    collaborationId: string,
+    submissionId: string,
+    onProgress?: (percent: number) => void
+  ): Promise<string> {
+    this.validateZipFile(file);
+    const path = `collabs/${collaborationId}/submissions/${submissionId}-multitracks.zip`;
+    await this.uploadFile(file, path, onProgress);
+    return path;
   }
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Collaboration } from '../types/collaboration';
 import { CollaborationService, SubmissionService } from '../services';
+import { FileService } from '../services/fileService';
 import { Potentiometer } from './Potentiometer';
 import { DeskToggle } from './DeskToggle';
 import { TagInput } from './TagInput';
@@ -25,11 +26,15 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
   const [submissionDuration, setSubmissionDuration] = useState<number>(TimeUtils.clampDuration(604800));
   const [votingDuration, setVotingDuration] = useState<number>(TimeUtils.clampDuration(259200));
   const [backingFile, setBackingFile] = useState<File | null>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [resourcesZipFile, setResourcesZipFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<number>(0);
   const [requiresModeration, setRequiresModeration] = useState<boolean>(true);
   const [replaceBacking, setReplaceBacking] = useState<boolean>(false);
+  const [replacePdf, setReplacePdf] = useState<boolean>(false);
+  const [replaceZip, setReplaceZip] = useState<boolean>(false);
   const previewBackingFile = usePlaybackStore(s => s.previewBackingFile);
   const playBackingTrack = usePlaybackStore(s => s.playBackingTrack);
   const stopBackingPlayback = usePlaybackStore(s => s.stopBackingPlayback);
@@ -87,6 +92,16 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
           await CollaborationService.updateCollaboration(initial.id, { backingTrackPath: backingPath });
           updated = { ...updated, backingTrackPath: backingPath } as any;
         }
+        if (pdfFile) {
+          const pdfPath = await FileService.uploadPdf(pdfFile, initial.id);
+          await CollaborationService.updateCollaboration(initial.id, { pdfPath });
+          updated = { ...updated, pdfPath } as any;
+        }
+        if (resourcesZipFile) {
+          const resourcesZipPath = await FileService.uploadResourcesZip(resourcesZipFile, initial.id);
+          await CollaborationService.updateCollaboration(initial.id, { resourcesZipPath });
+          updated = { ...updated, resourcesZipPath } as any;
+        }
         onSaved?.(updated);
       } else {
         const collab = await CollaborationService.createCollaboration({
@@ -108,6 +123,16 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
           await CollaborationService.updateCollaboration(collab.id, { backingTrackPath: backingPath });
           (collab as any).backingTrackPath = backingPath;
         }
+        if (pdfFile) {
+          const pdfPath = await FileService.uploadPdf(pdfFile, collab.id);
+          await CollaborationService.updateCollaboration(collab.id, { pdfPath });
+          (collab as any).pdfPath = pdfPath;
+        }
+        if (resourcesZipFile) {
+          const resourcesZipPath = await FileService.uploadResourcesZip(resourcesZipFile, collab.id);
+          await CollaborationService.updateCollaboration(collab.id, { resourcesZipPath });
+          (collab as any).resourcesZipPath = resourcesZipPath;
+        }
         onCreated(collab);
       }
       stopBackingPlayback();
@@ -117,7 +142,11 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
       setSubmissionDuration(604800);
       setVotingDuration(259200);
       setBackingFile(null);
+      setPdfFile(null);
+      setResourcesZipFile(null);
       setProgress(0);
+      setReplacePdf(false);
+      setReplaceZip(false);
     } catch (e: any) {
       setError(e?.message || 'failed to create');
     } finally {
@@ -292,6 +321,50 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
             {backingFile && (
               <div style={{ color: 'var(--white)', fontSize: 12, opacity: 0.8 }}>{backingFile.name}</div>
             )}
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <label style={{ fontSize: 12, opacity: 0.8, color: 'var(--white)' }}>PDF (instructions, sheet music)</label>
+        {mode === 'edit' && initial?.pdfPath && !replacePdf ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ color: 'var(--white)', fontSize: 12, opacity: 0.85 }}>
+              {decodeURIComponent((initial.pdfPath || '').split('/').pop() || 'instructions.pdf')}
+            </span>
+            <button onClick={() => setReplacePdf(true)}>replace</button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <input
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
+              disabled={saving}
+              style={{ padding: 8, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)' }}
+            />
+            {pdfFile && <div style={{ color: 'var(--white)', fontSize: 12, opacity: 0.8 }}>{pdfFile.name}</div>}
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <label style={{ fontSize: 12, opacity: 0.8, color: 'var(--white)' }}>Resources ZIP (stems, additional files)</label>
+        {mode === 'edit' && initial?.resourcesZipPath && !replaceZip ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ color: 'var(--white)', fontSize: 12, opacity: 0.85 }}>
+              {decodeURIComponent((initial.resourcesZipPath || '').split('/').pop() || 'resources.zip')}
+            </span>
+            <button onClick={() => setReplaceZip(true)}>replace</button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <input
+              type="file"
+              accept=".zip,application/zip,application/x-zip-compressed"
+              onChange={(e) => setResourcesZipFile(e.target.files?.[0] || null)}
+              disabled={saving}
+              style={{ padding: 8, borderRadius: 6, border: '1px solid var(--primary1-800)', background: 'var(--primary1-800)', color: 'var(--white)' }}
+            />
+            {resourcesZipFile && <div style={{ color: 'var(--white)', fontSize: 12, opacity: 0.8 }}>{resourcesZipFile.name}</div>}
           </div>
         )}
       </div>

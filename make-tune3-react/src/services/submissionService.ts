@@ -1,4 +1,4 @@
-import { doc, getDoc, updateDoc, addDoc, collection, Timestamp, arrayUnion, runTransaction, setDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, addDoc, collection, Timestamp, arrayUnion, runTransaction, setDoc, increment } from 'firebase/firestore';
 import { ref, uploadBytesResumable, type UploadTaskSnapshot } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import app, { db, storage } from './firebase';
@@ -59,8 +59,9 @@ export class SubmissionService {
     collaborationId: CollaborationId,
     userId: UserId,
     onProgress?: (percent: number) => void,
-    settings?: SubmissionSettings
-  ): Promise<{ filePath: string; submissionId: string }> {
+    settings?: SubmissionSettings,
+    multitrackZip?: File | null
+  ): Promise<{ filePath: string; submissionId: string; multitrackZipPath?: string }> {
     FileService.validateFileSize(file);
     
     const exists = await this.hasUserSubmitted(collaborationId, userId);
@@ -97,6 +98,7 @@ export class SubmissionService {
     const now = Timestamp.now();
     await updateDoc(collabRef, { 
       participantIds: arrayUnion(userId), 
+      submissionsCount: increment(1),
       updatedAt: now
     });
 
@@ -162,7 +164,28 @@ export class SubmissionService {
       await Promise.all([updateDetail, updateCollab]);
     }
 
-    return { filePath: path, submissionId };
+    let multitrackZipPath: string | undefined;
+    if (multitrackZip) {
+      multitrackZipPath = await FileService.uploadSubmissionMultitracks(
+        multitrackZip,
+        collaborationId,
+        submissionId
+      );
+      
+      const detailRef = doc(db, COLLECTIONS.COLLABORATION_DETAILS, collaborationId);
+      const detailSnap = await getDoc(detailRef);
+      if (detailSnap.exists()) {
+        const detailData = detailSnap.data() as CollaborationDetail;
+        const submissions = Array.isArray(detailData.submissions) ? [...detailData.submissions] : [];
+        const idx = submissions.findIndex((e: any) => e?.submissionId === submissionId);
+        if (idx !== -1) {
+          submissions[idx] = { ...submissions[idx], multitrackZipPath };
+          await updateDoc(detailRef, { submissions, updatedAt: Timestamp.now() });
+        }
+      }
+    }
+
+    return { filePath: path, submissionId, multitrackZipPath };
   }
 
   static async listMySubmissionCollabs(): Promise<SubmissionCollabSummary[]> {
