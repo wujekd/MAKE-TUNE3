@@ -97,10 +97,10 @@ export function UserActivityPanel() {
     setModerationError(null);
     try {
       const all = await CollaborationService.listAllCollaborations();
+      // All submissions now require moderation, so just check for pending submissions
       const filtered = all.filter(collab => {
-        const requiresMod = Boolean((collab as any).requiresModeration);
         const hasPending = Boolean((collab as any).unmoderatedSubmissions);
-        return requiresMod && hasPending;
+        return hasPending;
       });
       const normalized = filtered.map(collab => ({
         id: collab.id,
@@ -211,7 +211,7 @@ export function UserActivityPanel() {
       if (cancelled) return;
 
       setCollabMeta(prev => {
-        const next = {...prev};
+        const next = { ...prev };
         results.forEach(entry => {
           if (!entry) return;
           next[entry.collabId] = {
@@ -255,14 +255,14 @@ export function UserActivityPanel() {
       const rawStageInfo = isDeleted
         ? null
         : computeStageInfo({
-            status,
-            submissionCloseAt,
-            votingCloseAt,
-            submissionDurationMs,
-            votingDurationMs,
-            publishedAt: publishedAtMs,
-            updatedAt: collabInfo?.updatedAtMs
-          });
+          status,
+          submissionCloseAt,
+          votingCloseAt,
+          submissionDurationMs,
+          votingDurationMs,
+          publishedAt: publishedAtMs,
+          updatedAt: collabInfo?.updatedAtMs
+        });
 
       const metaLines: string[] = [];
       if (isDeleted) {
@@ -326,11 +326,11 @@ export function UserActivityPanel() {
         disabled: isDeleted,
         stageInfo: rawStageInfo
           ? {
-              status: rawStageInfo.status,
-              startAt: rawStageInfo.startAt ?? null,
-              endAt: rawStageInfo.endAt ?? null,
-              label: rawStageInfo.label ?? undefined
-            }
+            status: rawStageInfo.status,
+            startAt: rawStageInfo.startAt ?? null,
+            endAt: rawStageInfo.endAt ?? null,
+            label: rawStageInfo.label ?? undefined
+          }
           : null
       };
     });
@@ -354,14 +354,14 @@ export function UserActivityPanel() {
       const rawStageInfo =
         status === 'submission' || status === 'voting' || status === 'completed'
           ? computeStageInfo({
-              status,
-              submissionCloseAt,
-              votingCloseAt,
-              submissionDurationMs: meta?.submissionDurationMs ?? null,
-              votingDurationMs: meta?.votingDurationMs ?? null,
-              publishedAt: meta?.publishedAtMs ?? null,
-              updatedAt: meta?.updatedAtMs ?? null
-            })
+            status,
+            submissionCloseAt,
+            votingCloseAt,
+            submissionDurationMs: meta?.submissionDurationMs ?? null,
+            votingDurationMs: meta?.votingDurationMs ?? null,
+            publishedAt: meta?.publishedAtMs ?? null,
+            updatedAt: meta?.updatedAtMs ?? null
+          })
           : null;
 
       let route: string;
@@ -409,17 +409,17 @@ export function UserActivityPanel() {
         actionLabel: 'open',
         stageInfo: rawStageInfo
           ? {
-              status: rawStageInfo.status,
-              startAt: rawStageInfo.startAt ?? null,
-              endAt: rawStageInfo.endAt ?? null,
-              label: rawStageInfo.label ?? undefined
-            }
+            status: rawStageInfo.status,
+            startAt: rawStageInfo.startAt ?? null,
+            endAt: rawStageInfo.endAt ?? null,
+            label: rawStageInfo.label ?? undefined
+          }
           : null
       };
     });
   }, [downloadSummaries, collabMeta]);
 
-  
+
   return (
     <div className="project-history user-activity">
       <div className="user-activity__tabs">
@@ -437,7 +437,7 @@ export function UserActivityPanel() {
         </button>
       </div>
 
-{/* TODO: maek smoler */}
+      {/* TODO: maek smoler */}
       {activeTab === 'projects' && <ProjectsTab user={user} authLoading={authLoading} />}
 
       {activeTab === 'moderate' && (

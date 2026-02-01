@@ -183,49 +183,59 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
         <div className="mixer1-meter" style={{ flexShrink: 0 }}>
           <AnalogVUMeter value={masterLevel} min={0} max={1} size={72} />
         </div>
-        <span className="mixer1-channel-label" style={{ flexShrink: 0 }}>master</span>
 
         <div style={{ flex: 1, minHeight: 0 }} />
 
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: isCompactMode ? 0 : 12, flexShrink: 0 }}>
-          {isCompactMode ? (
-            <Potentiometer
-              value={state.master.volume}
-              min={0}
-              max={1}
-              step={0.01}
-              size={64}
-              onChange={handleMasterVolumeChange}
-              onInput={handleMasterVolumeChange}
-              showValue={false}
-            />
-          ) : (
-            <input
-              type="range"
-              className="vertical-slider mixer1-fader"
-              id="mixer1-master-volume"
-              min="0"
-              max="1"
-              step="0.01"
-              value={state.master.volume}
-              onChange={handleMasterVolumeChangeEvent}
-            />
-          )}
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, marginTop: 'auto' }}>
           <div
             style={{
-              position: 'absolute',
-              right: isCompactMode ? '-30px' : '-25px',
-              bottom: 0,
-              height: '100%',
+              position: 'relative',
               display: 'flex',
-              alignItems: 'flex-end'
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              width: '100%',
+              minHeight: isCompactMode ? 96 : 184
             }}
           >
-            <SmallLEDMeter value={channelLevel} min={0} max={1} vertical={true} />
+            {isCompactMode ? (
+              <Potentiometer
+                value={state.master.volume}
+                min={0}
+                max={1}
+                step={0.01}
+                size={64}
+                onChange={handleMasterVolumeChange}
+                onInput={handleMasterVolumeChange}
+                showValue={false}
+              />
+            ) : (
+              <input
+                type="range"
+                className="vertical-slider mixer1-fader"
+                id="mixer1-master-volume"
+                min="0"
+                max="1"
+                step="0.01"
+                value={state.master.volume}
+                onChange={handleMasterVolumeChangeEvent}
+              />
+            )}
+            <div
+              style={{
+                position: 'absolute',
+                right: isCompactMode ? '-30px' : '-25px',
+                bottom: 0,
+                top: 0,
+                display: 'flex',
+                alignItems: 'flex-end'
+              }}
+            >
+              <SmallLEDMeter value={channelLevel} min={0} max={1} vertical={true} />
+            </div>
           </div>
+          <span className="mixer1-channel-label mixer1-channel-label--bottom">master</span>
         </div>
-
-        {isCompactMode && <div style={{ flex: 1, minHeight: 0 }} />}
       </div>
     </section>
   );

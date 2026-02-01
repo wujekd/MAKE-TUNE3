@@ -93,8 +93,8 @@ export function AppShell() {
 
   return (
     <div className="app-shell theme-abyssal" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--background)', color: 'var(--white)' }}>
-      <header className="app-shell__header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <header className="app-shell__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
           {backAction && (
             <button key={backAction.key} onClick={backAction.onClick} disabled={backAction.disabled}>{backAction.label}</button>
           )}
@@ -103,13 +103,17 @@ export function AppShell() {
           </nav>
           <h3 style={{ margin: 0, color: 'var(--white)' }}>{headerTitle}</h3>
         </div>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+          <span style={{ color: 'var(--white)' }}>Make </span>
+          <span style={{ color: 'var(--contrast-500)' }}>Tunes</span>
+        </h1>
         {SHOW_DEBUG_TOOLS && (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, flex: 1 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
             <button onClick={() => setShowStore(v => !v)}>{showStore ? 'Hide store' : 'Show store'}</button>
             <button onClick={() => setShowDebug(v => !v)}>{showDebug ? 'Hide debug' : 'Show debug'}</button>
           </div>
         )}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', position: 'relative' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', position: 'relative', flex: 1, justifyContent: 'flex-end' }}>
           {currentUser && (
             <div style={{ position: 'relative' }}>
               <button

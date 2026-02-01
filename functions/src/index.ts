@@ -1,20 +1,22 @@
-import {onDocumentCreated,
+import {
+  onDocumentCreated,
   onDocumentUpdated,
   onDocumentWritten,
-  onDocumentDeleted} from "firebase-functions/v2/firestore";
-import {initializeApp} from "firebase-admin/app";
-import {getFirestore, Timestamp} from "firebase-admin/firestore";
-import {setGlobalOptions} from "firebase-functions";
-import {onObjectFinalized} from "firebase-functions/v2/storage";
-import {onCall, HttpsError} from "firebase-functions/v2/https";
-import {getStorage} from "firebase-admin/storage";
+  onDocumentDeleted
+} from "firebase-functions/v2/firestore";
+import { initializeApp } from "firebase-admin/app";
+import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { setGlobalOptions } from "firebase-functions";
+import { onObjectFinalized } from "firebase-functions/v2/storage";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { getStorage } from "firebase-admin/storage";
 import * as path from "path";
 import * as os from "os";
 import * as fs from "fs";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegStatic from "ffmpeg-static";
-import {onSchedule} from "firebase-functions/v2/scheduler";
-setGlobalOptions({region: "europe-west1", maxInstances: 10});
+import { onSchedule } from "firebase-functions/v2/scheduler";
+setGlobalOptions({ region: "europe-west1", maxInstances: 10 });
 
 initializeApp();
 const db = getFirestore();
@@ -42,7 +44,7 @@ export const sanitizeProjectDescription = onDocumentCreated(
     const original = String(data?.description ?? "");
     const cleaned = sanitize(original);
     if (cleaned === original) return;
-    await db.doc(snap.ref.path).update({description: cleaned});
+    await db.doc(snap.ref.path).update({ description: cleaned });
   }
 );
 
@@ -55,202 +57,202 @@ export const sanitizeProjectDescriptionOnUpdate = onDocumentUpdated(
     const original = String(data?.description ?? "");
     const cleaned = sanitize(original);
     if (cleaned === original) return;
-    await db.doc(after.ref.path).update({description: cleaned});
+    await db.doc(after.ref.path).update({ description: cleaned });
   }
 );
 
 export const advanceCollaborationStages = onSchedule(
   "every 3 minutes",
   async () => {
-  const now = Timestamp.now();
-  let processed = 0;
+    const now = Timestamp.now();
+    let processed = 0;
 
-  // submission -> voting
-  while (true) {
-    const due = await db
-      .collection("collaborations")
-      .where("status", "==", "submission")
-      .where("submissionCloseAt", "<=", now)
-      .orderBy("submissionCloseAt")
-      .limit(200)
-      .get();
-    if (due.empty) break;
-    for (const docSnap of due.docs) {
-      await db.runTransaction(async (tx) => {
-        const ref = docSnap.ref;
-        const fresh = await tx.get(ref);
-        if (!fresh.exists) return;
-        const d = fresh.data() as any;
-        if (d.status !== "submission") return;
-        if (!d.submissionCloseAt || d.submissionCloseAt.toMillis() > now.toMillis()) return;
-        tx.update(ref, {status: "voting", votingStartedAt: now, updatedAt: now});
-      });
-      processed++;
-    }
-    if (due.size < 200) break;
-  }
-
-  // voting -> completed
-  while (true) {
-    const due = await db
-      .collection("collaborations")
-      .where("status", "==", "voting")
-      .where("votingCloseAt", "<=", now)
-      .orderBy("votingCloseAt")
-      .limit(100)
-      .get();
-    if (due.empty) break;
-    for (const docSnap of due.docs) {
-      await db.runTransaction(async (tx) => {
-        const ref = docSnap.ref;
-        const fresh = await tx.get(ref);
-        if (!fresh.exists) return;
-        const d = fresh.data() as any;
-        if (d.status !== "voting") return;
-        if (!d.votingCloseAt || d.votingCloseAt.toMillis() > now.toMillis()) return;
-        if (d.resultsComputedAt) return;
-
-        const detailRef = db.collection("collaborationDetails").doc(ref.id);
-        const detailSnapPromise = tx.get(detailRef);
-        const votesQuery = db
-          .collection("userCollaborations")
-          .where("collaborationId", "==", ref.id)
-          .where("finalVote", "!=", null);
-        const votesSnapPromise = tx.get(votesQuery);
-        const [detailSnap, votesSnap] = await Promise.all([
-          detailSnapPromise,
-          votesSnapPromise,
-        ]);
-
-        const counts: Record<string, number> = {};
-        votesSnap.forEach((v) => {
-          const fv = (v.data() as any).finalVote as string | null;
-          if (!fv) return;
-          counts[fv] = (counts[fv] || 0) + 1;
+    // submission -> voting
+    while (true) {
+      const due = await db
+        .collection("collaborations")
+        .where("status", "==", "submission")
+        .where("submissionCloseAt", "<=", now)
+        .orderBy("submissionCloseAt")
+        .limit(200)
+        .get();
+      if (due.empty) break;
+      for (const docSnap of due.docs) {
+        await db.runTransaction(async (tx) => {
+          const ref = docSnap.ref;
+          const fresh = await tx.get(ref);
+          if (!fresh.exists) return;
+          const d = fresh.data() as any;
+          if (d.status !== "submission") return;
+          if (!d.submissionCloseAt || d.submissionCloseAt.toMillis() > now.toMillis()) return;
+          tx.update(ref, { status: "voting", votingStartedAt: now, updatedAt: now });
         });
+        processed++;
+      }
+      if (due.size < 200) break;
+    }
 
-        const submissions: any[] = detailSnap.exists ?
-          (Array.isArray((detailSnap.data() as any).submissions) ?
-            (detailSnap.data() as any).submissions : []) : [];
+    // voting -> completed
+    while (true) {
+      const due = await db
+        .collection("collaborations")
+        .where("status", "==", "voting")
+        .where("votingCloseAt", "<=", now)
+        .orderBy("votingCloseAt")
+        .limit(100)
+        .get();
+      if (due.empty) break;
+      for (const docSnap of due.docs) {
+        await db.runTransaction(async (tx) => {
+          const ref = docSnap.ref;
+          const fresh = await tx.get(ref);
+          if (!fresh.exists) return;
+          const d = fresh.data() as any;
+          if (d.status !== "voting") return;
+          if (!d.votingCloseAt || d.votingCloseAt.toMillis() > now.toMillis()) return;
+          if (d.resultsComputedAt) return;
 
-        let winnerPath: string | null = null;
-        let highestVotes = -1;
-        for (const [path, voteCount] of Object.entries(counts)) {
-          if (voteCount > highestVotes || (voteCount === highestVotes && path < (winnerPath ?? "~"))) {
-            highestVotes = voteCount;
-            winnerPath = path;
-          }
-        }
-        if (!winnerPath && submissions.length > 0) {
-          const fallback = submissions.find((s) => s?.path);
-          if (fallback?.path) {
-            winnerPath = String(fallback.path);
-          }
-        }
-
-        const totalVotes = Object.values(counts).reduce((acc, voteCount) => acc + voteCount, 0);
-        const participantIds: string[] = Array.isArray(d.participantIds) ? d.participantIds.filter((pid: unknown) => typeof pid === "string") : [];
-        const participationCount = participantIds.length || submissions.length || votesSnap.size;
-        const winnerVotes = winnerPath ? counts[winnerPath] ?? 0 : 0;
-
-        // Convert counts object to array format for frontend
-        const resultsArray = Object.entries(counts).map(([path, votes]) => ({ path, votes }));
-
-        let winnerUserId: string | null = null;
-        let winnerUserName = DEFAULT_WINNER_NAME;
-        if (winnerPath) {
-          const submissionUserQuery = db
-            .collection("submissionUsers")
+          const detailRef = db.collection("collaborationDetails").doc(ref.id);
+          const detailSnapPromise = tx.get(detailRef);
+          const votesQuery = db
+            .collection("userCollaborations")
             .where("collaborationId", "==", ref.id)
-            .where("path", "==", winnerPath)
-            .limit(1);
-          const submissionUserSnap = await tx.get(submissionUserQuery);
-          if (!submissionUserSnap.empty) {
-            const subUserData = submissionUserSnap.docs[0].data() as any;
-            const rawUid = subUserData?.userId;
-            if (typeof rawUid === "string" && rawUid) {
-              winnerUserId = rawUid;
-              const usernameQuery = db
-                .collection("usernames")
-                .where("uid", "==", rawUid)
-                .limit(1);
-              const usernameSnap = await tx.get(usernameQuery);
-              if (!usernameSnap.empty) {
-                const usernameDoc = usernameSnap.docs[0];
-                const docId = usernameDoc.id;
-                const docName = typeof docId === "string" && docId ? docId : DEFAULT_WINNER_NAME;
-                winnerUserName = docName || DEFAULT_WINNER_NAME;
+            .where("finalVote", "!=", null);
+          const votesSnapPromise = tx.get(votesQuery);
+          const [detailSnap, votesSnap] = await Promise.all([
+            detailSnapPromise,
+            votesSnapPromise,
+          ]);
+
+          const counts: Record<string, number> = {};
+          votesSnap.forEach((v) => {
+            const fv = (v.data() as any).finalVote as string | null;
+            if (!fv) return;
+            counts[fv] = (counts[fv] || 0) + 1;
+          });
+
+          const submissions: any[] = detailSnap.exists ?
+            (Array.isArray((detailSnap.data() as any).submissions) ?
+              (detailSnap.data() as any).submissions : []) : [];
+
+          let winnerPath: string | null = null;
+          let highestVotes = -1;
+          for (const [path, voteCount] of Object.entries(counts)) {
+            if (voteCount > highestVotes || (voteCount === highestVotes && path < (winnerPath ?? "~"))) {
+              highestVotes = voteCount;
+              winnerPath = path;
+            }
+          }
+          if (!winnerPath && submissions.length > 0) {
+            const fallback = submissions.find((s) => s?.path);
+            if (fallback?.path) {
+              winnerPath = String(fallback.path);
+            }
+          }
+
+          const totalVotes = Object.values(counts).reduce((acc, voteCount) => acc + voteCount, 0);
+          const participantIds: string[] = Array.isArray(d.participantIds) ? d.participantIds.filter((pid: unknown) => typeof pid === "string") : [];
+          const participationCount = participantIds.length || submissions.length || votesSnap.size;
+          const winnerVotes = winnerPath ? counts[winnerPath] ?? 0 : 0;
+
+          // Convert counts object to array format for frontend
+          const resultsArray = Object.entries(counts).map(([path, votes]) => ({ path, votes }));
+
+          let winnerUserId: string | null = null;
+          let winnerUserName = DEFAULT_WINNER_NAME;
+          if (winnerPath) {
+            const submissionUserQuery = db
+              .collection("submissionUsers")
+              .where("collaborationId", "==", ref.id)
+              .where("path", "==", winnerPath)
+              .limit(1);
+            const submissionUserSnap = await tx.get(submissionUserQuery);
+            if (!submissionUserSnap.empty) {
+              const subUserData = submissionUserSnap.docs[0].data() as any;
+              const rawUid = subUserData?.userId;
+              if (typeof rawUid === "string" && rawUid) {
+                winnerUserId = rawUid;
+                const usernameQuery = db
+                  .collection("usernames")
+                  .where("uid", "==", rawUid)
+                  .limit(1);
+                const usernameSnap = await tx.get(usernameQuery);
+                if (!usernameSnap.empty) {
+                  const usernameDoc = usernameSnap.docs[0];
+                  const docId = usernameDoc.id;
+                  const docName = typeof docId === "string" && docId ? docId : DEFAULT_WINNER_NAME;
+                  winnerUserName = docName || DEFAULT_WINNER_NAME;
+                }
               }
             }
           }
-        }
 
-        const winnerTrackPath = winnerPath ?? "";
-        const backingTrackPath = typeof d.backingTrackPath === "string" ? d.backingTrackPath : "";
-        const publishedAt = d.publishedAt ?? null;
-        const submissionCloseAt = d.submissionCloseAt ?? null;
-        const votingCloseAt = d.votingCloseAt ?? null;
+          const winnerTrackPath = winnerPath ?? "";
+          const backingTrackPath = typeof d.backingTrackPath === "string" ? d.backingTrackPath : "";
+          const publishedAt = d.publishedAt ?? null;
+          const submissionCloseAt = d.submissionCloseAt ?? null;
+          const votingCloseAt = d.votingCloseAt ?? null;
 
-        const projectId = String(d.projectId || "");
-        let projectSnap = null;
-        if (projectId) {
-          const projectRef = db.collection("projects").doc(projectId);
-          projectSnap = await tx.get(projectRef);
-        }
-
-        tx.update(ref, {
-          status: "completed",
-          completedAt: now,
-          updatedAt: now,
-          results: resultsArray,
-          winnerPath: winnerTrackPath || null,
-          winnerUserId: winnerUserId ?? null,
-          winnerUserName,
-          winnerVotes,
-          totalVotes,
-          participationCount,
-          resultsComputedAt: now,
-        });
-
-        if (projectId && projectSnap) {
-          const projectRef = db.collection("projects").doc(projectId);
-          if (projectSnap.exists) {
-            const projectData = projectSnap.data() as any;
-            const existingHistory: any[] = Array.isArray(projectData.pastCollaborations) ? projectData.pastCollaborations : [];
-            const filteredHistory = existingHistory.filter((item: any) => item?.collaborationId !== ref.id);
-            const pastEntry = {
-              collaborationId: ref.id,
-              name: String(d.name || ""),
-              winnerTrackPath,
-              pastStageTrackPath: winnerTrackPath || backingTrackPath || "",
-              backingTrackPath,
-              winnerUserId: winnerUserId ?? null,
-              winnerUserName,
-              winnerVotes,
-              totalVotes,
-              participationCount,
-              publishedAt,
-              submissionCloseAt,
-              votingCloseAt,
-              completedAt: now,
-            };
-            const updatedHistory = [pastEntry, ...filteredHistory].slice(0, HISTORY_LIMIT);
-            tx.update(projectRef, {
-              pastCollaborations: updatedHistory,
-              currentCollaborationId: null,
-              currentCollaborationStatus: null,
-              currentCollaborationStageEndsAt: null,
-              updatedAt: now,
-            });
+          const projectId = String(d.projectId || "");
+          let projectSnap = null;
+          if (projectId) {
+            const projectRef = db.collection("projects").doc(projectId);
+            projectSnap = await tx.get(projectRef);
           }
-        }
-      });
-      processed++;
-    }
-    if (due.size < 100) break;
-  }
 
-  console.log(`advanceCollaborationStages processed ${processed}`);
+          tx.update(ref, {
+            status: "completed",
+            completedAt: now,
+            updatedAt: now,
+            results: resultsArray,
+            winnerPath: winnerTrackPath || null,
+            winnerUserId: winnerUserId ?? null,
+            winnerUserName,
+            winnerVotes,
+            totalVotes,
+            participationCount,
+            resultsComputedAt: now,
+          });
+
+          if (projectId && projectSnap) {
+            const projectRef = db.collection("projects").doc(projectId);
+            if (projectSnap.exists) {
+              const projectData = projectSnap.data() as any;
+              const existingHistory: any[] = Array.isArray(projectData.pastCollaborations) ? projectData.pastCollaborations : [];
+              const filteredHistory = existingHistory.filter((item: any) => item?.collaborationId !== ref.id);
+              const pastEntry = {
+                collaborationId: ref.id,
+                name: String(d.name || ""),
+                winnerTrackPath,
+                pastStageTrackPath: winnerTrackPath || backingTrackPath || "",
+                backingTrackPath,
+                winnerUserId: winnerUserId ?? null,
+                winnerUserName,
+                winnerVotes,
+                totalVotes,
+                participationCount,
+                publishedAt,
+                submissionCloseAt,
+                votingCloseAt,
+                completedAt: now,
+              };
+              const updatedHistory = [pastEntry, ...filteredHistory].slice(0, HISTORY_LIMIT);
+              tx.update(projectRef, {
+                pastCollaborations: updatedHistory,
+                currentCollaborationId: null,
+                currentCollaborationStatus: null,
+                currentCollaborationStageEndsAt: null,
+                updatedAt: now,
+              });
+            }
+          }
+        });
+        processed++;
+      }
+      if (due.size < 100) break;
+    }
+
+    console.log(`advanceCollaborationStages processed ${processed}`);
   }
 );
 
@@ -346,7 +348,7 @@ export const publishCollaboration = onCall(async (request) => {
 });
 
 // Storage trigger: transcode large files (>20MB) to 256kbps MP3
-export const transcodeLargeToMp3 = onObjectFinalized({region: "europe-west1"}, async (event) => {
+export const transcodeLargeToMp3 = onObjectFinalized({ region: "europe-west1" }, async (event) => {
   const object = event.data;
   const bucketName = object.bucket;
   const filePath = object.name || "";
@@ -368,7 +370,7 @@ export const transcodeLargeToMp3 = onObjectFinalized({region: "europe-west1"}, a
   const tmpOut = path.join(os.tmpdir(), `${base}.mp3`);
   try {
     // download source
-    await bucket.file(filePath).download({destination: tmpIn});
+    await bucket.file(filePath).download({ destination: tmpIn });
     // set ffmpeg binary
     (ffmpeg as any).setFfmpegPath(ffmpegStatic as any);
     await new Promise<void>((resolve, reject) => {
@@ -382,7 +384,7 @@ export const transcodeLargeToMp3 = onObjectFinalized({region: "europe-west1"}, a
         .save(tmpOut);
     });
     // upload
-    await bucket.upload(tmpOut, {destination: optimizedPath, contentType: "audio/mpeg"});
+    await bucket.upload(tmpOut, { destination: optimizedPath, contentType: "audio/mpeg" });
     const optimizedFile = bucket.file(optimizedPath);
     const [meta] = await optimizedFile.getMetadata();
     const optimizedSize = Number(meta.size || 0);
@@ -405,8 +407,8 @@ export const transcodeLargeToMp3 = onObjectFinalized({region: "europe-west1"}, a
           optimizedSize,
           optimizeStatus: "done",
         };
-        tx.update(detailRef, {submissions: subs, updatedAt: now});
-        tx.update(collabRef, {updatedAt: now});
+        tx.update(detailRef, { submissions: subs, updatedAt: now });
+        tx.update(collabRef, { updatedAt: now });
       } else {
         // legacy or not found: no-op
       }
@@ -414,8 +416,8 @@ export const transcodeLargeToMp3 = onObjectFinalized({region: "europe-west1"}, a
   } catch (e) {
     console.error("transcodeLargeToMp3 failed", e);
   } finally {
-    try { fs.unlinkSync(tmpIn); } catch {}
-    try { fs.unlinkSync(tmpOut); } catch {}
+    try { fs.unlinkSync(tmpIn); } catch { }
+    try { fs.unlinkSync(tmpOut); } catch { }
   }
 });
 
@@ -456,8 +458,8 @@ export const createProjectWithUniqueName = onCall(async (request) => {
       currentCollaborationStageEndsAt: null,
     } as any;
     tx.set(projRef, projectData);
-    tx.set(idxRef, {projectId: projRef.id, ownerId: uid, createdAt: now});
-    return {id: projRef.id, ...(projectData as any)};
+    tx.set(idxRef, { projectId: projRef.id, ownerId: uid, createdAt: now });
+    return { id: projRef.id, ...(projectData as any) };
   });
   return result;
 });
@@ -465,7 +467,7 @@ export const createProjectWithUniqueName = onCall(async (request) => {
 export const getMySubmissionCollabs = onCall(async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) {
-    return {items: [], unauthenticated: true};
+    return { items: [], unauthenticated: true };
   }
   const subSnap = await db
     .collection("submissionUsers")
@@ -474,7 +476,7 @@ export const getMySubmissionCollabs = onCall(async (request) => {
     .limit(10)
     .get();
   if (subSnap.empty) {
-    return {items: []};
+    return { items: [] };
   }
   const submissions = subSnap.docs.map((d) => ({
     id: d.id,
@@ -515,13 +517,69 @@ export const getMySubmissionCollabs = onCall(async (request) => {
       submittedAt: s.createdAt ? s.createdAt.toMillis() : null,
     };
   });
-  return {items};
+  return { items };
+});
+
+/**
+ * Get collaboration data with submissions filtered by moderation status.
+ * Only approved submissions are returned to regular users.
+ */
+export const getCollaborationData = onCall(async (request) => {
+  const collaborationIdRaw = String(request.data?.collaborationId || "").trim();
+  if (!collaborationIdRaw) {
+    throw new HttpsError("invalid-argument", "collaborationId required");
+  }
+
+  // Get collaboration document
+  const collabRef = db.collection("collaborations").doc(collaborationIdRaw);
+  const collabSnap = await collabRef.get();
+  if (!collabSnap.exists) {
+    return { collaboration: null };
+  }
+  const collabData = collabSnap.data() as any;
+
+  // Get collaboration details (submissions)
+  const detailRef = db.collection("collaborationDetails").doc(collaborationIdRaw);
+  const detailSnap = await detailRef.get();
+
+  let submissions: any[] = [];
+  let submissionPaths: string[] = [];
+  if (detailSnap.exists) {
+    const detailData = detailSnap.data() as any;
+    const allSubmissions = Array.isArray(detailData.submissions) ? detailData.submissions : [];
+
+    // Filter: only return approved submissions to users
+    submissions = allSubmissions.filter((s: any) =>
+      s?.moderationStatus === "approved"
+    );
+    submissionPaths = submissions.map((s: any) => String(s?.path || "")).filter(Boolean);
+  }
+
+  // Helper to convert Timestamp to millis or return null
+  const toMillis = (ts: any) => (ts && typeof ts.toMillis === "function" ? ts.toMillis() : null);
+
+  // Build response
+  const collaboration = {
+    ...collabData,
+    id: collabSnap.id,
+    submissions,
+    submissionPaths,
+    // Convert Timestamps to millis for client
+    createdAt: toMillis(collabData.createdAt),
+    updatedAt: toMillis(collabData.updatedAt),
+    publishedAt: toMillis(collabData.publishedAt),
+    submissionCloseAt: toMillis(collabData.submissionCloseAt),
+    votingCloseAt: toMillis(collabData.votingCloseAt),
+    completedAt: toMillis(collabData.completedAt),
+  };
+
+  return { collaboration };
 });
 
 export const getMyProjectsOverview = onCall(async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) {
-    return {items: [], unauthenticated: true};
+    return { items: [], unauthenticated: true };
   }
 
   const projectSnap = await db
@@ -531,7 +589,7 @@ export const getMyProjectsOverview = onCall(async (request) => {
     .get();
 
   if (projectSnap.empty) {
-    return {items: []};
+    return { items: [] };
   }
 
   const projects = projectSnap.docs.map((docSnap) => ({
@@ -541,7 +599,7 @@ export const getMyProjectsOverview = onCall(async (request) => {
 
   const collabIds = Array.from(new Set(
     projects
-      .map(({data}) => String((data as any).currentCollaborationId || ""))
+      .map(({ data }) => String((data as any).currentCollaborationId || ""))
       .filter((id) => id)
   ));
 
@@ -554,7 +612,7 @@ export const getMyProjectsOverview = onCall(async (request) => {
     }
   });
 
-  const items = projects.map(({id, data}) => {
+  const items = projects.map(({ id, data }) => {
     const createdAt = (data as any).createdAt as Timestamp | undefined;
     const updatedAt = (data as any).updatedAt as Timestamp | undefined;
     const currentCollabId = String((data as any).currentCollaborationId || "");
@@ -562,20 +620,20 @@ export const getMyProjectsOverview = onCall(async (request) => {
 
     const currentCollaboration = currentCollabData
       ? {
-          collabId: currentCollabId,
-          name: String(currentCollabData.name || ""),
-          status: String(currentCollabData.status || ""),
-          submissionCloseAt: currentCollabData.submissionCloseAt
-            ? (currentCollabData.submissionCloseAt as Timestamp).toMillis()
-            : null,
-          votingCloseAt: currentCollabData.votingCloseAt
-            ? (currentCollabData.votingCloseAt as Timestamp).toMillis()
-            : null,
-          backingPath: String(currentCollabData.backingTrackPath || ""),
-          updatedAt: currentCollabData.updatedAt
-            ? (currentCollabData.updatedAt as Timestamp).toMillis()
-            : null,
-        }
+        collabId: currentCollabId,
+        name: String(currentCollabData.name || ""),
+        status: String(currentCollabData.status || ""),
+        submissionCloseAt: currentCollabData.submissionCloseAt
+          ? (currentCollabData.submissionCloseAt as Timestamp).toMillis()
+          : null,
+        votingCloseAt: currentCollabData.votingCloseAt
+          ? (currentCollabData.votingCloseAt as Timestamp).toMillis()
+          : null,
+        backingPath: String(currentCollabData.backingTrackPath || ""),
+        updatedAt: currentCollabData.updatedAt
+          ? (currentCollabData.updatedAt as Timestamp).toMillis()
+          : null,
+      }
       : null;
 
     return {
@@ -588,13 +646,13 @@ export const getMyProjectsOverview = onCall(async (request) => {
     };
   });
 
-  return {items};
+  return { items };
 });
 
 export const getMyDownloadedCollabs = onCall(async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) {
-    return {items: [], unauthenticated: true};
+    return { items: [], unauthenticated: true };
   }
 
   const downloadsSnap = await db
@@ -605,7 +663,7 @@ export const getMyDownloadedCollabs = onCall(async (request) => {
     .get();
 
   if (downloadsSnap.empty) {
-    return {items: []};
+    return { items: [] };
   }
 
   const downloads = downloadsSnap.docs.map((docSnap) => ({
@@ -616,7 +674,7 @@ export const getMyDownloadedCollabs = onCall(async (request) => {
   const collabIds = Array.from(
     new Set(
       downloads
-        .map(({data}) => String(data.collaborationId || ""))
+        .map(({ data }) => String(data.collaborationId || ""))
         .filter((id) => id)
     )
   );
@@ -647,7 +705,7 @@ export const getMyDownloadedCollabs = onCall(async (request) => {
     }
   });
 
-  const items = downloads.map(({data}) => {
+  const items = downloads.map(({ data }) => {
     const collabId = String(data.collaborationId || "");
     const collab = collabMap.get(collabId) || {};
     const projectId = String(collab.projectId || "");
@@ -667,7 +725,7 @@ export const getMyDownloadedCollabs = onCall(async (request) => {
     };
   });
 
-  return {items};
+  return { items };
 });
 
 export const syncTagsOnProjectWrite = onDocumentWritten(
@@ -691,7 +749,7 @@ export const syncTagsOnProjectWrite = onDocumentWritten(
         if (!tagSnap.exists) return;
         const data = tagSnap.data() as any;
         const newCount = Math.max(0, (data.projectCount || 0) - 1);
-        tx.update(tagRef, {projectCount: newCount, lastUpdatedAt: now});
+        tx.update(tagRef, { projectCount: newCount, lastUpdatedAt: now });
       });
     }
 
@@ -743,7 +801,7 @@ export const syncTagsOnCollaborationWrite = onDocumentWritten(
         if (!tagSnap.exists) return;
         const data = tagSnap.data() as any;
         const newCount = Math.max(0, (data.collaborationCount || 0) - 1);
-        tx.update(tagRef, {collaborationCount: newCount, lastUpdatedAt: now});
+        tx.update(tagRef, { collaborationCount: newCount, lastUpdatedAt: now });
       });
     }
 
@@ -790,7 +848,7 @@ export const syncTagsOnCollaborationWrite = onDocumentWritten(
           currentCollaborationStatus: after.status ?? null,
           currentCollaborationStageEndsAt: stageEndsAt ?? null,
           updatedAt: now,
-        }, {merge: true}));
+        }, { merge: true }));
       } else {
         updates.push(db.runTransaction(async (tx) => {
           const snap = await tx.get(projectRef);
@@ -1029,10 +1087,10 @@ export const cleanupProjectOnDelete = onDocumentDeleted(
       let deletedReportDocs = 0;
       let deletedResolvedReportDocs = 0;
 
-      const dbErrors: Array<{collabId: string; stage: string; message: string}> = [];
+      const dbErrors: Array<{ collabId: string; stage: string; message: string }> = [];
       const noteDbError = (collabId: string, stage: string, err: unknown) => {
         const message = err instanceof Error ? err.message : String(err);
-        dbErrors.push({collabId, stage, message});
+        dbErrors.push({ collabId, stage, message });
         console.error(`[cleanupProjectOnDelete] Firestore cleanup error project=${projectId} collab=${collabId} stage=${stage}: ${message}`);
       };
 
@@ -1131,11 +1189,11 @@ export const cleanupProjectOnDelete = onDocumentDeleted(
       const bucket = storageAdmin.bucket();
       let storagePrefixesDeleted = 0;
       let orphanFilesDeleted = 0;
-      const storageErrors: Array<{collabId: string; stage: string; message: string; path?: string}> = [];
+      const storageErrors: Array<{ collabId: string; stage: string; message: string; path?: string }> = [];
       const collabStorageErrors = new Map<string, string[]>();
       const noteStorageError = (collabId: string, stage: string, err: unknown, path?: string) => {
         const message = err instanceof Error ? err.message : String(err);
-        storageErrors.push({collabId, stage, message, path});
+        storageErrors.push({ collabId, stage, message, path });
         const existing = collabStorageErrors.get(collabId) ?? [];
         existing.push(path ? `${stage}:${path}:${message}` : `${stage}:${message}`);
         collabStorageErrors.set(collabId, existing);
@@ -1144,7 +1202,7 @@ export const cleanupProjectOnDelete = onDocumentDeleted(
 
       for (const ctx of contexts) {
         try {
-          await bucket.deleteFiles({prefix: ctx.storagePrefix, force: true});
+          await bucket.deleteFiles({ prefix: ctx.storagePrefix, force: true });
           storagePrefixesDeleted++;
         } catch (err) {
           noteStorageError(ctx.id, "prefix", err);
@@ -1152,7 +1210,7 @@ export const cleanupProjectOnDelete = onDocumentDeleted(
 
         for (const orphanPath of ctx.orphanPaths) {
           try {
-            await bucket.file(orphanPath).delete({ignoreNotFound: true});
+            await bucket.file(orphanPath).delete({ ignoreNotFound: true });
             orphanFilesDeleted++;
           } catch (err) {
             noteStorageError(ctx.id, "orphan", err, orphanPath);
@@ -1204,7 +1262,7 @@ export const cleanupProjectOnDelete = onDocumentDeleted(
       await historyRef.set({
         failureMessage: errorMessage,
         lastUpdatedAt: Timestamp.now(),
-      }, {merge: true}).catch(() => {});
+      }, { merge: true }).catch(() => { });
       throw err;
     }
   }
@@ -1257,32 +1315,32 @@ export const banUserBySubmission = onCall(async (request) => {
       .where("path", "==", submissionPath)
       .where("collaborationId", "==", collaborationId)
       .limit(1);
-    
+
     const reportRef = db.collection("reports").doc(reportId);
-    
+
     const [submissionUserSnap, reportSnap] = await Promise.all([
       tx.get(submissionUserQuery),
       tx.get(reportRef)
     ]);
-    
+
     if (submissionUserSnap.empty) {
       throw new HttpsError("not-found", "submission user not found");
     }
-    
+
     if (!reportSnap.exists) {
       throw new HttpsError("not-found", "report not found");
     }
 
     const submissionUserData = submissionUserSnap.docs[0].data() as any;
     const reportedUserId = String(submissionUserData.userId || "");
-    
+
     if (!reportedUserId) {
       throw new HttpsError("not-found", "user ID not found in submission");
     }
 
     const reportedUserRef = db.collection("users").doc(reportedUserId);
     const reportedUserSnap = await tx.get(reportedUserRef);
-    
+
     if (!reportedUserSnap.exists) {
       throw new HttpsError("not-found", "reported user profile not found");
     }

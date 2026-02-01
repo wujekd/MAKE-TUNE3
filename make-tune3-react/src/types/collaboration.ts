@@ -73,7 +73,6 @@ export interface Collaboration {
   submissionCloseAt?: Timestamp; // absolute time when submission stage ends
   votingCloseAt?: Timestamp; // absolute time when voting stage ends
   status: 'unpublished' | 'submission' | 'voting' | 'completed';
-  requiresModeration?: boolean; // when true, new submissions need approval
   unmoderatedSubmissions?: boolean; // has pending unmoderated submissions
   // results (set by CF on completion)
   winnerPath?: string;

@@ -95,8 +95,8 @@ export function SubmissionEQ({ muted, onMuteChange }: SubmissionEQProps) {
           label={undefined}
           size={12}
           colorOn="#d33"
-          onText="mute"
-          offText="unmute"
+          onText="unmute"
+          offText="mute"
         />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

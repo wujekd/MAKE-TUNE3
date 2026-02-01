@@ -33,7 +33,7 @@ export class CollaborationService {
       submissionPaths: Array.isArray(submissionPaths) ? submissionPaths : [],
       createdAt: now,
       updatedAt: now
-    } satisfies Omit<CollaborationDetail, 'id'>).catch(() => {});
+    } satisfies Omit<CollaborationDetail, 'id'>).catch(() => { });
 
     return { ...(lightData as any), id: docRef.id, submissions: Array.isArray(submissions) ? submissions : [], submissionPaths: Array.isArray(submissionPaths) ? submissionPaths : [] } as Collaboration;
   }
@@ -50,25 +50,38 @@ export class CollaborationService {
   }
 
   static async getCollaborationWithDetails(collaborationId: CollaborationId): Promise<Collaboration | null> {
-    const base = await CollaborationService.getCollaboration(collaborationId);
-    if (!base) return null;
-    console.log("GET COLLAB WITH DETAILS TRIGGERED")
+    // Use cloud function for server-side filtering of submissions
     try {
-      const detailRef = doc(db, COLLECTIONS.COLLABORATION_DETAILS, collaborationId);
-      const detailSnap = await getDoc(detailRef);
-      if (detailSnap.exists()) {
-        const detail = detailSnap.data() as CollaborationDetail;
-        return {
-          ...base,
-          submissions: Array.isArray(detail.submissions) ? detail.submissions : (base as any).submissions,
-          submissionPaths: Array.isArray(detail.submissionPaths) ? detail.submissionPaths : (base as any).submissionPaths
-        } as Collaboration;
+      const functions = getFunctions(app, 'europe-west1');
+      const callable = httpsCallable(functions, 'getCollaborationData');
+      const response: any = await callable({ collaborationId });
+      const data = response?.data;
+      if (data?.collaboration) {
+        console.log("GET COLLAB WITH DETAILS via cloud function");
+        return data.collaboration as Collaboration;
       }
+      return null;
     } catch (err) {
-      console.log("ERROR KURWA");
+      console.log("Cloud function failed, falling back to direct read", err);
+      // Fallback to direct Firestore read (includes all submissions - less secure)
+      const base = await CollaborationService.getCollaboration(collaborationId);
+      if (!base) return null;
+      try {
+        const detailRef = doc(db, COLLECTIONS.COLLABORATION_DETAILS, collaborationId);
+        const detailSnap = await getDoc(detailRef);
+        if (detailSnap.exists()) {
+          const detail = detailSnap.data() as CollaborationDetail;
+          return {
+            ...base,
+            submissions: Array.isArray(detail.submissions) ? detail.submissions : (base as any).submissions,
+            submissionPaths: Array.isArray(detail.submissionPaths) ? detail.submissionPaths : (base as any).submissionPaths
+          } as Collaboration;
+        }
+      } catch (detailErr) {
+        console.log("Detail fetch error", detailErr);
+      }
+      return base;
     }
-
-    return base;
   }
 
   static async getCollaborationsByProject(projectId: ProjectId): Promise<Collaboration[]> {
@@ -76,7 +89,7 @@ export class CollaborationService {
       collection(db, COLLECTIONS.COLLABORATIONS),
       where('projectId', '==', projectId)
     );
-    
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(d => ({ ...(d.data() as any), id: d.id }) as Collaboration);
   }
@@ -93,7 +106,7 @@ export class CollaborationService {
     const refCol = doc(db, COLLECTIONS.COLLABORATIONS, collaborationId);
     await Promise.all([
       deleteDoc(refCol),
-      deleteDoc(doc(db, COLLECTIONS.COLLABORATION_DETAILS, collaborationId)).catch(() => {})
+      deleteDoc(doc(db, COLLECTIONS.COLLABORATION_DETAILS, collaborationId)).catch(() => { })
     ]);
   }
 
@@ -148,7 +161,7 @@ export class CollaborationService {
 
   static filterCollaborationsByTags(collaborations: Collaboration[], tagKeys: string[]): Collaboration[] {
     if (tagKeys.length === 0) return collaborations;
-    return collaborations.filter(collab => 
+    return collaborations.filter(collab =>
       tagKeys.every(key => collab.tagsKey?.includes(key))
     );
   }

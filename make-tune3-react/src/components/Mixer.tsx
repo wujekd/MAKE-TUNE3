@@ -154,40 +154,42 @@ export function Mixer({ state }: MixerProps) {
   return (
     <section className="mixer-section" id="mixer">
       <div className="transport">
-        <button
-          id="back-btn"
-          onClick={previousTrack}
-          disabled={!canGoBack}
-        >
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
-            <path d="M8 24H40M8 24L16 16M8 24L16 32" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"></path>
-          </svg>
-        </button>
-        <button id="play-btn" onClick={togglePlayPause}>
-          {state.player2.isPlaying ? (
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
-              <rect x="6" y="4" width="4" height="16" fill="#ffffff" />
-              <rect x="14" y="4" width="4" height="16" fill="#ffffff" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%' }}>
+          <button
+            id="back-btn"
+            onClick={previousTrack}
+            disabled={!canGoBack}
+          >
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
+              <path d="M8 24H40M8 24L16 16M8 24L16 32" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"></path>
             </svg>
-          ) : (
-            <svg width="32" height="32" viewBox="-3 0 28 28" fill="#ffffff">
-              <path d="M21.4,13.5L4.4,1.3C3.3,0.7,2,0.8,2,2.9v20.1c0,2,1.4,2.3,2.4,1.6l17-12.2C22.2,11.6,22.2,14.3,21.4,13.5" />
+          </button>
+          <button id="play-btn" onClick={togglePlayPause}>
+            {state.player2.isPlaying ? (
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
+                <rect x="6" y="4" width="4" height="16" fill="#ffffff" />
+                <rect x="14" y="4" width="4" height="16" fill="#ffffff" />
+              </svg>
+            ) : (
+              <svg width="32" height="32" viewBox="-3 0 28 28" fill="#ffffff">
+                <path d="M21.4,13.5L4.4,1.3C3.3,0.7,2,0.8,2,2.9v20.1c0,2,1.4,2.3,2.4,1.6l17-12.2C22.2,11.6,22.2,14.3,21.4,13.5" />
+              </svg>
+            )}
+          </button>
+          <button
+            id="fwd-btn"
+            onClick={nextTrack}
+            disabled={!canGoForward}
+          >
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" transform="rotate(180)">
+              <path d="M8 24H40M8 24L16 16M8 24L16 32" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"></path>
             </svg>
-          )}
-        </button>
-        <button
-          id="fwd-btn"
-          onClick={nextTrack}
-          disabled={!canGoForward}
-        >
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" transform="rotate(180)">
-            <path d="M8 24H40M8 24L16 16M8 24L16 32" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"></path>
-          </svg>
-        </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 12, color: 'var(--white)' }}>
-          <span id="current-time">{getCurrentTime(state)}</span>
-          <span>/</span>
-          <span id="total-time">{getTotalTime(state)}</span>
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8, color: 'var(--white)' }}>
+            <span id="current-time">{getCurrentTime(state)}</span>
+            <span>/</span>
+            <span id="total-time">{getTotalTime(state)}</span>
+          </div>
         </div>
         <input
           type="range"
@@ -198,7 +200,6 @@ export function Mixer({ state }: MixerProps) {
           step="0.1"
           value={getTimeSliderValue(state)}
           onChange={handleTimeSliderChangeEvent}
-          style={{ flex: 1, marginLeft: 12 }}
         />
       </div>
 
@@ -214,100 +215,120 @@ export function Mixer({ state }: MixerProps) {
               }}
             />
           </div>
-          <span className="mixer1-channel-label" style={{ flexShrink: 0 }}>Submission</span>
 
           <div style={{ flex: 1, minHeight: 0 }} />
 
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: isSubmissionCompact ? 0 : 12, flexShrink: 0 }}>
-            {isSubmissionCompact ? (
-              <Potentiometer
-                value={state.player1.volume}
-                min={0}
-                max={2}
-                step={0.01}
-                size={64}
-                onChange={handleSubmissionVolumeChange}
-                onInput={handleSubmissionVolumeChange}
-                showValue={false}
-              />
-            ) : (
-              <input
-                type="range"
-                className="vertical-slider mixer1-fader"
-                id="submission-volume"
-                min="0"
-                max="2"
-                step="0.01"
-                value={state.player1.volume}
-                onChange={handleSubmissionVolumeChangeEvent}
-              />
-            )}
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, marginTop: 'auto' }}>
             <div
               style={{
-                position: 'absolute',
-                right: isSubmissionCompact ? '-30px' : '-25px',
-                bottom: 0,
-                height: '100%',
+                position: 'relative',
                 display: 'flex',
-                alignItems: 'flex-end'
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                width: '100%',
+                minHeight: isSubmissionCompact ? 96 : 184
               }}
             >
-              <SmallLEDMeter value={player1Level} min={0} max={1} vertical={true} />
+              {isSubmissionCompact ? (
+                <Potentiometer
+                  value={state.player1.volume}
+                  min={0}
+                  max={2}
+                  step={0.01}
+                  size={64}
+                  onChange={handleSubmissionVolumeChange}
+                  onInput={handleSubmissionVolumeChange}
+                  showValue={false}
+                />
+              ) : (
+                <input
+                  type="range"
+                  className="vertical-slider mixer1-fader"
+                  id="submission-volume"
+                  min="0"
+                  max="2"
+                  step="0.01"
+                  value={state.player1.volume}
+                  onChange={handleSubmissionVolumeChangeEvent}
+                />
+              )}
+              <div
+                style={{
+                  position: 'absolute',
+                  right: isSubmissionCompact ? '-30px' : '-25px',
+                  bottom: 0,
+                  top: 0,
+                  display: 'flex',
+                  alignItems: 'flex-end'
+                }}
+              >
+                <SmallLEDMeter value={player1Level} min={0} max={1} vertical={true} />
+              </div>
             </div>
+            <span className="mixer1-channel-label mixer1-channel-label--bottom">Submission</span>
           </div>
-
-          {isSubmissionCompact && <div style={{ flex: 1, minHeight: 0 }} />}
         </div>
 
         <div className="mixer1-channel" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
           <div className="mixer1-meter" style={{ flexShrink: 0 }}>
             <AnalogVUMeter value={masterLevel} min={0} max={1} size={72} />
           </div>
-          <span className="mixer1-channel-label" style={{ flexShrink: 0 }}>Master</span>
 
           <div style={{ flex: 1, minHeight: 0 }} />
 
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: isMasterCompact ? 0 : 12, flexShrink: 0 }}>
-            {isMasterCompact ? (
-              <Potentiometer
-                value={state.master.volume}
-                min={0}
-                max={1}
-                step={0.01}
-                size={64}
-                onChange={handleMasterVolumeChange}
-                onInput={handleMasterVolumeChange}
-                showValue={false}
-              />
-            ) : (
-              <input
-                type="range"
-                className="vertical-slider mixer1-fader"
-                id="master-volume"
-                min="0"
-                max="1"
-                step="0.01"
-                value={state.master.volume}
-                onChange={handleMasterVolumeChangeEvent}
-              />
-            )}
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, marginTop: 'auto' }}>
             <div
               style={{
-                position: 'absolute',
-                right: isMasterCompact ? '-30px' : '-25px',
-                bottom: 0,
-                height: '100%',
+                position: 'relative',
                 display: 'flex',
-                alignItems: 'flex-end'
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                width: '100%',
+                minHeight: isMasterCompact ? 96 : 184
               }}
             >
-              <SmallLEDMeter value={player2Level} min={0} max={1} vertical={true} />
+              {isMasterCompact ? (
+                <Potentiometer
+                  value={state.master.volume}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  size={64}
+                  onChange={handleMasterVolumeChange}
+                  onInput={handleMasterVolumeChange}
+                  showValue={false}
+                />
+              ) : (
+                <input
+                  type="range"
+                  className="vertical-slider mixer1-fader"
+                  id="master-volume"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={state.master.volume}
+                  onChange={handleMasterVolumeChangeEvent}
+                />
+              )}
+              <div
+                style={{
+                  position: 'absolute',
+                  right: isMasterCompact ? '-30px' : '-25px',
+                  bottom: 0,
+                  top: 0,
+                  display: 'flex',
+                  alignItems: 'flex-end'
+                }}
+              >
+                <SmallLEDMeter value={player2Level} min={0} max={1} vertical={true} />
+              </div>
             </div>
+            <span className="mixer1-channel-label mixer1-channel-label--bottom">Master</span>
           </div>
-
-          {isMasterCompact && <div style={{ flex: 1, minHeight: 0 }} />}
         </div>
       </div>
     </section>
   );
-} 
+}

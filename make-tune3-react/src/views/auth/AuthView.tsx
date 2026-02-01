@@ -22,23 +22,23 @@ export function AuthView({ onBackToMain, initialMode = 'login' }: AuthViewProps)
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <button 
-            type="button" 
+          <button
+            type="button"
             className="back-button"
             onClick={onBackToMain}
           >
             ← Back to Main
           </button>
-          <h1>Make Tune 3</h1>
+          <h1><span>Make </span><span className="accent">Tunes</span></h1>
         </div>
-        
+
         {mode === 'login' ? (
-          <LoginForm 
+          <LoginForm
             onSwitchToSignUp={() => setMode('register')}
             onSwitchToForgotPassword={() => setMode('forgotPassword')}
           />
         ) : mode === 'register' ? (
-          <RegisterForm 
+          <RegisterForm
             onSwitchToSignIn={() => setMode('login')}
           />
         ) : (

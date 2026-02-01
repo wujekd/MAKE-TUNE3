@@ -318,7 +318,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         const submissionTracks = (collab.submissions && collab.submissions.length > 0)
           ? collab.submissions.map((s: SubmissionEntry) => {
             if (DEBUG_LOGS) console.log('tracks from submissions[]', s);
-            const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
+            const moderationStatus = s.moderationStatus || 'pending';  // All submissions require moderation
             return createTrackFromFilePath(s.path, 'submission', collab.id, {
               settings: s.settings,
               optimizedPath: s.optimizedPath,
@@ -414,7 +414,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         const submissionTracks = (collab.submissions && collab.submissions.length > 0)
           ? collab.submissions.map((s: SubmissionEntry) => {
             if (DEBUG_LOGS) console.log('tracks from submissions[] (anon)', s);
-            const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
+            const moderationStatus = s.moderationStatus || 'pending';  // All submissions require moderation
             return createTrackFromFilePath(s.path, 'submission', collab.id, {
               settings: s.settings,
               optimizedPath: s.optimizedPath,
@@ -475,7 +475,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         const submissionTracks = (collab.submissions && collab.submissions.length > 0)
           ? collab.submissions.map((s: SubmissionEntry) => {
             if (DEBUG_LOGS) console.log('tracks from submissions[] (anon by id)', s);
-            const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
+            const moderationStatus = s.moderationStatus || 'pending';  // All submissions require moderation
             return createTrackFromFilePath(s.path, 'submission', collab.id, {
               settings: s.settings,
               optimizedPath: s.optimizedPath,

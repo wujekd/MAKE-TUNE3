@@ -20,6 +20,7 @@ export class AudioEngine {
   // todo: add eq gains, solo, mute, mute master, stop playback tracker and emit state
   private masterGain: GainNode | null = null;
   private masterAnalyser: AnalyserNode | null = null;
+  private masterMeterHpf: BiquadFilterNode | null = null; // HPF for metering (removes bass dominance)
   private player1Analyser: AnalyserNode | null = null;
   private player2Analyser: AnalyserNode | null = null;
   private levelListeners: Set<(level: { peak: number; rms: number }) => void> = new Set();
@@ -100,6 +101,13 @@ export class AudioEngine {
     this.eq.highshelf = this.audioContext.createBiquadFilter();
 
     this.masterGain = this.audioContext.createGain();
+
+    // High-pass filter for metering - removes bass dominance so transients (snare, hats) can punch through
+    this.masterMeterHpf = this.audioContext.createBiquadFilter();
+    this.masterMeterHpf.type = 'highpass';
+    this.masterMeterHpf.frequency.value = 200; // Cut below 200Hz for VU meter
+    this.masterMeterHpf.Q.value = 0.7; // Gentle slope
+
     this.masterAnalyser = this.audioContext.createAnalyser();
     this.masterAnalyser.fftSize = 1024;
     this.masterAnalyser.smoothingTimeConstant = 0.8;
@@ -125,9 +133,11 @@ export class AudioEngine {
     // Tap player2 for level monitoring
     this.player2Gain.connect(this.player2Analyser);
     this.player2Gain.connect(this.masterGain);
-    // split: to destination and to analyser
+    // split: to destination and to HPF'd analyser for metering
     this.masterGain.connect(this.audioContext.destination);
-    this.masterGain.connect(this.masterAnalyser);
+    // Meter chain: masterGain -> HPF -> analyser (so bass doesn't dominate the VU meter)
+    this.masterGain.connect(this.masterMeterHpf);
+    this.masterMeterHpf.connect(this.masterAnalyser);
 
     this.player1Gain.gain.value = this.state.player1.volume;
     this.player1MuteGain.gain.value = 1;

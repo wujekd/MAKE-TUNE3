@@ -34,6 +34,10 @@ export function DeskToggle({
     userSelect: 'none'
   };
 
+  // Calculate minWidth for consistent sizing when text changes
+  const longestText = (onText?.length ?? 0) >= (offText?.length ?? 0) ? onText : offText;
+  const textMinWidth = longestText ? Math.max(longestText.length * 7, 40) : undefined;
+
   const plateStyle: CSSProperties = {
     padding: 6,
     borderRadius: 8,
@@ -42,7 +46,8 @@ export function DeskToggle({
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 6
+    gap: 6,
+    minWidth: textMinWidth
   };
 
   const innerSize = Math.max(12, Math.floor(size * 0.66));

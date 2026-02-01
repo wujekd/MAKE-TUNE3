@@ -37,10 +37,10 @@ export class SubmissionService {
     onProgress?: (percent: number) => void
   ): Promise<string> {
     FileService.validateFileSize(file);
-    
+
     const ext = FileService.getPreferredAudioExtension(file);
     const path = `collabs/${collaborationId}/backing.${ext}`;
-    
+
     await FileService.uploadFile(file, path, onProgress);
     return path;
   }
@@ -63,23 +63,23 @@ export class SubmissionService {
     multitrackZip?: File | null
   ): Promise<{ filePath: string; submissionId: string; multitrackZipPath?: string }> {
     FileService.validateFileSize(file);
-    
+
     const exists = await this.hasUserSubmitted(collaborationId, userId);
     if (exists) {
       throw new Error('already submitted');
     }
-    
+
     const ext = FileService.getPreferredAudioExtension(file);
-    const submissionId = (typeof crypto !== 'undefined' && (crypto as any).randomUUID) 
-      ? (crypto as any).randomUUID() 
+    const submissionId = (typeof crypto !== 'undefined' && (crypto as any).randomUUID)
+      ? (crypto as any).randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     const path = `collabs/${collaborationId}/submissions/${submissionId}.${ext}`;
     const r = ref(storage, path);
-    const task = uploadBytesResumable(r, file, { 
-      contentType: file.type, 
-      customMetadata: { ownerUid: userId } 
+    const task = uploadBytesResumable(r, file, {
+      contentType: file.type,
+      customMetadata: { ownerUid: userId }
     });
-    
+
     const uploaded: UploadTaskSnapshot = await new Promise((resolve, reject) => {
       task.on(
         'state_changed',
@@ -91,13 +91,13 @@ export class SubmissionService {
         () => resolve(task.snapshot)
       );
     });
-    
+
     const createdAt = Timestamp.now();
 
     const collabRef = doc(db, COLLECTIONS.COLLABORATIONS, collaborationId);
     const now = Timestamp.now();
-    await updateDoc(collabRef, { 
-      participantIds: arrayUnion(userId), 
+    await updateDoc(collabRef, {
+      participantIds: arrayUnion(userId),
       submissionsCount: increment(1),
       updatedAt: now
     });
@@ -115,7 +115,7 @@ export class SubmissionService {
     const collabSnap = await getDoc(collabRef);
     if (collabSnap.exists()) {
       const data = collabSnap.data() as Collaboration;
-      const needsMod = data.requiresModeration ? true : ((data as any).unmoderatedSubmissions === true);
+      const needsMod = true;  // All submissions always require moderation
       const defaultSettings = settings ?? {
         eq: {
           highshelf: { gain: 0, frequency: 8000 },
@@ -126,7 +126,8 @@ export class SubmissionService {
         volume: { gain: 1 }
       };
 
-      const newModerationStatus: SubmissionModerationStatus = data.requiresModeration ? 'pending' : 'approved';
+      // All submissions start as pending moderation
+      const newModerationStatus: SubmissionModerationStatus = 'pending';
 
       const entry: Record<string, any> = {
         path,
@@ -135,11 +136,6 @@ export class SubmissionService {
         createdAt,
         moderationStatus: newModerationStatus
       };
-
-      if (!data.requiresModeration) {
-        entry.moderatedAt = createdAt;
-        entry.moderatedBy = userId;
-      }
 
       const detailRef = doc(db, COLLECTIONS.COLLABORATION_DETAILS, collaborationId);
       const updateDetail = updateDoc(detailRef, {
@@ -156,10 +152,10 @@ export class SubmissionService {
         });
       });
 
-      const updateCollab = updateDoc(collabRef, { 
+      const updateCollab = updateDoc(collabRef, {
         updatedAt: Timestamp.now(),
-        unmoderatedSubmissions: data.requiresModeration ? true : ((data as any).unmoderatedSubmissions === true)
-      }).catch(() => {});
+        unmoderatedSubmissions: true  // Always has pending submissions after upload
+      }).catch(() => { });
 
       await Promise.all([updateDetail, updateCollab]);
     }
@@ -171,7 +167,7 @@ export class SubmissionService {
         collaborationId,
         submissionId
       );
-      
+
       const detailRef = doc(db, COLLECTIONS.COLLABORATION_DETAILS, collaborationId);
       const detailSnap = await getDoc(detailRef);
       if (detailSnap.exists()) {

@@ -27,17 +27,19 @@ export function WinnerCard({
     <div className="winner-card__inner">
       <div className="winner-card__title">Winner</div>
       <div className="winner-card__name">{name}</div>
-      <button
-        onClick={onPlay}
-        disabled={disabled}
-        className="play-button winner-card__play"
-        type="button"
-      >
-        <div className="progress-bar" style={progressStyle}></div>
-        <span className="play-icon">
-          {isLoading ? <LoadingSpinner size={16} /> : isPlaying ? '❚❚' : '▶'}
-        </span>
-      </button>
+      <div className="winner-card__button-wrapper">
+        <button
+          onClick={onPlay}
+          disabled={disabled}
+          className="play-button winner-card__play"
+          type="button"
+        >
+          <div className="progress-bar" style={progressStyle}></div>
+          <span className="play-icon">
+            {isLoading ? <LoadingSpinner size={16} /> : isPlaying ? '❚❚' : '▶'}
+          </span>
+        </button>
+      </div>
     </div>
   );
 }

@@ -23,6 +23,11 @@
   color: #2ecc71;
 }
 
+.small-led-meter__led--orange {
+  background: linear-gradient(90deg, #4d3a1a, #f39c12);
+  color: #f39c12;
+}
+
 .small-led-meter__led--red {
   background: linear-gradient(90deg, #4d1a1a, #e74c3c);
   color: #e74c3c;
@@ -31,4 +36,3 @@
 .small-led-meter__led[style*="opacity: 0.15"] {
   box-shadow: none;
 }
-

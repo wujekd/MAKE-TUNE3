@@ -19,9 +19,22 @@ function fmt(sec: number) {
   return `${s}s`;
 }
 
+/**
+ * Applies gentle companding to meter values:
+ * - Slight boost on low values (quiet parts are more visible)
+ * - Gentle compression on high values (prevents pegging)
+ */
+function compandValue(linearPct: number): number {
+  const clamped = Math.max(0, Math.min(1, linearPct));
+  // Gentle power curve - 0.7 gives subtle effect
+  return Math.pow(clamped, 0.7);
+}
+
 export function AnalogVUMeter({ value, min = 0, max = 100, size = 120, label }: Props) {
   const clamped = Math.min(max, Math.max(min, value));
-  const pct = (clamped - min) / (max - min || 1);
+  const linearPct = (clamped - min) / (max - min || 1);
+  // Apply companding: boost quiet, compress loud
+  const pct = compandValue(linearPct);
   const angle = useMemo(() => {
     // keep needle within visible upper semicircle
     const start = -150; // far left, above center

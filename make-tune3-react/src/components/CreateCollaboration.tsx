@@ -31,7 +31,6 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<number>(0);
-  const [requiresModeration, setRequiresModeration] = useState<boolean>(true);
   const [replaceBacking, setReplaceBacking] = useState<boolean>(false);
   const [replacePdf, setReplacePdf] = useState<boolean>(false);
   const [replaceZip, setReplaceZip] = useState<boolean>(false);
@@ -51,7 +50,7 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
       setTags(initial.tags || []);
       setSubmissionDuration(initial.submissionDuration || 604800);
       setVotingDuration(initial.votingDuration || 259200);
-      setRequiresModeration(!!initial.requiresModeration);
+
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, initial?.id]);
@@ -64,10 +63,10 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
   const create = async () => {
     const trimmed = name.trim();
     if (!trimmed) { setError('name required'); return; }
-    
+
     const normalized = TagUtils.normalizeTags(tags);
     const isPublished = initial?.status !== 'unpublished';
-    
+
     setSaving(true); setError(null);
     try {
       if (mode === 'edit' && initial) {
@@ -75,15 +74,14 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
           name: trimmed,
           description,
           submissionDuration,
-          votingDuration,
-          requiresModeration
+          votingDuration
         };
-        
+
         if (!isPublished) {
           updates.tags = normalized.display;
           updates.tagsKey = normalized.keys;
         }
-        
+
         await CollaborationService.updateCollaboration(initial.id, updates);
         let updated: Collaboration = { ...initial, ...updates } as any;
         if (backingFile) {
@@ -113,7 +111,6 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
           backingTrackPath: '',
           submissionDuration,
           votingDuration,
-          requiresModeration,
           status: 'unpublished',
           publishedAt: null
         } as any);
@@ -155,9 +152,9 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
       gap: 8,
       width: '100%'
     }}>
@@ -268,9 +265,9 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
               </button>
               {!replaceBacking && (
                 <button
-                  onClick={() => { 
-                    setReplaceBacking(true); 
-                    setBackingFile(null); 
+                  onClick={() => {
+                    setReplaceBacking(true);
+                    setBackingFile(null);
                     stopBackingPlayback();
                   }}
                 >
@@ -368,9 +365,7 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
           </div>
         )}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <DeskToggle checked={requiresModeration} onChange={setRequiresModeration} size={18} onText="moderation" offText="no moderation" colorOff="#b91c1c" />
-      </div>
+
       {error && <div style={{ color: 'var(--white)' }}>{error}</div>}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         {saving && backingFile && (
@@ -378,7 +373,7 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
             <div style={{ width: `${progress}%`, height: '100%', background: 'var(--contrast-600)', borderRadius: 4 }} />
           </div>
         )}
-        <button onClick={create} disabled={saving}>{saving ? (backingFile ? `uploading ${progress}%` : (mode==='edit' ? 'saving...' : 'creating...')) : (mode==='edit' ? 'save changes' : 'create collaboration')}</button>
+        <button onClick={create} disabled={saving}>{saving ? (backingFile ? `uploading ${progress}%` : (mode === 'edit' ? 'saving...' : 'creating...')) : (mode === 'edit' ? 'save changes' : 'create collaboration')}</button>
       </div>
     </div>
   );

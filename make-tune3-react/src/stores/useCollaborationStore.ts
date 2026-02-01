@@ -1,16 +1,16 @@
 import { create } from 'zustand';
-import type { 
-  Project, 
+import type {
+  Project,
   Collaboration,
-  Track, 
+  Track,
   UserCollaboration,
   SubmissionEntry
 } from '../types/collaboration';
-import { 
-  CollaborationService, 
-  ProjectService, 
-  UserService, 
-  InteractionService, 
+import {
+  CollaborationService,
+  ProjectService,
+  UserService,
+  InteractionService,
   DataService,
   SubmissionService
 } from '../services';
@@ -26,9 +26,9 @@ async function precacheAudioUrls(collaboration: Collaboration): Promise<void> {
     ...(collaboration.submissions?.map(s => s.path) || []),
     ...(collaboration.submissions?.map(s => s.optimizedPath).filter(Boolean) || [])
   ].filter(Boolean) as string[];
-  
+
   if (paths.length === 0) return;
-  
+
   const startTime = performance.now();
   // Fetch all URLs in parallel
   await Promise.allSettled(
@@ -45,18 +45,18 @@ interface CollaborationState {
   currentCollaboration: Collaboration | null;
   userCollaboration: UserCollaboration | null;
   userCollaborations: Collaboration[];
-  
+
   allTracks: Track[];
   regularTracks: Track[];
   pastStageTracks: Track[];
   backingTrack: Track | null;
   favorites: Track[];
-  
+
   isLoadingCollaboration: boolean;
   isLoadingProject: boolean;
   isUpdatingFavorites: boolean;
   isUpdatingListened: boolean;
-  
+
   setCurrentProject: (project: Project) => void;
   setCurrentCollaboration: (collaboration: Collaboration) => void;
   setUserCollaboration: (collaboration: UserCollaboration) => void;
@@ -72,7 +72,7 @@ interface CollaborationState {
   loadCollaborationAnonymous: () => Promise<void>;
   loadCollaborationAnonymousById: (collaborationId: string) => Promise<void>;
   loadProject: (projectId: string) => Promise<void>;
-  
+
   isTrackListened: (filePath: string) => boolean;
   isTrackFavorite: (filePath: string) => boolean;
   getTrackByFilePath: (filePath: string) => Track | undefined;
@@ -103,20 +103,20 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
   setTracks: (tracks) => {
     const { userCollaboration, currentCollaboration } = get();
     const favoriteFilePaths = userCollaboration?.favoriteTracks || [];
-    
-    const trackObjects = tracks.map(track => 
+
+    const trackObjects = tracks.map(track =>
       createTrackFromFilePath(track.filePath, 'submission', currentCollaboration?.id || '')
     );
-    
-    const regularTracks = trackObjects.filter(track => 
+
+    const regularTracks = trackObjects.filter(track =>
       !favoriteFilePaths.includes(track.filePath)
     );
-    
+
     const pastStageTracks: Track[] = [];
     const backingTrack: Track | null = null;
-    
-    set({ 
-      allTracks: trackObjects, 
+
+    set({
+      allTracks: trackObjects,
       regularTracks,
       pastStageTracks,
       backingTrack
@@ -127,43 +127,43 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
     try {
       if (DEBUG_LOGS) console.log('loading collaboration data for:', collaborationId);
       set({ isLoadingCollaboration: true });
-      
+
       const collaborationData = await DataService.loadCollaborationData(userId, collaborationId);
       if (DEBUG_LOGS) console.log('loaded collaboration.submissions:', collaborationData.collaboration?.submissions);
-      
+
       if (!collaborationData.collaboration) {
         set({ isLoadingCollaboration: false });
         return;
       }
-      
+
       const collab = collaborationData.collaboration;
       const submissionTracks = (collab.submissions && collab.submissions.length > 0)
         ? collab.submissions.map((s: SubmissionEntry) => {
-            if (DEBUG_LOGS) console.log('tracks from submissions[]', s);
-            const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
-            return createTrackFromFilePath(s.path, 'submission', collab.id, {
-              settings: s.settings,
-              optimizedPath: s.optimizedPath,
-              submissionId: s.submissionId,
-              multitrackZipPath: s.multitrackZipPath,
-              moderationStatus
-            });
-          })
+          if (DEBUG_LOGS) console.log('tracks from submissions[]', s);
+          const moderationStatus = s.moderationStatus || 'pending';  // All submissions require moderation
+          return createTrackFromFilePath(s.path, 'submission', collab.id, {
+            settings: s.settings,
+            optimizedPath: s.optimizedPath,
+            submissionId: s.submissionId,
+            multitrackZipPath: s.multitrackZipPath,
+            moderationStatus
+          });
+        })
         : (collab as any).submissionPaths?.map((path: string) => {
-            if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[]', path);
-            return createTrackFromFilePath(path, 'submission', collab.id);
-          }) || [];
-      const backingTrack = collab.backingTrackPath ? 
+          if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[]', path);
+          return createTrackFromFilePath(path, 'submission', collab.id);
+        }) || [];
+      const backingTrack = collab.backingTrackPath ?
         createTrackFromFilePath(collab.backingTrackPath, 'backing', collab.id) : null;
-      
+
       const favoriteFilePaths = collaborationData.userCollaboration?.favoriteTracks || [];
-      const favorites = submissionTracks.filter((track: Track) => 
+      const favorites = submissionTracks.filter((track: Track) =>
         favoriteFilePaths.includes(track.filePath)
       );
-      const regularTracks = submissionTracks.filter((track: Track) => 
+      const regularTracks = submissionTracks.filter((track: Track) =>
         !favoriteFilePaths.includes(track.filePath)
       );
-      
+
       set({
         currentCollaboration: collaborationData.collaboration,
         userCollaboration: collaborationData.userCollaboration,
@@ -174,16 +174,16 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
         backingTrack,
         isLoadingCollaboration: false
       });
-      
+
       if (collaborationData.collaboration.projectId) {
         get().loadProject(collaborationData.collaboration.projectId);
       }
-      
+
       // Pre-cache all audio URLs for faster playback
       precacheAudioUrls(collab).catch(err => {
         if (DEBUG_LOGS) console.warn('Failed to pre-cache audio URLs:', err);
       });
-      
+
       if (DEBUG_LOGS) console.log('collaboration data loaded successfully');
     } catch (error) {
       if (DEBUG_LOGS) console.error('error loading collaboration data:', error);
@@ -195,41 +195,41 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
     try {
       if (DEBUG_LOGS) console.log('loading collaboration data for anonymous user');
       set({ isLoadingCollaboration: true });
-      
+
       const collaboration = await CollaborationService.getFirstCollaboration();
       if (!collaboration) {
         throw new Error('No collaborations found');
       }
-      
+
       const collaborationData = await DataService.loadCollaborationDataAnonymous(collaboration.id);
       if (DEBUG_LOGS) console.log('loaded (anon) collaboration.submissions:', collaborationData.collaboration?.submissions);
-      
+
       if (!collaborationData.collaboration) {
         set({ isLoadingCollaboration: false });
         return;
       }
-      
+
       const collab = collaborationData.collaboration;
       const submissionTracks = (collab.submissions && collab.submissions.length > 0)
         ? collab.submissions.map((s: SubmissionEntry) => {
-            if (DEBUG_LOGS) console.log('tracks from submissions[] (anon)', s);
-            const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
-            return createTrackFromFilePath(s.path, 'submission', collab.id, {
-              settings: s.settings,
-              optimizedPath: s.optimizedPath,
-              submissionId: s.submissionId,
-              moderationStatus
-            });
-          })
+          if (DEBUG_LOGS) console.log('tracks from submissions[] (anon)', s);
+          const moderationStatus = s.moderationStatus || 'pending';  // All submissions require moderation
+          return createTrackFromFilePath(s.path, 'submission', collab.id, {
+            settings: s.settings,
+            optimizedPath: s.optimizedPath,
+            submissionId: s.submissionId,
+            moderationStatus
+          });
+        })
         : (collab as any).submissionPaths?.map((path: string) => {
-            if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon)', path);
-            return createTrackFromFilePath(path, 'submission', collab.id);
-          }) || [];
-      const backingTrack = collab.backingTrackPath ? 
+          if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon)', path);
+          return createTrackFromFilePath(path, 'submission', collab.id);
+        }) || [];
+      const backingTrack = collab.backingTrackPath ?
         createTrackFromFilePath(collab.backingTrackPath, 'backing', collab.id) : null;
-      
+
       const regularTracks = submissionTracks;
-      
+
       set({
         currentCollaboration: collaborationData.collaboration,
         userCollaboration: null,
@@ -239,16 +239,16 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
         backingTrack,
         isLoadingCollaboration: false
       });
-      
+
       if (collaborationData.collaboration.projectId) {
         get().loadProject(collaborationData.collaboration.projectId);
       }
-      
+
       // Pre-cache all audio URLs for faster playback
       precacheAudioUrls(collab).catch(err => {
         if (DEBUG_LOGS) console.warn('Failed to pre-cache audio URLs:', err);
       });
-      
+
       if (DEBUG_LOGS) console.log('collaboration data loaded successfully for anonymous user');
     } catch (error) {
       if (DEBUG_LOGS) console.error('error loading collaboration data for anonymous user:', error);
@@ -262,29 +262,29 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
       set({ isLoadingCollaboration: true });
       const collaborationData = await DataService.loadCollaborationDataAnonymous(collaborationId);
       if (DEBUG_LOGS) console.log('loaded (anon by id) collaboration.submissions:', collaborationData.collaboration?.submissions);
-      
+
       if (!collaborationData.collaboration) {
         set({ isLoadingCollaboration: false });
         return;
       }
-      
+
       const collab = collaborationData.collaboration;
       const submissionTracks = (collab.submissions && collab.submissions.length > 0)
         ? collab.submissions.map((s: SubmissionEntry) => {
-            if (DEBUG_LOGS) console.log('tracks from submissions[] (anon by id)', s);
-            const moderationStatus = s.moderationStatus || (collab.requiresModeration ? 'pending' : 'approved');
-            return createTrackFromFilePath(s.path, 'submission', collab.id, {
-              settings: s.settings,
-              optimizedPath: s.optimizedPath,
-              submissionId: s.submissionId,
-              moderationStatus
-            });
-          })
+          if (DEBUG_LOGS) console.log('tracks from submissions[] (anon by id)', s);
+          const moderationStatus = s.moderationStatus || 'pending';  // All submissions require moderation
+          return createTrackFromFilePath(s.path, 'submission', collab.id, {
+            settings: s.settings,
+            optimizedPath: s.optimizedPath,
+            submissionId: s.submissionId,
+            moderationStatus
+          });
+        })
         : (collab as any).submissionPaths?.map((path: string) => {
-            if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon by id)', path);
-            return createTrackFromFilePath(path, 'submission', collab.id);
-          }) || [];
-      const backingTrack = collab.backingTrackPath ? 
+          if (DEBUG_LOGS) console.log('tracks from legacy submissionPaths[] (anon by id)', path);
+          return createTrackFromFilePath(path, 'submission', collab.id);
+        }) || [];
+      const backingTrack = collab.backingTrackPath ?
         createTrackFromFilePath(collab.backingTrackPath, 'backing', collab.id) : null;
       const regularTracks = submissionTracks;
       set({
@@ -299,7 +299,7 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
       if (collaborationData.collaboration.projectId) {
         get().loadProject(collaborationData.collaboration.projectId);
       }
-      
+
       // Pre-cache all audio URLs for faster playback
       precacheAudioUrls(collab).catch(err => {
         if (DEBUG_LOGS) console.warn('Failed to pre-cache audio URLs:', err);
@@ -314,9 +314,9 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
     try {
       if (DEBUG_LOGS) console.log('loading project data for:', projectId);
       set({ isLoadingProject: true });
-      
+
       const project = await ProjectService.getProject(projectId);
-      
+
       if (project) {
         const pastStageTracks = project.pastCollaborations
           .map(pastCollab => {
@@ -333,13 +333,13 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
             );
           })
           .filter((track): track is ReturnType<typeof createTrackFromFilePath> => !!track);
-        
+
         set({
           currentProject: project,
           pastStageTracks,
           isLoadingProject: false
         });
-        
+
         if (DEBUG_LOGS) console.log('project data loaded successfully');
       } else {
         set({ isLoadingProject: false });
@@ -353,17 +353,17 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
   markAsListened: async (filePath) => {
     const { userCollaboration, currentCollaboration } = get();
     const userId = userCollaboration?.userId;
-    
+
     if (!userId || !currentCollaboration) return;
-    
+
     try {
       set({ isUpdatingListened: true });
       await InteractionService.markTrackAsListened(userId, currentCollaboration.id, filePath);
-      
+
       const listenedTracks = [...(userCollaboration.listenedTracks || [])];
       if (!listenedTracks.includes(filePath)) {
         listenedTracks.push(filePath);
-        set({ 
+        set({
           userCollaboration: { ...userCollaboration, listenedTracks },
           isUpdatingListened: false
         });
@@ -379,20 +379,20 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
   addToFavorites: async (filePath) => {
     const { userCollaboration, currentCollaboration, allTracks } = get();
     const userId = userCollaboration?.userId;
-    
+
     if (!userId || !currentCollaboration) return;
-    
+
     try {
       set({ isUpdatingFavorites: true });
       await InteractionService.addTrackToFavorites(userId, currentCollaboration.id, filePath);
-      
+
       const favoriteTracks = [...(userCollaboration.favoriteTracks || [])];
       if (!favoriteTracks.includes(filePath)) {
         favoriteTracks.push(filePath);
-        
+
         const { favorites, regular } = TrackUtils.filterByFavorites(allTracks, favoriteTracks);
-        
-        set({ 
+
+        set({
           userCollaboration: { ...userCollaboration, favoriteTracks },
           favorites,
           regularTracks: regular,
@@ -410,18 +410,18 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
   removeFromFavorites: async (filePath) => {
     const { userCollaboration, currentCollaboration, allTracks } = get();
     const userId = userCollaboration?.userId;
-    
+
     if (!userId || !currentCollaboration) return;
-    
+
     try {
       set({ isUpdatingFavorites: true });
       await InteractionService.removeTrackFromFavorites(userId, currentCollaboration.id, filePath);
-      
+
       const favoriteTracks = (userCollaboration.favoriteTracks || []).filter(track => track !== filePath);
-      
+
       const { favorites, regular } = TrackUtils.filterByFavorites(allTracks, favoriteTracks);
-      
-      set({ 
+
+      set({
         userCollaboration: { ...userCollaboration, favoriteTracks },
         favorites,
         regularTracks: regular,
@@ -436,12 +436,12 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
   voteFor: async (filePath) => {
     const { userCollaboration, currentCollaboration } = get();
     const userId = userCollaboration?.userId;
-    
+
     if (!userId || !currentCollaboration) return;
-    
+
     try {
       await InteractionService.voteForTrack(userId, currentCollaboration.id, filePath);
-      set({ 
+      set({
         userCollaboration: { ...userCollaboration, finalVote: filePath }
       });
     } catch (error) {
@@ -452,7 +452,7 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
   setListenedRatio: (ratio) => {
     const { userCollaboration } = get();
     if (userCollaboration) {
-      set({ 
+      set({
         userCollaboration: { ...userCollaboration, listenedRatio: ratio }
       });
     }
