@@ -49,7 +49,7 @@ export function SmallLEDMeter({ value, min = 0, max = 1, vertical = false }: Sma
       <div
         className="small-led-meter__led small-led-meter__led--green"
         style={{
-          opacity: Math.max(0.15, led1Brightness),
+          opacity: led1Brightness > 0 ? 1 : 0.15,
           width: vertical ? '8px' : '8px',
           height: vertical ? '14px' : '5px'
         }}

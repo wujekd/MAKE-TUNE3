@@ -204,7 +204,7 @@ export function Mixer({ state }: MixerProps) {
       </div>
 
       <div className="channels-container">
-        <div className="mixer1-channel" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <div className="mixer1-channel" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'visible' }}>
           <div className="mixer1-meter" style={{ flexShrink: 0 }}>
             <SubmissionEQ
               muted={submissionMuted}
@@ -256,11 +256,11 @@ export function Mixer({ state }: MixerProps) {
               <div
                 style={{
                   position: 'absolute',
-                  right: isSubmissionCompact ? '-30px' : '-25px',
-                  bottom: 0,
+                  right: '8%',
                   top: 0,
+                  bottom: 0,
                   display: 'flex',
-                  alignItems: 'flex-end'
+                  alignItems: 'center'
                 }}
               >
                 <SmallLEDMeter value={player1Level} min={0} max={1} vertical={true} />
@@ -270,7 +270,7 @@ export function Mixer({ state }: MixerProps) {
           </div>
         </div>
 
-        <div className="mixer1-channel" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <div className="mixer1-channel" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'visible' }}>
           <div className="mixer1-meter" style={{ flexShrink: 0 }}>
             <AnalogVUMeter value={masterLevel} min={0} max={1} size={72} />
           </div>
@@ -315,11 +315,11 @@ export function Mixer({ state }: MixerProps) {
               <div
                 style={{
                   position: 'absolute',
-                  right: isMasterCompact ? '-30px' : '-25px',
-                  bottom: 0,
+                  right: '8%',
                   top: 0,
+                  bottom: 0,
                   display: 'flex',
-                  alignItems: 'flex-end'
+                  alignItems: 'center'
                 }}
               >
                 <SmallLEDMeter value={player2Level} min={0} max={1} vertical={true} />
@@ -329,6 +329,6 @@ export function Mixer({ state }: MixerProps) {
           </div>
         </div>
       </div>
-    </section>
+    </section >
   );
 }

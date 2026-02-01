@@ -179,7 +179,7 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
         />
       </div>
 
-      <div className="mixer1-channel" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      <div className="mixer1-channel" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'visible' }}>
         <div className="mixer1-meter" style={{ flexShrink: 0 }}>
           <AnalogVUMeter value={masterLevel} min={0} max={1} size={72} />
         </div>
@@ -224,11 +224,11 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
             <div
               style={{
                 position: 'absolute',
-                right: isCompactMode ? '-30px' : '-25px',
-                bottom: 0,
+                right: '8%',
                 top: 0,
+                bottom: 0,
                 display: 'flex',
-                alignItems: 'flex-end'
+                alignItems: 'center'
               }}
             >
               <SmallLEDMeter value={channelLevel} min={0} max={1} vertical={true} />
