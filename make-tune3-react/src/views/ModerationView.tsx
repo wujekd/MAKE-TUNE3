@@ -13,11 +13,10 @@ import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
 export function ModerationView() {
   const audioContext = useContext(AudioEngineContext);
   const { user } = useAppStore(state => state.auth);
-  const { 
+  const {
     regularTracks,
     currentCollaboration,
-    loadCollaboration,
-    loadCollaborationAnonymousById,
+    loadCollaborationForModeration,
     approveSubmission,
     rejectSubmission
   } = useAppStore(state => state.collaboration);
@@ -27,10 +26,9 @@ export function ModerationView() {
   const collabId = useParams().collaborationId as string;
 
   useEffect(() => {
-    if (!collabId) return;
-    if (user) loadCollaboration(user.uid, collabId);
-    else loadCollaborationAnonymousById(collabId);
-  }, [collabId, user, loadCollaboration, loadCollaborationAnonymousById]);
+    if (!collabId || !user) return;
+    loadCollaborationForModeration(collabId);
+  }, [collabId, user, loadCollaborationForModeration]);
 
   if (!audioContext) return null;
   const { engine, state } = audioContext;
@@ -58,7 +56,7 @@ export function ModerationView() {
 
       <div className={`submissions-section ${!state.playerController.pastStagePlayback ? 'active-playback' : ''}`}>
         <div className="audio-player-section">
-          <ModerationPanel 
+          <ModerationPanel
             tracks={pendingTracks}
             onApprove={(track) => approveSubmission?.(track)}
             onReject={(track) => rejectSubmission?.(track)}
@@ -72,7 +70,7 @@ export function ModerationView() {
                 state.playerController.currentTrackId === index;
 
               return (
-                <ModerationSubmissionItem 
+                <ModerationSubmissionItem
                   key={track.id}
                   track={track}
                   index={index}

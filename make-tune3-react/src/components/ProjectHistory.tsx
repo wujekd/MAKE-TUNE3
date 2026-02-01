@@ -17,7 +17,7 @@ const ProjectHistory = () => {
     },
     []
   );
-  const { state: audioState } = useAudioStore();
+  const audioState = useAudioStore(state => state.state);
 
   const isPastStageActive = audioState?.playerController.pastStagePlayback || false;
   const currentTrackIndex = audioState?.playerController.currentTrackId || 0;

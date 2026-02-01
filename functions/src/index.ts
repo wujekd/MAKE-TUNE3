@@ -28,6 +28,11 @@ const ACTIVE_COLLAB_STATUSES = new Set(["submission", "voting"]);
 const PROJECT_DELETION_HISTORY_COLLECTION = "projectDeletionHistory";
 
 const BAD = ["foo", "bar"];
+const TIER_LIMITS: Record<string, number> = {
+  free: 0,
+  beta: 3,
+  premium: 100
+};
 const sanitize = (s: string) =>
   BAD.reduce(
     (t, w) =>
@@ -436,12 +441,35 @@ export const createProjectWithUniqueName = onCall(async (request) => {
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
   const nameRaw = String(request.data?.name ?? "").trim();
   const descriptionRaw = String(request.data?.description ?? "");
+  const tags = Array.isArray(request.data?.tags) ? request.data.tags : [];
+  const tagsKey = Array.isArray(request.data?.tagsKey) ? request.data.tagsKey : [];
   if (!nameRaw) throw new HttpsError("invalid-argument", "name required");
   const nameKey = buildNameKey(nameRaw);
   const result = await db.runTransaction(async (tx) => {
+    const userRef = db.collection("users").doc(uid);
     const idxRef = db.collection("projectNameIndex").doc(nameKey);
-    const idxSnap = await tx.get(idxRef);
+
+    const [userSnap, idxSnap] = await Promise.all([
+      tx.get(userRef),
+      tx.get(idxRef)
+    ]);
+
+    if (!userSnap.exists) throw new HttpsError("permission-denied", "user profile not found");
     if (idxSnap.exists) throw new HttpsError("already-exists", "name taken");
+
+    const userData = userSnap.data() as any;
+    if (!userData.isAdmin) {
+      const tier = userData.tier || "free";
+      const bonus = Number(userData.bonusProjects || 0);
+      const projectCount = Number(userData.projectCount || 0);
+      const baseLimit = TIER_LIMITS[tier] ?? 0;
+      const totalLimit = baseLimit + bonus;
+
+      if (projectCount >= totalLimit) {
+        throw new HttpsError("resource-exhausted", `Project limit reached. You have ${projectCount} of ${totalLimit} allowed projects.`);
+      }
+    }
+
     const now = Timestamp.now();
     const projRef = db.collection("projects").doc();
     const projectData = {
@@ -453,12 +481,21 @@ export const createProjectWithUniqueName = onCall(async (request) => {
       isActive: true,
       pastCollaborations: [],
       nameKey,
+      tags,
+      tagsKey,
       currentCollaborationId: null,
       currentCollaborationStatus: null,
       currentCollaborationStageEndsAt: null,
     } as any;
+
     tx.set(projRef, projectData);
     tx.set(idxRef, { projectId: projRef.id, ownerId: uid, createdAt: now });
+
+    // Increment project count for user
+    tx.update(userRef, {
+      projectCount: (Number(userData.projectCount || 0)) + 1
+    });
+
     return { id: projRef.id, ...(projectData as any) };
   });
   return result;
@@ -565,6 +602,77 @@ export const getCollaborationData = onCall(async (request) => {
     submissions,
     submissionPaths,
     // Convert Timestamps to millis for client
+    createdAt: toMillis(collabData.createdAt),
+    updatedAt: toMillis(collabData.updatedAt),
+    publishedAt: toMillis(collabData.publishedAt),
+    submissionCloseAt: toMillis(collabData.submissionCloseAt),
+    votingCloseAt: toMillis(collabData.votingCloseAt),
+    completedAt: toMillis(collabData.completedAt),
+  };
+
+  return { collaboration };
+});
+
+/**
+ * Get moderation data for a collaboration.
+ * Returns only pending submissions for the project owner to moderate.
+ */
+export const getModerationData = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+
+  const collaborationIdRaw = String(request.data?.collaborationId || "").trim();
+  if (!collaborationIdRaw) {
+    throw new HttpsError("invalid-argument", "collaborationId required");
+  }
+
+  // Get collaboration document
+  const collabRef = db.collection("collaborations").doc(collaborationIdRaw);
+  const collabSnap = await collabRef.get();
+  if (!collabSnap.exists) {
+    throw new HttpsError("not-found", "collaboration not found");
+  }
+  const collabData = collabSnap.data() as any;
+
+  // Verify user is project owner
+  const projectId = String(collabData.projectId || "");
+  if (!projectId) {
+    throw new HttpsError("failed-precondition", "collaboration missing project");
+  }
+  const projectRef = db.collection("projects").doc(projectId);
+  const projectSnap = await projectRef.get();
+  if (!projectSnap.exists) {
+    throw new HttpsError("not-found", "project not found");
+  }
+  const projectData = projectSnap.data() as any;
+  if (projectData.ownerId !== uid) {
+    throw new HttpsError("permission-denied", "only project owner can moderate");
+  }
+
+  // Get collaboration details (submissions)
+  const detailRef = db.collection("collaborationDetails").doc(collaborationIdRaw);
+  const detailSnap = await detailRef.get();
+
+  let pendingSubmissions: any[] = [];
+  if (detailSnap.exists) {
+    const detailData = detailSnap.data() as any;
+    const allSubmissions = Array.isArray(detailData.submissions) ? detailData.submissions : [];
+
+    // Filter: only return pending submissions for moderation
+    pendingSubmissions = allSubmissions.filter((s: any) =>
+      s?.moderationStatus === "pending"
+    );
+  }
+
+  // Helper to convert Timestamp to millis or return null
+  const toMillis = (ts: any) => (ts && typeof ts.toMillis === "function" ? ts.toMillis() : null);
+
+  // Build response with collaboration info and pending submissions only
+  const collaboration = {
+    ...collabData,
+    id: collabSnap.id,
+    submissions: pendingSubmissions,
+    submissionPaths: pendingSubmissions.map((s: any) => String(s?.path || "")).filter(Boolean),
     createdAt: toMillis(collabData.createdAt),
     updatedAt: toMillis(collabData.updatedAt),
     publishedAt: toMillis(collabData.publishedAt),

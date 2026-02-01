@@ -84,7 +84,7 @@ export function SubmissionEQ({ muted, onMuteChange }: SubmissionEQProps) {
         <DeskToggle
           checked={enabled}
           onChange={toggleEq}
-          size={18}
+          size={6}
           onText="eq on"
           offText="eq off"
           disabled={disabled}
@@ -93,7 +93,7 @@ export function SubmissionEQ({ muted, onMuteChange }: SubmissionEQProps) {
           checked={muted}
           onChange={onMuteChange}
           label={undefined}
-          size={12}
+          size={5}
           colorOn="#d33"
           onText="unmute"
           offText="mute"
@@ -127,7 +127,7 @@ export function SubmissionEQ({ muted, onMuteChange }: SubmissionEQProps) {
             middleText="Q" startText="0.1" endText="10" onChange={setParam1Q} onInput={setParam1Q} />
         </div>
         <div style={rowStyle}>
-          <DeskToggle checked={lpfEnabled} onChange={toggleLpf} size={14} onText="on" offText="off" disabled={disabled} />
+          <DeskToggle checked={lpfEnabled} onChange={toggleLpf} size={5} onText="on" offText="off" disabled={disabled} />
           <div style={{ opacity: lpfEnabled ? 1 : 0.35, pointerEvents: lpfEnabled ? 'auto' as const : 'none' as const }}>
             <Potentiometer value={eq?.highpass.frequency ?? 20} min={20} max={1000} step={5} size={28} showValue={false}
               middleText="Hz" startText="20" endText="1k" onChange={setHighpassFreq} onInput={setHighpassFreq} />

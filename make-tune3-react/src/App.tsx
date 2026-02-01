@@ -18,6 +18,7 @@ import { CompletedView } from './views/CompletedView';
 import { UsernameOnboarding } from './views/UsernameOnboarding';
 import { AccessDeniedView } from './views/AccessDeniedView';
 import { ProjectService } from './services';
+import { RootErrorView } from './components/RootErrorView';
 
 function App() {
   const { user, loading } = useAppStore(state => state.auth);
@@ -37,6 +38,7 @@ function App() {
   const router = createBrowserRouter([
     {
       element: <AppShell />,
+      errorElement: <RootErrorView />,
       children: [
         { index: true, element: <Navigate to="collabs" replace /> },
         { path: 'onboarding/username', element: <UsernameOnboarding />, handle: { title: 'Choose Username', breadcrumb: 'Username' } },

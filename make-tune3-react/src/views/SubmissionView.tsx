@@ -32,6 +32,7 @@ export function SubmissionView() {
   const [status, setStatus] = useState<'loading' | 'ready' | 'downloaded' | 'submitted'>('loading');
   const navigate = useNavigate();
 
+
   usePrefetchAudio(backingUrl);
 
   useEffect(() => {
@@ -164,6 +165,7 @@ export function SubmissionView() {
   }, [user?.uid, currentCollaboration?.id]);
 
   if (!audioContext) return <div>audio engine not available</div>;
+
 
   const renderPane = () => {
     if (status === 'loading') {

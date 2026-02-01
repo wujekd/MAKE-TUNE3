@@ -7,7 +7,7 @@ import { TagUtils } from '../utils/tagUtils';
 import { LoadingSpinner } from './LoadingSpinner';
 import { ProjectListItem } from './ProjectListItem';
 import { computeStageInfo } from '../utils/stageUtils';
-import { canCreateProject } from '../utils/permissions';
+import { canCreateProject, getProjectAllowance } from '../utils/permissions';
 import type { User } from '../types/auth';
 import './ProjectHistory.css';
 import './UserActivityStyles.css';
@@ -134,15 +134,22 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
     <section className="user-activity__section">
       <div className="user-activity__section-header">
         <h4 className="project-history-title card__title user-activity__section-title">my projects</h4>
-        {canCreateProject(user) && (
-          <button
-            className="user-activity__action-button"
-            disabled={!user || authLoading}
-            onClick={() => setShowForm(v => !v)}
-          >
-            create project
-          </button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {getProjectAllowance(user) && getProjectAllowance(user)!.limit !== Infinity && (
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted, #888)' }}>
+              {getProjectAllowance(user)!.current} / {getProjectAllowance(user)!.limit}
+            </span>
+          )}
+          {canCreateProject(user) && (
+            <button
+              className="user-activity__action-button"
+              disabled={!user || authLoading}
+              onClick={() => setShowForm(v => !v)}
+            >
+              create project
+            </button>
+          )}
+        </div>
       </div>
       <div className="collab-list list user-activity__list">
         {showForm && (
@@ -205,29 +212,29 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
           const current = project.currentCollaboration;
           const rawStageInfo = current
             ? computeStageInfo({
-                status: current.status,
-                submissionCloseAt: current.submissionCloseAt,
-                votingCloseAt: current.votingCloseAt,
-                submissionDurationMs:
-                  typeof current.submissionDuration === 'number'
-                    ? current.submissionDuration * 1000
-                    : null,
-                votingDurationMs:
-                  typeof current.votingDuration === 'number'
-                    ? current.votingDuration * 1000
-                    : null,
-                publishedAt: current.publishedAt,
-                updatedAt: current.updatedAt
-              })
+              status: current.status,
+              submissionCloseAt: current.submissionCloseAt,
+              votingCloseAt: current.votingCloseAt,
+              submissionDurationMs:
+                typeof current.submissionDuration === 'number'
+                  ? current.submissionDuration * 1000
+                  : null,
+              votingDurationMs:
+                typeof current.votingDuration === 'number'
+                  ? current.votingDuration * 1000
+                  : null,
+              publishedAt: current.publishedAt,
+              updatedAt: current.updatedAt
+            })
             : null;
 
           const stageInfo = rawStageInfo
             ? {
-                status: rawStageInfo.status,
-                startAt: rawStageInfo.startAt ?? null,
-                endAt: rawStageInfo.endAt ?? null,
-                label: rawStageInfo.label ?? undefined
-              }
+              status: rawStageInfo.status,
+              startAt: rawStageInfo.startAt ?? null,
+              endAt: rawStageInfo.endAt ?? null,
+              label: rawStageInfo.label ?? undefined
+            }
             : null;
 
           return (

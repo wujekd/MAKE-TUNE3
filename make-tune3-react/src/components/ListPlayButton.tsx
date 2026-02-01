@@ -8,6 +8,7 @@ interface ListPlayButtonProps {
   onPlay: () => void;
   disabled?: boolean;
   label?: string;
+  className?: string;
 }
 
 export function ListPlayButton({ 
@@ -15,7 +16,8 @@ export function ListPlayButton({
   isCurrentTrack, 
   onPlay, 
   disabled = false,
-  label
+  label,
+  className
 }: ListPlayButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -59,10 +61,18 @@ export function ListPlayButton({
     return 'play';
   };
 
+  const classes = [
+    'list-play-button',
+    isCurrentTrack ? 'active' : '',
+    disabled ? 'disabled' : '',
+    label ? 'with-label' : '',
+    className || ''
+  ].filter(Boolean).join(' ');
+
   return (
     <button
       type="button"
-      className={`list-play-button ${isCurrentTrack ? 'active' : ''} ${disabled ? 'disabled' : ''} ${label ? 'with-label' : ''}`}
+      className={classes}
       onClick={handleClick}
       disabled={disabled}
       aria-label={getAriaLabel()}
@@ -72,4 +82,3 @@ export function ListPlayButton({
     </button>
   );
 }
-

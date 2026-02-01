@@ -91,6 +91,7 @@ describe('AppStore - Collaboration Slice', () => {
                 loadCollaboration: useAppStore.getState().collaboration.loadCollaboration,
                 loadCollaborationAnonymous: useAppStore.getState().collaboration.loadCollaborationAnonymous,
                 loadCollaborationAnonymousById: useAppStore.getState().collaboration.loadCollaborationAnonymousById,
+                loadCollaborationForModeration: useAppStore.getState().collaboration.loadCollaborationForModeration,
                 refreshCollaborationStatus: useAppStore.getState().collaboration.refreshCollaborationStatus,
                 loadProject: useAppStore.getState().collaboration.loadProject,
                 isTrackListened: useAppStore.getState().collaboration.isTrackListened,

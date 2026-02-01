@@ -8,7 +8,16 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true; 
     }
     function isOwner(project) { return isSignedIn() && project.data.ownerId == request.auth.uid; }
-    function canCreateProject() { return isAdmin(); }
+    function canCreateProject() {
+      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let tier = userData.get('tier', 'free');
+      let bonus = userData.get('bonusProjects', 0);
+      let projectCount = userData.get('projectCount', 0);
+      let tierLimits = {'free': 0, 'beta': 3, 'premium': 100};
+      let baseLimit = tier in tierLimits ? tierLimits[tier] : 0;
+      let totalLimit = baseLimit + bonus;
+      return isAdmin() || (isSignedIn() && projectCount < totalLimit);
+    }
     function validateProjectData(data) {
       return data.name is string && data.name.size() >= 3 && data.name.size() <= 100
         && data.description is string && data.description.size() <= 500

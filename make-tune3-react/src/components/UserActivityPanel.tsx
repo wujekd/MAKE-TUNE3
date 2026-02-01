@@ -266,6 +266,8 @@ export function UserActivityPanel() {
 
       const metaLines: string[] = [];
       if (isDeleted) {
+        // Show "-" for stage status when collaboration is deleted
+        metaLines.push('-');
         metaLines.push(
           item.collaborationDeletedAt
             ? `removed ${formatDateTime(item.collaborationDeletedAt)}`

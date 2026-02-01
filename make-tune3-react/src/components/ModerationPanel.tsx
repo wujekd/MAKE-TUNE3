@@ -101,6 +101,26 @@ export function ModerationPanel({ tracks, onApprove, onReject }: Props) {
     }
   };
 
+  const handleApprove = () => {
+    if (!current) return;
+    const confirmed = window.confirm(
+      `Approve this submission?\n\n"${current.title || 'Untitled'}"\n\nApproved submissions will be visible to voters.`
+    );
+    if (confirmed) {
+      onApprove(current);
+    }
+  };
+
+  const handleReject = () => {
+    if (!current) return;
+    const confirmed = window.confirm(
+      `Reject this submission?\n\n"${current.title || 'Untitled'}"\n\nRejected submissions will NOT be visible to voters and cannot be undone.`
+    );
+    if (confirmed) {
+      onReject(current);
+    }
+  };
+
   return (
     <>
       <section className="favorites-section">
@@ -111,10 +131,10 @@ export function ModerationPanel({ tracks, onApprove, onReject }: Props) {
           {current ? (
             <div className="favorite-item" style={{ width: '100%' }}>
               <div className="moderation-actions">
-                <button className="moderation-button moderation-reject" onClick={() => onReject(current)}>Reject</button>
-                <button className="moderation-button moderation-approve" onClick={() => onApprove(current)}>Approve</button>
+                <button className="moderation-button moderation-reject" onClick={handleReject}>Reject</button>
+                <button className="moderation-button moderation-approve" onClick={handleApprove}>Approve</button>
                 {user && (
-                  <button 
+                  <button
                     className="moderation-button moderation-report"
                     onClick={handleReportClick}
                   >

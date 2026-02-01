@@ -29,28 +29,28 @@ export function DeskToggle({
     display: 'inline-flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 6,
+    gap: 2,
     cursor: disabled ? 'not-allowed' : 'pointer',
     userSelect: 'none'
   };
 
   // Calculate minWidth for consistent sizing when text changes
   const longestText = (onText?.length ?? 0) >= (offText?.length ?? 0) ? onText : offText;
-  const textMinWidth = longestText ? Math.max(longestText.length * 7, 40) : undefined;
+  const textMinWidth = longestText ? Math.max(longestText.length * 5, 24) : undefined;
 
   const plateStyle: CSSProperties = {
-    padding: 6,
+    padding: 3,
     borderRadius: 8,
     background: 'linear-gradient(180deg, #1e2f2f, #0f1a1a)',
     boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.6), 0 2px 6px rgba(0,0,0,0.4)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 6,
+    gap: 2,
     minWidth: textMinWidth
   };
 
-  const innerSize = Math.max(12, Math.floor(size * 0.66));
+  const innerSize = Math.max(6, Math.floor(size * 0.66));
 
   const buttonStyle: CSSProperties = {
     width: innerSize,
@@ -83,7 +83,7 @@ export function DeskToggle({
   };
 
   const inlineTextStyle: CSSProperties = {
-    fontSize: 11,
+    fontSize: 9,
     color: 'var(--white)',
     opacity: 0.9,
   };

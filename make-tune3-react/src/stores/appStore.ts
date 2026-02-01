@@ -80,6 +80,7 @@ interface AppState {
     loadCollaboration: (userId: string, collaborationId: string) => Promise<void>;
     loadCollaborationAnonymous: () => Promise<void>;
     loadCollaborationAnonymousById: (collaborationId: string) => Promise<void>;
+    loadCollaborationForModeration: (collaborationId: string) => Promise<void>;
     refreshCollaborationStatus: (collaborationId: string) => Promise<void>;
     loadProject: (projectId: string) => Promise<void>;
 
@@ -512,6 +513,60 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     },
 
+    loadCollaborationForModeration: async (collaborationId: string) => {
+      try {
+        if (DEBUG_LOGS) console.log('loading collaboration data for moderation');
+        set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: true } }));
+
+        const collab = await CollaborationService.getCollaborationForModeration(collaborationId);
+        if (DEBUG_LOGS) console.log('loaded moderation submissions:', collab?.submissions);
+
+        if (!collab) {
+          if (DEBUG_LOGS) console.error('collaboration data is null for moderation');
+          set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
+          return;
+        }
+
+        // All submissions from this endpoint are pending moderation
+        const submissionTracks = (collab.submissions && collab.submissions.length > 0)
+          ? collab.submissions.map((s: SubmissionEntry) => {
+            if (DEBUG_LOGS) console.log('pending submission for moderation:', s);
+            return createTrackFromFilePath(s.path, 'submission', collab.id, {
+              settings: s.settings,
+              optimizedPath: s.optimizedPath,
+              submissionId: s.submissionId,
+              multitrackZipPath: s.multitrackZipPath,
+              moderationStatus: 'pending'  // All are pending from this endpoint
+            });
+          })
+          : [];
+
+        const backingTrack = collab.backingTrackPath ?
+          createTrackFromFilePath(collab.backingTrackPath, 'backing', collab.id) : null;
+
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            currentCollaboration: collab,
+            userCollaboration: null,
+            allTracks: submissionTracks,
+            regularTracks: submissionTracks,  // For moderation view, all tracks are "regular"
+            favorites: [],
+            pastStageTracks: [],
+            backingTrack,
+            isLoadingCollaboration: false
+          }
+        }));
+
+        if (collab.projectId) {
+          get().collaboration.loadProject(collab.projectId);
+        }
+      } catch (error) {
+        if (DEBUG_LOGS) console.error('error loading collaboration for moderation:', error);
+        set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
+      }
+    },
+
     loadProject: async (projectId: string) => {
       try {
         if (DEBUG_LOGS) console.log('loading project data for:', projectId);
@@ -868,7 +923,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           };
 
           const updatedSubmissions = updateEntries(state.collaboration.currentCollaboration?.submissions) || [];
-          const stillPending = updatedSubmissions.some(entry => (entry?.moderationStatus || 'approved') === 'pending');
+          const stillPending = updatedSubmissions.some(entry => (entry?.moderationStatus || 'pending') === 'pending');
 
           return {
             collaboration: {
@@ -929,7 +984,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           };
 
           const updatedSubmissions = updateEntries(state.collaboration.currentCollaboration?.submissions) || [];
-          const stillPending = updatedSubmissions.some(entry => (entry?.moderationStatus || 'approved') === 'pending');
+          const stillPending = updatedSubmissions.some(entry => (entry?.moderationStatus || 'pending') === 'pending');
 
           return {
             collaboration: {

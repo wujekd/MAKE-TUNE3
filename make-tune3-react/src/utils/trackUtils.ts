@@ -23,7 +23,7 @@ export class TrackUtils {
   ): Track {
     const fileName = filePath.split('/').pop() || filePath;
     const title = fileName.replace(/\.[^/.]+$/, '');
-    const moderationStatus = options?.moderationStatus ?? 'approved';
+    const moderationStatus = options?.moderationStatus ?? 'pending';
     return {
       id: filePath,
       title,

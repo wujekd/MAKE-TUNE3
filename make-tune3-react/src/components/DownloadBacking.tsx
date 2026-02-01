@@ -31,10 +31,17 @@ async function downloadFile(path: string, fallbackName: string): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
-export function DownloadBacking({ userId, collaborationId, backingPath, pdfPath, resourcesZipPath, onDownloaded }: DownloadBackingProps) {
+export function DownloadBacking({
+  userId,
+  collaborationId,
+  backingPath,
+  pdfPath,
+  resourcesZipPath,
+  onDownloaded
+}: DownloadBackingProps) {
   return (
     <div className="submission-pane">
-      <h4 className="card__title">Download resources</h4>
+      <h4 className="card__title" style={{ margin: 0 }}>Download resources</h4>
       <div className="card__body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
           <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4, color: 'var(--white)' }}>Backing track</div>

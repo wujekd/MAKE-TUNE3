@@ -84,6 +84,27 @@ export class CollaborationService {
     }
   }
 
+  /**
+   * Get collaboration data for moderation - returns only pending submissions.
+   * Only accessible by project owner.
+   */
+  static async getCollaborationForModeration(collaborationId: CollaborationId): Promise<Collaboration | null> {
+    try {
+      const functions = getFunctions(app, 'europe-west1');
+      const callable = httpsCallable(functions, 'getModerationData');
+      const response: any = await callable({ collaborationId });
+      const data = response?.data;
+      if (data?.collaboration) {
+        console.log("GET COLLAB FOR MODERATION via cloud function");
+        return data.collaboration as Collaboration;
+      }
+      return null;
+    } catch (err) {
+      console.error("getModerationData failed", err);
+      throw err;
+    }
+  }
+
   static async getCollaborationsByProject(projectId: ProjectId): Promise<Collaboration[]> {
     const q = query(
       collection(db, COLLECTIONS.COLLABORATIONS),
@@ -124,7 +145,7 @@ export class CollaborationService {
   static async listPublishedCollaborations(): Promise<Collaboration[]> {
     const q = query(
       collection(db, COLLECTIONS.COLLABORATIONS),
-      where('status', '==', 'published')
+      where('status', '!=', 'unpublished')
     );
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ ...(d.data() as any), id: d.id } as Collaboration));

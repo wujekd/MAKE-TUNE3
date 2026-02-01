@@ -33,7 +33,7 @@ export function CollaborationDetails({
   const backingPreview = usePlaybackStore(s => s.backingPreview);
   const audioState = useAudioStore(s => s.state);
   const togglePlayPause = useAppStore(s => s.playback.togglePlayPause);
-  
+
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [publishSuccess, setPublishSuccess] = useState(false);
@@ -55,7 +55,7 @@ export function CollaborationDetails({
     setIsPublishing(false);
     setPublishError(null);
     setPublishSuccess(false);
-    
+
     return () => {
       stopBackingPlayback();
     };
@@ -111,6 +111,36 @@ export function CollaborationDetails({
               votingCloseAt={(col as any).votingCloseAt}
               onStageChange={() => refreshSelected()}
             />
+          </div>
+        )}
+
+        {/* Duration and resource info for unpublished collaborations */}
+        {!hasTimestamps && (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              marginTop: 8,
+              padding: 12,
+              background: 'rgba(255,255,255,0.05)',
+              borderRadius: 6,
+              fontSize: 13
+            }}
+          >
+            <div style={{ opacity: 0.85 }}>
+              <strong>submission duration:</strong> {col.submissionDuration ? `${Math.floor(col.submissionDuration / 86400)}d ${Math.floor((col.submissionDuration % 86400) / 3600)}h` : 'not set'}
+            </div>
+            <div style={{ opacity: 0.85 }}>
+              <strong>voting duration:</strong> {col.votingDuration ? `${Math.floor(col.votingDuration / 86400)}d ${Math.floor((col.votingDuration % 86400) / 3600)}h` : 'not set'}
+            </div>
+            <div style={{ opacity: 0.7, marginTop: 4 }}>
+              resources: {[
+                col.backingTrackPath ? 'backing ✓' : 'backing ✗',
+                col.pdfPath ? 'pdf ✓' : null,
+                col.resourcesZipPath ? 'zip ✓' : null
+              ].filter(Boolean).join(' • ')}
+            </div>
           </div>
         )}
 
@@ -211,7 +241,7 @@ export function CollaborationDetails({
               setIsPublishing(true);
               setPublishError(null);
               setPublishSuccess(false);
-              
+
               try {
                 await CollaborationService.publishCollaboration(col.id);
                 await refreshSelected();
@@ -219,7 +249,7 @@ export function CollaborationDetails({
                 setPublishError(null);
               } catch (error: any) {
                 console.error('Publish error:', error);
-                
+
                 // Handle specific error cases
                 if (error?.code === 'functions/failed-precondition') {
                   setPublishError('Uh no no no, another collaboration is already active.');
@@ -280,7 +310,7 @@ export function CollaborationDetails({
             }}
           />
         </div>
-        
+
         {/* Publish feedback messages */}
         {publishSuccess && (
           <div style={{

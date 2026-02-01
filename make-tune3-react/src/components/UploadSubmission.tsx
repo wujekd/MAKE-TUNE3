@@ -3,6 +3,7 @@ import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { useAppStore } from '../stores/appStore';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { SubmissionService } from '../services';
+import { ListPlayButton } from './ListPlayButton';
 
 interface UploadSubmissionProps {
   collaborationId: string;
@@ -15,8 +16,9 @@ export function UploadSubmission({ collaborationId, backingUrl, onSubmitSuccess 
   const { user } = useAppStore(s => s.auth);
   const { currentCollaboration } = useAppStore(s => s.collaboration);
   const playBackingTrack = usePlaybackStore(s => s.playBackingTrack);
+  const backingPreview = usePlaybackStore(s => s.backingPreview);
   const togglePlayPause = useAppStore(s => s.playback.togglePlayPause);
-  
+
   const [file, setFile] = useState<File | null>(null);
   const [multitrackZip, setMultitrackZip] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -24,19 +26,23 @@ export function UploadSubmission({ collaborationId, backingUrl, onSubmitSuccess 
   const [error, setError] = useState<string | null>(null);
   const blobUrlRef = useRef<string | null>(null);
 
-  const isBackingPlaying = audioContext?.state?.player2?.isPlaying || false;
   const backingCurrentTime = audioContext?.state?.player2?.currentTime || 0;
   const backingDuration = audioContext?.state?.player2?.duration || 0;
   const playbackProgress = backingDuration > 0 ? (backingCurrentTime / backingDuration) * 100 : 0;
-  const isCurrentBacking = audioContext?.state?.player2?.source === backingUrl;
+  const backingPath = currentCollaboration?.backingTrackPath || '';
+  const backingTarget = backingPath || backingUrl;
+  const isCurrentBacking = backingPath
+    ? backingPreview?.path === backingPath
+    : audioContext?.state?.player2?.source === backingUrl;
+  const isBackingPlaying = isCurrentBacking && !!audioContext?.state?.player2?.isPlaying;
 
   const handlePlayBacking = () => {
-    if (!backingUrl) return;
-    
+    if (!backingTarget) return;
+
     if (isCurrentBacking) {
       togglePlayPause();
     } else {
-      playBackingTrack(backingUrl, currentCollaboration?.name || 'backing');
+      playBackingTrack(backingTarget, currentCollaboration?.name || 'backing');
     }
   };
 
@@ -51,10 +57,10 @@ export function UploadSubmission({ collaborationId, backingUrl, onSubmitSuccess 
 
   return (
     <div className="submission-pane">
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '12px', 
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
         marginBottom: '12px',
         padding: '10px',
         background: 'var(--primary1-800)',
@@ -65,44 +71,22 @@ export function UploadSubmission({ collaborationId, backingUrl, onSubmitSuccess 
       }}>
         {/* Playback progress overlay - shrinks from right as playback progresses */}
         {playbackProgress > 0 && (
-          <div 
+          <div
             className="collab-progress-overlay"
             style={{
               width: `${100 - Math.min(playbackProgress, 100)}%`
             }}
           />
         )}
-        
-        <button 
-          onClick={handlePlayBacking}
-          style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '50%',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            background: 'rgba(255, 255, 255, 0.1)',
-            color: 'var(--white)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '14px',
-            flexShrink: 0,
-            transition: 'all 0.2s ease',
-            position: 'relative',
-            zIndex: 1
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-          }}
-        >
-          {isBackingPlaying ? '⏸' : '▶'}
-        </button>
+
+        <ListPlayButton
+          label="Play backing"
+          isPlaying={isBackingPlaying}
+          isCurrentTrack={!!isCurrentBacking}
+          onPlay={handlePlayBacking}
+          disabled={!backingTarget}
+          className={`list-play-button--wide ${!isBackingPlaying ? 'glow' : ''}`}
+        />
         <div style={{ flex: 1, minWidth: 0, position: 'relative', zIndex: 1 }}>
           <h4 className="card__title" style={{ margin: 0 }}>Upload your submission</h4>
         </div>
@@ -151,23 +135,23 @@ export function UploadSubmission({ collaborationId, backingUrl, onSubmitSuccess 
             try {
               const currentSettings = audioContext?.state ? {
                 eq: {
-                  highshelf: { 
-                    gain: audioContext.state.eq.highshelf.gain, 
-                    frequency: audioContext.state.eq.highshelf.frequency 
+                  highshelf: {
+                    gain: audioContext.state.eq.highshelf.gain,
+                    frequency: audioContext.state.eq.highshelf.frequency
                   },
-                  param2: { 
-                    gain: audioContext.state.eq.param2.gain, 
-                    frequency: audioContext.state.eq.param2.frequency, 
-                    Q: audioContext.state.eq.param2.Q 
+                  param2: {
+                    gain: audioContext.state.eq.param2.gain,
+                    frequency: audioContext.state.eq.param2.frequency,
+                    Q: audioContext.state.eq.param2.Q
                   },
-                  param1: { 
-                    gain: audioContext.state.eq.param1.gain, 
-                    frequency: audioContext.state.eq.param1.frequency, 
-                    Q: audioContext.state.eq.param1.Q 
+                  param1: {
+                    gain: audioContext.state.eq.param1.gain,
+                    frequency: audioContext.state.eq.param1.frequency,
+                    Q: audioContext.state.eq.param1.Q
                   },
-                  highpass: { 
-                    frequency: audioContext.state.eq.highpass.frequency, 
-                    enabled: audioContext.state.eq.highpass.frequency > 20 
+                  highpass: {
+                    frequency: audioContext.state.eq.highpass.frequency,
+                    enabled: audioContext.state.eq.highpass.frequency > 20
                   }
                 },
                 volume: { gain: audioContext.state.player1.volume }

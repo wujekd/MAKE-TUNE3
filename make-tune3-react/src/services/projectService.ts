@@ -1,5 +1,6 @@
-import { doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
-import { db } from './firebase';
+import { doc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { db, functions } from './firebase';
+import { httpsCallable } from 'firebase/functions';
 import type { Project, ProjectId } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 
@@ -24,11 +25,11 @@ export class ProjectService {
   static async getProject(projectId: ProjectId): Promise<Project | null> {
     const docRef = doc(db, COLLECTIONS.PROJECTS, projectId);
     const docSnap = await getDoc(docRef);
-    
+
     if (!docSnap.exists()) {
       return null;
     }
-    
+
     return { ...(docSnap.data() as any), id: docSnap.id } as Project;
   }
 
@@ -60,41 +61,31 @@ export class ProjectService {
   }
 
   static async createProjectWithUniqueName(params: { name: string; description?: string; ownerId: string; tags?: string[]; tagsKey?: string[] }): Promise<Project> {
-    const { name, description, ownerId, tags = [], tagsKey = [] } = params;
-    const nameKey = name.toLowerCase().replace(/\s+/g, '-');
-    const nameIndexRef = doc(db, COLLECTIONS.PROJECT_NAME_INDEX, nameKey);
-    const nameSnap = await getDoc(nameIndexRef);
-    
-    if (nameSnap.exists()) {
-      throw new Error('Project name already taken');
-    }
+    const createFn = httpsCallable(functions, 'createProjectWithUniqueName');
 
-    const project = await this.createProject({
-      name,
-      description: description || '',
-      ownerId,
-      isActive: true,
-      pastCollaborations: [],
-      tags,
-      tagsKey,
-      currentCollaborationId: null,
-      currentCollaborationStatus: null,
-      currentCollaborationStageEndsAt: null
+    // Call cloud function which handles checks, name reservation, and allowance increment
+    const result = await createFn({
+      name: params.name,
+      description: params.description,
+      tags: params.tags,
+      tagsKey: params.tagsKey
     });
 
-    try {
-      await setDoc(nameIndexRef, {
-        nameKey,
-        projectId: project.id,
-        ownerId,
-        createdAt: Timestamp.now()
-      }, { merge: false });
-    } catch (error) {
-      // roll back the project doc if we fail to reserve the name
-      await deleteDoc(doc(db, COLLECTIONS.PROJECTS, project.id));
-      throw error;
-    }
+    const data = result.data as any;
 
-    return project;
+    // Helper to restore timestamps from JSON representation if needed
+    const restoreTimestamp = (val: any) => {
+      if (val && typeof val._seconds === 'number') {
+        return new Timestamp(val._seconds, val._nanoseconds);
+      }
+      return val;
+    };
+
+    return {
+      ...data,
+      id: data.id,
+      createdAt: restoreTimestamp(data.createdAt),
+      updatedAt: restoreTimestamp(data.updatedAt)
+    } as Project;
   }
 }

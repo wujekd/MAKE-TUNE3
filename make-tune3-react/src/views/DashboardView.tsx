@@ -42,9 +42,9 @@ export function DashboardView() {
     let mounted = true;
     (async () => {
       try {
-        console.log('DashboardView: fetching all collaborations...');
-        const list = await CollaborationService.listAllCollaborations();
-        console.log('DashboardView: received', list.length, 'collaborations:', list);
+        console.log('DashboardView: fetching published collaborations...');
+        const list = await CollaborationService.listPublishedCollaborations();
+        console.log('DashboardView: received', list.length, 'published collaborations:', list);
         if (mounted) {
           setAllCollabs(list);
           setFilteredCollabs(list);

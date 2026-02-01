@@ -17,25 +17,26 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
   // Refs to two <audio> elements
   const player1Ref = useRef<HTMLAudioElement>(null);
   const player2Ref = useRef<HTMLAudioElement>(null);
-  
+
   // Use ref to store engine to prevent recreation
   const engineRef = useRef<AudioEngine | null>(null);
   const [state, setState] = useState<AudioState | null>(null);
 
-  // Get Zustand actions from audio slice
-  const { setEngine, setState: setAudioState } = useAudioStore();
+  // Get Zustand actions from audio slice - use selectors to avoid subscription to all store changes
+  const setEngine = useAudioStore(s => s.setEngine);
+  const setAudioState = useAudioStore(s => s.setState);
 
   useEffect(() => {
     // Instantiate engine once refs are available and not already created
     if (!engineRef.current && player1Ref.current && player2Ref.current) {
       const audioEngine = new AudioEngine(player1Ref.current, player2Ref.current);
-      
+
       // Set up callbacks to sync state to both local state and Zustand
       audioEngine.setCallbacks((newState: AudioState) => {
         setState(newState);
         setAudioState(newState); // Sync to Zustand
       });
-      
+
       engineRef.current = audioEngine;
       setState(audioEngine.getState());
       setEngine(audioEngine); // Store engine reference in Zustand

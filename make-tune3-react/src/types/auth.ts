@@ -7,6 +7,9 @@ export interface User {
   collaborationIds: string[]; // List of collaboration IDs user has interacted with
   username?: string;
   isAdmin?: boolean;
+  tier?: 'free' | 'beta' | 'premium';
+  bonusProjects?: number;  // extra allowance on top of tier
+  projectCount?: number;   // current projects owned
 }
 
 export interface AuthError {
