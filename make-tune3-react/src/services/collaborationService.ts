@@ -186,4 +186,12 @@ export class CollaborationService {
       tagKeys.every(key => collab.tagsKey?.includes(key))
     );
   }
+
+  static async listMyModerationQueue(): Promise<Array<{ id: string; name: string; projectId: string | null }>> {
+    const functions = getFunctions(app, 'europe-west1');
+    const callable = httpsCallable(functions, 'getMyModerationQueue');
+    const response: any = await callable({});
+    const data = response?.data;
+    return data?.items || [];
+  }
 }

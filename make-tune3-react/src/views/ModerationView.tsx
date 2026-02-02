@@ -40,6 +40,26 @@ export function ModerationView() {
 
   const pendingTracks = regularTracks.filter(track => track.moderationStatus === 'pending');
 
+  if (currentCollaboration && pendingTracks.length === 0 && regularTracks.length === 0) {
+    return (
+      <div className="main-container">
+        <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 1000 }}>
+          <button onClick={() => (window.location.href = '/collabs')} style={{ padding: '8px 12px' }}>← back to collabs</button>
+        </div>
+        <div className="info-top">
+          <h2>Moderation</h2>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+            <CollabData collab={currentCollaboration as any} />
+            <CollabHeader collaboration={currentCollaboration} />
+          </div>
+        </div>
+        <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>
+          No pending submissions to moderate
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="main-container">
       <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 1000 }}>

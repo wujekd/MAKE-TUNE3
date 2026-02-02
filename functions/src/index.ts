@@ -684,6 +684,39 @@ export const getModerationData = onCall(async (request) => {
   return { collaboration };
 });
 
+export const getMyModerationQueue = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+
+  const projectSnap = await db
+    .collection("projects")
+    .where("ownerId", "==", uid)
+    .get();
+
+  if (projectSnap.empty) {
+    return { items: [] };
+  }
+
+  const projectIds = projectSnap.docs.map((doc) => doc.id);
+
+  const collabSnap = await db
+    .collection("collaborations")
+    .where("projectId", "in", projectIds.slice(0, 10))
+    .where("unmoderatedSubmissions", "==", true)
+    .get();
+
+  const items = collabSnap.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      name: data.name || "untitled",
+      projectId: data.projectId || null
+    };
+  });
+
+  return { items };
+});
+
 export const getMyProjectsOverview = onCall(async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) {

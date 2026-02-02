@@ -96,17 +96,8 @@ export function UserActivityPanel() {
     setModerationLoading(true);
     setModerationError(null);
     try {
-      const all = await CollaborationService.listAllCollaborations();
-      // All submissions now require moderation, so just check for pending submissions
-      const filtered = all.filter(collab => {
-        const hasPending = Boolean((collab as any).unmoderatedSubmissions);
-        return hasPending;
-      });
-      const normalized = filtered.map(collab => ({
-        id: collab.id,
-        name: collab.name || 'untitled'
-      }));
-      setModerationCollabs(normalized);
+      const items = await CollaborationService.listMyModerationQueue();
+      setModerationCollabs(items);
       setModerationLoaded(true);
     } catch (e: any) {
       setModerationError(e?.message || 'failed to load moderation queue');

@@ -227,7 +227,7 @@ export function Mixer({ state }: MixerProps) {
                 justifyContent: 'center',
                 flexShrink: 0,
                 width: '100%',
-                minHeight: isSubmissionCompact ? 96 : 184
+                height: isSubmissionCompact ? 96 : 184
               }}
             >
               {isSubmissionCompact ? (
@@ -258,9 +258,8 @@ export function Mixer({ state }: MixerProps) {
                   position: 'absolute',
                   right: '8%',
                   top: 0,
-                  bottom: 0,
                   display: 'flex',
-                  alignItems: 'center'
+                  alignItems: 'flex-start'
                 }}
               >
                 <SmallLEDMeter value={player1Level} min={0} max={1} vertical={true} />
