@@ -149,9 +149,10 @@ service cloud.firestore {
         && canWriteCollaborationDetail(collabId);
     }
 
-    // users: each user can read/write their own profile
+    // users: each user can read/write their own profile, admins can update any user
     match /users/{userId} {
-      allow read, create, update, delete: if isSignedIn() && request.auth.uid == userId;
+      allow read, create, delete: if isSignedIn() && request.auth.uid == userId;
+      allow update: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
     }
 
     // usernames mapping: claim a username if it doesn't exist
@@ -215,6 +216,19 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow create: if isAdmin();
       allow update, delete: if false;
+    }
+
+    // feedback: users submit, admins manage
+    match /feedback/{feedbackId} {
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'new'
+        && request.resource.data.category is string
+        && request.resource.data.message is string
+        && request.resource.data.route is string
+        && request.resource.data.createdAt is timestamp
+        && !('adminNote' in request.resource.data);
+      allow read, update, delete: if isAdmin();
     }
   }
 }

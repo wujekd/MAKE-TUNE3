@@ -96,6 +96,19 @@ export function AdminReportedView() {
         <h1 style={{ margin: 0 }}>Reported Submissions</h1>
         <div style={{ display: 'flex', gap: '1rem' }}>
           <button
+            onClick={() => navigate('/admin/feedback')}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid var(--contrast-600)',
+              borderRadius: '4px',
+              color: 'var(--white)',
+              cursor: 'pointer'
+            }}
+          >
+            Feedback
+          </button>
+          <button
             onClick={() => navigate('/admin/resolved')}
             style={{
               padding: '0.5rem 1rem',

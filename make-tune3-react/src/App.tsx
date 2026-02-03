@@ -8,6 +8,7 @@ import { AdminTagsView } from './views/AdminTagsView'
 import { AdminProjectsView } from './views/AdminProjectsView'
 import { AdminReportedView } from './views/AdminReportedView'
 import { AdminResolvedReportsView } from './views/AdminResolvedReportsView'
+import { AdminFeedbackView } from './views/AdminFeedbackView'
 import { useAppStore } from './stores/appStore'
 import { useUIStore } from './stores'
 import { ModerationView } from './views/ModerationView'
@@ -153,6 +154,15 @@ function App() {
           handle: {
             title: 'Resolved Reports',
             breadcrumb: 'Resolved',
+            actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
+          }
+        },
+        {
+          path: 'admin/feedback',
+          element: <AdminRoute><AdminFeedbackView /></AdminRoute>,
+          handle: {
+            title: 'User Feedback',
+            breadcrumb: 'Feedback',
             actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
           }
         },

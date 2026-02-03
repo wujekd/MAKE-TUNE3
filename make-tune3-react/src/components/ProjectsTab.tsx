@@ -8,6 +8,7 @@ import { LoadingSpinner } from './LoadingSpinner';
 import { ProjectListItem } from './ProjectListItem';
 import { computeStageInfo } from '../utils/stageUtils';
 import { canCreateProject, getProjectAllowance } from '../utils/permissions';
+import { useUIStore } from '../stores/useUIStore';
 import type { User } from '../types/auth';
 import './ProjectHistory.css';
 import './UserActivityStyles.css';
@@ -206,7 +207,18 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
           </div>
         )}
         {!authLoading && user && projectsLoaded && !projectsError && projects.length === 0 && !canCreateProject(user) && (
-          <div className="user-activity__message user-activity__message--muted">no projects</div>
+          <div className="user-activity__cta-card">
+            <p className="user-activity__cta-title">Want to create projects?</p>
+            <p className="user-activity__cta-body">
+              Request creator access to start hosting your own music collaborations.
+            </p>
+            <button
+              className="user-activity__cta-button"
+              onClick={() => useUIStore.getState().openFeedbackModal('creator_request')}
+            >
+              Request Creator Access
+            </button>
+          </div>
         )}
         {!authLoading && user && projectsLoaded && projects.map(project => {
           const current = project.currentCollaboration;

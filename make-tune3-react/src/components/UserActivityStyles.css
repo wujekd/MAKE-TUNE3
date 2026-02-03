@@ -191,3 +191,49 @@
 .user-activity__list::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.36);
 }
+
+.user-activity__cta-card {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  border-radius: 12px;
+  border: 1px solid var(--contrast-600);
+  background: linear-gradient(135deg, rgba(213, 95, 33, 0.15), rgba(239, 123, 58, 0.08));
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  text-align: left;
+}
+
+.user-activity__cta-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--white);
+}
+
+.user-activity__cta-body {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.4;
+  font-size: 0.9rem;
+}
+
+.user-activity__cta-button {
+  align-self: flex-start;
+  margin-top: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--contrast-600);
+  color: var(--white);
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.user-activity__cta-button:hover {
+  background: var(--contrast-500);
+}

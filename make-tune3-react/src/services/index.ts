@@ -10,3 +10,5 @@ export { DataService } from './dataService';
 export { TagService } from './tagService';
 export { DashboardService } from './dashboardService';
 export { ReportService } from './reportService';
+export { FeedbackService } from './feedbackService';
+export type { FeedbackCategory, FeedbackStatus, Feedback, CreateFeedbackData, FeedbackFilters } from './feedbackService';

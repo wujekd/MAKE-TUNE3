@@ -6,6 +6,8 @@ import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { DebugInfo } from './DebugInfo';
 import { StorePanel } from './StorePanel';
 import { SHOW_DEBUG_TOOLS } from '../config';
+import { FeedbackButton } from './FeedbackButton';
+import { FeedbackModal } from './FeedbackModal';
 
 type Action = { key: string; label: string; onClick: () => void; visible?: boolean; disabled?: boolean };
 
@@ -203,6 +205,8 @@ export function AppShell() {
           <Outlet />
         )}
       </div>
+      <FeedbackButton />
+      <FeedbackModal />
     </div>
   );
 }
