@@ -589,11 +589,29 @@ export const getMySubmissionCollabs = onCall(async (request) => {
   projectSnaps.forEach((s) => {
     if (s.exists) projectMap.set(s.id, s.data());
   });
+
+  const detailRefs = collabIds.map((id) => db.collection("collaborationDetails").doc(id));
+  const detailSnaps = detailRefs.length ? await db.getAll(...detailRefs) : [];
+  const detailMap = new Map<string, any>();
+  detailSnaps.forEach((s) => {
+    if (s.exists) detailMap.set(s.id, s.data());
+  });
+
   const items = submissions.map((s) => {
     const collab = collabMap.get(s.collaborationId) || {};
     const projectId = String(collab.projectId || "");
     const project = projectId ? projectMap.get(projectId) || {} : {};
     const status = String(collab.status || "");
+
+    const detail = detailMap.get(s.collaborationId);
+    let moderationStatus = "pending";
+    if (detail && Array.isArray(detail.submissions)) {
+      const found = detail.submissions.find((sub: any) => sub.path === s.path);
+      if (found && found.moderationStatus) {
+        moderationStatus = found.moderationStatus;
+      }
+    }
+
     return {
       projectId,
       projectName: String(project.name || ""),
@@ -606,6 +624,7 @@ export const getMySubmissionCollabs = onCall(async (request) => {
       mySubmissionPath: s.path,
       winnerPath: status === "completed" ? String(collab.winnerPath || "") : null,
       submittedAt: s.createdAt ? s.createdAt.toMillis() : null,
+      moderationStatus
     };
   });
   return { items };
@@ -1612,7 +1631,7 @@ export const adminSearchUsers = onCall(async (request) => {
 
   const query = searchQuery.toLowerCase().trim();
   const usersSnap = await db.collection("users").get();
-  
+
   const users = usersSnap.docs
     .map(doc => ({ uid: doc.id, ...doc.data() }))
     .filter((user: any) => {
@@ -1678,8 +1697,8 @@ export const adminUpdateUser = onCall(async (request) => {
 
   await targetUserRef.update(updateData);
 
-  const action = updates.suspended === true ? "suspend-user" : 
-                 updates.suspended === false ? "unsuspend-user" : "update-user";
+  const action = updates.suspended === true ? "suspend-user" :
+    updates.suspended === false ? "unsuspend-user" : "update-user";
 
   await db.collection("adminLogs").add({
     adminUid: uid,

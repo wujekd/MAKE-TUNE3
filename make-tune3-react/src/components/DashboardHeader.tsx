@@ -22,14 +22,18 @@ export function DashboardHeader({ totalCollabs, filteredCount, pendingModeration
           <div className={styles.heroDescription}>
             here ill make some kinda collab recommendations based on user and collab tags i think...
           </div>
-          {user && (
-            <button
-              className={styles.feedbackCta}
-              onClick={() => openFeedbackModal()}
-            >
-              Send Feedback
-            </button>
-          )}
+          <button
+            className={styles.feedbackCta}
+            onClick={() => {
+              if (user) {
+                openFeedbackModal();
+              } else {
+                navigate('/auth');
+              }
+            }}
+          >
+            {user ? 'Send Feedback' : 'Login to Send Feedback'}
+          </button>
         </div>
         <div className={styles.heroActions}>
           {user?.isAdmin && (

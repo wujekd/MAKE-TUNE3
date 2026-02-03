@@ -11,7 +11,7 @@ import { computeStageInfo } from '../utils/stageUtils';
 import './ProjectHistory.css';
 import './UserActivityStyles.css';
 
-type ActiveTab = 'projects' | 'submissions' | 'downloads' | 'moderate';
+type ActiveTab = 'projects' | 'activity' | 'moderate';
 
 const formatDateTime = (value: number | null | undefined): string => {
   if (!value) return '—';
@@ -120,9 +120,8 @@ export function UserActivityPanel() {
 
   useEffect(() => {
     if (!user) return;
-    if (activeTab === 'submissions') {
+    if (activeTab === 'activity') {
       void loadSubmissions();
-    } else if (activeTab === 'downloads') {
       void loadDownloads();
     } else if (activeTab === 'moderate') {
       void loadModeration();
@@ -223,115 +222,17 @@ export function UserActivityPanel() {
     };
   }, [user, submissionSummaries, downloadSummaries]);
 
-  const submissionList = useMemo(() => {
-    if (!submissionSummaries.length) return [];
-
-    return submissionSummaries.map(item => {
-      const status = (item.status || '').toLowerCase();
-      const isDeleted = item.collaborationDeleted;
-      const collabInfo = collabMeta[item.collabId];
-
-      const submissionCloseAt = item.submissionCloseAt ?? collabInfo?.submissionCloseAtMs ?? null;
-      const votingCloseAt = item.votingCloseAt ?? collabInfo?.votingCloseAtMs ?? null;
-      const submissionDurationMs =
-        typeof item.submissionDurationSeconds === 'number'
-          ? item.submissionDurationSeconds * 1000
-          : collabInfo?.submissionDurationMs ?? null;
-      const votingDurationMs =
-        typeof item.votingDurationSeconds === 'number'
-          ? item.votingDurationSeconds * 1000
-          : collabInfo?.votingDurationMs ?? null;
-      const publishedAtMs = collabInfo?.publishedAtMs ?? null;
-
-      const rawStageInfo = isDeleted
-        ? null
-        : computeStageInfo({
-          status,
-          submissionCloseAt,
-          votingCloseAt,
-          submissionDurationMs,
-          votingDurationMs,
-          publishedAt: publishedAtMs,
-          updatedAt: collabInfo?.updatedAtMs
-        });
-
-      const metaLines: string[] = [];
-      if (isDeleted) {
-        // Show "-" for stage status when collaboration is deleted
-        metaLines.push('-');
-        metaLines.push(
-          item.collaborationDeletedAt
-            ? `removed ${formatDateTime(item.collaborationDeletedAt)}`
-            : 'collaboration removed'
-        );
-        if (item.storageDeletionPending) {
-          metaLines.push('storage cleanup pending');
-        } else if (item.storageDeletedAt) {
-          metaLines.push(`files purged ${formatDateTime(item.storageDeletedAt)}`);
-        } else if (item.storageDeletionError) {
-          metaLines.push('storage cleanup error');
-        }
-      } else {
-        const stageLabel =
-          rawStageInfo?.label ??
-          (status === 'submission'
-            ? submissionCloseAt
-              ? `submission ends ${formatDateTime(submissionCloseAt)}`
-              : 'submission running'
-            : status === 'voting'
-              ? votingCloseAt
-                ? `voting ends ${formatDateTime(votingCloseAt)}`
-                : 'voting running'
-              : status === 'completed'
-                ? votingCloseAt
-                  ? `completed ${formatDateTime(votingCloseAt)}`
-                  : 'completed'
-                : status || 'unpublished');
-        if (stageLabel) {
-          metaLines.push(stageLabel);
-        }
-
-        metaLines.push(
-          item.submittedAt
-            ? `submitted ${formatDateTime(item.submittedAt)}`
-            : 'submission time unknown'
-        );
-      }
-
-      let route: string | null = null;
-      if (!isDeleted) {
-        if (status === 'completed') {
-          route = `/collab/${encodeURIComponent(item.collabId)}/completed`;
-        } else if (status === 'submission') {
-          route = `/collab/${encodeURIComponent(item.collabId)}/submit`;
-        } else {
-          route = `/collab/${encodeURIComponent(item.collabId)}`;
-        }
-      }
-
-      return {
-        id: `${item.collabId}-${item.mySubmissionPath}`,
-        title: item.collabName || 'untitled collaboration',
-        subtitle: item.projectName || 'unknown project',
-        status: isDeleted ? 'deleted' : status || 'unknown',
-        metaLines,
-        to: route,
-        disabled: isDeleted,
-        stageInfo: rawStageInfo
-          ? {
-            status: rawStageInfo.status,
-            startAt: rawStageInfo.startAt ?? null,
-            endAt: rawStageInfo.endAt ?? null,
-            label: rawStageInfo.label ?? undefined
-          }
-          : null
-      };
-    });
-  }, [submissionSummaries, collabMeta]);
-
-  const downloadList = useMemo(() => {
+  const activityList = useMemo(() => {
     if (!downloadSummaries.length) return [];
+
+    // Create a map of submissions for quick lookup
+    const submissionMap = new Map();
+    submissionSummaries.forEach(sub => {
+      submissionMap.set(sub.collabId, sub);
+    });
+
     return downloadSummaries.map(item => {
+      const submission = submissionMap.get(item.collabId);
       const status = (item.status || '').toLowerCase();
       const meta = collabMeta[item.collabId] || null;
 
@@ -386,11 +287,31 @@ export function UserActivityPanel() {
         metaLines.push(stageLabel);
       }
 
+      // Download info
       metaLines.push(
         item.lastDownloadedAt
-          ? `last downloaded ${formatDateTime(item.lastDownloadedAt)} · ${item.downloadCount} download${item.downloadCount === 1 ? '' : 's'}`
+          ? `last downloaded ${formatDateTime(item.lastDownloadedAt)}`
           : `${item.downloadCount} download${item.downloadCount === 1 ? '' : 's'}`
       );
+
+      // Submission status info
+      let submissionStatusText = 'not submitted';
+      if (submission) {
+        if (submission.collaborationDeleted) {
+          submissionStatusText = 'submission deleted';
+        } else {
+          submissionStatusText = 'submitted';
+          if (submission.submittedAt) {
+            submissionStatusText += ` ${formatDateTime(submission.submittedAt)}`;
+          }
+          if (submission.moderationStatus) {
+            submissionStatusText += ` (${submission.moderationStatus})`;
+          }
+        }
+        metaLines.push(submissionStatusText);
+      } else {
+        metaLines.push('not submitted');
+      }
 
       return {
         id: `${item.collabId}-${item.lastDownloadedAt}`,
@@ -407,10 +328,11 @@ export function UserActivityPanel() {
             endAt: rawStageInfo.endAt ?? null,
             label: rawStageInfo.label ?? undefined
           }
-          : null
+          : null,
+        isSubmitted: !!submission && !submission.collaborationDeleted
       };
     });
-  }, [downloadSummaries, collabMeta]);
+  }, [downloadSummaries, submissionSummaries, collabMeta]);
 
 
   return (
@@ -419,11 +341,8 @@ export function UserActivityPanel() {
         <button onClick={() => setActiveTab('projects')} disabled={activeTab === 'projects'}>
           my projects
         </button>
-        <button onClick={() => setActiveTab('submissions')} disabled={activeTab === 'submissions'}>
-          my submissions
-        </button>
-        <button onClick={() => setActiveTab('downloads')} disabled={activeTab === 'downloads'}>
-          my downloads
+        <button onClick={() => setActiveTab('activity')} disabled={activeTab === 'activity'}>
+          my activity
         </button>
         <button onClick={() => setActiveTab('moderate')} disabled={activeTab === 'moderate'}>
           to moderate
@@ -460,7 +379,7 @@ export function UserActivityPanel() {
                 key={item.id}
                 title={item.name}
                 subtitle="pending moderation"
-                status="pending moderation"
+                status={item.status}
                 to={`/collab/${encodeURIComponent(item.id)}/moderate`}
                 actionLabel="review"
               />
@@ -469,67 +388,32 @@ export function UserActivityPanel() {
         </section>
       )}
 
-      {activeTab === 'submissions' && (
+      {activeTab === 'activity' && (
         <section className="user-activity__section">
           <div className="user-activity__section-header">
-            <h4 className="project-history-title card__title user-activity__section-title">my submissions</h4>
+            <h4 className="project-history-title card__title user-activity__section-title">downloads & submissions</h4>
           </div>
           <div className="collab-list list user-activity__list">
-            {(authLoading || (user && !submissionsLoaded)) && (
+            {(authLoading || (user && (!downloadsLoaded || !submissionsLoaded))) && (
               <div className="user-activity__loading">
                 <LoadingSpinner size={24} />
               </div>
             )}
             {!authLoading && !user && (
               <div className="user-activity__message">
-                <Link to="/auth?mode=login">login</Link> to see submissions
-              </div>
-            )}
-            {!authLoading && user && submissionsLoaded && submissionsError && (
-              <div className="user-activity__message">{submissionsError}</div>
-            )}
-            {!authLoading && user && submissionsLoaded && !submissionsError && submissionSummaries.length === 0 && (
-              <div className="user-activity__message user-activity__message--muted">no submissions</div>
-            )}
-            {!authLoading && user && submissionsLoaded && submissionList.map(item => (
-              <UserActivityListItem
-                key={item.id}
-                title={item.title}
-                subtitle={item.subtitle}
-                status={item.status}
-                metaLines={item.metaLines}
-                to={item.to ?? undefined}
-                disabled={item.disabled}
-                stageInfo={item.stageInfo}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {activeTab === 'downloads' && (
-        <section className="user-activity__section">
-          <div className="user-activity__section-header">
-            <h4 className="project-history-title card__title user-activity__section-title">downloaded backings</h4>
-          </div>
-          <div className="collab-list list user-activity__list">
-            {(authLoading || (user && !downloadsLoaded)) && (
-              <div className="user-activity__loading">
-                <LoadingSpinner size={24} />
-              </div>
-            )}
-            {!authLoading && !user && (
-              <div className="user-activity__message">
-                <Link to="/auth?mode=login">login</Link> to see downloads
+                <Link to="/auth?mode=login">login</Link> to see activity
               </div>
             )}
             {!authLoading && user && downloadsLoaded && downloadsError && (
               <div className="user-activity__message">{downloadsError}</div>
             )}
-            {!authLoading && user && downloadsLoaded && !downloadsError && downloadSummaries.length === 0 && (
-              <div className="user-activity__message user-activity__message--muted">no downloads yet</div>
+            {!authLoading && user && submissionsLoaded && submissionsError && (
+              <div className="user-activity__message">{submissionsError}</div>
             )}
-            {!authLoading && user && downloadsLoaded && downloadList.map(item => (
+            {!authLoading && user && downloadsLoaded && !downloadsError && activityList.length === 0 && (
+              <div className="user-activity__message user-activity__message--muted">no activity yet</div>
+            )}
+            {!authLoading && user && downloadsLoaded && !downloadsError && activityList.map(item => (
               <UserActivityListItem
                 key={item.id}
                 title={item.title}

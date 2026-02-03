@@ -28,6 +28,7 @@ export interface SubmissionCollabSummary {
   storageDeletionError: string | null;
   lastKnownProjectName: string;
   lastKnownCollaborationName: string;
+  moderationStatus: SubmissionModerationStatus;
 }
 
 export class SubmissionService {
@@ -211,7 +212,8 @@ export class SubmissionService {
       storageDeletedAt: typeof item?.storageDeletedAt === 'number' ? item.storageDeletedAt : null,
       storageDeletionError: typeof item?.storageDeletionError === 'string' ? item.storageDeletionError : null,
       lastKnownProjectName: typeof item?.lastKnownProjectName === 'string' ? item.lastKnownProjectName : '',
-      lastKnownCollaborationName: typeof item?.lastKnownCollaborationName === 'string' ? item.lastKnownCollaborationName : ''
+      lastKnownCollaborationName: typeof item?.lastKnownCollaborationName === 'string' ? item.lastKnownCollaborationName : '',
+      moderationStatus: ['pending', 'approved', 'rejected'].includes(item?.moderationStatus) ? item.moderationStatus : 'pending'
     }));
   }
 

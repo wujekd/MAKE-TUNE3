@@ -57,11 +57,11 @@ export class FeedbackService {
       status: 'new' as FeedbackStatus,
       createdAt: serverTimestamp()
     };
-    
+
     if (data.answers) {
       feedbackData.answers = data.answers;
     }
-    
+
     const docRef = await addDoc(collection(db, 'feedback'), feedbackData);
     return docRef.id;
   }
@@ -107,7 +107,7 @@ export class FeedbackService {
     adminNote?: string
   ): Promise<void> {
     const feedbackRef = doc(db, 'feedback', feedbackId);
-    const updateData: Record<string, unknown> = { status };
+    const updateData: Record<string, any> = { status };
     if (adminNote !== undefined) {
       updateData.adminNote = adminNote;
     }
