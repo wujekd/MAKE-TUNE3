@@ -9,6 +9,8 @@ import { AdminProjectsView } from './views/AdminProjectsView'
 import { AdminReportedView } from './views/AdminReportedView'
 import { AdminResolvedReportsView } from './views/AdminResolvedReportsView'
 import { AdminFeedbackView } from './views/AdminFeedbackView'
+import { AdminUsersView } from './views/AdminUsersView'
+import { AdminSettingsView } from './views/AdminSettingsView'
 import { useAppStore } from './stores/appStore'
 import { useUIStore } from './stores'
 import { ModerationView } from './views/ModerationView'
@@ -163,6 +165,24 @@ function App() {
           handle: {
             title: 'User Feedback',
             breadcrumb: 'Feedback',
+            actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
+          }
+        },
+        {
+          path: 'admin/users',
+          element: <AdminRoute><AdminUsersView /></AdminRoute>,
+          handle: {
+            title: 'User Management',
+            breadcrumb: 'Users',
+            actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
+          }
+        },
+        {
+          path: 'admin/settings',
+          element: <AdminRoute><AdminSettingsView /></AdminRoute>,
+          handle: {
+            title: 'Global Settings',
+            breadcrumb: 'Settings',
             actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
           }
         },

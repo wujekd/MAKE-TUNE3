@@ -4,12 +4,15 @@ export interface User {
   uid: string;
   email: string;
   createdAt: Timestamp;
-  collaborationIds: string[]; // List of collaboration IDs user has interacted with
+  collaborationIds: string[];
   username?: string;
   isAdmin?: boolean;
   tier?: 'free' | 'beta' | 'premium';
-  bonusProjects?: number;  // extra allowance on top of tier
-  projectCount?: number;   // current projects owned
+  bonusProjects?: number;
+  projectCount?: number;
+  suspended?: boolean;
+  suspendedAt?: Timestamp;
+  suspendedBy?: string;
 }
 
 export interface AuthError {

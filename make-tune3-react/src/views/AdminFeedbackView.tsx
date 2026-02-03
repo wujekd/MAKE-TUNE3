@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { FeedbackService } from '../services/feedbackService';
 import type { Feedback, FeedbackCategory, FeedbackStatus } from '../services/feedbackService';
 import { useAppStore } from '../stores/appStore';
+import { AdminNav } from '../components/AdminNav';
 import './AdminFeedbackView.css';
 
 const CATEGORY_LABELS: Record<FeedbackCategory, string> = {
@@ -20,8 +20,18 @@ const STATUS_LABELS: Record<FeedbackStatus, string> = {
 };
 
 export function AdminFeedbackView() {
-  const navigate = useNavigate();
   const { user } = useAppStore(state => state.auth);
+  const [copiedUid, setCopiedUid] = useState<string | null>(null);
+
+  const handleCopyUid = async (uid: string) => {
+    try {
+      await navigator.clipboard.writeText(uid);
+      setCopiedUid(uid);
+      setTimeout(() => setCopiedUid(null), 1500);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
@@ -105,35 +115,8 @@ export function AdminFeedbackView() {
 
   return (
     <div className="admin-feedback">
-      <div className="admin-feedback__header">
-        <h1 className="admin-feedback__title">User Feedback</h1>
-        <div className="admin-feedback__header-actions">
-          <button
-            className="admin-feedback__nav-btn"
-            onClick={() => navigate('/admin/reported')}
-          >
-            Reported
-          </button>
-          <button
-            className="admin-feedback__nav-btn"
-            onClick={() => navigate('/admin/tags')}
-          >
-            Tags
-          </button>
-          <button
-            className="admin-feedback__nav-btn"
-            onClick={() => navigate('/admin/projects')}
-          >
-            Projects
-          </button>
-          <button
-            className="admin-feedback__back-btn"
-            onClick={() => navigate('/collabs')}
-          >
-            Back to Dashboard
-          </button>
-        </div>
-      </div>
+      <AdminNav />
+      <h1 className="admin-feedback__title">User Feedback</h1>
 
       <div className="admin-feedback__filters">
         <div className="admin-feedback__filter">
@@ -199,7 +182,16 @@ export function AdminFeedbackView() {
                   <div className="admin-feedback__card-detail">
                     <div className="admin-feedback__detail-section">
                       <label>User ID</label>
-                      <code>{item.uid}</code>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <code>{item.uid}</code>
+                        <button
+                          onClick={() => handleCopyUid(item.uid)}
+                          className="admin-feedback__btn admin-feedback__btn--secondary"
+                          style={{ padding: '4px 10px', fontSize: 12 }}
+                        >
+                          {copiedUid === item.uid ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="admin-feedback__detail-section">

@@ -1,5 +1,3 @@
-// Barrel export for all services
-// Services handle Firebase/backend operations
 export { ProjectService } from './projectService';
 export { CollaborationService } from './collaborationService';
 export { UserService } from './userService';
@@ -12,3 +10,6 @@ export { DashboardService } from './dashboardService';
 export { ReportService } from './reportService';
 export { FeedbackService } from './feedbackService';
 export type { FeedbackCategory, FeedbackStatus, Feedback, CreateFeedbackData, FeedbackFilters } from './feedbackService';
+export { AdminService } from './adminService';
+export type { UserSearchResult, UserUpdateData } from './adminService';
+export { SettingsService } from './settingsService';

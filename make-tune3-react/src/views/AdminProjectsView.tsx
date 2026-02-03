@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Collaboration, Project } from '../types/collaboration';
 import { CollaborationService, ProjectService } from '../services';
+import { AdminNav } from '../components/AdminNav';
 
 type CollabMap = Record<string, Collaboration[]>;
 
@@ -138,7 +139,8 @@ export function AdminProjectsView() {
           minHeight: 0
         }}
       >
-        <h2 style={{ color: 'var(--white)' }}>Admin: Projects & Collaborations</h2>
+        <AdminNav />
+        <h2 style={{ color: 'var(--white)', margin: 0 }}>Projects & Collaborations</h2>
         <div style={{ color: 'var(--white)', opacity: 0.8 }}>
           {loading ? 'Loading data…' : `${projects.length} project(s), ${totalCollaborations} collaboration(s)`}
         </div>

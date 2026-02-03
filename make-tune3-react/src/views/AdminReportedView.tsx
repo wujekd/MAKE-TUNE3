@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ReportService } from '../services';
 import { useAppStore } from '../stores/appStore';
 import type { Report } from '../types/collaboration';
+import { AdminNav } from '../components/AdminNav';
 
 export function AdminReportedView() {
-  const navigate = useNavigate();
   const { user } = useAppStore(state => state.auth);
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,55 +86,8 @@ export function AdminReportedView() {
       maxWidth: '1200px',
       margin: '0 auto'
     }}>
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        marginBottom: '2rem'
-      }}>
-        <h1 style={{ margin: 0 }}>Reported Submissions</h1>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button
-            onClick={() => navigate('/admin/feedback')}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid var(--contrast-600)',
-              borderRadius: '4px',
-              color: 'var(--white)',
-              cursor: 'pointer'
-            }}
-          >
-            Feedback
-          </button>
-          <button
-            onClick={() => navigate('/admin/resolved')}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid var(--contrast-600)',
-              borderRadius: '4px',
-              color: 'var(--white)',
-              cursor: 'pointer'
-            }}
-          >
-            View Resolved Reports
-          </button>
-          <button
-            onClick={() => navigate('/collabs')}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid var(--contrast-600)',
-              borderRadius: '4px',
-              color: 'var(--white)',
-              cursor: 'pointer'
-            }}
-          >
-            Back to Dashboard
-          </button>
-        </div>
-      </div>
+      <AdminNav />
+      <h1 style={{ margin: '0 0 2rem 0' }}>Reported Submissions</h1>
 
       {loading ? (
         <p>Loading reports...</p>

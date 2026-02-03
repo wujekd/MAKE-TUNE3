@@ -149,10 +149,10 @@ service cloud.firestore {
         && canWriteCollaborationDetail(collabId);
     }
 
-    // users: each user can read/write their own profile, admins can update any user
     match /users/{userId} {
-      allow read, create, delete: if isSignedIn() && request.auth.uid == userId;
-      allow update: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow create, delete: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
     }
 
     // usernames mapping: claim a username if it doesn't exist
@@ -229,6 +229,15 @@ service cloud.firestore {
         && request.resource.data.createdAt is timestamp
         && !('adminNote' in request.resource.data);
       allow read, update, delete: if isAdmin();
+    }
+
+    match /adminLogs/{logId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /systemSettings/{settingId} {
+      allow read, write: if isAdmin();
     }
   }
 }

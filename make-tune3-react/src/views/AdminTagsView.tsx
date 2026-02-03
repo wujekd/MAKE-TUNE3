@@ -5,6 +5,7 @@ import { db } from '../services/firebase';
 import { collection, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { COLLECTIONS } from '../types/collaboration';
 import { TagUtils } from '../utils/tagUtils';
+import { AdminNav } from '../components/AdminNav';
 
 export function AdminTagsView() {
   const [tags, setTags] = useState<Tag[]>([]);
@@ -85,7 +86,8 @@ export function AdminTagsView() {
   return (
     <div style={{ padding: 24, background: 'var(--primary1-800)', minHeight: '100vh' }}>
       <div style={{ maxWidth: 800, margin: '0 auto' }}>
-        <h2 style={{ color: 'var(--white)', marginBottom: 24 }}>Admin: Manage Tags</h2>
+        <AdminNav />
+        <h2 style={{ color: 'var(--white)', marginBottom: 24 }}>Manage Tags</h2>
 
         <div style={{ background: 'var(--primary1-700)', padding: 16, borderRadius: 8, marginBottom: 24 }}>
           <h3 style={{ color: 'var(--white)', marginBottom: 12 }}>Add New Tag</h3>

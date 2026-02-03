@@ -33,6 +33,43 @@ const TIER_LIMITS: Record<string, number> = {
   beta: 3,
   premium: 100
 };
+
+interface SystemSettings {
+  projectCreationEnabled: boolean;
+  submissionsEnabled: boolean;
+  votingEnabled: boolean;
+  defaultProjectAllowance: number;
+  maxSubmissionsPerCollab: number;
+}
+
+const DEFAULT_SETTINGS: SystemSettings = {
+  projectCreationEnabled: true,
+  submissionsEnabled: true,
+  votingEnabled: true,
+  defaultProjectAllowance: 0,
+  maxSubmissionsPerCollab: 100
+};
+
+async function getSystemSettings(): Promise<SystemSettings> {
+  const settingsRef = db.collection("systemSettings").doc("global");
+  const snap = await settingsRef.get();
+  if (!snap.exists) {
+    return DEFAULT_SETTINGS;
+  }
+  return { ...DEFAULT_SETTINGS, ...snap.data() } as SystemSettings;
+}
+
+async function checkUserNotSuspended(uid: string): Promise<void> {
+  const userRef = db.collection("users").doc(uid);
+  const snap = await userRef.get();
+  if (snap.exists) {
+    const data = snap.data() as any;
+    if (data?.suspended === true) {
+      throw new HttpsError("permission-denied", "Your account has been suspended");
+    }
+  }
+}
+
 const sanitize = (s: string) =>
   BAD.reduce(
     (t, w) =>
@@ -264,6 +301,14 @@ export const advanceCollaborationStages = onSchedule(
 export const publishCollaboration = onCall(async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+
+  await checkUserNotSuspended(uid);
+
+  const settings = await getSystemSettings();
+  if (!settings.submissionsEnabled) {
+    throw new HttpsError("failed-precondition", "Submissions are currently disabled");
+  }
+
   const collaborationIdRaw = String(request.data?.collaborationId || "").trim();
   if (!collaborationIdRaw) {
     throw new HttpsError("invalid-argument", "collaborationId required");
@@ -439,6 +484,14 @@ const buildNameKey = (name: string) =>
 export const createProjectWithUniqueName = onCall(async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+
+  await checkUserNotSuspended(uid);
+
+  const settings = await getSystemSettings();
+  if (!settings.projectCreationEnabled) {
+    throw new HttpsError("failed-precondition", "Project creation is currently disabled");
+  }
+
   const nameRaw = String(request.data?.name ?? "").trim();
   const descriptionRaw = String(request.data?.description ?? "");
   const tags = Array.isArray(request.data?.tags) ? request.data.tags : [];
@@ -463,7 +516,8 @@ export const createProjectWithUniqueName = onCall(async (request) => {
       const bonus = Number(userData.bonusProjects || 0);
       const projectCount = Number(userData.projectCount || 0);
       const baseLimit = TIER_LIMITS[tier] ?? 0;
-      const totalLimit = baseLimit + bonus;
+      const globalDefault = settings.defaultProjectAllowance || 0;
+      const totalLimit = baseLimit + bonus + globalDefault;
 
       if (projectCount >= totalLimit) {
         throw new HttpsError("resource-exhausted", `Project limit reached. You have ${projectCount} of ${totalLimit} allowed projects.`);
@@ -1518,4 +1572,123 @@ export const banUserBySubmission = onCall(async (request) => {
       bannedUserId: reportedUserId
     };
   });
+});
+
+export const adminListUsers = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "unauthenticated");
+  }
+
+  const adminSnap = await db.collection("users").doc(uid).get();
+  if (!adminSnap.exists || !adminSnap.data()?.isAdmin) {
+    throw new HttpsError("permission-denied", "Admin access required");
+  }
+
+  const usersSnap = await db.collection("users").orderBy("createdAt", "desc").get();
+  const users = usersSnap.docs.map(doc => ({
+    uid: doc.id,
+    ...doc.data()
+  }));
+
+  return { users };
+});
+
+export const adminSearchUsers = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "unauthenticated");
+  }
+
+  const adminSnap = await db.collection("users").doc(uid).get();
+  if (!adminSnap.exists || !adminSnap.data()?.isAdmin) {
+    throw new HttpsError("permission-denied", "Admin access required");
+  }
+
+  const { searchQuery } = request.data;
+  if (!searchQuery || typeof searchQuery !== "string") {
+    throw new HttpsError("invalid-argument", "Search query required");
+  }
+
+  const query = searchQuery.toLowerCase().trim();
+  const usersSnap = await db.collection("users").get();
+  
+  const users = usersSnap.docs
+    .map(doc => ({ uid: doc.id, ...doc.data() }))
+    .filter((user: any) => {
+      return (
+        user.uid.toLowerCase().includes(query) ||
+        user.email?.toLowerCase().includes(query) ||
+        user.username?.toLowerCase().includes(query)
+      );
+    });
+
+  return { users };
+});
+
+export const adminUpdateUser = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "unauthenticated");
+  }
+
+  const adminSnap = await db.collection("users").doc(uid).get();
+  const adminData = adminSnap.data();
+  if (!adminSnap.exists || !adminData?.isAdmin) {
+    throw new HttpsError("permission-denied", "Admin access required");
+  }
+
+  const { targetUserId, updates } = request.data;
+  if (!targetUserId || typeof targetUserId !== "string") {
+    throw new HttpsError("invalid-argument", "Target user ID required");
+  }
+
+  const targetUserRef = db.collection("users").doc(targetUserId);
+  const targetSnap = await targetUserRef.get();
+  if (!targetSnap.exists) {
+    throw new HttpsError("not-found", "User not found");
+  }
+
+  const targetData = targetSnap.data() as any;
+  const now = Timestamp.now();
+  const changes: Record<string, { from: any; to: any }> = {};
+
+  const updateData: Record<string, any> = {};
+
+  if (updates.bonusProjects !== undefined && updates.bonusProjects !== targetData.bonusProjects) {
+    changes.bonusProjects = { from: targetData.bonusProjects ?? 0, to: updates.bonusProjects };
+    updateData.bonusProjects = updates.bonusProjects;
+  }
+
+  if (updates.suspended !== undefined && updates.suspended !== targetData.suspended) {
+    changes.suspended = { from: targetData.suspended ?? false, to: updates.suspended };
+    updateData.suspended = updates.suspended;
+    if (updates.suspended) {
+      updateData.suspendedAt = now;
+      updateData.suspendedBy = uid;
+    } else {
+      updateData.suspendedAt = null;
+      updateData.suspendedBy = null;
+    }
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    return { success: true, message: "No changes to apply" };
+  }
+
+  await targetUserRef.update(updateData);
+
+  const action = updates.suspended === true ? "suspend-user" : 
+                 updates.suspended === false ? "unsuspend-user" : "update-user";
+
+  await db.collection("adminLogs").add({
+    adminUid: uid,
+    adminEmail: adminData.email || "unknown",
+    action,
+    targetUserId,
+    changes,
+    createdAt: now
+  });
+
+  return { success: true };
 });

@@ -186,20 +186,45 @@ export interface Tag {
   createdAt: Timestamp;
 }
 
-// firebase collection names
+export interface SystemSettings {
+  projectCreationEnabled: boolean;
+  submissionsEnabled: boolean;
+  votingEnabled: boolean;
+  defaultProjectAllowance: number;
+  maxSubmissionsPerCollab: number;
+  updatedAt: Timestamp;
+  updatedBy: string;
+}
+
+export type AdminLogAction = 'update-user' | 'suspend-user' | 'unsuspend-user' | 'update-settings';
+
+export interface AdminLog {
+  id: string;
+  adminUid: string;
+  adminEmail: string;
+  action: AdminLogAction;
+  targetUserId?: string;
+  changes: Record<string, { from: any; to: any }>;
+  createdAt: Timestamp;
+}
+
 export const COLLECTIONS = {
   PROJECTS: 'projects',
   COLLABORATIONS: 'collaborations',
   COLLABORATION_DETAILS: 'collaborationDetails',
   USER_COLLABORATIONS: 'userCollaborations',
   USERS: 'users',
-  SUBMISSION_USERS: 'submissionUsers', // private collection
+  SUBMISSION_USERS: 'submissionUsers',
   USER_DOWNLOADS: 'userDownloads',
   PROJECT_NAME_INDEX: 'projectNameIndex',
   TAGS: 'tags',
   REPORTS: 'reports',
-  RESOLVED_REPORTS: 'resolvedReports'
+  RESOLVED_REPORTS: 'resolvedReports',
+  ADMIN_LOGS: 'adminLogs',
+  SYSTEM_SETTINGS: 'systemSettings'
 } as const;
+
+export const SYSTEM_SETTINGS_DOC = 'global';
 
 // helper types
 export type TrackId = string;
