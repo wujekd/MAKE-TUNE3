@@ -8,6 +8,19 @@ service firebase.storage {
     function submissionUserDoc(submissionId) {
       return firestore.get(/databases/(default)/documents/submissionUsers/$(submissionId));
     }
+    function collabDoc(collabId) {
+      return firestore.get(/databases/(default)/documents/collaborations/$(collabId));
+    }
+    function projectDoc(projectId) {
+      return firestore.get(/databases/(default)/documents/projects/$(projectId));
+    }
+    function isCollabOwner(collabId) {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/collaborations/$(collabId))
+        && collabDoc(collabId).data.projectId is string
+        && firestore.exists(/databases/(default)/documents/projects/$(collabDoc(collabId).data.projectId))
+        && projectDoc(collabDoc(collabId).data.projectId).data.ownerId == request.auth.uid;
+    }
     function isValidSubmissionToken(collabId, fileId) {
       return request.resource.metadata.uploadTokenId is string
         && request.resource.metadata.ownerUid is string
@@ -50,7 +63,8 @@ service firebase.storage {
       allow write: if isSignedIn()
         && fileName.matches('^backing\\..+$')
         && request.resource.contentType.matches('audio/.*')
-        && request.resource.size < 131072000; // < 125MB
+        && request.resource.size < 131072000 // < 125MB
+        && isCollabOwner(collabId);
     }
 
     match /collabs/{collabId}/submissions/{fileId} {
@@ -72,7 +86,8 @@ service firebase.storage {
         && (
           (fileName.matches('^.*\\.pdf$') && request.resource.size < 52428800)
           || (fileName.matches('^.*\\.zip$') && request.resource.size < 314572800)
-        );
+        )
+        && isCollabOwner(collabId);
     }
 
     // Optimized/transcoded submission files

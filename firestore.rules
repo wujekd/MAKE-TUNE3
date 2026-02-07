@@ -8,6 +8,13 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true; 
     }
     function isOwner(project) { return isSignedIn() && project.data.ownerId == request.auth.uid; }
+    function isCollabOwner(collabId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/collaborations/$(collabId))
+        && get(/databases/$(database)/documents/collaborations/$(collabId)).data.projectId is string
+        && exists(/databases/$(database)/documents/projects/$(get(/databases/$(database)/documents/collaborations/$(collabId)).data.projectId))
+        && get(/databases/$(database)/documents/projects/$(get(/databases/$(database)/documents/collaborations/$(collabId)).data.projectId)).data.ownerId == request.auth.uid;
+    }
     function validateProjectData(data) {
       return data.name is string && data.name.size() >= 3 && data.name.size() <= 100
         && data.description is string && data.description.size() <= 500
@@ -110,7 +117,7 @@ service cloud.firestore {
     }
 
     match /collaborationDetails/{collabId} {
-      allow read: if true;
+      allow read: if isAdmin() || isCollabOwner(collabId);
       allow create: if isSignedIn()
         && validateCollaborationDetailData(request.resource.data)
         && request.resource.data.collaborationId == collabId
@@ -128,13 +135,26 @@ service cloud.firestore {
     function userChangedKeys() {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
+    function usernameClaimedByUser(userId) {
+      return request.resource.data.username is string
+        && exists(/databases/$(database)/documents/usernames/$(request.resource.data.username))
+        && get(/databases/$(database)/documents/usernames/$(request.resource.data.username)).data.uid == userId;
+    }
+    function usernameClaimedByUserAfter(userId) {
+      return request.resource.data.username is string
+        && existsAfter(/databases/$(database)/documents/usernames/$(request.resource.data.username))
+        && getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.username)).data.uid == userId;
+    }
     function isValidUserCreate(userId) {
       return request.resource.data.keys().hasOnly(['uid', 'email', 'createdAt', 'collaborationIds', 'username'])
         && request.resource.data.uid == userId
         && request.resource.data.email is string
         && request.resource.data.createdAt is timestamp
         && request.resource.data.collaborationIds is list
-        && (!('username' in request.resource.data) || request.resource.data.username is string);
+        && (
+          !('username' in request.resource.data)
+          || usernameClaimedByUser(userId)
+        );
     }
     function isValidUserSelfUpdate(userId) {
       return userChangedKeys().hasOnly(['collaborationIds', 'username'])
@@ -143,6 +163,11 @@ service cloud.firestore {
         && request.resource.data.email == resource.data.email
         && request.resource.data.collaborationIds is list
         && (!('username' in request.resource.data) || request.resource.data.username is string)
+        && (
+          !('username' in request.resource.data)
+          || request.resource.data.username == resource.data.username
+          || usernameClaimedByUserAfter(userId)
+        )
         && request.resource.data.get('tier', null) == resource.data.get('tier', null)
         && request.resource.data.get('bonusProjects', 0) == resource.data.get('bonusProjects', 0)
         && request.resource.data.get('projectCount', 0) == resource.data.get('projectCount', 0)

@@ -1,7 +1,7 @@
 import { doc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, limit as firestoreLimit, Timestamp, setDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import app, { db } from './firebase';
-import type { Collaboration, CollaborationDetail, CollaborationId, ProjectId } from '../types/collaboration';
+import type { Collaboration, CollaborationId, ProjectId } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 
 export class CollaborationService {
@@ -64,24 +64,8 @@ export class CollaborationService {
       return null;
     } catch (err) {
       console.log("Cloud function failed, falling back to direct read", err);
-      // Fallback to direct Firestore read (includes all submissions - less secure)
-      const base = await CollaborationService.getCollaboration(collaborationId);
-      if (!base) return null;
-      try {
-        const detailRef = doc(db, COLLECTIONS.COLLABORATION_DETAILS, collaborationId);
-        const detailSnap = await getDoc(detailRef);
-        if (detailSnap.exists()) {
-          const detail = detailSnap.data() as CollaborationDetail;
-          return {
-            ...base,
-            submissions: Array.isArray(detail.submissions) ? detail.submissions : (base as any).submissions,
-            submissionPaths: Array.isArray(detail.submissionPaths) ? detail.submissionPaths : (base as any).submissionPaths
-          } as Collaboration;
-        }
-      } catch (detailErr) {
-        console.log("Detail fetch error", detailErr);
-      }
-      return base;
+      // Fallback to base collaboration only (no direct detail read)
+      return CollaborationService.getCollaboration(collaborationId);
     }
   }
 
