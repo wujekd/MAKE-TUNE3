@@ -13,12 +13,43 @@
 
 .user-activity__tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.25rem;
+  border-radius: 12px;
+  gap: 0.25rem;
+  width: fit-content;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.user-activity__tabs button {
+.user-activity__tab {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
   text-transform: lowercase;
+}
+
+.user-activity__tab:hover {
+  color: var(--white);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.user-activity__tab--active {
+  background: rgba(239, 123, 58, 0.15);
+  border: 1px solid var(--contrast-600);
+  color: var(--contrast-500);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+}
+
+.user-activity__tab--active:hover {
+  background: rgba(239, 123, 58, 0.25);
+  border-color: var(--contrast-500);
 }
 
 .user-activity__section {
@@ -100,6 +131,23 @@
 .user-activity__action-button:not(:disabled):hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.user-activity__action-button--secondary {
+  background: transparent;
+  border: 1px solid var(--contrast-600);
+  padding: 0.4rem 1rem;
+  box-shadow: none;
+}
+
+.user-activity__action-button--secondary:hover {
+  border-color: var(--contrast-400);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: none;
+}
+
+.user-activity__action-button--secondary::before {
+  content: none;
 }
 
 .user-activity__empty-card {

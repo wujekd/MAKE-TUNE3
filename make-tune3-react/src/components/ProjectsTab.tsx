@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { DashboardService, ProjectService } from '../services';
+import { DashboardService, ProjectService, CollaborationService } from '../services';
 import type { ProjectOverviewItem } from '../services/dashboardService';
 import { TagInput } from './TagInput';
 import { TagUtils } from '../utils/tagUtils';
 import { LoadingSpinner } from './LoadingSpinner';
 import { ProjectListItem } from './ProjectListItem';
+import { UserActivityListItem } from './UserActivityListItem';
 import { computeStageInfo } from '../utils/stageUtils';
 import { canCreateProject, getProjectAllowance } from '../utils/permissions';
 import { useUIStore } from '../stores/useUIStore';
@@ -36,6 +37,13 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
   const [tags, setTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Moderation state
+  const [mode, setMode] = useState<'list' | 'moderate'>('list');
+  const [moderationCollabs, setModerationCollabs] = useState<Array<{ id: string; name: string }>>([]);
+  const [moderationLoading, setModerationLoading] = useState(false);
+  const [moderationLoaded, setModerationLoaded] = useState(false);
+  const [moderationError, setModerationError] = useState<string | null>(null);
 
   const loadProjects = async (userId: string) => {
     setProjectsLoading(true);
@@ -131,15 +139,55 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
     setFormError(null);
   };
 
+  const loadModeration = async () => {
+    if (moderationLoading || moderationLoaded) return;
+    setModerationLoading(true);
+    setModerationError(null);
+    try {
+      const items = await CollaborationService.listMyModerationQueue();
+      setModerationCollabs(items);
+      setModerationLoaded(true);
+    } catch (e: any) {
+      setModerationError(e?.message || 'failed to load moderation queue');
+    } finally {
+      setModerationLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (mode === 'moderate' && user) {
+      void loadModeration();
+    }
+  }, [mode, user]);
+
   return (
     <section className="user-activity__section">
       <div className="user-activity__section-header">
-        <h4 className="project-history-title card__title user-activity__section-title">my projects</h4>
+        <h4 className="project-history-title card__title user-activity__section-title">
+          {mode === 'list' ? 'my projects' : 'moderation queue'}
+        </h4>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {getProjectAllowance(user) && getProjectAllowance(user)!.limit !== Infinity && (
             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted, #888)' }}>
               {getProjectAllowance(user)!.current} / {getProjectAllowance(user)!.limit}
             </span>
+          )}
+          {mode === 'list' && (
+            <button
+              className="user-activity__action-button user-activity__action-button--secondary"
+              disabled={!user || authLoading}
+              onClick={() => setMode('moderate')}
+            >
+              review queue
+            </button>
+          )}
+          {mode === 'moderate' && (
+            <button
+              className="user-activity__action-button user-activity__action-button--secondary"
+              onClick={() => setMode('list')}
+            >
+              back to projects
+            </button>
           )}
           {canCreateProject(user) && (
             <button
@@ -153,7 +201,33 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
         </div>
       </div>
       <div className="collab-list list user-activity__list">
-        {showForm && (
+        {mode === 'moderate' && (
+          <>
+            {(authLoading || (user && !moderationLoaded)) && (
+              <div className="user-activity__loading">
+                <LoadingSpinner size={24} />
+              </div>
+            )}
+            {!authLoading && user && moderationLoaded && moderationError && (
+              <div className="user-activity__message">{moderationError}</div>
+            )}
+            {!authLoading && user && moderationLoaded && !moderationError && moderationCollabs.length === 0 && (
+              <div className="user-activity__message user-activity__message--muted">no collaborations need moderation</div>
+            )}
+            {!authLoading && user && moderationLoaded && moderationCollabs.map(item => (
+              <UserActivityListItem
+                key={item.id}
+                title={item.name || 'untitled'}
+                subtitle="pending moderation"
+                status="pending moderation"
+                to={`/collab/${encodeURIComponent(item.id)}/moderate`}
+                actionLabel="review"
+              />
+            ))}
+          </>
+        )}
+
+        {mode === 'list' && showForm && (
           <div className="collab-history-item list__item user-activity__form-card">
             <input
               placeholder="project name"
@@ -185,20 +259,21 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
             </div>
           </div>
         )}
-        {(authLoading || (user && !projectsLoaded)) && (
+
+        {mode === 'list' && (authLoading || (user && !projectsLoaded)) && (
           <div className="user-activity__loading">
             <LoadingSpinner size={24} />
           </div>
         )}
-        {!authLoading && !user && (
+        {mode === 'list' && !authLoading && !user && (
           <div className="user-activity__message">
             <Link to="/auth?mode=login">login</Link> to see your projects
           </div>
         )}
-        {!authLoading && user && projectsLoaded && projectsError && (
+        {mode === 'list' && !authLoading && user && projectsLoaded && projectsError && (
           <div className="user-activity__message">{projectsError}</div>
         )}
-        {!authLoading && user && projectsLoaded && !projectsError && projects.length === 0 && canCreateProject(user) && (
+        {mode === 'list' && !authLoading && user && projectsLoaded && !projectsError && projects.length === 0 && canCreateProject(user) && (
           <div className="user-activity__empty-card">
             <p className="user-activity__empty-title">Create your first project</p>
             <p className="user-activity__empty-body">
@@ -206,7 +281,7 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
             </p>
           </div>
         )}
-        {!authLoading && user && projectsLoaded && !projectsError && projects.length === 0 && !canCreateProject(user) && (
+        {mode === 'list' && !authLoading && user && projectsLoaded && !projectsError && projects.length === 0 && !canCreateProject(user) && (
           <div className="user-activity__cta-card">
             <p className="user-activity__cta-title">Want to create projects?</p>
             <p className="user-activity__cta-body">
@@ -220,7 +295,7 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
             </button>
           </div>
         )}
-        {!authLoading && user && projectsLoaded && projects.map(project => {
+        {mode === 'list' && !authLoading && user && projectsLoaded && projects.map(project => {
           const current = project.currentCollaboration;
           const rawStageInfo = current
             ? computeStageInfo({

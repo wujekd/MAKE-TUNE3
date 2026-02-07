@@ -11,7 +11,7 @@ import { computeStageInfo } from '../utils/stageUtils';
 import './ProjectHistory.css';
 import './UserActivityStyles.css';
 
-type ActiveTab = 'projects' | 'activity' | 'moderate';
+type ActiveTab = 'projects' | 'activity';
 
 const formatDateTime = (value: number | null | undefined): string => {
   if (!value) return '—';
@@ -22,7 +22,7 @@ const formatDateTime = (value: number | null | undefined): string => {
 export function UserActivityPanel() {
   const { user, loading: authLoading } = useAppStore(state => state.auth);
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>('projects');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('activity');
 
   const [submissionSummaries, setSubmissionSummaries] = useState<SubmissionCollabSummary[]>([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
@@ -33,10 +33,7 @@ export function UserActivityPanel() {
   const [downloadsLoading, setDownloadsLoading] = useState(false);
   const [downloadsLoaded, setDownloadsLoaded] = useState(false);
   const [downloadsError, setDownloadsError] = useState<string | null>(null);
-  const [moderationCollabs, setModerationCollabs] = useState<Array<{ id: string; name: string }>>([]);
-  const [moderationLoading, setModerationLoading] = useState(false);
-  const [moderationLoaded, setModerationLoaded] = useState(false);
-  const [moderationError, setModerationError] = useState<string | null>(null);
+
   const [collabMeta, setCollabMeta] = useState<Record<string, {
     submissionDurationMs: number | null;
     votingDurationMs: number | null;
@@ -51,15 +48,7 @@ export function UserActivityPanel() {
     collabMetaRef.current = collabMeta;
   }, [collabMeta]);
 
-  const moderationItems = useMemo(
-    () =>
-      moderationCollabs.map(item => ({
-        id: item.id,
-        name: item.name || 'untitled',
-        status: 'pending moderation'
-      })),
-    [moderationCollabs]
-  );
+
 
   const loadSubmissions = async () => {
     if (submissionsLoading || submissionsLoaded) return;
@@ -91,29 +80,14 @@ export function UserActivityPanel() {
     }
   };
 
-  const loadModeration = async () => {
-    if (moderationLoading || moderationLoaded) return;
-    setModerationLoading(true);
-    setModerationError(null);
-    try {
-      const items = await CollaborationService.listMyModerationQueue();
-      setModerationCollabs(items);
-      setModerationLoaded(true);
-    } catch (e: any) {
-      setModerationError(e?.message || 'failed to load moderation queue');
-    } finally {
-      setModerationLoading(false);
-    }
-  };
+
 
   useEffect(() => {
     if (!user) {
       setSubmissionSummaries([]);
       setDownloadSummaries([]);
-      setModerationCollabs([]);
       setDownloadsLoaded(false);
       setSubmissionsLoaded(false);
-      setModerationLoaded(false);
       return;
     }
   }, [user]);
@@ -123,8 +97,6 @@ export function UserActivityPanel() {
     if (activeTab === 'activity') {
       void loadSubmissions();
       void loadDownloads();
-    } else if (activeTab === 'moderate') {
-      void loadModeration();
     }
   }, [activeTab, user]);
 
@@ -338,55 +310,24 @@ export function UserActivityPanel() {
   return (
     <div className="project-history user-activity">
       <div className="user-activity__tabs">
-        <button onClick={() => setActiveTab('projects')} disabled={activeTab === 'projects'}>
-          my projects
-        </button>
-        <button onClick={() => setActiveTab('activity')} disabled={activeTab === 'activity'}>
+        <button
+          className={`user-activity__tab ${activeTab === 'activity' ? 'user-activity__tab--active' : ''}`}
+          onClick={() => setActiveTab('activity')}
+        >
           my activity
         </button>
-        <button onClick={() => setActiveTab('moderate')} disabled={activeTab === 'moderate'}>
-          to moderate
+        <button
+          className={`user-activity__tab ${activeTab === 'projects' ? 'user-activity__tab--active' : ''}`}
+          onClick={() => setActiveTab('projects')}
+        >
+          my projects
         </button>
       </div>
 
       {/* TODO: maek smoler */}
       {activeTab === 'projects' && <ProjectsTab user={user} authLoading={authLoading} />}
 
-      {activeTab === 'moderate' && (
-        <section className="user-activity__section">
-          <div className="user-activity__section-header">
-            <h4 className="project-history-title card__title user-activity__section-title">to moderate</h4>
-          </div>
-          <div className="collab-list list user-activity__list">
-            {(authLoading || (user && !moderationLoaded)) && (
-              <div className="user-activity__loading">
-                <LoadingSpinner size={24} />
-              </div>
-            )}
-            {!authLoading && !user && (
-              <div className="user-activity__message">
-                <Link to="/auth?mode=login">login</Link> to see moderation queue
-              </div>
-            )}
-            {!authLoading && user && moderationLoaded && moderationError && (
-              <div className="user-activity__message">{moderationError}</div>
-            )}
-            {!authLoading && user && moderationLoaded && !moderationError && moderationCollabs.length === 0 && (
-              <div className="user-activity__message user-activity__message--muted">no collaborations need moderation</div>
-            )}
-            {!authLoading && user && moderationLoaded && moderationItems.map(item => (
-              <UserActivityListItem
-                key={item.id}
-                title={item.name}
-                subtitle="pending moderation"
-                status={item.status}
-                to={`/collab/${encodeURIComponent(item.id)}/moderate`}
-                actionLabel="review"
-              />
-            ))}
-          </div>
-        </section>
-      )}
+
 
       {activeTab === 'activity' && (
         <section className="user-activity__section">
