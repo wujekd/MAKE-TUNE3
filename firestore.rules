@@ -8,16 +8,6 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true; 
     }
     function isOwner(project) { return isSignedIn() && project.data.ownerId == request.auth.uid; }
-    function canCreateProject() {
-      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-      let tier = userData.get('tier', 'free');
-      let bonus = userData.get('bonusProjects', 0);
-      let projectCount = userData.get('projectCount', 0);
-      let tierLimits = {'free': 0, 'beta': 3, 'premium': 100};
-      let baseLimit = tier in tierLimits ? tierLimits[tier] : 0;
-      let totalLimit = baseLimit + bonus;
-      return isAdmin() || (isSignedIn() && projectCount < totalLimit);
-    }
     function validateProjectData(data) {
       return data.name is string && data.name.size() >= 3 && data.name.size() <= 100
         && data.description is string && data.description.size() <= 500
@@ -73,29 +63,6 @@ service cloud.firestore {
         && (!('updatedAt' in data) || data.updatedAt is timestamp);
     }
 
-    function canWriteCollaborationDetail(collabId) {
-      return isSignedIn()
-        && exists(/databases/$(database)/documents/collaborations/$(collabId))
-        && (
-          (
-            get(/databases/$(database)/documents/collaborations/$(collabId)).data.projectId is string
-            && exists(/databases/$(database)/documents/projects/$(get(/databases/$(database)/documents/collaborations/$(collabId)).data.projectId))
-            && get(/databases/$(database)/documents/projects/$(get(/databases/$(database)/documents/collaborations/$(collabId)).data.projectId)).data.ownerId == request.auth.uid
-          )
-          || (
-            get(/databases/$(database)/documents/collaborations/$(collabId)).data.participantIds is list
-            && request.auth.uid in get(/databases/$(database)/documents/collaborations/$(collabId)).data.participantIds
-          )
-        );
-    }
-
-    function validateProjectNameIndexData(data, nameKey) {
-      return data.keys().hasOnly(['nameKey', 'projectId', 'ownerId', 'createdAt'])
-        && data.nameKey == nameKey
-        && data.projectId is string
-        && data.ownerId is string
-        && data.createdAt is timestamp;
-    }
 
     function onlyIncrementingCounters(newData, oldData) {
       let changedFields = newData.diff(oldData).affectedKeys();
@@ -105,9 +72,8 @@ service cloud.firestore {
 
     match /projects/{projectId} {
       allow read: if true;
-      allow create: if canCreateProject() 
-        && request.resource.data.ownerId == request.auth.uid
-        && validateProjectData(request.resource.data);
+      // Project creation is server-only (createProjectWithUniqueName CF).
+      allow create: if false;
       allow update: if isOwner(resource)
         && validateProjectData(request.resource.data)
         && request.resource.data.ownerId == resource.data.ownerId
@@ -158,10 +124,37 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    function isUserSelf(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function userChangedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+    function isValidUserCreate(userId) {
+      return request.resource.data.keys().hasOnly(['uid', 'email', 'createdAt', 'collaborationIds', 'username'])
+        && request.resource.data.uid == userId
+        && request.resource.data.email is string
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.collaborationIds is list
+        && (!('username' in request.resource.data) || request.resource.data.username is string);
+    }
+    function isValidUserSelfUpdate(userId) {
+      return userChangedKeys().hasOnly(['collaborationIds', 'username'])
+        && request.resource.data.uid == userId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.collaborationIds is list
+        && (!('username' in request.resource.data) || request.resource.data.username is string)
+        && request.resource.data.get('tier', null) == resource.data.get('tier', null)
+        && request.resource.data.get('bonusProjects', 0) == resource.data.get('bonusProjects', 0)
+        && request.resource.data.get('projectCount', 0) == resource.data.get('projectCount', 0)
+        && request.resource.data.get('isAdmin', false) == resource.data.get('isAdmin', false)
+        && request.resource.data.get('suspended', false) == resource.data.get('suspended', false);
+    }
+
     match /users/{userId} {
-      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
-      allow create, delete: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow read: if isAdmin() || isUserSelf(userId);
+      allow create: if isUserSelf(userId) && isValidUserCreate(userId);
+      allow delete: if isUserSelf(userId);
+      allow update: if isAdmin() || (isUserSelf(userId) && isValidUserSelfUpdate(userId));
     }
 
     // usernames mapping: claim a username if it doesn't exist
@@ -200,9 +193,8 @@ service cloud.firestore {
     // project name index: read, but writes should be via trusted backend (optional)
     match /projectNameIndex/{nameKey} {
       allow read: if true;
-      allow create: if isSignedIn()
-        && request.auth.uid == request.resource.data.ownerId
-        && validateProjectNameIndexData(request.resource.data, nameKey);
+      // Name index writes are server-only.
+      allow create: if false;
       allow update: if false;
       allow delete: if isSignedIn()
         && resource.data.ownerId == request.auth.uid;

@@ -3,16 +3,16 @@ service firebase.storage {
   match /b/{bucket}/o {
     function isSignedIn() { return request.auth != null; }
     function tokenDoc(tokenId) {
-      return firestore.get(/databases/$(database)/documents/submissionUploadTokens/$(tokenId));
+      return firestore.get(/databases/(default)/documents/submissionUploadTokens/$(tokenId));
     }
     function submissionUserDoc(submissionId) {
-      return firestore.get(/databases/$(database)/documents/submissionUsers/$(submissionId));
+      return firestore.get(/databases/(default)/documents/submissionUsers/$(submissionId));
     }
     function isValidSubmissionToken(collabId, fileId) {
       return request.resource.metadata.uploadTokenId is string
         && request.resource.metadata.ownerUid is string
         && request.auth.uid == request.resource.metadata.ownerUid
-        && firestore.exists(/databases/$(database)/documents/submissionUploadTokens/$(request.resource.metadata.uploadTokenId))
+        && firestore.exists(/databases/(default)/documents/submissionUploadTokens/$(request.resource.metadata.uploadTokenId))
         && tokenDoc(request.resource.metadata.uploadTokenId).data.collabId == collabId
         && tokenDoc(request.resource.metadata.uploadTokenId).data.uid == request.auth.uid
         && tokenDoc(request.resource.metadata.uploadTokenId).data.used == false
@@ -26,7 +26,7 @@ service firebase.storage {
       return request.resource.metadata.uploadTokenId is string
         && request.resource.metadata.ownerUid is string
         && request.auth.uid == request.resource.metadata.ownerUid
-        && firestore.exists(/databases/$(database)/documents/submissionUploadTokens/$(request.resource.metadata.uploadTokenId))
+        && firestore.exists(/databases/(default)/documents/submissionUploadTokens/$(request.resource.metadata.uploadTokenId))
         && tokenDoc(request.resource.metadata.uploadTokenId).data.collabId == collabId
         && tokenDoc(request.resource.metadata.uploadTokenId).data.uid == request.auth.uid
         && tokenDoc(request.resource.metadata.uploadTokenId).data.expiresAt > request.time
@@ -37,7 +37,7 @@ service firebase.storage {
         && request.resource.metadata.ownerUid is string
         && request.auth.uid == request.resource.metadata.ownerUid
         && fileId.matches("^" + request.resource.metadata.submissionId + "-multitracks\\.zip$")
-        && firestore.exists(/databases/$(database)/documents/submissionUsers/$(request.resource.metadata.submissionId))
+        && firestore.exists(/databases/(default)/documents/submissionUsers/$(request.resource.metadata.submissionId))
         && submissionUserDoc(request.resource.metadata.submissionId).data.userId == request.auth.uid
         && submissionUserDoc(request.resource.metadata.submissionId).data.collaborationId == collabId;
     }
