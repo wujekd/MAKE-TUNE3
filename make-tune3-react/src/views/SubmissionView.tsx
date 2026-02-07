@@ -32,6 +32,13 @@ export function SubmissionView() {
   const [status, setStatus] = useState<'loading' | 'ready' | 'downloaded' | 'submitted'>('loading');
   const navigate = useNavigate();
 
+  const effectiveSubmissionLimit = typeof currentCollaboration?.effectiveSubmissionLimit === 'number'
+    ? currentCollaboration.effectiveSubmissionLimit
+    : null;
+  const submissionsUsed = typeof currentCollaboration?.submissionsUsedCount === 'number'
+    ? currentCollaboration.submissionsUsedCount
+    : (typeof currentCollaboration?.submissionsCount === 'number' ? currentCollaboration.submissionsCount : 0);
+  const limitReached = effectiveSubmissionLimit !== null && submissionsUsed >= effectiveSubmissionLimit;
 
   usePrefetchAudio(backingUrl);
 
@@ -194,6 +201,19 @@ export function SubmissionView() {
       );
     }
 
+    if (limitReached) {
+      return (
+        <div className={styles.submissionPane}>
+          <h4 className={styles.cardTitle}>Submissions full</h4>
+          <div className={styles.cardBody}>
+            <div className={styles.statusMessage}>
+              This collaboration has reached its submission limit.
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (status === 'ready' && user && currentCollaboration?.backingTrackPath) {
       return (
         <DownloadBacking
@@ -253,6 +273,11 @@ export function SubmissionView() {
 
       <div className={styles.content}>
         <div className={styles.submissionsSection}>
+          <div className={styles.submissionsHeader}>
+            <div className={styles.submissionsCounter}>
+              Submissions {submissionsUsed}{effectiveSubmissionLimit !== null ? ` / ${effectiveSubmissionLimit}` : ''}
+            </div>
+          </div>
           <div className={styles.submissionPaneWrapper}>
             {renderPane()}
           </div>

@@ -59,8 +59,10 @@ service cloud.firestore {
         && (!('pdfPath' in data) || data.pdfPath is string)
         && (!('resourcesZipPath' in data) || data.resourcesZipPath is string)
         && (!('submissionsCount' in data) || data.submissionsCount is number)
+        && (!('reservedSubmissionsCount' in data) || data.reservedSubmissionsCount is number)
         && (!('favoritesCount' in data) || data.favoritesCount is number)
-        && (!('votesCount' in data) || data.votesCount is number);
+        && (!('votesCount' in data) || data.votesCount is number)
+        && (!('submissionLimitOverride' in data) || data.submissionLimitOverride is number);
     }
 
     function validateCollaborationDetailData(data) {
@@ -97,7 +99,7 @@ service cloud.firestore {
 
     function onlyIncrementingCounters(newData, oldData) {
       let changedFields = newData.diff(oldData).affectedKeys();
-      let allowedFields = ['submissionsCount', 'favoritesCount', 'votesCount', 'updatedAt'];
+      let allowedFields = ['favoritesCount', 'votesCount', 'updatedAt'];
       return changedFields.hasOnly(allowedFields);
     }
 
@@ -119,22 +121,20 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && exists(/databases/$(database)/documents/projects/$(request.resource.data.projectId))
         && get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)).data.ownerId == request.auth.uid
-        && validateCollaborationData(request.resource.data);
+        && validateCollaborationData(request.resource.data)
+        && (!('submissionLimitOverride' in request.resource.data))
+        && (!('reservedSubmissionsCount' in request.resource.data) || request.resource.data.reservedSubmissionsCount == 0)
+        && (!('submissionsCount' in request.resource.data) || request.resource.data.submissionsCount == 0);
 
       allow update: if get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.ownerId == request.auth.uid
         && validateCollaborationData(request.resource.data)
         && request.resource.data.projectId == resource.data.projectId
-        && request.resource.data.createdAt == resource.data.createdAt;
-
-      allow update: if isSignedIn()
-        && validateCollaborationData(request.resource.data)
-        && request.resource.data.projectId == resource.data.projectId
         && request.resource.data.createdAt == resource.data.createdAt
-        && (
-          !('participantIds' in resource.data)
-          || !('participantIds' in request.resource.data)
-          || request.resource.data.participantIds.size() >= resource.data.participantIds.size()
-        );
+        && request.resource.data.get('submissionsCount', 0) == resource.data.get('submissionsCount', 0)
+        && request.resource.data.get('reservedSubmissionsCount', 0) == resource.data.get('reservedSubmissionsCount', 0)
+        && request.resource.data.get('participantIds', []) == resource.data.get('participantIds', [])
+        && request.resource.data.get('submissionLimitOverride', null) == resource.data.get('submissionLimitOverride', null)
+        && request.resource.data.get('unmoderatedSubmissions', false) == resource.data.get('unmoderatedSubmissions', false);
 
       // Allow authenticated users to increment counters only
       allow update: if isSignedIn() 
@@ -145,8 +145,17 @@ service cloud.firestore {
 
     match /collaborationDetails/{collabId} {
       allow read: if true;
-      allow create, update: if validateCollaborationDetailData(request.resource.data)
-        && canWriteCollaborationDetail(collabId);
+      allow create: if isSignedIn()
+        && validateCollaborationDetailData(request.resource.data)
+        && request.resource.data.collaborationId == collabId
+        && request.resource.data.submissions is list
+        && request.resource.data.submissions.size() == 0
+        && (!('submissionPaths' in request.resource.data) || request.resource.data.submissionPaths.size() == 0)
+        && exists(/databases/$(database)/documents/collaborations/$(collabId))
+        && (
+          get(/databases/$(database)/documents/projects/$(get(/databases/$(database)/documents/collaborations/$(collabId)).data.projectId)).data.ownerId == request.auth.uid
+        );
+      allow update: if false;
     }
 
     match /users/{userId} {
@@ -181,9 +190,11 @@ service cloud.firestore {
 
     // submissionUsers: create by the submitting user; reads restricted (private)
     match /submissionUsers/{docId} {
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow read: if false;
-      allow update, delete: if false;
+      allow read, create, update, delete: if false;
+    }
+
+    match /submissionUploadTokens/{tokenId} {
+      allow read, write: if false;
     }
 
     // project name index: read, but writes should be via trusted backend (optional)

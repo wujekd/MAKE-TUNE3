@@ -65,8 +65,12 @@ export interface Collaboration {
   participantIds?: string[];
   // Real-time engagement counters
   submissionsCount?: number;      // Total submissions uploaded
+  reservedSubmissionsCount?: number; // Active reserved submission slots
   favoritesCount?: number;        // Total favorites across all users
   votesCount?: number;            // Total votes cast
+  effectiveSubmissionLimit?: number; // Server-computed effective limit
+  submissionsUsedCount?: number; // Server-computed submissionsCount + reservedSubmissionsCount
+  submissionLimitOverride?: number; // Server-only override (optional)
   // pastStageTrackPaths removed - now in Project.pastCollaborations
   submissionDuration: number; // duration in seconds
   votingDuration: number; // duration in seconds

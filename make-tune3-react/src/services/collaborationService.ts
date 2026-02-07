@@ -15,6 +15,7 @@ export class CollaborationService {
       participantIds: [],
       // Initialize counters
       submissionsCount: 0,
+      reservedSubmissionsCount: 0,
       favoritesCount: 0,
       votesCount: 0,
       createdAt: now,

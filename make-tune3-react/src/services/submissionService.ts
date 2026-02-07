@@ -1,10 +1,10 @@
-import { doc, getDoc, updateDoc, addDoc, collection, Timestamp, arrayUnion, runTransaction, setDoc, increment } from 'firebase/firestore';
-import { ref, uploadBytesResumable, type UploadTaskSnapshot } from 'firebase/storage';
+import { doc, getDoc } from 'firebase/firestore';
+import { ref, uploadBytesResumable } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import app, { db, storage } from './firebase';
 import { FileService } from './fileService';
 import { DEBUG_ALLOW_MULTIPLE_SUBMISSIONS } from '../config';
-import type { Collaboration, CollaborationDetail, CollaborationId, UserId, SubmissionSettings, SubmissionModerationStatus } from '../types/collaboration';
+import type { Collaboration, CollaborationId, UserId, SubmissionSettings, SubmissionModerationStatus } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 
 export interface SubmissionCollabSummary {
@@ -71,17 +71,31 @@ export class SubmissionService {
     }
 
     const ext = FileService.getPreferredAudioExtension(file);
-    const submissionId = (typeof crypto !== 'undefined' && (crypto as any).randomUUID)
-      ? (crypto as any).randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const functions = getFunctions(app, 'europe-west1');
+    const reserveSlot = httpsCallable(functions, 'reserveSubmissionSlot');
+    const reserveRes: any = await reserveSlot({
+      collaborationId,
+      fileExt: ext,
+      settings: settings ?? null
+    });
+    const tokenData = reserveRes?.data || {};
+    const submissionId = String(tokenData.submissionId || '').trim();
+    const uploadTokenId = String(tokenData.tokenId || '').trim();
+    if (!submissionId || !uploadTokenId) {
+      throw new Error('failed to reserve submission slot');
+    }
+
     const path = `collabs/${collaborationId}/submissions/${submissionId}.${ext}`;
     const r = ref(storage, path);
     const task = uploadBytesResumable(r, file, {
       contentType: file.type,
-      customMetadata: { ownerUid: userId }
+      customMetadata: {
+        ownerUid: userId,
+        uploadTokenId
+      }
     });
 
-    const uploaded: UploadTaskSnapshot = await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       task.on(
         'state_changed',
         (snap) => {
@@ -89,97 +103,20 @@ export class SubmissionService {
           if (onProgress) onProgress(Math.round(pct));
         },
         (err) => reject(err),
-        () => resolve(task.snapshot)
+        () => resolve()
       );
     });
-
-    const createdAt = Timestamp.now();
-
-    const collabRef = doc(db, COLLECTIONS.COLLABORATIONS, collaborationId);
-    const now = Timestamp.now();
-    await updateDoc(collabRef, {
-      participantIds: arrayUnion(userId),
-      submissionsCount: increment(1),
-      updatedAt: now
-    });
-
-    await addDoc(collection(db, COLLECTIONS.SUBMISSION_USERS), {
-      userId,
-      collaborationId,
-      submissionId,
-      path,
-      contentType: uploaded.metadata.contentType || file.type,
-      size: uploaded.metadata.size || file.size,
-      createdAt
-    });
-
-    const collabSnap = await getDoc(collabRef);
-    if (collabSnap.exists()) {
-      const data = collabSnap.data() as Collaboration;
-      const needsMod = true;  // All submissions always require moderation
-      const defaultSettings = settings ?? {
-        eq: {
-          highshelf: { gain: 0, frequency: 8000 },
-          param2: { gain: 0, frequency: 3000, Q: 1 },
-          param1: { gain: 0, frequency: 250, Q: 1 },
-          highpass: { frequency: 20, enabled: false }
-        },
-        volume: { gain: 1 }
-      };
-
-      // All submissions start as pending moderation
-      const newModerationStatus: SubmissionModerationStatus = 'pending';
-
-      const entry: Record<string, any> = {
-        path,
-        submissionId,
-        settings: defaultSettings,
-        createdAt,
-        moderationStatus: newModerationStatus
-      };
-
-      const detailRef = doc(db, COLLECTIONS.COLLABORATION_DETAILS, collaborationId);
-      const updateDetail = updateDoc(detailRef, {
-        submissions: arrayUnion(entry),
-        submissionPaths: arrayUnion(path),
-        updatedAt: Timestamp.now()
-      }).catch(async () => {
-        await setDoc(detailRef, {
-          collaborationId,
-          submissions: [entry],
-          submissionPaths: [path],
-          createdAt,
-          updatedAt: Timestamp.now()
-        });
-      });
-
-      const updateCollab = updateDoc(collabRef, {
-        updatedAt: Timestamp.now(),
-        unmoderatedSubmissions: true  // Always has pending submissions after upload
-      }).catch(() => { });
-
-      await Promise.all([updateDetail, updateCollab]);
-    }
 
     let multitrackZipPath: string | undefined;
     if (multitrackZip) {
       multitrackZipPath = await FileService.uploadSubmissionMultitracks(
         multitrackZip,
         collaborationId,
-        submissionId
+        submissionId,
+        undefined,
+        userId,
+        uploadTokenId
       );
-
-      const detailRef = doc(db, COLLECTIONS.COLLABORATION_DETAILS, collaborationId);
-      const detailSnap = await getDoc(detailRef);
-      if (detailSnap.exists()) {
-        const detailData = detailSnap.data() as CollaborationDetail;
-        const submissions = Array.isArray(detailData.submissions) ? [...detailData.submissions] : [];
-        const idx = submissions.findIndex((e: any) => e?.submissionId === submissionId);
-        if (idx !== -1) {
-          submissions[idx] = { ...submissions[idx], multitrackZipPath };
-          await updateDoc(detailRef, { submissions, updatedAt: Timestamp.now() });
-        }
-      }
     }
 
     return { filePath: path, submissionId, multitrackZipPath };
@@ -223,63 +160,19 @@ export class SubmissionService {
     status: SubmissionModerationStatus,
     moderatorId: UserId
   ): Promise<SubmissionModerationStatus> {
-    const collabRef = doc(db, COLLECTIONS.COLLABORATIONS, collaborationId);
-    const detailRef = doc(db, COLLECTIONS.COLLABORATION_DETAILS, collaborationId);
-    await runTransaction(db, async (tx) => {
-      const snap = await tx.get(collabRef);
-      if (!snap.exists()) {
-        throw new Error('collaboration-not-found');
-      }
-
-      const detailSnap = await tx.get(detailRef);
-      if (!detailSnap.exists()) {
-        throw new Error('collaboration-details-not-found');
-      }
-      const detailData = detailSnap.data() as CollaborationDetail;
-
-      const submissionsArray = Array.isArray(detailData.submissions) ? [...detailData.submissions] : [];
-      if (submissionsArray.length === 0) {
-        throw new Error('no-submissions');
-      }
-
-      const targetIndex = submissionsArray.findIndex((entry: any) => {
-        if (!entry) return false;
-        const entryId = entry.submissionId || entry.path;
-        return entryId === submissionIdentifier || entry.path === submissionIdentifier;
-      });
-
-      if (targetIndex === -1) {
-        throw new Error('submission-not-found');
-      }
-
-      const target = submissionsArray[targetIndex] || {};
-      const currentStatus: SubmissionModerationStatus = target.moderationStatus || 'pending';
-      if (currentStatus !== 'pending') {
-        throw new Error('already-moderated');
-      }
-
-      const now = Timestamp.now();
-      submissionsArray[targetIndex] = {
-        ...target,
-        submissionId: target.submissionId || submissionIdentifier,
-        moderationStatus: status,
-        moderatedAt: now,
-        moderatedBy: moderatorId
-      };
-
-      const stillPending = submissionsArray.some((entry: any) => entry?.moderationStatus === 'pending');
-
-      tx.update(detailRef, {
-        submissions: submissionsArray,
-        updatedAt: now
-      });
-
-      tx.update(collabRef, {
-        unmoderatedSubmissions: stillPending,
-        updatedAt: now
-      });
+    const functions = getFunctions(app, 'europe-west1');
+    const callable = httpsCallable(functions, 'setSubmissionModeration');
+    const res: any = await callable({
+      collaborationId,
+      submissionIdentifier,
+      status,
+      moderatorId
     });
-
-    return status;
+    const data = res?.data || {};
+    const result = data?.status;
+    if (!['pending', 'approved', 'rejected'].includes(result)) {
+      throw new Error('moderation-failed');
+    }
+    return result as SubmissionModerationStatus;
   }
 }

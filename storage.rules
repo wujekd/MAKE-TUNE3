@@ -2,6 +2,45 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     function isSignedIn() { return request.auth != null; }
+    function tokenDoc(tokenId) {
+      return firestore.get(/databases/$(database)/documents/submissionUploadTokens/$(tokenId));
+    }
+    function submissionUserDoc(submissionId) {
+      return firestore.get(/databases/$(database)/documents/submissionUsers/$(submissionId));
+    }
+    function isValidSubmissionToken(collabId, fileId) {
+      return request.resource.metadata.uploadTokenId is string
+        && request.resource.metadata.ownerUid is string
+        && request.auth.uid == request.resource.metadata.ownerUid
+        && firestore.exists(/databases/$(database)/documents/submissionUploadTokens/$(request.resource.metadata.uploadTokenId))
+        && tokenDoc(request.resource.metadata.uploadTokenId).data.collabId == collabId
+        && tokenDoc(request.resource.metadata.uploadTokenId).data.uid == request.auth.uid
+        && tokenDoc(request.resource.metadata.uploadTokenId).data.used == false
+        && tokenDoc(request.resource.metadata.uploadTokenId).data.expiresAt > request.time
+        && fileId.matches("^" + tokenDoc(request.resource.metadata.uploadTokenId).data.submissionId + "\\." + tokenDoc(request.resource.metadata.uploadTokenId).data.fileExt + "$");
+    }
+    function isValidMultitrackUpload(collabId, fileId) {
+      return isValidMultitrackToken(collabId, fileId) || isValidMultitrackOwner(collabId, fileId);
+    }
+    function isValidMultitrackToken(collabId, fileId) {
+      return request.resource.metadata.uploadTokenId is string
+        && request.resource.metadata.ownerUid is string
+        && request.auth.uid == request.resource.metadata.ownerUid
+        && firestore.exists(/databases/$(database)/documents/submissionUploadTokens/$(request.resource.metadata.uploadTokenId))
+        && tokenDoc(request.resource.metadata.uploadTokenId).data.collabId == collabId
+        && tokenDoc(request.resource.metadata.uploadTokenId).data.uid == request.auth.uid
+        && tokenDoc(request.resource.metadata.uploadTokenId).data.expiresAt > request.time
+        && fileId.matches("^" + tokenDoc(request.resource.metadata.uploadTokenId).data.submissionId + "-multitracks\\.zip$");
+    }
+    function isValidMultitrackOwner(collabId, fileId) {
+      return request.resource.metadata.submissionId is string
+        && request.resource.metadata.ownerUid is string
+        && request.auth.uid == request.resource.metadata.ownerUid
+        && fileId.matches("^" + request.resource.metadata.submissionId + "-multitracks\\.zip$")
+        && firestore.exists(/databases/$(database)/documents/submissionUsers/$(request.resource.metadata.submissionId))
+        && submissionUserDoc(request.resource.metadata.submissionId).data.userId == request.auth.uid
+        && submissionUserDoc(request.resource.metadata.submissionId).data.collaborationId == collabId;
+    }
 
     // Public read for audio assets
     // Backing files live at: collabs/{collabId}/backing.{ext}
@@ -18,8 +57,12 @@ service firebase.storage {
       allow read: if true;
       allow write: if isSignedIn()
         && (
-          (request.resource.contentType.matches('audio/.*') && request.resource.size < 131072000)
-          || (fileId.matches('^.*-multitracks\\.zip$') && request.resource.size < 314572800)
+          (request.resource.contentType.matches('audio/.*')
+            && request.resource.size < 131072000
+            && isValidSubmissionToken(collabId, fileId))
+          || (fileId.matches('^.*-multitracks\\.zip$')
+            && request.resource.size < 314572800
+            && isValidMultitrackUpload(collabId, fileId))
         );
     }
 
@@ -45,4 +88,3 @@ service firebase.storage {
     }
   }
 }
-

@@ -5,7 +5,7 @@ import {
   onDocumentDeleted
 } from "firebase-functions/v2/firestore";
 import { initializeApp } from "firebase-admin/app";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
 import { setGlobalOptions } from "firebase-functions";
 import { onObjectFinalized } from "firebase-functions/v2/storage";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
@@ -50,6 +50,31 @@ const DEFAULT_SETTINGS: SystemSettings = {
   maxSubmissionsPerCollab: 100
 };
 
+const SUBMISSION_RESERVATION_MINUTES = 20;
+const SUBMISSION_TOKEN_COLLECTION = "submissionUploadTokens";
+const ALLOWED_AUDIO_EXTS = new Set([
+  "mp3",
+  "wav",
+  "flac",
+  "ogg",
+  "m4a",
+  "aac",
+  "webm",
+  "opus"
+]);
+
+const DEFAULT_SUBMISSION_SETTINGS = {
+  eq: {
+    highshelf: { gain: 0, frequency: 8000 },
+    param2: { gain: 0, frequency: 3000, Q: 1 },
+    param1: { gain: 0, frequency: 250, Q: 1 },
+    highpass: { frequency: 20, enabled: false }
+  },
+  volume: { gain: 1 }
+};
+
+const buildSubmissionTokenId = (collabId: string, uid: string) => `${collabId}__${uid}`;
+
 async function getSystemSettings(): Promise<SystemSettings> {
   const settingsRef = db.collection("systemSettings").doc("global");
   const snap = await settingsRef.get();
@@ -76,6 +101,56 @@ const sanitize = (s: string) =>
       t.replace(new RegExp(`\\b${w}\\b`, "gi"), "*".repeat(w.length)),
     s
   );
+
+const toNumber = (value: unknown, fallback = 0) => {
+  const num = typeof value === "number" && Number.isFinite(value) ? value : Number(value);
+  return Number.isFinite(num) ? num : fallback;
+};
+
+const toMillis = (value: any): number | null => {
+  if (value == null) return null;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value?.toMillis === "function") return value.toMillis();
+  return null;
+};
+
+const getEffectiveSubmissionLimit = (collabData: any, settings: SystemSettings) => {
+  const override = toNumber(collabData?.submissionLimitOverride, NaN);
+  const globalLimit = toNumber(settings.maxSubmissionsPerCollab, 0);
+  const limit = Number.isFinite(override) ? override : globalLimit;
+  return Math.max(0, Math.floor(limit));
+};
+
+const normalizeSubmissionSettings = (raw: any) => {
+  if (!raw || typeof raw !== "object") {
+    return DEFAULT_SUBMISSION_SETTINGS;
+  }
+  return {
+    eq: {
+      highshelf: {
+        gain: toNumber(raw?.eq?.highshelf?.gain, 0),
+        frequency: toNumber(raw?.eq?.highshelf?.frequency, 8000)
+      },
+      param2: {
+        gain: toNumber(raw?.eq?.param2?.gain, 0),
+        frequency: toNumber(raw?.eq?.param2?.frequency, 3000),
+        Q: toNumber(raw?.eq?.param2?.Q, 1)
+      },
+      param1: {
+        gain: toNumber(raw?.eq?.param1?.gain, 0),
+        frequency: toNumber(raw?.eq?.param1?.frequency, 250),
+        Q: toNumber(raw?.eq?.param1?.Q, 1)
+      },
+      highpass: {
+        frequency: toNumber(raw?.eq?.highpass?.frequency, 20),
+        enabled: Boolean(raw?.eq?.highpass?.enabled)
+      }
+    },
+    volume: {
+      gain: toNumber(raw?.volume?.gain, 1)
+    }
+  };
+};
 
 export const sanitizeProjectDescription = onDocumentCreated(
   "projects/{projectId}",
@@ -397,6 +472,155 @@ export const publishCollaboration = onCall(async (request) => {
   });
 });
 
+export const reserveSubmissionSlot = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+
+  await checkUserNotSuspended(uid);
+
+  const settings = await getSystemSettings();
+  if (!settings.submissionsEnabled) {
+    throw new HttpsError("failed-precondition", "Submissions are currently disabled");
+  }
+
+  const collaborationIdRaw = String(request.data?.collaborationId || "").trim();
+  const fileExt = String(request.data?.fileExt || "").trim().toLowerCase();
+  if (!collaborationIdRaw || !fileExt) {
+    throw new HttpsError("invalid-argument", "collaborationId and fileExt required");
+  }
+  if (!ALLOWED_AUDIO_EXTS.has(fileExt)) {
+    throw new HttpsError("invalid-argument", "unsupported file type");
+  }
+
+  const normalizedSettings = normalizeSubmissionSettings(request.data?.settings);
+
+  return db.runTransaction(async (tx) => {
+    const collabRef = db.collection("collaborations").doc(collaborationIdRaw);
+    const collabSnap = await tx.get(collabRef);
+    if (!collabSnap.exists) {
+      throw new HttpsError("not-found", "collaboration not found");
+    }
+    const collabData = collabSnap.data() as any;
+    if (collabData.status !== "submission") {
+      throw new HttpsError("failed-precondition", "collaboration not accepting submissions");
+    }
+
+    const now = Timestamp.now();
+    const submissionCloseMillis = toMillis(collabData.submissionCloseAt);
+    if (submissionCloseMillis !== null && submissionCloseMillis <= now.toMillis()) {
+      throw new HttpsError("failed-precondition", "submission window closed");
+    }
+
+    const participantIds: string[] = Array.isArray(collabData.participantIds)
+      ? collabData.participantIds.filter((pid: unknown) => typeof pid === "string")
+      : [];
+    if (participantIds.includes(uid)) {
+      throw new HttpsError("failed-precondition", "already submitted");
+    }
+
+    const tokenId = buildSubmissionTokenId(collaborationIdRaw, uid);
+    const tokenRef = db.collection(SUBMISSION_TOKEN_COLLECTION).doc(tokenId);
+    const tokenSnap = await tx.get(tokenRef);
+    const tokenData = tokenSnap.exists ? (tokenSnap.data() as any) : null;
+    const tokenExpired = tokenData?.expiresAt && tokenData.expiresAt.toMillis() <= now.toMillis();
+    const tokenUsed = tokenData?.used === true;
+
+    let reservedCount = toNumber(collabData.reservedSubmissionsCount, 0);
+    if (tokenSnap.exists && tokenData && tokenExpired && !tokenUsed) {
+      reservedCount = reservedCount > 0 ? reservedCount - 1 : 0;
+    }
+
+    if (tokenSnap.exists && tokenData && !tokenUsed && !tokenExpired) {
+      const refreshedExpiry = Timestamp.fromMillis(
+        now.toMillis() + SUBMISSION_RESERVATION_MINUTES * 60 * 1000
+      );
+      tx.update(tokenRef, {
+        fileExt,
+        settings: normalizedSettings,
+        expiresAt: refreshedExpiry,
+        updatedAt: now
+      });
+      return {
+        tokenId: tokenRef.id,
+        submissionId: String(tokenData.submissionId || ""),
+        expiresAt: refreshedExpiry.toMillis()
+      };
+    }
+
+    const effectiveLimit = getEffectiveSubmissionLimit(collabData, settings);
+    const submissionsCount = toNumber(collabData.submissionsCount, 0);
+    if (submissionsCount + reservedCount >= effectiveLimit) {
+      throw new HttpsError("resource-exhausted", "submission limit reached");
+    }
+
+    const submissionId = db.collection("submissionUsers").doc().id;
+    const expiresAt = Timestamp.fromMillis(
+      now.toMillis() + SUBMISSION_RESERVATION_MINUTES * 60 * 1000
+    );
+
+    tx.set(tokenRef, {
+      collabId: collaborationIdRaw,
+      uid,
+      submissionId,
+      fileExt,
+      settings: normalizedSettings,
+      createdAt: now,
+      expiresAt,
+      used: false
+    });
+
+    tx.update(collabRef, {
+      reservedSubmissionsCount: reservedCount + 1,
+      updatedAt: now
+    });
+
+    return {
+      tokenId: tokenRef.id,
+      submissionId,
+      expiresAt: expiresAt.toMillis()
+    };
+  });
+});
+
+export const cleanupSubmissionReservations = onSchedule("every 5 minutes", async () => {
+  const now = Timestamp.now();
+  const expiredSnap = await db
+    .collection(SUBMISSION_TOKEN_COLLECTION)
+    .where("expiresAt", "<=", now)
+    .limit(200)
+    .get();
+  if (expiredSnap.empty) return;
+
+  for (const docSnap of expiredSnap.docs) {
+    await db.runTransaction(async (tx) => {
+      const tokenRef = docSnap.ref;
+      const tokenSnap = await tx.get(tokenRef);
+      if (!tokenSnap.exists) return;
+      const tokenData = tokenSnap.data() as any;
+      if (tokenData.used === true) return;
+      if (!tokenData.expiresAt || tokenData.expiresAt.toMillis() > now.toMillis()) {
+        return;
+      }
+      const collabId = String(tokenData.collabId || "");
+      if (!collabId) {
+        tx.delete(tokenRef);
+        return;
+      }
+      const collabRef = db.collection("collaborations").doc(collabId);
+      const collabSnap = await tx.get(collabRef);
+      if (!collabSnap.exists) {
+        tx.delete(tokenRef);
+        return;
+      }
+      const collabData = collabSnap.data() as any;
+      const reservedCount = toNumber(collabData.reservedSubmissionsCount, 0);
+      const nextReserved = reservedCount > 0 ? reservedCount - 1 : 0;
+      tx.update(collabRef, { reservedSubmissionsCount: nextReserved, updatedAt: now });
+      tx.delete(tokenRef);
+    });
+  }
+});
+
 // Storage trigger: transcode large files (>20MB) to 256kbps MP3
 export const transcodeLargeToMp3 = onObjectFinalized({ region: "europe-west1" }, async (event) => {
   const object = event.data;
@@ -469,6 +693,165 @@ export const transcodeLargeToMp3 = onObjectFinalized({ region: "europe-west1" },
     try { fs.unlinkSync(tmpIn); } catch { }
     try { fs.unlinkSync(tmpOut); } catch { }
   }
+});
+
+export const finalizeSubmissionUpload = onObjectFinalized({ region: "europe-west1" }, async (event) => {
+  const object = event.data;
+  const filePath = object.name || "";
+  if (!filePath.startsWith("collabs/") || !filePath.includes("/submissions/")) return;
+  if (filePath.endsWith("-multitracks.zip")) return;
+
+  const parts = filePath.split("/");
+  if (parts.length < 4) return;
+  const collabId = parts[1];
+  const fileName = parts[3];
+  const ext = path.extname(fileName).replace(".", "").toLowerCase();
+  const submissionId = path.basename(fileName, path.extname(fileName));
+
+  const metadata = object.metadata || {};
+  const uploadTokenId = String((metadata as any).uploadTokenId || "").trim();
+  const ownerUid = String((metadata as any).ownerUid || "").trim();
+  if (!uploadTokenId || !ownerUid) {
+    return;
+  }
+
+  const tokenRef = db.collection(SUBMISSION_TOKEN_COLLECTION).doc(uploadTokenId);
+  const collabRef = db.collection("collaborations").doc(collabId);
+  const detailRef = db.collection("collaborationDetails").doc(collabId);
+  const submissionUserRef = db.collection("submissionUsers").doc(submissionId);
+
+  await db.runTransaction(async (tx) => {
+    const [tokenSnap, collabSnap, detailSnap, submissionUserSnap] = await Promise.all([
+      tx.get(tokenRef),
+      tx.get(collabRef),
+      tx.get(detailRef),
+      tx.get(submissionUserRef)
+    ]);
+
+    if (!tokenSnap.exists) {
+      return;
+    }
+    const tokenData = tokenSnap.data() as any;
+    const now = Timestamp.now();
+
+    if (submissionUserSnap.exists) {
+      if (!tokenData.used) {
+        tx.update(tokenRef, { used: true, usedAt: now });
+      }
+      return;
+    }
+
+    if (tokenData.used === true) return;
+    if (tokenData.collabId !== collabId) return;
+    if (tokenData.uid !== ownerUid) return;
+    if (tokenData.submissionId !== submissionId) return;
+    if (String(tokenData.fileExt || "").toLowerCase() !== ext) return;
+    if (tokenData.expiresAt && tokenData.expiresAt.toMillis() <= now.toMillis()) return;
+
+    if (!collabSnap.exists) return;
+
+    const collabData = collabSnap.data() as any;
+    const reservedCount = toNumber(collabData.reservedSubmissionsCount, 0);
+    const nextReserved = reservedCount > 0 ? reservedCount - 1 : 0;
+
+    const submissionSettings = normalizeSubmissionSettings(tokenData.settings);
+    const createdAt = now;
+
+    const entry: Record<string, any> = {
+      path: filePath,
+      submissionId,
+      settings: submissionSettings,
+      createdAt,
+      moderationStatus: "pending"
+    };
+
+    const detailData = detailSnap.exists ? (detailSnap.data() as any) : null;
+    const submissions: any[] = Array.isArray(detailData?.submissions) ? [...detailData.submissions] : [];
+    const existingIndex = submissions.findIndex((s) => s?.submissionId === submissionId || s?.path === filePath);
+    const isNewSubmission = existingIndex === -1;
+    if (isNewSubmission) {
+      submissions.push(entry);
+    }
+
+    tx.set(submissionUserRef, {
+      userId: ownerUid,
+      collaborationId: collabId,
+      submissionId,
+      path: filePath,
+      contentType: object.contentType || "",
+      size: Number(object.size || 0),
+      createdAt
+    }, { merge: true });
+
+    tx.set(detailRef, {
+      collaborationId: collabId,
+      submissions,
+      submissionPaths: submissions.map((s) => s?.path).filter(Boolean),
+      updatedAt: now,
+      createdAt: detailData?.createdAt || now
+    }, { merge: true });
+
+    const collabUpdates: Record<string, unknown> = {
+      updatedAt: now
+    };
+    if (isNewSubmission) {
+      collabUpdates.submissionsCount = FieldValue.increment(1);
+      collabUpdates.reservedSubmissionsCount = nextReserved;
+      collabUpdates.participantIds = FieldValue.arrayUnion(ownerUid);
+      collabUpdates.unmoderatedSubmissions = true;
+    }
+    tx.update(collabRef, collabUpdates);
+
+    tx.update(tokenRef, { used: true, usedAt: now });
+  });
+});
+
+export const attachSubmissionMultitracks = onObjectFinalized({ region: "europe-west1" }, async (event) => {
+  const object = event.data;
+  const filePath = object.name || "";
+  if (!filePath.startsWith("collabs/") || !filePath.includes("/submissions/")) return;
+  if (!filePath.endsWith("-multitracks.zip")) return;
+
+  const parts = filePath.split("/");
+  if (parts.length < 4) return;
+  const collabId = parts[1];
+  const fileName = parts[3];
+  const submissionId = fileName.replace(/-multitracks\.zip$/i, "");
+
+  const metadata = object.metadata || {};
+  const ownerUid = String((metadata as any).ownerUid || "").trim();
+  const metaSubmissionId = String((metadata as any).submissionId || "").trim();
+  if (!ownerUid || (metaSubmissionId && metaSubmissionId !== submissionId)) {
+    return;
+  }
+
+  const submissionUserRef = db.collection("submissionUsers").doc(submissionId);
+  const detailRef = db.collection("collaborationDetails").doc(collabId);
+
+  await db.runTransaction(async (tx) => {
+    const [submissionUserSnap, detailSnap] = await Promise.all([
+      tx.get(submissionUserRef),
+      tx.get(detailRef)
+    ]);
+    if (!submissionUserSnap.exists) return;
+    const subUser = submissionUserSnap.data() as any;
+    if (String(subUser.userId || "") !== ownerUid) return;
+    if (String(subUser.collaborationId || "") !== collabId) return;
+
+    const detailData = detailSnap.exists ? (detailSnap.data() as any) : null;
+    const submissions: any[] = Array.isArray(detailData?.submissions) ? [...detailData.submissions] : [];
+    const idx = submissions.findIndex((s) => s?.submissionId === submissionId);
+    if (idx === -1) return;
+
+    submissions[idx] = { ...submissions[idx], multitrackZipPath: filePath };
+    tx.set(detailRef, {
+      collaborationId: collabId,
+      submissions,
+      submissionPaths: submissions.map((s) => s?.path).filter(Boolean),
+      updatedAt: Timestamp.now(),
+      createdAt: detailData?.createdAt || Timestamp.now()
+    }, { merge: true });
+  });
 });
 
 const buildNameKey = (name: string) =>
@@ -647,6 +1030,10 @@ export const getCollaborationData = onCall(async (request) => {
     return { collaboration: null };
   }
   const collabData = collabSnap.data() as any;
+  const settings = await getSystemSettings();
+  const effectiveLimit = getEffectiveSubmissionLimit(collabData, settings);
+  const submissionsUsedCount = toNumber(collabData.submissionsCount, 0)
+    + toNumber(collabData.reservedSubmissionsCount, 0);
 
   // Get collaboration details (submissions)
   const detailRef = db.collection("collaborationDetails").doc(collaborationIdRaw);
@@ -672,6 +1059,8 @@ export const getCollaborationData = onCall(async (request) => {
   const collaboration = {
     ...collabData,
     id: collabSnap.id,
+    effectiveSubmissionLimit: effectiveLimit,
+    submissionsUsedCount,
     submissions,
     submissionPaths,
     // Convert Timestamps to millis for client
@@ -706,6 +1095,10 @@ export const getModerationData = onCall(async (request) => {
     throw new HttpsError("not-found", "collaboration not found");
   }
   const collabData = collabSnap.data() as any;
+  const settings = await getSystemSettings();
+  const effectiveLimit = getEffectiveSubmissionLimit(collabData, settings);
+  const submissionsUsedCount = toNumber(collabData.submissionsCount, 0)
+    + toNumber(collabData.reservedSubmissionsCount, 0);
 
   // Verify user is project owner
   const projectId = String(collabData.projectId || "");
@@ -744,6 +1137,8 @@ export const getModerationData = onCall(async (request) => {
   const collaboration = {
     ...collabData,
     id: collabSnap.id,
+    effectiveSubmissionLimit: effectiveLimit,
+    submissionsUsedCount,
     submissions: pendingSubmissions,
     submissionPaths: pendingSubmissions.map((s: any) => String(s?.path || "")).filter(Boolean),
     createdAt: toMillis(collabData.createdAt),
@@ -755,6 +1150,94 @@ export const getModerationData = onCall(async (request) => {
   };
 
   return { collaboration };
+});
+
+export const setSubmissionModeration = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+
+  const collaborationIdRaw = String(request.data?.collaborationId || "").trim();
+  const submissionIdentifier = String(request.data?.submissionIdentifier || "").trim();
+  const statusRaw = String(request.data?.status || "").trim();
+  if (!collaborationIdRaw || !submissionIdentifier) {
+    throw new HttpsError("invalid-argument", "collaborationId and submissionIdentifier required");
+  }
+  if (!["approved", "rejected"].includes(statusRaw)) {
+    throw new HttpsError("invalid-argument", "invalid moderation status");
+  }
+
+  const collabRef = db.collection("collaborations").doc(collaborationIdRaw);
+  const detailRef = db.collection("collaborationDetails").doc(collaborationIdRaw);
+
+  await db.runTransaction(async (tx) => {
+    const collabSnap = await tx.get(collabRef);
+    if (!collabSnap.exists) {
+      throw new HttpsError("not-found", "collaboration not found");
+    }
+    const collabData = collabSnap.data() as any;
+
+    const projectId = String(collabData.projectId || "");
+    if (!projectId) {
+      throw new HttpsError("failed-precondition", "collaboration missing project");
+    }
+    const projectRef = db.collection("projects").doc(projectId);
+    const projectSnap = await tx.get(projectRef);
+    if (!projectSnap.exists) {
+      throw new HttpsError("not-found", "project not found");
+    }
+    const projectData = projectSnap.data() as any;
+    if (projectData.ownerId !== uid) {
+      throw new HttpsError("permission-denied", "only project owner can moderate");
+    }
+
+    const detailSnap = await tx.get(detailRef);
+    if (!detailSnap.exists) {
+      throw new HttpsError("not-found", "collaboration details not found");
+    }
+    const detailData = detailSnap.data() as any;
+    const submissionsArray = Array.isArray(detailData.submissions) ? [...detailData.submissions] : [];
+    if (submissionsArray.length === 0) {
+      throw new HttpsError("failed-precondition", "no submissions to moderate");
+    }
+
+    const targetIndex = submissionsArray.findIndex((entry: any) => {
+      if (!entry) return false;
+      const entryId = entry.submissionId || entry.path;
+      return entryId === submissionIdentifier || entry.path === submissionIdentifier;
+    });
+    if (targetIndex === -1) {
+      throw new HttpsError("not-found", "submission not found");
+    }
+
+    const target = submissionsArray[targetIndex] || {};
+    const currentStatus = target.moderationStatus || "pending";
+    if (currentStatus !== "pending") {
+      throw new HttpsError("failed-precondition", "already moderated");
+    }
+
+    const now = Timestamp.now();
+    submissionsArray[targetIndex] = {
+      ...target,
+      submissionId: target.submissionId || submissionIdentifier,
+      moderationStatus: statusRaw,
+      moderatedAt: now,
+      moderatedBy: uid
+    };
+
+    const stillPending = submissionsArray.some((entry: any) => entry?.moderationStatus === "pending");
+
+    tx.update(detailRef, {
+      submissions: submissionsArray,
+      updatedAt: now
+    });
+
+    tx.update(collabRef, {
+      unmoderatedSubmissions: stillPending,
+      updatedAt: now
+    });
+  });
+
+  return { status: statusRaw };
 });
 
 export const getMyModerationQueue = onCall(async (request) => {

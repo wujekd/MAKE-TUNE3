@@ -53,10 +53,14 @@ export class FileService {
   static async uploadFile(
     file: File,
     path: string,
-    onProgress?: (percent: number) => void
+    onProgress?: (percent: number) => void,
+    metadata?: Record<string, string>
   ): Promise<void> {
     const storageRef = ref(storage, path);
-    const task = uploadBytesResumable(storageRef, file, { contentType: file.type });
+    const task = uploadBytesResumable(storageRef, file, {
+      contentType: file.type,
+      customMetadata: metadata
+    });
     
     await new Promise<void>((resolve, reject) => {
       task.on(
@@ -99,12 +103,22 @@ export class FileService {
     file: File,
     collaborationId: string,
     submissionId: string,
-    onProgress?: (percent: number) => void
+    onProgress?: (percent: number) => void,
+    ownerUid?: string,
+    uploadTokenId?: string
   ): Promise<string> {
     this.validateZipFile(file);
     const path = `collabs/${collaborationId}/submissions/${submissionId}-multitracks.zip`;
-    await this.uploadFile(file, path, onProgress);
+    const metadata: Record<string, string> = {
+      submissionId
+    };
+    if (ownerUid) {
+      metadata.ownerUid = ownerUid;
+    }
+    if (uploadTokenId) {
+      metadata.uploadTokenId = uploadTokenId;
+    }
+    await this.uploadFile(file, path, onProgress, metadata);
     return path;
   }
 }
-

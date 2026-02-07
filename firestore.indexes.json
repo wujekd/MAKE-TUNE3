@@ -80,6 +80,13 @@
         { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "lastDownloadedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "submissionUploadTokens",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
