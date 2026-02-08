@@ -93,7 +93,7 @@ service firebase.storage {
     // Optimized/transcoded submission files
     match /collabs/{collabId}/optimized/{fileId} {
       allow read: if true;
-      allow write: if isSignedIn() && request.resource.contentType.matches('audio/.*');
+      allow write: if false;
     }
 
     // Default deny

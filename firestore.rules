@@ -71,12 +71,6 @@ service cloud.firestore {
     }
 
 
-    function onlyIncrementingCounters(newData, oldData) {
-      let changedFields = newData.diff(oldData).affectedKeys();
-      let allowedFields = ['favoritesCount', 'votesCount', 'updatedAt'];
-      return changedFields.hasOnly(allowedFields);
-    }
-
     match /projects/{projectId} {
       allow read: if true;
       // Project creation is server-only (createProjectWithUniqueName CF).
@@ -108,10 +102,6 @@ service cloud.firestore {
         && request.resource.data.get('participantIds', []) == resource.data.get('participantIds', [])
         && request.resource.data.get('submissionLimitOverride', null) == resource.data.get('submissionLimitOverride', null)
         && request.resource.data.get('unmoderatedSubmissions', false) == resource.data.get('unmoderatedSubmissions', false);
-
-      // Allow authenticated users to increment counters only
-      allow update: if isSignedIn() 
-        && onlyIncrementingCounters(request.resource.data, resource.data);
 
       allow delete: if get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.ownerId == request.auth.uid;
     }
@@ -185,15 +175,47 @@ service cloud.firestore {
     // usernames mapping: claim a username if it doesn't exist
     match /usernames/{name} {
       allow read: if true;
-      allow create: if isSignedIn() && !exists(/databases/$(database)/documents/usernames/$(name));
+      allow create: if isSignedIn()
+        && !exists(/databases/$(database)/documents/usernames/$(name))
+        && request.resource.data.uid == request.auth.uid
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
       allow update, delete: if false;
+    }
+
+    function validUserCollabCreate(userId) {
+      return request.resource.data.keys().hasOnly([
+        'userId', 'collaborationId', 'listenedTracks', 'listenedRatio', 'lastInteraction'
+      ])
+        && request.resource.data.keys().hasAll(['userId', 'collaborationId', 'lastInteraction'])
+        && request.resource.data.userId == userId
+        && request.resource.data.collaborationId is string
+        && request.resource.data.lastInteraction is timestamp
+        && (!('listenedTracks' in request.resource.data) || request.resource.data.listenedTracks is list)
+        && (!('listenedRatio' in request.resource.data) || request.resource.data.listenedRatio is number);
+    }
+
+    function validUserCollabUpdate(userId) {
+      return request.resource.data.userId == resource.data.userId
+        && request.resource.data.collaborationId == resource.data.collaborationId
+        && request.resource.data.get('favoriteTracks', []) == resource.data.get('favoriteTracks', [])
+        && request.resource.data.get('finalVote', null) == resource.data.get('finalVote', null)
+        && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null)
+        && request.resource.data.get('hasSubmitted', false) == resource.data.get('hasSubmitted', false)
+        && request.resource.data.lastInteraction is timestamp
+        && (!('listenedTracks' in request.resource.data) || request.resource.data.listenedTracks is list)
+        && (!('listenedRatio' in request.resource.data) || request.resource.data.listenedRatio is number)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'listenedTracks', 'listenedRatio', 'lastInteraction'
+        ]);
     }
 
     // userCollaborations: private to the user
     match /userCollaborations/{docId} {
       // reads use resource.data; writes use request.resource.data
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create, update, delete: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && validUserCollabCreate(request.auth.uid);
+      allow update: if isSignedIn() && validUserCollabUpdate(request.auth.uid);
+      allow delete: if false;
     }
 
     match /userDownloads/{downloadId} {
