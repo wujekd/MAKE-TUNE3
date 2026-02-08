@@ -49,8 +49,8 @@ function App() {
           path: 'collabs',
           element: <DashboardView />,
           handle: {
-            title: 'Collaborations',
-            breadcrumb: 'Collaborations',
+            title: '',
+            breadcrumb: 'home page',
             actions: ({ navigate }: any) => ([{ key: 'to-auth', label: 'Login', onClick: () => navigate('auth') }])
           }
         },

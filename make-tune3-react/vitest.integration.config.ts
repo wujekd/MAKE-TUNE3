@@ -12,6 +12,11 @@ export default defineConfig({
         exclude: [
             '**/node_modules/**',
             '**/dist/**',
-        ]
+        ],
+        // Run test files sequentially to avoid Firestore emulator state conflicts
+        fileParallelism: false,
+        sequence: {
+            shuffle: false,
+        },
     },
 })
