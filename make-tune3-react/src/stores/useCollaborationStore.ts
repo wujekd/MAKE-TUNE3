@@ -17,7 +17,7 @@ import {
 import { TrackUtils } from '../utils';
 import { AudioUrlUtils } from '../utils/audioUrlUtils';
 
-const DEBUG_LOGS = true;
+const DEBUG_LOGS = false;
 
 // Helper to pre-cache all audio URLs for faster playback
 async function precacheAudioUrls(collaboration: Collaboration): Promise<void> {

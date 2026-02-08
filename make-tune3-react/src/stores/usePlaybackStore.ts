@@ -4,7 +4,7 @@ import { AudioUrlUtils, PlaybackUtils } from '../utils';
 import { useAudioStore } from './useAudioStore';
 import { useCollaborationStore } from './useCollaborationStore';
 
-const DEBUG_LOGS = true;
+const DEBUG_LOGS = false;
 const resolveAudioUrl = AudioUrlUtils.resolveAudioUrl;
 const formatTime = PlaybackUtils.formatTime;
 

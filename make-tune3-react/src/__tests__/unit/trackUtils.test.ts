@@ -17,7 +17,7 @@ describe('TrackUtils', () => {
       expect(track.category).toBe('submission');
       expect(track.collaborationId).toBe('collab-1');
       expect(track.duration).toBe(0);
-      expect(track.approved).toBe(true);
+      expect(track.approved).toBe(false);
     });
 
     it('should create a backing track', () => {
@@ -131,7 +131,7 @@ describe('TrackUtils', () => {
 
     it('should split tracks into favorites and regular', () => {
       const favoriteFilePaths = ['path/to/track1.mp3', 'path/to/track3.mp3'];
-      
+
       const result = TrackUtils.filterByFavorites(mockTracks, favoriteFilePaths);
 
       expect(result.favorites).toHaveLength(2);
@@ -150,7 +150,7 @@ describe('TrackUtils', () => {
 
     it('should return all tracks as favorites when all are favorited', () => {
       const favoriteFilePaths = mockTracks.map(t => t.filePath);
-      
+
       const result = TrackUtils.filterByFavorites(mockTracks, favoriteFilePaths);
 
       expect(result.favorites).toHaveLength(3);

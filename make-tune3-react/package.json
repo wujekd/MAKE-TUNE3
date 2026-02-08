@@ -13,6 +13,7 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "emulators": "cd .. && firebase emulators:start --only firestore,storage",
     "emulators:stop": "lsof -ti:8080,9199,4000,4400,4500 | xargs kill -9 2>/dev/null || true",
     "emulators:restart": "npm run emulators:stop && sleep 2 && npm run emulators",

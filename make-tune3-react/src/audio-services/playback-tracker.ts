@@ -1,5 +1,5 @@
 export class PlaybackTracker {
-    private static readonly DEBUG = true;
+    private static readonly DEBUG = false;
     
     private currentTrack: string | null = null;
     private startTime: number = 0;

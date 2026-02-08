@@ -4,8 +4,6 @@ import { getDownloadURL, ref } from 'firebase/storage';
 
 export function normalizeAudioPath(path?: string | null): string | null {
   if (!path) return null;
-  if (path.startsWith('/test-audio/')) return path;
-  if (!path.startsWith('collabs/')) return `/test-audio/${path}`;
   return path;
 }
 

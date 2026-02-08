@@ -4,14 +4,14 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { DownloadBacking } from '../../components/DownloadBacking';
 
 const hoistedMocks = vi.hoisted(() => ({
-  markBackingDownloaded: vi.fn(),
+  markResourceDownloaded: vi.fn(),
   getBlobMock: vi.fn(),
   refMock: vi.fn()
 }));
 
 vi.mock('../../services', () => ({
   UserService: {
-    markBackingDownloaded: hoistedMocks.markBackingDownloaded
+    markResourceDownloaded: hoistedMocks.markResourceDownloaded
   }
 }));
 
@@ -23,7 +23,7 @@ vi.mock('firebase/storage', () => ({
   getBlob: hoistedMocks.getBlobMock
 }));
 
-const { markBackingDownloaded, getBlobMock, refMock } = hoistedMocks;
+const { markResourceDownloaded, getBlobMock, refMock } = hoistedMocks;
 
 const originalCreateObjectURL = global.URL.createObjectURL;
 const originalRevokeObjectURL = global.URL.revokeObjectURL;
@@ -31,12 +31,12 @@ const originalAnchorClick = HTMLAnchorElement.prototype.click;
 
 describe('DownloadBacking', () => {
   beforeEach(() => {
-    markBackingDownloaded.mockReset();
+    markResourceDownloaded.mockReset();
     getBlobMock.mockReset();
     refMock.mockReset();
 
     getBlobMock.mockResolvedValue(new Blob(['test'], { type: 'audio/mpeg' }));
-    markBackingDownloaded.mockResolvedValue(undefined);
+    markResourceDownloaded.mockResolvedValue(undefined);
 
     (global.URL as any).createObjectURL = vi.fn(() => 'blob:test');
     (global.URL as any).revokeObjectURL = vi.fn();
@@ -66,9 +66,10 @@ describe('DownloadBacking', () => {
     await waitFor(() => {
       expect(getBlobMock).toHaveBeenCalledTimes(1);
       expect(refMock).toHaveBeenCalledWith('collabs/collab-1/backing.mp3');
-      expect(markBackingDownloaded).toHaveBeenCalledWith(
+      expect(markResourceDownloaded).toHaveBeenCalledWith(
         'user-1',
         'collab-1',
+        'backing',
         'collabs/collab-1/backing.mp3'
       );
     });

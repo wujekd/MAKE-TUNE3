@@ -40,10 +40,10 @@ describe('AudioUrlUtils', () => {
       expect(result).toBe(path);
     });
 
-    it('should prefix non-collabs paths with /test-audio/', async () => {
+    it('should return non-collabs paths as-is', async () => {
       const path = 'some-file.mp3';
       const result = await AudioUrlUtils.resolveAudioUrl(path);
-      expect(result).toBe('/test-audio/some-file.mp3');
+      expect(result).toBe('some-file.mp3');
     });
 
     it('should fetch and cache Firebase Storage URLs', async () => {
@@ -115,4 +115,3 @@ describe('AudioUrlUtils', () => {
     });
   });
 });
-

@@ -3,7 +3,7 @@ import type { User } from '../types/auth';
 import type { AudioState } from '../types';
 
 // debug flag for console logs
-const DEBUG_LOGS = true;
+const DEBUG_LOGS = false;
 import type {
   Project,
   Collaboration,

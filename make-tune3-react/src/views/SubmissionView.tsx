@@ -54,8 +54,7 @@ export function SubmissionView() {
       const path = currentCollaboration?.backingTrackPath || '';
       if (!path) { if (!cancelled) setBackingUrl(''); return; }
       try {
-        if (path.startsWith('/test-audio/')) { if (!cancelled) setBackingUrl(path); return; }
-        if (!path.startsWith('collabs/')) { if (!cancelled) setBackingUrl(`/test-audio/${path}`); return; }
+        if (!path.startsWith('collabs/')) { if (!cancelled) setBackingUrl(path); return; }
         const url = await getDownloadURL(ref(storage, path));
         if (!cancelled) setBackingUrl(url);
       } catch (e) {

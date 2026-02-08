@@ -1115,6 +1115,7 @@ export const getMySubmissionCollabs = onCall(async (request) => {
  * Only approved submissions are returned to regular users.
  */
 export const getCollaborationData = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
   const collaborationIdRaw = String(request.data?.collaborationId || "").trim();
   if (!collaborationIdRaw) {
     throw new HttpsError("invalid-argument", "collaborationId required");
@@ -1127,6 +1128,30 @@ export const getCollaborationData = onCall(async (request) => {
     return { collaboration: null };
   }
   const collabData = collabSnap.data() as any;
+  const status = String(collabData.status || "");
+  if (status === "unpublished") {
+    if (!uid) {
+      return { collaboration: null };
+    }
+    const projectId = String(collabData.projectId || "");
+    if (projectId) {
+      const projectSnap = await db.collection("projects").doc(projectId).get();
+      const projectData = projectSnap.exists ? (projectSnap.data() as any) : null;
+      if (!projectData || projectData.ownerId !== uid) {
+        const adminSnap = await db.collection("users").doc(uid).get();
+        const adminData = adminSnap.exists ? adminSnap.data() : null;
+        if (!adminData?.isAdmin) {
+          return { collaboration: null };
+        }
+      }
+    } else {
+      const adminSnap = await db.collection("users").doc(uid).get();
+      const adminData = adminSnap.exists ? adminSnap.data() : null;
+      if (!adminData?.isAdmin) {
+        return { collaboration: null };
+      }
+    }
+  }
   const settings = await getSystemSettings();
   const effectiveLimit = getEffectiveSubmissionLimit(collabData, settings);
   const submissionsUsedCount = toNumber(collabData.submissionsCount, 0)

@@ -83,7 +83,9 @@ service cloud.firestore {
     }
 
     match /collaborations/{collabId} {
-      allow read: if true;
+      allow read: if (resource.data.status is string && resource.data.status != 'unpublished')
+        || isCollabOwner(collabId)
+        || isAdmin();
 
       allow create: if isSignedIn()
         && exists(/databases/$(database)/documents/projects/$(request.resource.data.projectId))

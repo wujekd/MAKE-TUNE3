@@ -5,7 +5,7 @@ import type { User } from '../types/auth';
 import { auth } from '../services/firebase';
 import { AuthService } from '../services/authService';
 
-const DEBUG_LOGS = true;
+const DEBUG_LOGS = false;
 
 interface AuthState {
   user: User | null;
@@ -107,4 +107,3 @@ export const useAuthStore = create<AuthState>((set) => ({
     return unsubscribe;
   }
 }));
-
