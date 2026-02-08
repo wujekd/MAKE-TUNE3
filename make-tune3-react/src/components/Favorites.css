@@ -1,21 +1,45 @@
 /* Favorites section */
 .favorites-section {
-  background: linear-gradient(to right, var(--primary1-500), var(--primary1-700));
   color: var(--white);
-  padding: 0.2rem 1rem;
+  padding: 0.5rem 2rem;
   display: flex;
   flex-direction: column;
-  height: 230px;
+  height: 180px;
   overflow: hidden;
+  position: relative;
+  border-radius: 12px;
+  margin: 0 8px;
+  z-index: 1;
+}
+
+/* Background with 4-sided fade */
+.favorites-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary1-500), var(--primary1-700));
+
+  /* Mask to fade edges */
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, black 5%, black 95%, transparent),
+    linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, black 5%, black 95%, transparent),
+    linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+  mask-composite: intersect;
 }
 
 .favorites-container {
-  margin-top: -10px;
   display: flex;
+  align-items: center;
+  flex: 1;
   overflow-x: auto;
   overflow-y: hidden;
   white-space: nowrap;
-  padding: 10px 0;
+  padding: 0;
   scrollbar-width: thin;
   -ms-overflow-style: none;
   flex-wrap: nowrap;
@@ -104,17 +128,28 @@
 
 .no-favorites {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0.5rem;
   font-style: italic;
   color: var(--bone);
-  opacity: 0.7;
+  opacity: 0.6;
+  flex: 1;
+  font-size: 0.8rem;
+  text-align: center;
 }
 
 .favorites-header {
+  position: absolute;
+  top: 2px;
+  left: 36px;
   display: flex;
   align-items: center;
   gap: 2rem;
+  z-index: 2;
+  pointer-events: none;
+  /* Let clicks pass through to items if needed */
 }
 
 .vote-warning {
@@ -132,8 +167,27 @@
 }
 
 .favorite-placeholder {
-  background: var(--primary1-900);
-  border-radius: 6px;
+  /* Match the submission-container styling */
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.03) 0%,
+      rgba(255, 255, 255, 0.01) 50%,
+      rgba(0, 0, 0, 0.03) 100%);
+  border-radius: 12px;
+  border: 1px dashed rgba(48, 112, 113, 0.4);
+  width: 100px;
+  height: 100px;
+  margin: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+/* When placeholder has a submission item inside, remove duplicate sizing */
+.favorite-placeholder .submission-container {
+  margin: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .remove-button {
@@ -158,4 +212,3 @@
   background: rgba(255, 0, 0, 0.9);
   transform: scale(1.1);
 }
-

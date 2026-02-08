@@ -1,39 +1,61 @@
-/* Submission item */
+/* Submission item - Modern glass card matching dashboard/timeline design */
 .submission-container {
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: space-around;
-  background-color: var(--primary1-700);
-  border-radius: 1rem;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.06) 0%,
+      rgba(255, 255, 255, 0.02) 50%,
+      rgba(0, 0, 0, 0.05) 100%);
+  border-radius: 12px;
   margin: 0.5rem;
-  padding: 0.5rem;
-  width: 160px;
+  padding: 0.6rem;
+  width: 100px;
   height: 100px;
   flex: 0 0 auto;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  transition: transform 0.2s ease;
+  border: 1px solid rgba(48, 112, 113, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+/* Inner glow effect */
+.submission-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.04) 0%,
+      transparent 40%);
+  pointer-events: none;
 }
 
 .submission-container:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  border-color: rgba(48, 112, 113, 0.5);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
 .submission-container.voted-for {
   border: 2px solid var(--contrast-600);
-  box-shadow: 0 0 10px var(--contrast-700);
+  box-shadow: 0 0 12px rgba(213, 95, 33, 0.25);
 }
 
 .submission-container.marking {
   border-color: #facc15;
-  box-shadow: 0 0 10px #facc15;
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.3);
   animation: pulse 2s infinite;
 }
 
 .submission-container.currently-playing {
-  background-color: var(--primary1-800);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(135deg,
+      rgba(48, 112, 113, 0.15) 0%,
+      rgba(255, 255, 255, 0.03) 100%);
+  border-color: rgba(48, 112, 113, 0.6);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .submission-container.submitting {
@@ -42,37 +64,55 @@
 }
 
 .submission-container.moderation-approved {
-  background-color: rgba(34, 197, 94, 0.25);
-  border: 2px solid rgba(34, 197, 94, 0.6);
+  background: linear-gradient(135deg,
+      rgba(34, 197, 94, 0.15) 0%,
+      rgba(34, 197, 94, 0.05) 100%);
+  border: 2px solid rgba(34, 197, 94, 0.5);
 }
 
 .submission-container.moderation-rejected {
-  background-color: rgba(239, 68, 68, 0.2);
-  border: 2px solid rgba(239, 68, 68, 0.5);
+  background: linear-gradient(135deg,
+      rgba(239, 68, 68, 0.15) 0%,
+      rgba(239, 68, 68, 0.05) 100%);
+  border: 2px solid rgba(239, 68, 68, 0.4);
 }
 
 .submission-container.moderation-pending {
-  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
 }
 
 .play-button {
   position: relative;
-  background-color: var(--secondary);
-  border: none;
-  border-radius: 0.75rem;
-  height: 45px;
+  background: linear-gradient(180deg,
+      rgba(48, 112, 113, 0.4) 0%,
+      rgba(48, 112, 113, 0.2) 100%);
+  border: 1px solid rgba(48, 112, 113, 0.5);
+  border-radius: 10px;
+  height: 50px;
   overflow: hidden;
   cursor: pointer;
-  margin: 0 0.25rem;
+  margin: 0;
+  transition: all 0.15s ease;
+}
+
+.play-button:hover {
+  background: linear-gradient(180deg,
+      rgba(48, 112, 113, 0.5) 0%,
+      rgba(48, 112, 113, 0.3) 100%);
+  border-color: rgba(48, 112, 113, 0.7);
+  transform: scale(1.02);
 }
 
 .progress-bar {
   position: absolute;
   height: 100%;
-  background-color: var(--primary);
+  background: linear-gradient(90deg,
+      rgba(213, 95, 33, 0.6) 0%,
+      rgba(213, 95, 33, 0.4) 100%);
   width: 0%;
   top: 0;
   left: 0;
+  border-radius: inherit;
   transition: none;
   will-change: width;
 }
@@ -84,45 +124,59 @@
   align-items: center;
   justify-content: center;
   color: var(--white);
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   z-index: 2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .vote-button {
-  background-color: var(--contrast-600);
+  background: linear-gradient(135deg,
+      rgba(213, 95, 33, 0.3) 0%,
+      rgba(213, 95, 33, 0.15) 100%);
   color: var(--white);
-  border: none;
-  border-radius: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  margin-top: 0.5rem;
+  border: 1px solid rgba(213, 95, 33, 0.5);
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  margin-top: auto;
   cursor: pointer;
-  font-size: 0.875rem;
-  transition: all 0.2s ease;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
 }
 
 .vote-button:hover:not(:disabled) {
-  background-color: var(--contrast-700);
+  background: linear-gradient(135deg,
+      rgba(213, 95, 33, 0.5) 0%,
+      rgba(213, 95, 33, 0.3) 100%);
+  border-color: rgba(213, 95, 33, 0.7);
+  transform: translateY(-1px);
 }
 
 .vote-button:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
 }
 
 .remove-button {
-  background-color: var(--primary1-700);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--white);
-  border: none;
-  border-radius: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  margin-top: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  margin-top: auto;
   cursor: pointer;
-  font-size: 0.875rem;
-  transition: all 0.2s ease;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  text-transform: lowercase;
 }
 
 .remove-button:hover:not(:disabled) {
-  background-color: var(--primary1-600);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .remove-button:disabled {
@@ -131,23 +185,32 @@
 }
 
 .favorite-button {
-  background-color: transparent;
+  background: rgba(255, 255, 255, 0.05);
   color: var(--white);
-  border: 1px solid var(--contrast-600);
-  border-radius: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  margin-top: 0.5rem;
+  border: 1px solid rgba(48, 112, 113, 0.4);
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  margin-top: auto;
   cursor: pointer;
-  font-size: 0.875rem;
-  transition: all 0.2s ease;
+  font-size: 0.65rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .favorite-button:hover:not(:disabled) {
-  background-color: var(--contrast-600);
+  background: rgba(48, 112, 113, 0.2);
+  border-color: rgba(48, 112, 113, 0.6);
+  transform: translateY(-1px);
 }
 
 .favorite-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  border-color: var(--gray-500);
-} 
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: none;
+}

@@ -40,13 +40,13 @@ export default function SubmissionItem({
   }
   const { engine, state } = audioContext;
   const [pendingPlay, setPendingPlay] = useState(false);
-  
-  const displayProgress = isCurrentTrack && state.player1.duration > 0 
-    ? (state.player1.currentTime / state.player1.duration) * 100 
+
+  const displayProgress = isCurrentTrack && state.player1.duration > 0
+    ? (state.player1.currentTime / state.player1.duration) * 100
     : 0;
-  
+
   const handlePlayClick = () => {
-    if (isPlaying && isCurrentTrack){
+    if (isPlaying && isCurrentTrack) {
       engine.pause();
       setPendingPlay(false);
     } else {
@@ -60,7 +60,7 @@ export default function SubmissionItem({
       setPendingPlay(false);
     }
   }, [isCurrentTrack, isPlaying]);
-  
+
   const handleAddToFavorites = () => {
     onAddToFavorites(track.filePath);
   };
@@ -74,11 +74,8 @@ export default function SubmissionItem({
 
   return (
     <div className={containerClass}>
-      <div style={{ fontSize: '10px', color: 'white', marginBottom: '4px' }}>
-        Index: {index} | Track: {track.title}
-      </div>
-      <button 
-        className="play-button" 
+      <button
+        className="play-button"
         onClick={handlePlayClick}
       >
         <div className="progress-bar" style={{ width: `${displayProgress}%` }}></div>
@@ -86,9 +83,9 @@ export default function SubmissionItem({
           {pendingPlay ? <LoadingSpinner size={14} /> : (isCurrentTrack && isPlaying ? '❚❚' : '▶')}
         </span>
       </button>
-      
+
       {favorite ? (
-        <button 
+        <button
           className="vote-button"
           onClick={() => voteFor(track.filePath)}
           disabled={isFinal}
@@ -96,7 +93,7 @@ export default function SubmissionItem({
           {isFinal ? '✓ Voted' : 'Vote'}
         </button>
       ) : (
-        <button 
+        <button
           className="favorite-button"
           onClick={handleAddToFavorites}
           disabled={!listened || !user}

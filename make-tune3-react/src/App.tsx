@@ -83,8 +83,8 @@ function App() {
           path: 'collab/:collaborationId',
           element: <VotingView key={user?.uid || 'anonymous'} />,
           handle: {
-            title: 'Collaboration',
-            breadcrumb: 'Collaboration',
+            title: 'Voting',
+            breadcrumb: 'Voting',
             actions: ({ navigate, params, collab }: any) => ([
               { key: 'back', label: 'Back', onClick: () => navigate('/collabs') },
               collab?.status === 'submission' ? { key: 'to-submit', label: 'Submit', onClick: () => navigate(`/collab/${params.collaborationId}/submit`) } : null

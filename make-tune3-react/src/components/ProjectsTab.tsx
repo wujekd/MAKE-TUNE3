@@ -10,6 +10,7 @@ import { UserActivityListItem } from './UserActivityListItem';
 import { computeStageInfo } from '../utils/stageUtils';
 import { canCreateProject, getProjectAllowance } from '../utils/permissions';
 import { useUIStore } from '../stores/useUIStore';
+import { useAppStore } from '../stores/appStore';
 import type { User } from '../types/auth';
 import './ProjectHistory.css';
 import './UserActivityStyles.css';
@@ -114,6 +115,16 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
         tags: normalized.display,
         tagsKey: normalized.keys
       });
+      // Update the user's projectCount in the auth store to reflect the new project
+      useAppStore.setState(state => ({
+        auth: {
+          ...state.auth,
+          user: state.auth.user ? {
+            ...state.auth.user,
+            projectCount: (state.auth.user.projectCount ?? 0) + 1
+          } : null
+        }
+      }));
       setShowForm(false);
       setName('');
       setDescription('');

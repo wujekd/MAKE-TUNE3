@@ -4,15 +4,16 @@ import type { Track } from '../types/collaboration';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import './Favorites.css';
 
-const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay, voteFor, finalVote, listenedRatio }: 
-                                  { onRemoveFromFavorites: (trackId: string) => void,
-                    favorites: Track[],
-                  onAddToFavorites: (trackId: string) => void,
-                  onPlay: (trackId: string, index: number, favorite: boolean) => void,
-                  voteFor: (trackId: string) => void,
-                  finalVote: string | null,
-                  listenedRatio: number
-                }) => {
+const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay, voteFor, finalVote, listenedRatio }:
+  {
+    onRemoveFromFavorites: (trackId: string) => void,
+    favorites: Track[],
+    onAddToFavorites: (trackId: string) => void,
+    onPlay: (trackId: string, index: number, favorite: boolean) => void,
+    voteFor: (trackId: string) => void,
+    finalVote: string | null,
+    listenedRatio: number
+  }) => {
   // use favorites passed as prop
 
   // const votedFor = null;
@@ -38,28 +39,28 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay,
   // reference to favorites container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-      // add wheel event listener for horizontal scrolling
+  // add wheel event listener for horizontal scrolling
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
     if (scrollContainer) {
       const handleWheel = (event: WheelEvent) => {
         // prevent default vertical scroll
         event.preventDefault();
-        
-                  // scroll horizontally instead of vertically
+
+        // scroll horizontally instead of vertically
         scrollContainer.scrollLeft += event.deltaY;
       };
-      
-              // add event listener
+
+      // add event listener
       scrollContainer.addEventListener('wheel', handleWheel, { passive: false });
-      
-              // clean up event listener on unmount
+
+      // clean up event listener on unmount
       return () => {
         scrollContainer.removeEventListener('wheel', handleWheel);
       };
     }
   }, []);
-  
+
   const finalIndex = finalVote ? favorites.findIndex(t => t.filePath === finalVote) : -1;
   const hasFinal = finalIndex >= 0;
 
@@ -71,9 +72,9 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay,
           <span className="vote-warning">Please select your final vote!</span>
         )}
       </div>
-      
-      <div 
-        className="favorites-container" 
+
+      <div
+        className="favorites-container"
         ref={scrollContainerRef}
       >
         {/* Final vote placeholder slot at the beginning */}
@@ -98,7 +99,16 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay,
               isFinal={true}
             />
           ) : (
-            <div style={{ color: 'var(--white)', opacity: 0.7, padding: 8 }}>final vote placeholder</div>
+            <div style={{
+              color: 'var(--white)',
+              opacity: 0.5,
+              padding: 8,
+              fontSize: '0.65rem',
+              textAlign: 'center',
+              lineHeight: 1.3
+            }}>
+              final<br />vote<br />placeholder
+            </div>
           )}
         </div>
 
@@ -114,7 +124,7 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay,
                 >
                   ×
                 </button>
-                <SubmissionItem 
+                <SubmissionItem
                   key={track.id}
                   track={track}
                   index={index}
