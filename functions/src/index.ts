@@ -517,6 +517,9 @@ export const reserveSubmissionSlot = onCall(async (request) => {
     if (submissionCloseMillis !== null && submissionCloseMillis <= now.toMillis()) {
       throw new HttpsError("failed-precondition", "submission window closed");
     }
+    const expiryMillis = submissionCloseMillis !== null
+      ? Math.min(now.toMillis() + SUBMISSION_RESERVATION_MINUTES * 60 * 1000, submissionCloseMillis)
+      : now.toMillis() + SUBMISSION_RESERVATION_MINUTES * 60 * 1000;
 
     const participantIds: string[] = Array.isArray(collabData.participantIds)
       ? collabData.participantIds.filter((pid: unknown) => typeof pid === "string")
@@ -538,13 +541,12 @@ export const reserveSubmissionSlot = onCall(async (request) => {
     }
 
     if (tokenSnap.exists && tokenData && !tokenUsed && !tokenExpired) {
-      const refreshedExpiry = Timestamp.fromMillis(
-        now.toMillis() + SUBMISSION_RESERVATION_MINUTES * 60 * 1000
-      );
+      const refreshedExpiry = Timestamp.fromMillis(expiryMillis);
       tx.update(tokenRef, {
         fileExt,
         settings: normalizedSettings,
         expiresAt: refreshedExpiry,
+        submissionCloseAt: collabData.submissionCloseAt || null,
         updatedAt: now
       });
       return {
@@ -561,9 +563,7 @@ export const reserveSubmissionSlot = onCall(async (request) => {
     }
 
     const submissionId = db.collection("submissionUsers").doc().id;
-    const expiresAt = Timestamp.fromMillis(
-      now.toMillis() + SUBMISSION_RESERVATION_MINUTES * 60 * 1000
-    );
+    const expiresAt = Timestamp.fromMillis(expiryMillis);
 
     tx.set(tokenRef, {
       collabId: collaborationIdRaw,
@@ -573,6 +573,7 @@ export const reserveSubmissionSlot = onCall(async (request) => {
       settings: normalizedSettings,
       createdAt: now,
       expiresAt,
+      submissionCloseAt: collabData.submissionCloseAt || null,
       used: false
     });
 
@@ -591,39 +592,72 @@ export const reserveSubmissionSlot = onCall(async (request) => {
 
 export const cleanupSubmissionReservations = onSchedule("every 5 minutes", async () => {
   const now = Timestamp.now();
+  const settings = await getSystemSettings();
   const expiredSnap = await db
     .collection(SUBMISSION_TOKEN_COLLECTION)
     .where("expiresAt", "<=", now)
     .limit(200)
     .get();
-  if (expiredSnap.empty) return;
+  const activeSnap = await db
+    .collection(SUBMISSION_TOKEN_COLLECTION)
+    .where("used", "==", false)
+    .limit(200)
+    .get();
 
-  for (const docSnap of expiredSnap.docs) {
+  const candidates = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
+  expiredSnap.docs.forEach((doc) => candidates.set(doc.id, doc));
+  activeSnap.docs.forEach((doc) => candidates.set(doc.id, doc));
+  if (candidates.size === 0) return;
+
+  for (const docSnap of candidates.values()) {
     await db.runTransaction(async (tx) => {
       const tokenRef = docSnap.ref;
       const tokenSnap = await tx.get(tokenRef);
       if (!tokenSnap.exists) return;
       const tokenData = tokenSnap.data() as any;
       if (tokenData.used === true) return;
-      if (!tokenData.expiresAt || tokenData.expiresAt.toMillis() > now.toMillis()) {
-        return;
-      }
+
+      const tokenExpired = tokenData.expiresAt && tokenData.expiresAt.toMillis() <= now.toMillis();
       const collabId = String(tokenData.collabId || "");
-      if (!collabId) {
-        tx.delete(tokenRef);
-        return;
+
+      let collabSnap: FirebaseFirestore.DocumentSnapshot | null = null;
+      if (collabId) {
+        const collabRef = db.collection("collaborations").doc(collabId);
+        collabSnap = await tx.get(collabRef);
       }
-      const collabRef = db.collection("collaborations").doc(collabId);
-      const collabSnap = await tx.get(collabRef);
-      if (!collabSnap.exists) {
-        tx.delete(tokenRef);
-        return;
+
+      const invalidReasonParts: string[] = [];
+      if (!settings.submissionsEnabled) invalidReasonParts.push("submissions-disabled");
+      if (tokenExpired) invalidReasonParts.push("token-expired");
+      if (!collabId) invalidReasonParts.push("missing-collab");
+      if (collabId && (!collabSnap || !collabSnap.exists)) invalidReasonParts.push("collab-missing");
+      if (collabSnap && collabSnap.exists) {
+        const collabData = collabSnap.data() as any;
+        if (String(collabData.status || "") !== "submission") {
+          invalidReasonParts.push("collaboration-closed");
+        } else {
+          const submissionCloseMillis = toMillis(collabData.submissionCloseAt);
+          if (submissionCloseMillis !== null && submissionCloseMillis <= now.toMillis()) {
+            invalidReasonParts.push("submission-closed");
+          }
+        }
       }
-      const collabData = collabSnap.data() as any;
-      const reservedCount = toNumber(collabData.reservedSubmissionsCount, 0);
-      const nextReserved = reservedCount > 0 ? reservedCount - 1 : 0;
-      tx.update(collabRef, { reservedSubmissionsCount: nextReserved, updatedAt: now });
-      tx.delete(tokenRef);
+
+      if (invalidReasonParts.length === 0) return;
+
+      if (collabSnap && collabSnap.exists) {
+        const collabData = collabSnap.data() as any;
+        const reservedCount = toNumber(collabData.reservedSubmissionsCount, 0);
+        const nextReserved = reservedCount > 0 ? reservedCount - 1 : 0;
+        tx.update(collabSnap.ref, { reservedSubmissionsCount: nextReserved, updatedAt: now });
+      }
+
+      tx.update(tokenRef, {
+        used: true,
+        usedAt: now,
+        invalidatedAt: now,
+        invalidReason: invalidReasonParts.join(",")
+      });
     });
   }
 });
@@ -727,6 +761,10 @@ export const finalizeSubmissionUpload = onObjectFinalized({ region: "europe-west
   const detailRef = db.collection("collaborationDetails").doc(collabId);
   const submissionUserRef = db.collection("submissionUsers").doc(submissionId);
 
+  const settings = await getSystemSettings();
+  let shouldDeleteObject = false;
+  let deleteReason = "";
+
   await db.runTransaction(async (tx) => {
     const [tokenSnap, collabSnap, detailSnap, submissionUserSnap] = await Promise.all([
       tx.get(tokenRef),
@@ -749,15 +787,57 @@ export const finalizeSubmissionUpload = onObjectFinalized({ region: "europe-west
     }
 
     if (tokenData.used === true) return;
-    if (tokenData.collabId !== collabId) return;
-    if (tokenData.uid !== ownerUid) return;
-    if (tokenData.submissionId !== submissionId) return;
-    if (String(tokenData.fileExt || "").toLowerCase() !== ext) return;
-    if (tokenData.expiresAt && tokenData.expiresAt.toMillis() <= now.toMillis()) return;
+    const tokenExpired = tokenData.expiresAt && tokenData.expiresAt.toMillis() <= now.toMillis();
+    const tokenCollabId = String(tokenData.collabId || "");
+    const collabMismatch = tokenCollabId !== collabId;
+
+    let tokenCollabSnap = collabSnap;
+    let tokenCollabRef = collabRef;
+    if (collabMismatch && tokenCollabId) {
+      tokenCollabRef = db.collection("collaborations").doc(tokenCollabId);
+      tokenCollabSnap = await tx.get(tokenCollabRef);
+    }
+
+    const invalidReasonParts: string[] = [];
+    if (!settings.submissionsEnabled) invalidReasonParts.push("submissions-disabled");
+    if (tokenExpired) invalidReasonParts.push("token-expired");
+    if (collabMismatch) invalidReasonParts.push("token-collab-mismatch");
+    if (tokenData.uid !== ownerUid) invalidReasonParts.push("owner-mismatch");
+    if (tokenData.submissionId !== submissionId) invalidReasonParts.push("submission-mismatch");
+    if (String(tokenData.fileExt || "").toLowerCase() !== ext) invalidReasonParts.push("file-ext-mismatch");
+
+    const collabData = collabSnap.exists ? (collabSnap.data() as any) : null;
+    if (!collabSnap.exists) invalidReasonParts.push("collaboration-missing");
+    if (collabData && String(collabData.status || "") !== "submission") {
+      invalidReasonParts.push("collaboration-closed");
+    }
+    const submissionCloseMillis = collabData ? toMillis(collabData.submissionCloseAt) : null;
+    if (submissionCloseMillis !== null && submissionCloseMillis <= now.toMillis()) {
+      invalidReasonParts.push("submission-closed");
+    }
+
+    if (invalidReasonParts.length > 0) {
+      if (!tokenData.used) {
+        if (tokenCollabSnap.exists) {
+          const collabTokenData = tokenCollabSnap.data() as any;
+          const reservedCount = toNumber(collabTokenData.reservedSubmissionsCount, 0);
+          const nextReserved = reservedCount > 0 ? reservedCount - 1 : 0;
+          tx.update(tokenCollabRef, { reservedSubmissionsCount: nextReserved, updatedAt: now });
+        }
+        tx.update(tokenRef, {
+          used: true,
+          usedAt: now,
+          invalidatedAt: now,
+          invalidReason: invalidReasonParts.join(",")
+        });
+      }
+      shouldDeleteObject = true;
+      deleteReason = invalidReasonParts.join(",");
+      return;
+    }
 
     if (!collabSnap.exists) return;
 
-    const collabData = collabSnap.data() as any;
     const reservedCount = toNumber(collabData.reservedSubmissionsCount, 0);
     const nextReserved = reservedCount > 0 ? reservedCount - 1 : 0;
 
@@ -811,6 +891,16 @@ export const finalizeSubmissionUpload = onObjectFinalized({ region: "europe-west
 
     tx.update(tokenRef, { used: true, usedAt: now });
   });
+
+  if (shouldDeleteObject) {
+    try {
+      const bucket = storageAdmin.bucket(object.bucket);
+      await bucket.file(filePath).delete({ ignoreNotFound: true });
+      console.log(`[finalizeSubmissionUpload] deleted invalid upload ${filePath} reason=${deleteReason}`);
+    } catch (err) {
+      console.error(`[finalizeSubmissionUpload] failed to delete invalid upload ${filePath}`, err);
+    }
+  }
 });
 
 export const attachSubmissionMultitracks = onObjectFinalized({ region: "europe-west1" }, async (event) => {

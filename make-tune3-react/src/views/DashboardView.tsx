@@ -91,12 +91,20 @@ export function DashboardView() {
   const filteredCount = filteredCollabs.length;
   const pendingModeration = needsMod.length;
 
+  // Compute additional counters
+  const totalSubmissions = allCollabs.reduce((sum, c) => sum + (c.submissionsCount || 0), 0);
+  const totalVotes = allCollabs.reduce((sum, c) => sum + (c.votesCount || 0), 0);
+  const activeCollabs = allCollabs.filter(c => c.status === 'submission' || c.status === 'voting').length;
+
   return (
     <div className={styles.container}>
       <DashboardHeader
         totalCollabs={totalCollabs}
         filteredCount={filteredCount}
         pendingModeration={pendingModeration}
+        totalSubmissions={totalSubmissions}
+        totalVotes={totalVotes}
+        activeCollabs={activeCollabs}
       />
 
       <div className={styles.content}>

@@ -116,6 +116,25 @@ export function AppShell() {
           </div>
         )}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', position: 'relative', flex: 1, justifyContent: 'flex-end' }}>
+          {currentUser?.isAdmin && (
+            <button
+              onClick={() => navigate('/admin/feedback')}
+              style={{
+                padding: '4px 10px',
+                background: 'rgba(239, 123, 58, 0.2)',
+                border: '1px solid var(--contrast-600)',
+                borderRadius: 4,
+                color: 'var(--contrast-500)',
+                fontSize: 11,
+                fontWeight: 500,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                cursor: 'pointer'
+              }}
+            >
+              Admin
+            </button>
+          )}
           {currentUser && (
             <div style={{ position: 'relative' }}>
               <button

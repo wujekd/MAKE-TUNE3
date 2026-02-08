@@ -7,9 +7,19 @@ interface DashboardHeaderProps {
   totalCollabs: number;
   filteredCount: number;
   pendingModeration: number;
+  totalSubmissions: number;
+  totalVotes: number;
+  activeCollabs: number;
 }
 
-export function DashboardHeader({ totalCollabs, filteredCount, pendingModeration }: DashboardHeaderProps) {
+export function DashboardHeader({
+  totalCollabs,
+  filteredCount,
+  pendingModeration,
+  totalSubmissions,
+  totalVotes,
+  activeCollabs
+}: DashboardHeaderProps) {
   const navigate = useNavigate();
   const { user } = useAppStore(state => state.auth);
   const { openFeedbackModal } = useUIStore();
@@ -36,18 +46,13 @@ export function DashboardHeader({ totalCollabs, filteredCount, pendingModeration
           </button>
         </div>
         <div className={styles.heroActions}>
-          {user?.isAdmin && (
-            <button
-              className={styles.adminButton}
-              onClick={() => navigate('/admin/feedback')}
-            >
-              Admin Panel
-            </button>
-          )}
-          <div className={styles.stats}>
-            <StatCard value={totalCollabs} label="total collabs" />
-            <StatCard value={filteredCount} label="visible" />
-            <StatCard value={pendingModeration} label="pending mod" />
+          <div className={styles.counterGrid}>
+            <CounterCard value={totalCollabs} label="collabs" />
+            <CounterCard value={activeCollabs} label="active" />
+            <CounterCard value={filteredCount} label="visible" />
+            <CounterCard value={totalSubmissions} label="submissions" />
+            <CounterCard value={totalVotes} label="votes" />
+            <CounterCard value={pendingModeration} label="pending" highlight={pendingModeration > 0} />
           </div>
         </div>
       </div>
@@ -55,11 +60,21 @@ export function DashboardHeader({ totalCollabs, filteredCount, pendingModeration
   );
 }
 
-function StatCard({ value, label }: { value: number; label: string }) {
+interface CounterCardProps {
+  value: number;
+  label: string;
+  highlight?: boolean;
+}
+
+function CounterCard({ value, label, highlight }: CounterCardProps) {
+  const cardClass = highlight
+    ? `${styles.counterCard} ${styles['counterCard--highlight']}`
+    : styles.counterCard;
+
   return (
-    <div className={styles.statCard}>
-      <div className={styles.statValue}>{value}</div>
-      <div className={styles.statLabel}>{label}</div>
+    <div className={cardClass}>
+      <div className={styles.counterValue}>{value}</div>
+      <div className={styles.counterLabel}>{label}</div>
     </div>
   );
 }
