@@ -163,7 +163,7 @@ export function AppShell() {
                   <button
                     onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--primary1-800)'; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
-                    onClick={() => { setShowUserMenu(false); }}
+                    onClick={() => { setShowUserMenu(false); navigate('/account'); }}
                     style={{
                       display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px',
                       background: 'transparent', color: 'var(--white)', border: 'none', fontSize: 12,
@@ -175,7 +175,7 @@ export function AppShell() {
                   <button
                     onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--primary1-800)'; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
-                    onClick={() => { setShowUserMenu(false); }}
+                    onClick={() => { setShowUserMenu(false); navigate('/account'); }}
                     style={{
                       display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px',
                       background: 'transparent', color: 'var(--white)', border: 'none', fontSize: 12,
@@ -229,4 +229,3 @@ export function AppShell() {
     </div>
   );
 }
-

@@ -216,9 +216,7 @@ export function Mixer({ state }: MixerProps) {
             />
           </div>
 
-          <div style={{ flex: 1, minHeight: 0 }} />
-
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, marginTop: 'auto' }}>
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
             <div
               style={{
                 position: 'relative',

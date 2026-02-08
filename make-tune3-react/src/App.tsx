@@ -11,6 +11,7 @@ import { AdminResolvedReportsView } from './views/AdminResolvedReportsView'
 import { AdminFeedbackView } from './views/AdminFeedbackView'
 import { AdminUsersView } from './views/AdminUsersView'
 import { AdminSettingsView } from './views/AdminSettingsView'
+import { MyAccountView } from './views/MyAccountView'
 import { useAppStore } from './stores/appStore'
 import { useUIStore } from './stores'
 import { ModerationView } from './views/ModerationView'
@@ -192,6 +193,17 @@ function App() {
           handle: {
             title: 'Access Denied',
             breadcrumb: 'Access Denied'
+          }
+        },
+        {
+          path: 'account',
+          element: <MyAccountView />,
+          handle: {
+            title: 'My Account',
+            breadcrumb: 'My Account',
+            actions: ({ navigate }: any) => ([
+              { key: 'back', label: 'Back', onClick: () => navigate('/collabs') }
+            ])
           }
         },
         { path: '*', element: <Navigate to="/collabs" replace /> }
