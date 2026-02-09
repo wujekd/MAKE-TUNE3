@@ -99,6 +99,13 @@ export function VotingView() {
   }, [engine]);
 
   useEffect(() => {
+    if (!engine) return;
+    return () => {
+      engine.clearPlaybackSources();
+    };
+  }, [engine]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 100);

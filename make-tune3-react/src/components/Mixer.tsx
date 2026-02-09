@@ -229,7 +229,7 @@ export function Mixer({ state }: MixerProps) {
                 justifyContent: 'center',
                 flexShrink: 0,
                 width: '100%',
-                height: isSubmissionCompact ? 96 : 184
+                minHeight: isSubmissionCompact ? 96 : 184
               }}
             >
               {isSubmissionCompact ? (

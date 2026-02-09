@@ -187,6 +187,13 @@ export function SubmissionView() {
     audioContext?.engine?.clearSubmissionSource();
   }, [status, audioContext?.engine]);
 
+  useEffect(() => {
+    if (!audioContext?.engine) return;
+    return () => {
+      audioContext.engine.clearPlaybackSources();
+    };
+  }, [audioContext?.engine]);
+
   if (!audioContext) return <div>audio engine not available</div>;
 
   const isCollabReady = Boolean(collaborationId && currentCollaboration?.id === collaborationId);

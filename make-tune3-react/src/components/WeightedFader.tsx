@@ -45,6 +45,9 @@ export function WeightedFader({
     const [isDragging, setIsDragging] = useState(false);
     const startYRef = useRef<number>(0);
     const startValueRef = useRef<number>(0);
+    const lastYRef = useRef<number>(0);
+    const lastShiftRef = useRef<boolean>(false);
+    const currentLinearRef = useRef<number>(0);
     const sliderRef = useRef<HTMLInputElement>(null);
 
     // Convert actual volume to slider position (0-1 linear range)
@@ -67,38 +70,79 @@ export function WeightedFader({
         onChange(actualValue);
     };
 
-    // Handle mouse down - start drag tracking
+    // Handle mouse down - detect if clicking thumb or track
     const handleMouseDown = (e: React.MouseEvent) => {
         if (disabled) return;
-        setIsDragging(true);
-        startYRef.current = e.clientY;
-        startValueRef.current = sliderPosition;
-        // Prevent text selection during drag
-        document.body.style.userSelect = 'none';
-        document.body.style.cursor = 'ns-resize';
+
+        const slider = sliderRef.current;
+        if (!slider) return;
+
+        const rect = slider.getBoundingClientRect();
+        const sliderHeight = rect.height;
+
+        // For vertical slider: calculate click position as 0-1 (bottom=0, top=1)
+        const clickY = e.clientY - rect.top;
+        const clickPosition = 1 - (clickY / sliderHeight);
+
+        // Calculate where the thumb currently is (0-1)
+        const thumbPosition = sliderPosition;
+
+        // Thumb hit zone - about 15% of slider height
+        const thumbHitZone = 0.15;
+        const isClickOnThumb = Math.abs(clickPosition - thumbPosition) < thumbHitZone;
+
+        if (isClickOnThumb) {
+            // Clicked on thumb - enable drag mode
+            setIsDragging(true);
+            startYRef.current = e.clientY;
+            lastYRef.current = e.clientY;
+            startValueRef.current = sliderPosition;
+            currentLinearRef.current = sliderPosition;
+            lastShiftRef.current = e.shiftKey;
+            // Prevent text selection during drag
+            document.body.style.userSelect = 'none';
+            document.body.style.cursor = 'ns-resize';
+            // Prevent the native slider from also responding
+            e.preventDefault();
+        }
+        // If not on thumb, let the native slider handle click-to-position via handleChange
     };
 
     // Handle mouse move during drag
     const handleMouseMove = useCallback((e: MouseEvent) => {
-        // Fixed height matching the fader container (184px in non-compact mode)
-        // offsetHeight doesn't work correctly for CSS-rotated vertical sliders
+        // Pixels for full range movement (baseline reference)
         const sliderHeight = 184;
 
-        const dy = e.clientY - startYRef.current;
-        // Without shift: 1:1 with mouse (full slider height = full range)
-        // With shift: half speed (need to move twice as far)
-        const speedMultiplier = e.shiftKey ? 0.5 : 1;
-        // Calculate delta in linear space (inverted because Y grows downward)
+        // SENSITIVITY CONTROLS - adjust these:
+        // normalSensitivity: 1.0 = match slider height, 1.5 = 50% more sensitive, 2.0 = twice as sensitive
+        // shiftSensitivity: 0.1 = 10x slower when shift held
+        const normalSensitivity = 1.2;  // ← Make slider more sensitive without shift
+        const shiftSensitivity = 0.1;   // ← Fine control with shift
+
+        // Check if shift state changed - if so, reset anchor to current position
+        if (e.shiftKey !== lastShiftRef.current) {
+            lastYRef.current = e.clientY;
+            lastShiftRef.current = e.shiftKey;
+        }
+
+        // Calculate delta from last position (incremental, not absolute)
+        const dy = e.clientY - lastYRef.current;
+        lastYRef.current = e.clientY;
+
+        // Apply appropriate sensitivity
+        const speedMultiplier = e.shiftKey ? shiftSensitivity : normalSensitivity;
+
+        // Calculate incremental delta in linear space (inverted because Y grows downward)
         const linearDelta = (-dy / sliderHeight) * speedMultiplier;
-        // Apply delta to starting position
-        let newLinear = startValueRef.current + linearDelta;
+
+        // Apply delta to current position (incremental)
+        let newLinear = currentLinearRef.current + linearDelta;
         newLinear = Math.min(1, Math.max(0, newLinear));
+        currentLinearRef.current = newLinear;
+
         // Convert through curve to actual value
         const curvedNormalized = Math.pow(newLinear, exponent);
-        let actualValue = min + curvedNormalized * (max - min);
-        // Snap to step
-        actualValue = Math.round(actualValue / step) * step;
-        actualValue = Math.min(max, Math.max(min, actualValue));
+        const actualValue = min + curvedNormalized * (max - min);
         onChange(actualValue);
     }, [exponent, min, max, step, onChange]);
 

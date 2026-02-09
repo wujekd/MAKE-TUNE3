@@ -469,6 +469,48 @@ export class AudioEngine {
     });
   }
 
+  clearPlaybackSources(): void {
+    this.player1.pause();
+    this.player2.pause();
+    try {
+      this.player1.removeAttribute('src');
+      this.player1.load();
+    } catch {
+      this.player1.src = '';
+    }
+    try {
+      this.player2.removeAttribute('src');
+      this.player2.load();
+    } catch {
+      this.player2.src = '';
+    }
+    this.state.playerController.pastStagePlayback = false;
+    this.state.playerController.playingFavourite = false;
+    this.state.playerController.currentTrackId = -1;
+    this.playbackTracker.stopTracking();
+    this.updateState({
+      player1: {
+        ...this.state.player1,
+        isPlaying: false,
+        currentTime: 0,
+        duration: 0,
+        source: null,
+        hasEnded: false,
+        error: null
+      },
+      player2: {
+        ...this.state.player2,
+        isPlaying: false,
+        currentTime: 0,
+        duration: 0,
+        source: null,
+        hasEnded: false,
+        error: null
+      },
+      playerController: { ...this.state.playerController }
+    });
+  }
+
   // preview submission with backing without altering track index or listened tracking
   async previewSubmission(submissionSrc: string, backingSrc: string): Promise<void> {
     this.initAudioContext();

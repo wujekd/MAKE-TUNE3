@@ -187,14 +187,14 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
 
         <div style={{ flex: 1, minHeight: 0 }} />
 
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, marginTop: 'auto' }}>
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, marginTop: 'auto', flex: 1 }}>
           <div
             style={{
               position: 'relative',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              flexShrink: 0,
+              flex: 1,
               width: '100%',
               minHeight: isCompactMode ? 96 : 184
             }}

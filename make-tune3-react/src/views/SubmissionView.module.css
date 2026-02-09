@@ -416,6 +416,15 @@
   padding: 8px 12px;
 }
 
+/* Remove stat sliders in header counters for submission view */
+.headerRight :global(.collab-data__stat-bar) {
+  display: none;
+}
+
+.headerRight :global(.collab-data__stat) {
+  gap: 4px;
+}
+
 /* ===== SUBMISSION FLOW BUTTONS ===== */
 .submissionPane :global(.submission-pane__button) {
   background: linear-gradient(135deg, var(--dashboard-accent) 0%, var(--contrast-600) 100%);

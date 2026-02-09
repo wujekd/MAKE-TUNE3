@@ -355,6 +355,15 @@
     padding: 8px 12px;
 }
 
+/* Remove stat sliders in header counters for voting view */
+.headerRight :global(.collab-data__stat-bar) {
+    display: none;
+}
+
+.headerRight :global(.collab-data__stat) {
+    gap: 4px;
+}
+
 /* ===== FAVORITES SECTION ===== */
 .container :global(.favorites-container) {
     background: linear-gradient(135deg, rgba(48, 112, 113, 0.1), rgba(10, 18, 19, 0.6));
