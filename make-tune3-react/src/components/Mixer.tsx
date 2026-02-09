@@ -7,6 +7,7 @@ import { AnalogVUMeter } from './AnalogVUMeter';
 import { SmallLEDMeter } from './SmallLEDMeter';
 import { SubmissionEQ } from './SubmissionEQ';
 import { Potentiometer } from './Potentiometer';
+import { WeightedFader } from './WeightedFader';
 
 interface MixerProps {
   state: AudioState;
@@ -138,17 +139,20 @@ export function Mixer({ state }: MixerProps) {
   const pastStagePlayback = state.playerController.pastStagePlayback;
   const isPlayingFavourite = state.playerController.playingFavourite;
   const currentTrackIndex = state.playerController.currentTrackId;
+  const hasActiveTrack = currentTrackIndex >= 0;
   let canGoBack = false;
   let canGoForward = false;
-  if (pastStagePlayback) {
-    canGoBack = currentTrackIndex > 0;
-    canGoForward = currentTrackIndex < pastStageTracks.length - 1;
-  } else if (isPlayingFavourite) {
-    canGoBack = currentTrackIndex > 0;
-    canGoForward = currentTrackIndex < favorites.length - 1;
-  } else {
-    canGoBack = currentTrackIndex > 0;
-    canGoForward = currentTrackIndex < regularTracks.length - 1;
+  if (hasActiveTrack) {
+    if (pastStagePlayback) {
+      canGoBack = currentTrackIndex > 0;
+      canGoForward = currentTrackIndex < pastStageTracks.length - 1;
+    } else if (isPlayingFavourite) {
+      canGoBack = currentTrackIndex > 0;
+      canGoForward = currentTrackIndex < favorites.length - 1;
+    } else {
+      canGoBack = currentTrackIndex > 0;
+      canGoForward = currentTrackIndex < regularTracks.length - 1;
+    }
   }
 
   return (
@@ -238,17 +242,17 @@ export function Mixer({ state }: MixerProps) {
                   onChange={handleSubmissionVolumeChange}
                   onInput={handleSubmissionVolumeChange}
                   showValue={false}
+                  exponent={2}
                 />
               ) : (
-                <input
-                  type="range"
-                  className="vertical-slider mixer1-fader"
+                <WeightedFader
                   id="submission-volume"
-                  min="0"
-                  max="2"
-                  step="0.01"
                   value={state.player1.volume}
-                  onChange={handleSubmissionVolumeChangeEvent}
+                  min={0}
+                  max={2}
+                  step={0.01}
+                  exponent={2}
+                  onChange={handleSubmissionVolumeChange}
                 />
               )}
               <div
@@ -296,17 +300,17 @@ export function Mixer({ state }: MixerProps) {
                   onChange={handleMasterVolumeChange}
                   onInput={handleMasterVolumeChange}
                   showValue={false}
+                  exponent={2}
                 />
               ) : (
-                <input
-                  type="range"
-                  className="vertical-slider mixer1-fader"
+                <WeightedFader
                   id="master-volume"
-                  min="0"
-                  max="1"
-                  step="0.01"
                   value={state.master.volume}
-                  onChange={handleMasterVolumeChangeEvent}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  exponent={2}
+                  onChange={handleMasterVolumeChange}
                 />
               )}
               <div

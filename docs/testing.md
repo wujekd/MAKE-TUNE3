@@ -1,6 +1,6 @@
 # Testing Guide
 
-Unit and integration tests for the Make Tune 3 React.
+Unit and integration tests for the Make Tunes React app.
 
 ## Quick Start
 

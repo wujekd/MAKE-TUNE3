@@ -1,7 +1,24 @@
 import React, { useMemo } from 'react';
 import type { Collaboration } from '../types/collaboration';
+import './CollabData.css';
 
 type Props = { collab?: Collaboration | null };
+
+const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
+
+const compactFormatter = new Intl.NumberFormat('en', {
+  notation: 'compact',
+  maximumFractionDigits: 1
+});
+const standardFormatter = new Intl.NumberFormat('en');
+
+const formatCount = (value: number) => {
+  if (!Number.isFinite(value)) return '0';
+  if (Math.abs(value) >= 10000) {
+    return compactFormatter.format(value);
+  }
+  return standardFormatter.format(value);
+};
 
 export function CollabData({ collab }: Props) {
   const { submissionsCount, votesCount, favoritesCount, participantsCount, results, winner } = useMemo(() => {
@@ -40,95 +57,75 @@ export function CollabData({ collab }: Props) {
 
   const status = (collab as any)?.status || 'unknown';
 
+  const maxScale = Math.max(participantsCount, submissionsCount, favoritesCount, votesCount, winner?.votes || 0, 1);
+  const winnerPercent = votesCount > 0 && winner?.votes ? Math.round((winner.votes / votesCount) * 100) : 0;
+
+  const stats = [
+    { key: 'participants', label: 'participants', value: participantsCount, tone: 'cool', max: maxScale },
+    { key: 'submissions', label: 'submissions', value: submissionsCount, tone: 'cool', max: maxScale },
+    { key: 'favorites', label: 'favorites', value: favoritesCount, tone: 'warm', max: maxScale },
+    { key: 'votes', label: 'votes cast', value: votesCount, tone: 'warm', max: maxScale },
+    winner ? { key: 'winner', label: 'winner votes', value: winner.votes || 0, tone: 'neutral', max: votesCount || maxScale, suffix: `${winnerPercent}%` } : null
+  ].filter(Boolean) as Array<{
+    key: string;
+    label: string;
+    value: number;
+    tone: 'cool' | 'warm' | 'neutral';
+    max: number;
+    suffix?: string;
+  }>;
+
   return (
-    <div className="collab-data" style={{
-      display: 'flex',
-      flexDirection: 'row',
-      gap: '20px',
-      width: '100%',
-      maxWidth: '100%',
-      minWidth: 0,
-      overflow: 'hidden',
-      boxSizing: 'border-box'
-    }}>
-      {/* Stats Section */}
-      <div className="collab-data__stats" style={{
-        flex: '1 1 0',
-        minWidth: 0,
-        maxWidth: '50%',
-        background: 'linear-gradient(135deg, rgba(48, 112, 113, 0.1), rgba(10, 18, 19, 0.6))',
-        border: '1px solid rgba(48, 112, 113, 0.3)',
-        borderRadius: '12px',
-        padding: '16px',
-        boxSizing: 'border-box',
-        overflow: 'hidden'
-      }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--white)', tableLayout: 'fixed' }}>
-          <tbody>
-            <tr>
-              <td style={{ padding: '6px 8px', opacity: 0.8 }}>participants</td>
-              <td style={{ padding: '6px 8px', textAlign: 'right' }}>{participantsCount}</td>
-            </tr>
-            <tr>
-              <td style={{ padding: '6px 8px', opacity: 0.8 }}>submissions</td>
-              <td style={{ padding: '6px 8px', textAlign: 'right' }}>{submissionsCount}</td>
-            </tr>
-            <tr>
-              <td style={{ padding: '6px 8px', opacity: 0.8 }}>favorites</td>
-              <td style={{ padding: '6px 8px', textAlign: 'right' }}>{favoritesCount}</td>
-            </tr>
-            <tr>
-              <td style={{ padding: '6px 8px', opacity: 0.8 }}>votes cast</td>
-              <td style={{ padding: '6px 8px', textAlign: 'right' }}>{votesCount}</td>
-            </tr>
-            {winner && (
-              <tr>
-                <td style={{ padding: '6px 8px', opacity: 0.8 }}>winner votes</td>
-                <td style={{ padding: '6px 8px', textAlign: 'right' }}>{winner.votes} ({Math.round((winner.votes / votesCount) * 100)}%)</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+    <div className="collab-data">
+      <div className="collab-data__stats" aria-label="Collaboration stats">
+        {stats.map((stat) => {
+          const ratio = clamp(stat.max > 0 ? stat.value / stat.max : 0);
+          const percent = Math.round(ratio * 100);
+          return (
+            <div className={`collab-data__stat collab-data__stat--${stat.tone}`} key={stat.key}>
+              <div className="collab-data__stat-head">
+                <span className="collab-data__stat-label">{stat.label}</span>
+                <span className="collab-data__stat-value">
+                  {formatCount(stat.value)}
+                  {stat.suffix && <span className="collab-data__stat-suffix">{stat.suffix}</span>}
+                </span>
+              </div>
+              <div className="collab-data__stat-bar" aria-hidden="true">
+                <div className="collab-data__stat-fill" style={{ width: `${percent}%` }} />
+                <div className="collab-data__stat-handle" style={{ left: `${percent}%` }} />
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Voting Results Section */}
       {status === 'completed' && results.length > 0 && (
-        <div className="collab-data__results" style={{
-          flex: '1 1 0',
-          minWidth: 0,
-          maxWidth: '50%',
-          background: 'linear-gradient(135deg, rgba(48, 112, 113, 0.1), rgba(10, 18, 19, 0.6))',
-          border: '1px solid rgba(48, 112, 113, 0.3)',
-          borderRadius: '12px',
-          padding: '16px',
-          boxSizing: 'border-box',
-          overflow: 'hidden'
-        }}>
-          <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem', opacity: 0.9, color: 'var(--white)' }}>
-            Voting Results
-          </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--white)', fontSize: '0.85rem', tableLayout: 'fixed' }}>
+        <div className="collab-data__results">
+          <div className="collab-data__results-title">Voting Results</div>
+          <table className="collab-data__results-table">
             <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                <th style={{ padding: '4px 8px', textAlign: 'left', opacity: 0.7 }}>Rank</th>
-                <th style={{ padding: '4px 8px', textAlign: 'right', opacity: 0.7 }}>Votes</th>
-                <th style={{ padding: '4px 8px', textAlign: 'right', opacity: 0.7 }}>%</th>
+              <tr>
+                <th>Rank</th>
+                <th className="collab-data__results-right">Votes</th>
+                <th className="collab-data__results-right">%</th>
               </tr>
             </thead>
             <tbody>
-              {results.slice(0, 10).map((r: any, i: number) => (
-                <tr key={r.path || i} style={{ opacity: i === 0 ? 1 : 0.8 }}>
-                  <td style={{ padding: '4px 8px' }}>#{i + 1}</td>
-                  <td style={{ padding: '4px 8px', textAlign: 'right' }}>{r.votes || 0}</td>
-                  <td style={{ padding: '4px 8px', textAlign: 'right' }}>
-                    {Math.round((r.votes / votesCount) * 100)}%
-                  </td>
-                </tr>
-              ))}
+              {results.slice(0, 10).map((r: any, i: number) => {
+                const percent = votesCount > 0 ? Math.round(((r?.votes || 0) / votesCount) * 100) : 0;
+                return (
+                  <tr key={r.path || i} className={i === 0 ? 'collab-data__results-row--winner' : undefined}>
+                    <td>#{i + 1}</td>
+                    <td className="collab-data__results-right">{formatCount(r?.votes || 0)}</td>
+                    <td className="collab-data__results-right">{percent}%</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           {results.length > 10 && (
-            <div style={{ fontSize: '0.75rem', opacity: 0.6, marginTop: '0.5rem', textAlign: 'center' }}>
+            <div className="collab-data__results-more">
               and {results.length - 10} more...
             </div>
           )}
@@ -137,4 +134,3 @@ export function CollabData({ collab }: Props) {
     </div>
   );
 }
-

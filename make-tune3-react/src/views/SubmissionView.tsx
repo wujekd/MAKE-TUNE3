@@ -17,10 +17,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
 import '../components/Favorites.css';
 import styles from './SubmissionView.module.css';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 export function SubmissionView() {
   const audioContext = useContext(AudioEngineContext);
-  const { user } = useAppStore(s => s.auth);
+  const { user, loading: authLoading } = useAppStore(s => s.auth);
   const { currentCollaboration, refreshCollaborationStatus } = useAppStore(s => s.collaboration);
   const { collaborationId } = useParams();
 
@@ -30,6 +31,7 @@ export function SubmissionView() {
   const state = useAudioStore(s => s.state) as any;
   const [projectInfo, setProjectInfo] = useState<{ name: string; description: string } | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'downloaded' | 'submitted'>('loading');
+  const [resolvedStatusKey, setResolvedStatusKey] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const effectiveSubmissionLimit = typeof currentCollaboration?.effectiveSubmissionLimit === 'number'
@@ -147,8 +149,16 @@ export function SubmissionView() {
   useEffect(() => {
     (async () => {
       setStatus('loading');
-      if (!user || !currentCollaboration) {
+      setResolvedStatusKey(null);
+      if (!collaborationId || currentCollaboration?.id !== collaborationId) {
+        return;
+      }
+      if (authLoading) {
+        return;
+      }
+      if (!user) {
         setStatus('ready');
+        setResolvedStatusKey(`${user?.uid ?? 'anon'}:${collaborationId}`);
         return;
       }
       try {
@@ -163,25 +173,32 @@ export function SubmissionView() {
         } else {
           setStatus('ready');
         }
+        setResolvedStatusKey(`${user?.uid ?? 'anon'}:${collaborationId}`);
       } catch (e) {
         console.error('failed to resolve submission status', e);
         setStatus('ready');
+        setResolvedStatusKey(`${user?.uid ?? 'anon'}:${collaborationId}`);
       }
     })();
-  }, [user?.uid, currentCollaboration?.id]);
+  }, [user?.uid, currentCollaboration?.id, collaborationId, authLoading]);
+
+  useEffect(() => {
+    if (status !== 'submitted') return;
+    audioContext?.engine?.clearSubmissionSource();
+  }, [status, audioContext?.engine]);
 
   if (!audioContext) return <div>audio engine not available</div>;
 
+  const isCollabReady = Boolean(collaborationId && currentCollaboration?.id === collaborationId);
+  const statusKey = `${user?.uid ?? 'anon'}:${collaborationId ?? 'none'}`;
+  const isStatusResolved = isCollabReady && !authLoading && resolvedStatusKey === statusKey;
 
   const renderPane = () => {
-    if (status === 'loading') {
+    if (!isStatusResolved || status === 'loading') {
       return (
         <div className={styles.submissionPane}>
-          <h4 className={styles.cardTitle}>Preparing submission flow</h4>
-          <div className={styles.cardBody}>
-            <div className={styles.statusMessage}>
-              Checking your download and submission status...
-            </div>
+          <div className={styles.loadingSpinnerWrap}>
+            <LoadingSpinner size={32} />
           </div>
         </div>
       );
@@ -190,8 +207,8 @@ export function SubmissionView() {
     if (status === 'submitted' && user) {
       return (
         <div className={styles.submissionPane}>
-          <h4 className={styles.cardTitle}>Submission complete</h4>
-          <div className={styles.cardBody}>
+          <div className={styles.statusCentered}>
+            <h4 className={styles.cardTitle}>Submission complete</h4>
             <div className={styles.statusMessage}>
               You have already submitted to this collaboration.
             </div>
@@ -203,8 +220,8 @@ export function SubmissionView() {
     if (limitReached) {
       return (
         <div className={styles.submissionPane}>
-          <h4 className={styles.cardTitle}>Submissions full</h4>
-          <div className={styles.cardBody}>
+          <div className={styles.statusCentered}>
+            <h4 className={styles.cardTitle}>Submissions full</h4>
             <div className={styles.statusMessage}>
               This collaboration has reached its submission limit.
             </div>

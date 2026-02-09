@@ -12,6 +12,16 @@ interface DashboardHeaderProps {
   activeCollabs: number;
 }
 
+const compactFormatter = new Intl.NumberFormat('en', {
+  notation: 'compact',
+  maximumFractionDigits: 1
+});
+
+const formatCount = (value: number) => {
+  if (!Number.isFinite(value)) return '0';
+  return Math.abs(value) >= 10000 ? compactFormatter.format(value) : String(value);
+};
+
 export function DashboardHeader({
   totalCollabs,
   filteredCount,
@@ -23,7 +33,6 @@ export function DashboardHeader({
   const navigate = useNavigate();
   const { user } = useAppStore(state => state.auth);
   const { openFeedbackModal } = useUIStore();
-
   return (
     <div className={styles.hero}>
       <div className={styles.heroHeader}>
@@ -46,13 +55,15 @@ export function DashboardHeader({
           </button>
         </div>
         <div className={styles.heroActions}>
-          <div className={styles.counterGrid}>
-            <CounterCard value={totalCollabs} label="collabs" />
-            <CounterCard value={activeCollabs} label="active" />
-            <CounterCard value={filteredCount} label="visible" />
-            <CounterCard value={totalSubmissions} label="submissions" />
-            <CounterCard value={totalVotes} label="votes" />
-            <CounterCard value={pendingModeration} label="pending" highlight={pendingModeration > 0} />
+          <div className={styles.counterWrap}>
+            <div className={styles.counterGrid}>
+              <CounterCard value={totalCollabs} label="collabs" />
+              <CounterCard value={activeCollabs} label="active" />
+              <CounterCard value={filteredCount} label="visible" />
+              <CounterCard value={totalSubmissions} label="submissions" />
+              <CounterCard value={totalVotes} label="votes" />
+              <CounterCard value={pendingModeration} label="pending" highlight={pendingModeration > 0} />
+            </div>
           </div>
         </div>
       </div>
@@ -73,9 +84,10 @@ function CounterCard({ value, label, highlight }: CounterCardProps) {
 
   return (
     <div className={cardClass}>
-      <div className={styles.counterValue}>{value}</div>
-      <div className={styles.counterLabel}>{label}</div>
+      <div className={styles.counterHeader}>
+        <div className={styles.counterLabel}>{label}</div>
+        <div className={styles.counterValue}>{formatCount(value)}</div>
+      </div>
     </div>
   );
 }
-

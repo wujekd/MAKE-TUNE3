@@ -17,9 +17,11 @@ type Props = {
   middleText?: string;
   startText?: string;
   endText?: string;
+  /** Curve exponent for weighted control - higher = more sensitive at top (default: 1 = linear) */
+  exponent?: number;
 };
 
-export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, label, disabled = false, onChange, onInput, showValue = true, color, middleText, startText, endText }: Props) {
+export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, label, disabled = false, onChange, onInput, showValue = true, color, middleText, startText, endText, exponent = 1 }: Props) {
   const clamped = Math.min(max, Math.max(min, value));
 
   const [dragValue, setDragValue] = useState<number | null>(null);
@@ -27,7 +29,11 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
   const [popupPos, setPopupPos] = useState<{ x: number; y: number } | null>(null);
   const dragging = dragValue !== null;
   const displayValue = dragging ? (dragValue as number) : clamped;
-  const pct = (displayValue - min) / (max - min || 1);
+
+  // Apply inverse curve for display position when exponent > 1
+  const normalizedValue = (displayValue - min) / (max - min || 1);
+  const curvedPct = exponent > 1 ? Math.pow(normalizedValue, 1 / exponent) : normalizedValue;
+  const pct = curvedPct;
 
   const startYRef = useRef<number>(0);
   const startValRef = useRef<number>(0);
@@ -102,8 +108,17 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
     const handleMove = (e: MouseEvent) => {
       const dy = e.clientY - startYRef.current; // down is +dy, up is -dy
       const effSensitivity = e.shiftKey ? sensitivity * 20 : sensitivity;
-      const delta = (-dy / effSensitivity) * (max - min);
-      let next = startValRef.current + delta;
+      // Calculate position change in linear space (0-1)
+      const linearDelta = (-dy / effSensitivity);
+      // Get current position in linear space
+      const startNormalized = (startValRef.current - min) / (max - min);
+      const startLinear = exponent > 1 ? Math.pow(startNormalized, 1 / exponent) : startNormalized;
+      // Apply delta in linear space
+      let newLinear = startLinear + linearDelta;
+      newLinear = Math.min(1, Math.max(0, newLinear));
+      // Convert back through curve
+      const newNormalized = exponent > 1 ? Math.pow(newLinear, exponent) : newLinear;
+      let next = min + newNormalized * (max - min);
       // snap to step
       next = Math.round(next / step) * step;
       // clamp
@@ -155,21 +170,21 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: size }}>
           <div
-          style={knobStyle}
-          aria-valuemin={min}
-          aria-valuemax={max}
-          aria-valuenow={displayValue}
-          role="slider"
-          aria-label={label}
-          onMouseDown={startDrag}
-          ref={knobRef}
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
-          onFocus={() => setHovered(true)}
-          onBlur={() => setHovered(false)}
+            style={knobStyle}
+            aria-valuemin={min}
+            aria-valuemax={max}
+            aria-valuenow={displayValue}
+            role="slider"
+            aria-label={label}
+            onMouseDown={startDrag}
+            ref={knobRef}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            onFocus={() => setHovered(true)}
+            onBlur={() => setHovered(false)}
           >
-          <div style={tickContainerStyle} />
-          <div style={markerStyle} />
+            <div style={tickContainerStyle} />
+            <div style={markerStyle} />
           </div>
           {(startText || middleText || endText) && (
             <div style={{ position: 'relative', width: '100%', height: 12, marginTop: 2, color: 'var(--white)', opacity: 0.8 }}>

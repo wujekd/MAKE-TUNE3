@@ -6,6 +6,7 @@ import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { AnalogVUMeter } from './AnalogVUMeter';
 import { SmallLEDMeter } from './SmallLEDMeter';
 import { Potentiometer } from './Potentiometer';
+import { WeightedFader } from './WeightedFader';
 
 interface Mixer1ChannelProps {
   state: AudioState | null;
@@ -208,17 +209,17 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
                 onChange={handleMasterVolumeChange}
                 onInput={handleMasterVolumeChange}
                 showValue={false}
+                exponent={2}
               />
             ) : (
-              <input
-                type="range"
-                className="vertical-slider mixer1-fader"
+              <WeightedFader
                 id="mixer1-master-volume"
-                min="0"
-                max="1"
-                step="0.01"
                 value={state.master.volume}
-                onChange={handleMasterVolumeChangeEvent}
+                min={0}
+                max={1}
+                step={0.01}
+                exponent={2}
+                onChange={handleMasterVolumeChange}
               />
             )}
             <div

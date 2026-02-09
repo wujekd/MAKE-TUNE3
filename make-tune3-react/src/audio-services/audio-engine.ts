@@ -444,6 +444,31 @@ export class AudioEngine {
     });
   }
 
+  clearSubmissionSource(): void {
+    this.player1.pause();
+    try {
+      this.player1.removeAttribute('src');
+      this.player1.load();
+    } catch {
+      this.player1.src = '';
+    }
+    this.state.playerController.playingFavourite = false;
+    this.state.playerController.currentTrackId = -1;
+    this.playbackTracker.stopTracking();
+    this.updateState({
+      player1: {
+        ...this.state.player1,
+        isPlaying: false,
+        currentTime: 0,
+        duration: 0,
+        source: null,
+        hasEnded: false,
+        error: null
+      },
+      playerController: { ...this.state.playerController }
+    });
+  }
+
   // preview submission with backing without altering track index or listened tracking
   async previewSubmission(submissionSrc: string, backingSrc: string): Promise<void> {
     this.initAudioContext();
@@ -518,7 +543,37 @@ export class AudioEngine {
     player.currentTime = 0;
   }
   togglePlayback(): void {
-    this.toggleBoth();
+    const hasPlayer1 = !!this.state.player1.source;
+    const hasPlayer2 = !!this.state.player2.source;
+
+    if (hasPlayer1 && hasPlayer2) {
+      this.toggleBoth();
+      return;
+    }
+    if (hasPlayer2 && !hasPlayer1) {
+      this.toggleP2();
+      return;
+    }
+    if (hasPlayer1 && !hasPlayer2) {
+      this.toggleP1();
+      return;
+    }
+  }
+  toggleP1(): void {
+    this.initAudioContext();
+    this.resumeIfSuspended();
+    const state = this.getState();
+    if (state.player1.isPlaying) {
+      this.player1.pause();
+      this.updateState({
+        player1: { ...this.state.player1, isPlaying: false }
+      });
+    } else {
+      this.player1.play();
+      this.updateState({
+        player1: { ...this.state.player1, isPlaying: true }
+      });
+    }
   }
   toggleP2(): void {
     this.initAudioContext();
