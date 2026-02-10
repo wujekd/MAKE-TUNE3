@@ -34,27 +34,26 @@
 .tag-filter__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .tag-filter__tag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 4px 10px;
   background: var(--tag-bg, var(--primary1-600));
-  border: 2px solid transparent;
-  border-color: var(--tag-border, transparent);
-  border-radius: 16px;
+  border: 1px solid var(--tag-border, var(--primary1-500));
+  border-radius: 12px;
   color: var(--tag-text, var(--white));
   cursor: pointer;
-  font-size: 14px;
+  font-size: 12px;
   transition: all 0.2s;
 }
 
 .tag-filter__tag:hover {
   background: var(--tag-hover-bg, var(--primary1-500));
-  border-color: var(--tag-hover-border, transparent);
+  border-color: var(--tag-hover-border, var(--primary1-400));
 }
 
 .tag-filter__tag--selected {
@@ -63,8 +62,8 @@
 }
 
 .tag-filter__count {
-  opacity: 0.7;
-  font-size: 12px;
+  opacity: 0.6;
+  font-size: 10px;
 }
 
 .tag-filter__loading {
@@ -114,39 +113,29 @@
   border-radius: 6px;
 }
 
-.tag-filter--slim .tag-filter__tags::before {
-  content: '';
-  position: absolute;
-  left: 6px;
-  right: 6px;
-  top: 50%;
-  height: 6px;
-  background: var(--primary1-600);
-  border-radius: 4px;
-  transform: translateY(-50%);
-  opacity: 0.6;
-}
+
 
 .tag-filter--slim .tag-filter__tag {
   position: relative;
   z-index: 1;
-  padding: 4px 10px;
-  font-size: 11px;
+  padding: 3px 10px;
+  font-size: 12px;
   letter-spacing: 0.03em;
-  border-radius: 999px;
-  border-width: 1px;
-  background: rgba(12, 20, 18, 0.6);
-  backdrop-filter: blur(6px);
+  border-radius: 12px;
+  border: 1px solid var(--primary1-500);
+  background: var(--primary1-600);
+  color: var(--white);
+  transition: all 0.2s;
 }
 
 .tag-filter--slim .tag-filter__tag:hover {
-  background: rgba(18, 32, 26, 0.7);
-  border-color: var(--contrast-600);
+  background: var(--primary1-500);
+  border-color: var(--primary1-400);
 }
 
 .tag-filter--slim .tag-filter__tag--selected {
-  background: linear-gradient(135deg, #18261d, var(--contrast-600));
-  border-color: var(--contrast-600);
+  background: var(--primary1-400);
+  border-color: var(--primary1-200);
   color: var(--white);
 }
 

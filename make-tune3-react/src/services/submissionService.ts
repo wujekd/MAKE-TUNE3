@@ -35,6 +35,7 @@ export class SubmissionService {
   static async uploadBackingTrack(
     file: File,
     collaborationId: string,
+    userId: UserId,
     onProgress?: (percent: number) => void
   ): Promise<string> {
     FileService.validateFileSize(file);
@@ -42,7 +43,34 @@ export class SubmissionService {
     const ext = FileService.getPreferredAudioExtension(file);
     const path = `collabs/${collaborationId}/backing.${ext}`;
 
-    await FileService.uploadFile(file, path, onProgress);
+    const functions = getFunctions(app, 'europe-west1');
+    const reserveBacking = httpsCallable(functions, 'reserveBackingUpload');
+    const reserveRes: any = await reserveBacking({
+      collaborationId,
+      fileExt: ext
+    });
+    const tokenData = reserveRes?.data || {};
+    const uploadTokenId = String(tokenData.tokenId || '').trim();
+    console.info('[uploadBackingTrack] reserved token', {
+      collaborationId,
+      userId,
+      ext,
+      uploadTokenId,
+      expiresAt: tokenData.expiresAt ?? null,
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size
+    });
+    if (!uploadTokenId) {
+      throw new Error('failed to reserve backing upload');
+    }
+
+    await FileService.uploadFile(file, path, onProgress, {
+      ownerUid: userId,
+      owneruid: userId,
+      backingUploadTokenId: uploadTokenId,
+      backinguploadtokenid: uploadTokenId
+    });
     return path;
   }
 
@@ -87,11 +115,24 @@ export class SubmissionService {
 
     const path = `collabs/${collaborationId}/submissions/${submissionId}.${ext}`;
     const r = ref(storage, path);
+    console.info('[uploadSubmission] reserved token', {
+      collaborationId,
+      userId,
+      ext,
+      submissionId,
+      uploadTokenId,
+      expiresAt: tokenData.expiresAt ?? null,
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size
+    });
     const task = uploadBytesResumable(r, file, {
       contentType: file.type,
       customMetadata: {
         ownerUid: userId,
-        uploadTokenId
+        owneruid: userId,
+        uploadTokenId,
+        uploadtokenid: uploadTokenId
       }
     });
 

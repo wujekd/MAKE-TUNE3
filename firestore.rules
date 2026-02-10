@@ -98,6 +98,10 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/projects/$(request.resource.data.projectId))
         && get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)).data.ownerId == request.auth.uid
         && validateCollaborationData(request.resource.data)
+        && request.resource.data.tags is list
+        && request.resource.data.tags.size() >= 1
+        && request.resource.data.tagsKey is list
+        && request.resource.data.tagsKey.size() >= 1
         && (!('submissionLimitOverride' in request.resource.data))
         && (!('reservedSubmissionsCount' in request.resource.data) || request.resource.data.reservedSubmissionsCount == 0)
         && (!('submissionsCount' in request.resource.data) || request.resource.data.submissionsCount == 0);
@@ -243,6 +247,10 @@ service cloud.firestore {
     }
 
     match /submissionUploadTokens/{tokenId} {
+      allow read, write: if false;
+    }
+    
+    match /backingUploadTokens/{tokenId} {
       allow read, write: if false;
     }
 

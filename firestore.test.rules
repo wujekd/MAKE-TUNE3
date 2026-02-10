@@ -93,7 +93,11 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && exists(/databases/$(database)/documents/projects/$(request.resource.data.projectId))
         && get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)).data.ownerId == request.auth.uid
-        && validateCollaborationData(request.resource.data);
+        && validateCollaborationData(request.resource.data)
+        && request.resource.data.tags is list
+        && request.resource.data.tags.size() >= 1
+        && request.resource.data.tagsKey is list
+        && request.resource.data.tagsKey.size() >= 1;
 
       allow update: if get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.ownerId == request.auth.uid
         && validateCollaborationData(request.resource.data)
@@ -147,6 +151,14 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid
         && downloadId == request.auth.uid + '__' + request.resource.data.collaborationId;
       allow delete: if false;
+    }
+
+    match /submissionUploadTokens/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /backingUploadTokens/{tokenId} {
+      allow read, write: if false;
     }
 
     // submissionUsers: create by the submitting user; reads restricted (owner or self)

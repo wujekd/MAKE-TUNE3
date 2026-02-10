@@ -3,6 +3,22 @@ import { storage } from './firebase';
 import { MAX_SUBMISSION_FILE_SIZE, MAX_PDF_FILE_SIZE, MAX_ZIP_FILE_SIZE } from '../config';
 
 export class FileService {
+  static inferContentType(fileName: string): string | null {
+    const ext = (fileName.split('.').pop() || '').toLowerCase();
+    const map: Record<string, string> = {
+      mp3: 'audio/mpeg',
+      wav: 'audio/wav',
+      flac: 'audio/flac',
+      ogg: 'audio/ogg',
+      m4a: 'audio/mp4',
+      aac: 'audio/aac',
+      webm: 'audio/webm',
+      opus: 'audio/opus',
+      pdf: 'application/pdf',
+      zip: 'application/zip'
+    };
+    return map[ext] || null;
+  }
   static getPreferredAudioExtension(file: File): string {
     const allowed = new Set(['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'webm', 'opus']);
     const nameExt = (file.name.split('.').pop() || '').toLowerCase();
@@ -56,9 +72,20 @@ export class FileService {
     onProgress?: (percent: number) => void,
     metadata?: Record<string, string>
   ): Promise<void> {
+    const inferred = this.inferContentType(file.name);
+    const contentType = file.type || inferred || 'application/octet-stream';
+    console.info('[uploadFile] start', {
+      path,
+      fileName: file.name,
+      fileType: file.type,
+      inferredType: inferred,
+      contentType,
+      fileSize: file.size,
+      metadataKeys: metadata ? Object.keys(metadata) : []
+    });
     const storageRef = ref(storage, path);
     const task = uploadBytesResumable(storageRef, file, {
-      contentType: file.type,
+      contentType,
       customMetadata: metadata
     });
     
@@ -110,13 +137,16 @@ export class FileService {
     this.validateZipFile(file);
     const path = `collabs/${collaborationId}/submissions/${submissionId}-multitracks.zip`;
     const metadata: Record<string, string> = {
-      submissionId
+      submissionId,
+      submissionid: submissionId
     };
     if (ownerUid) {
       metadata.ownerUid = ownerUid;
+      metadata.owneruid = ownerUid;
     }
     if (uploadTokenId) {
       metadata.uploadTokenId = uploadTokenId;
+      metadata.uploadtokenid = uploadTokenId;
     }
     await this.uploadFile(file, path, onProgress, metadata);
     return path;

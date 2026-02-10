@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ReportService } from '../services';
 import { useAppStore } from '../stores/appStore';
 import type { Report } from '../types/collaboration';
-import { AdminNav } from '../components/AdminNav';
+import { AdminLayout } from '../components/AdminLayout';
 
 export function AdminReportedView() {
   const { user } = useAppStore(state => state.auth);
@@ -28,7 +28,7 @@ export function AdminReportedView() {
 
   const handleDismiss = async (reportId: string) => {
     if (!user) return;
-    
+
     const confirmed = window.confirm('Dismiss this report? The submission will remain visible.');
     if (!confirmed) return;
 
@@ -48,7 +48,7 @@ export function AdminReportedView() {
       alert('You must be logged in to ban users');
       return;
     }
-    
+
     const confirmed = window.confirm(
       `Ban the user who submitted this? This action will mark them as banned in the system.`
     );
@@ -80,19 +80,11 @@ export function AdminReportedView() {
   }
 
   return (
-    <div style={{ 
-      padding: '2rem', 
-      color: 'var(--white)',
-      maxWidth: '1200px',
-      margin: '0 auto'
-    }}>
-      <AdminNav />
-      <h1 style={{ margin: '0 0 2rem 0' }}>Reported Submissions</h1>
-
+    <AdminLayout title="Reported Submissions">
       {loading ? (
-        <p>Loading reports...</p>
+        <p style={{ color: 'var(--white)' }}>Loading reports...</p>
       ) : reports.length === 0 ? (
-        <p style={{ opacity: 0.7 }}>No pending reports.</p>
+        <p style={{ opacity: 0.7, color: 'var(--white)' }}>No pending reports.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {reports.map((report) => (
@@ -102,11 +94,12 @@ export function AdminReportedView() {
                 backgroundColor: 'rgba(255, 255, 255, 0.05)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
                 borderRadius: '8px',
-                padding: '1.5rem'
+                padding: '1.5rem',
+                color: 'var(--white)'
               }}
             >
-              <div style={{ 
-                display: 'grid', 
+              <div style={{
+                display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
                 gap: '1rem',
                 marginBottom: '1rem'
@@ -115,15 +108,15 @@ export function AdminReportedView() {
                   <div style={{ fontSize: '0.875rem', opacity: 0.7, marginBottom: '0.25rem' }}>
                     Submission Path
                   </div>
-                  <div style={{ 
-                    fontSize: '0.75rem', 
+                  <div style={{
+                    fontSize: '0.75rem',
                     fontFamily: 'monospace',
                     wordBreak: 'break-all'
                   }}>
                     {report.submissionPath}
                   </div>
                 </div>
-                
+
                 <div>
                   <div style={{ fontSize: '0.875rem', opacity: 0.7, marginBottom: '0.25rem' }}>
                     Reported By
@@ -138,7 +131,7 @@ export function AdminReportedView() {
                 <div style={{ fontSize: '0.875rem', opacity: 0.7, marginBottom: '0.25rem' }}>
                   Reason
                 </div>
-                <div style={{ 
+                <div style={{
                   padding: '0.75rem',
                   backgroundColor: 'rgba(0, 0, 0, 0.2)',
                   borderRadius: '4px'
@@ -147,8 +140,8 @@ export function AdminReportedView() {
                 </div>
               </div>
 
-              <div style={{ 
-                display: 'grid', 
+              <div style={{
+                display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
                 gap: '1rem',
                 marginBottom: '1rem',
@@ -163,8 +156,8 @@ export function AdminReportedView() {
                 </div>
               </div>
 
-              <div style={{ 
-                display: 'flex', 
+              <div style={{
+                display: 'flex',
                 gap: '1rem',
                 paddingTop: '1rem',
                 borderTop: '1px solid rgba(255, 255, 255, 0.1)'
@@ -185,7 +178,7 @@ export function AdminReportedView() {
                 >
                   {processing === report.id ? 'Processing...' : 'Dismiss Report'}
                 </button>
-                
+
                 <button
                   onClick={() => handleBanUser(report)}
                   disabled={processing === report.id}
@@ -207,7 +200,7 @@ export function AdminReportedView() {
           ))}
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 }
 

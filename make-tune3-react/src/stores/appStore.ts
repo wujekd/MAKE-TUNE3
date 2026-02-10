@@ -66,8 +66,6 @@ interface AppState {
     isUpdatingListened: boolean;
     pendingFavoriteActions: Record<string, 'adding' | 'removing'>;
     pendingVotes: Record<string, boolean>;
-    pendingFavoriteActions: Record<string, 'adding' | 'removing'>;
-    pendingVotes: Record<string, boolean>;
 
     // actions
     setCurrentProject: (project: Project) => void;
@@ -258,8 +256,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     isLoadingProject: false,
     isUpdatingFavorites: false,
     isUpdatingListened: false,
-    pendingFavoriteActions: {},
-    pendingVotes: {},
     pendingFavoriteActions: {},
     pendingVotes: {},
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { SettingsService } from '../services';
 import type { SystemSettings } from '../types/collaboration';
 import { useAppStore } from '../stores/appStore';
-import { AdminNav } from '../components/AdminNav';
+import { AdminLayout } from '../components/AdminLayout';
 
 export function AdminSettingsView() {
   const { user: adminUser } = useAppStore(state => state.auth);
@@ -61,188 +61,156 @@ export function AdminSettingsView() {
 
   if (loading) {
     return (
-      <div style={{
-        padding: 24,
-        background: 'var(--primary1-800)',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: 'var(--white)'
-      }}>
-        Loading settings...
-      </div>
+      <AdminLayout title="Global Settings">
+        <div style={{ color: 'var(--white)', textAlign: 'center', padding: 40 }}>
+          Loading settings...
+        </div>
+      </AdminLayout>
     );
   }
 
   return (
-    <div style={{
-      padding: 24,
-      background: 'var(--primary1-800)',
-      height: '100%',
-      minHeight: 0,
-      boxSizing: 'border-box',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
-      <div style={{
-        maxWidth: 800,
-        margin: '0 auto',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 16,
-        width: '100%',
-        flex: 1,
-        minHeight: 0
-      }}      >
-        <AdminNav />
-        <h2 style={{ color: 'var(--white)', margin: 0 }}>Global Settings</h2>
+    <AdminLayout title="Global Settings">
+      {error && (
+        <div style={{
+          color: '#ff6b6b',
+          background: 'rgba(255,107,107,0.15)',
+          padding: 12,
+          borderRadius: 6
+        }}>
+          {error}
+        </div>
+      )}
 
-        {error && (
+      {successMsg && (
+        <div style={{
+          color: '#4CAF50',
+          background: 'rgba(76,175,80,0.15)',
+          padding: 12,
+          borderRadius: 6
+        }}>
+          {successMsg}
+        </div>
+      )}
+
+      {settings && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16
+        }}>
           <div style={{
-            color: '#ff6b6b',
-            background: 'rgba(255,107,107,0.15)',
-            padding: 12,
-            borderRadius: 6
+            background: 'var(--primary1-700)',
+            borderRadius: 12,
+            padding: 16
           }}>
-            {error}
-          </div>
-        )}
+            <h3 style={{ color: 'var(--white)', margin: '0 0 16px 0', fontSize: 16 }}>
+              Feature Toggles
+            </h3>
 
-        {successMsg && (
-          <div style={{
-            color: '#4CAF50',
-            background: 'rgba(76,175,80,0.15)',
-            padding: 12,
-            borderRadius: 6
-          }}>
-            {successMsg}
-          </div>
-        )}
-
-        {settings && (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 16,
-            flex: 1,
-            minHeight: 0,
-            overflowY: 'auto',
-            paddingRight: 8
-          }}>
-            <div style={{
-              background: 'var(--primary1-700)',
-              borderRadius: 12,
-              padding: 16
-            }}>
-              <h3 style={{ color: 'var(--white)', margin: '0 0 16px 0', fontSize: 16 }}>
-                Feature Toggles
-              </h3>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <ToggleRow
-                  label="Project Creation"
-                  description="Allow users to create new projects"
-                  checked={settings.projectCreationEnabled}
-                  onChange={v => updateSetting('projectCreationEnabled', v)}
-                />
-                <ToggleRow
-                  label="Submissions"
-                  description="Allow users to submit to collaborations"
-                  checked={settings.submissionsEnabled}
-                  onChange={v => updateSetting('submissionsEnabled', v)}
-                />
-                <ToggleRow
-                  label="Voting"
-                  description="Allow users to vote on submissions"
-                  checked={settings.votingEnabled}
-                  onChange={v => updateSetting('votingEnabled', v)}
-                />
-              </div>
-            </div>
-
-            <div style={{
-              background: 'var(--primary1-700)',
-              borderRadius: 12,
-              padding: 16
-            }}>
-              <h3 style={{ color: 'var(--white)', margin: '0 0 16px 0', fontSize: 16 }}>
-                Limits
-              </h3>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <NumberInput
-                  label="Default Project Allowance"
-                  description="Base number of projects all users can create (added to tier limits)"
-                  value={settings.defaultProjectAllowance}
-                  onChange={v => updateSetting('defaultProjectAllowance', v)}
-                  min={0}
-                  max={100}
-                />
-                <NumberInput
-                  label="Max Submissions Per Collaboration"
-                  description="Maximum number of submissions allowed per collaboration"
-                  value={settings.maxSubmissionsPerCollab}
-                  onChange={v => updateSetting('maxSubmissionsPerCollab', v)}
-                  min={1}
-                  max={1000}
-                />
-              </div>
-            </div>
-
-            <div style={{
-              background: 'var(--primary1-700)',
-              borderRadius: 12,
-              padding: 16
-            }}>
-              <h3 style={{ color: 'var(--white)', margin: '0 0 12px 0', fontSize: 16 }}>
-                Last Updated
-              </h3>
-              <div style={{ color: 'var(--white)', opacity: 0.7, fontSize: 14 }}>
-                {formatDate(settings.updatedAt)} by {settings.updatedBy || 'unknown'}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 12, paddingTop: 8 }}>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                style={{
-                  padding: '12px 24px',
-                  fontSize: 15,
-                  fontWeight: 600
-                }}
-              >
-                {saving ? 'Saving...' : 'Save Settings'}
-              </button>
-              <button
-                onClick={loadSettings}
-                disabled={saving}
-                style={{
-                  padding: '12px 24px',
-                  fontSize: 15,
-                  background: 'var(--primary1-600)'
-                }}
-              >
-                Reload
-              </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <ToggleRow
+                label="Project Creation"
+                description="Allow users to create new projects"
+                checked={settings.projectCreationEnabled}
+                onChange={v => updateSetting('projectCreationEnabled', v)}
+              />
+              <ToggleRow
+                label="Submissions"
+                description="Allow users to submit to collaborations"
+                checked={settings.submissionsEnabled}
+                onChange={v => updateSetting('submissionsEnabled', v)}
+              />
+              <ToggleRow
+                label="Voting"
+                description="Allow users to vote on submissions"
+                checked={settings.votingEnabled}
+                onChange={v => updateSetting('votingEnabled', v)}
+              />
             </div>
           </div>
-        )}
-      </div>
-    </div>
+
+          <div style={{
+            background: 'var(--primary1-700)',
+            borderRadius: 12,
+            padding: 16
+          }}>
+            <h3 style={{ color: 'var(--white)', margin: '0 0 16px 0', fontSize: 16 }}>
+              Limits
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <NumberInput
+                label="Default Project Allowance"
+                description="Base number of projects all users can create (added to tier limits)"
+                value={settings.defaultProjectAllowance}
+                onChange={v => updateSetting('defaultProjectAllowance', v)}
+                min={0}
+                max={100}
+              />
+              <NumberInput
+                label="Max Submissions Per Collaboration"
+                description="Maximum number of submissions allowed per collaboration"
+                value={settings.maxSubmissionsPerCollab}
+                onChange={v => updateSetting('maxSubmissionsPerCollab', v)}
+                min={1}
+                max={1000}
+              />
+            </div>
+          </div>
+
+          <div style={{
+            background: 'var(--primary1-700)',
+            borderRadius: 12,
+            padding: 16
+          }}>
+            <h3 style={{ color: 'var(--white)', margin: '0 0 12px 0', fontSize: 16 }}>
+              Last Updated
+            </h3>
+            <div style={{ color: 'var(--white)', opacity: 0.7, fontSize: 14 }}>
+              {formatDate(settings.updatedAt)} by {settings.updatedBy || 'unknown'}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, paddingTop: 8 }}>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              style={{
+                padding: '12px 24px',
+                fontSize: 15,
+                fontWeight: 600
+              }}
+            >
+              {saving ? 'Saving...' : 'Save Settings'}
+            </button>
+            <button
+              onClick={loadSettings}
+              disabled={saving}
+              style={{
+                padding: '12px 24px',
+                fontSize: 15,
+                background: 'var(--primary1-600)'
+              }}
+            >
+              Reload
+            </button>
+          </div>
+        </div>
+      )}
+    </AdminLayout>
   );
 }
 
-function ToggleRow({ 
-  label, 
-  description, 
-  checked, 
-  onChange 
-}: { 
-  label: string; 
-  description: string; 
-  checked: boolean; 
+function ToggleRow({
+  label,
+  description,
+  checked,
+  onChange
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
   onChange: (v: boolean) => void;
 }) {
   return (

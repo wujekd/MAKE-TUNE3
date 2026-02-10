@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useContext, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { useAppStore } from '../stores/appStore';
@@ -9,6 +9,7 @@ import { Mixer } from '../components/Mixer';
 import ProjectHistory from '../components/ProjectHistory';
 import { CollabData } from '../components/CollabData';
 import { CollabHeader } from '../components/CollabHeader';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useCollaborationLoader } from '../hooks/useCollaborationLoader';
 import { useStageRedirect } from '../hooks/useStageRedirect';
 import { useResolvedAudioUrl } from '../hooks/useResolvedAudioUrl';
@@ -17,7 +18,6 @@ import styles from './VotingView.module.css';
 
 export function VotingView() {
   const audioContext = useContext(AudioEngineContext);
-  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   // get data from different slices
@@ -33,6 +33,7 @@ export function VotingView() {
     voteFor,
     isTrackListened,
     isTrackFavorite,
+    isLoadingCollaboration,
     pendingFavoriteActions,
     pendingVotes
   } = useAppStore(state => state.collaboration);
@@ -108,14 +109,6 @@ export function VotingView() {
     };
   }, [engine]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [user?.uid]);
-
   const handleStageChange = useCallback(async (nextStatus: 'voting' | 'completed') => {
     if (stageCheckInFlightRef.current) return;
     stageCheckInFlightRef.current = true;
@@ -139,9 +132,9 @@ export function VotingView() {
     }
   }, [user, loadCollaboration, loadCollaborationAnonymousById, navigate]);
 
-  if (isLoading) {
-    return <div className={styles.loading}>Loading...</div>;
-  }
+  const isVotingLoading = isLoadingCollaboration
+    || !currentCollaboration
+    || (collabId ? currentCollaboration.id !== collabId : false);
 
   return (
     <div className={`view-container ${styles.container}`}>
@@ -170,44 +163,53 @@ export function VotingView() {
       <div className={styles.content}>
         <div className={styles.submissionsSection}>
           <div className={styles.audioPlayerSection}>
-            <Favorites
-              onRemoveFromFavorites={(trackId) => removeFromFavorites(trackId)}
-              favorites={favorites}
-              onAddToFavorites={(trackId) => addToFavorites(trackId)}
-              onPlay={(trackId, index, favorite) => playSubmission(trackId, index, favorite)}
-              voteFor={voteFor}
-              listenedRatio={7}
-              finalVote={useAppStore.getState().collaboration.userCollaboration?.finalVote || null}
-              pendingFavoriteActions={pendingFavoriteActions}
-              pendingVotes={pendingVotes}
-            />
-            <div className={styles.audioPlayerTitle}>Submissions</div>
-            <div className={styles.submissionsScroll}>
-              {regularTracks
-                .filter(track => !isTrackFavorite(track.filePath))
-                .map((track, index) => (
-                  <SubmissionItem
-                    key={track.id}
-                    track={track}
-                    index={index}
-                    isCurrentTrack={
-                      !state.playerController.pastStagePlayback &&
-                      !state.playerController.playingFavourite &&
-                      state.playerController.currentTrackId === index
-                    }
-                    isPlaying={state.player1.isPlaying}
-                    listened={isTrackListened(track.filePath)}
-                    favorite={isTrackFavorite(track.filePath)}
-                    onAddToFavorites={() => addToFavorites(track.filePath)}
-                    onPlay={(filePath, idx) => playSubmission(filePath, idx, false)}
-                    voteFor={voteFor}
-                    listenedRatio={7}
-                    isFinal={false}
-                    pendingFavoriteAction={pendingFavoriteActions[track.filePath]}
-                    isVoting={!!pendingVotes[track.filePath]}
-                  />
-                ))}
-            </div>
+            {isVotingLoading ? (
+              <div className={styles.loadingState}>
+                <LoadingSpinner size={36} />
+                <div className={styles.loadingText}>Loading voting view…</div>
+              </div>
+            ) : (
+              <>
+                <Favorites
+                  onRemoveFromFavorites={(trackId) => removeFromFavorites(trackId)}
+                  favorites={favorites}
+                  onAddToFavorites={(trackId) => addToFavorites(trackId)}
+                  onPlay={(trackId, index, favorite) => playSubmission(trackId, index, favorite)}
+                  voteFor={voteFor}
+                  listenedRatio={7}
+                  finalVote={useAppStore.getState().collaboration.userCollaboration?.finalVote || null}
+                  pendingFavoriteActions={pendingFavoriteActions}
+                  pendingVotes={pendingVotes}
+                />
+                <div className={styles.audioPlayerTitle}>Submissions</div>
+                <div className={styles.submissionsScroll}>
+                  {regularTracks
+                    .filter(track => !isTrackFavorite(track.filePath))
+                    .map((track, index) => (
+                      <SubmissionItem
+                        key={track.id}
+                        track={track}
+                        index={index}
+                        isCurrentTrack={
+                          !state.playerController.pastStagePlayback &&
+                          !state.playerController.playingFavourite &&
+                          state.playerController.currentTrackId === index
+                        }
+                        isPlaying={state.player1.isPlaying}
+                        listened={isTrackListened(track.filePath)}
+                        favorite={isTrackFavorite(track.filePath)}
+                        onAddToFavorites={() => addToFavorites(track.filePath)}
+                        onPlay={(filePath, idx) => playSubmission(filePath, idx, false)}
+                        voteFor={voteFor}
+                        listenedRatio={7}
+                        isFinal={false}
+                        pendingFavoriteAction={pendingFavoriteActions[track.filePath]}
+                        isVoting={!!pendingVotes[track.filePath]}
+                      />
+                    ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
 

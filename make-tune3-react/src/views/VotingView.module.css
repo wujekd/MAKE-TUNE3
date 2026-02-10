@@ -219,12 +219,19 @@
 }
 
 /* ===== LOADING STATE ===== */
-.loading {
+.loadingState {
+    flex: 1;
+    min-height: 220px;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
     align-items: center;
-    height: 100%;
-    background: radial-gradient(circle at top right, #1a2a2c 0%, var(--dashboard-bg) 60%);
-    color: var(--white);
-    font-family: 'Inter', system-ui, sans-serif;
+    justify-content: center;
+    text-align: center;
+    color: var(--dashboard-text-muted);
+}
+
+.loadingText {
+    font-size: 13px;
+    letter-spacing: 0.04em;
 }

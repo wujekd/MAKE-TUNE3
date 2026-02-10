@@ -80,7 +80,7 @@ export function CollaborationDetails({
 
   if (mode === 'view' && selectedCollab) {
     const col = selectedCollab;
-    const canEdit = col.status === 'unpublished' && collabs.filter(x => (x as any).createdAt < (col as any).createdAt).every(x => x.status === 'completed');
+    const canEdit = col.status === 'unpublished';
     const hasTimestamps = col.status !== 'unpublished';
     const backingPath = col.backingTrackPath || '';
     const isCurrentBacking = backingPath && backingPreview?.path === backingPath;
@@ -342,15 +342,18 @@ export function CollaborationDetails({
   }
 
   if (mode === 'edit' && selectedCollab && project) {
+    const handleSaved = (updated: Collaboration) => {
+      onCollabsUpdate(collabs.map(col => col.id === updated.id ? updated : col));
+      onModeChange('view');
+    };
+
     return (
       <CreateCollaboration
         mode="edit"
         projectId={project.id}
         initial={selectedCollab}
-        onCreated={(updated) => {
-          onCollabsUpdate(collabs.map(col => col.id === updated.id ? updated : col));
-          onModeChange('view');
-        }}
+        onCreated={() => {}}
+        onSaved={handleSaved}
       />
     );
   }

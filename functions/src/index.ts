@@ -51,7 +51,9 @@ const DEFAULT_SETTINGS: SystemSettings = {
 };
 
 const SUBMISSION_RESERVATION_MINUTES = 20;
+const BACKING_UPLOAD_RESERVATION_MINUTES = 20;
 const SUBMISSION_TOKEN_COLLECTION = "submissionUploadTokens";
+const BACKING_TOKEN_COLLECTION = "backingUploadTokens";
 const ALLOWED_AUDIO_EXTS = new Set([
   "mp3",
   "wav",
@@ -74,6 +76,7 @@ const DEFAULT_SUBMISSION_SETTINGS = {
 };
 
 const buildSubmissionTokenId = (collabId: string, uid: string) => `${collabId}__${uid}`;
+const buildBackingTokenId = (collabId: string, uid: string) => `backing__${collabId}__${uid}`;
 
 async function getSystemSettings(): Promise<SystemSettings> {
   const settingsRef = db.collection("systemSettings").doc("global");
@@ -479,6 +482,80 @@ export const publishCollaboration = onCall(async (request) => {
   });
 });
 
+export const reserveBackingUpload = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+
+  await checkUserNotSuspended(uid);
+
+  const collaborationIdRaw = String(request.data?.collaborationId || "").trim();
+  const fileExt = String(request.data?.fileExt || "").trim().toLowerCase();
+  if (!collaborationIdRaw || !fileExt) {
+    throw new HttpsError("invalid-argument", "collaborationId and fileExt required");
+  }
+  if (!ALLOWED_AUDIO_EXTS.has(fileExt)) {
+    throw new HttpsError("invalid-argument", "unsupported file type");
+  }
+
+  return db.runTransaction(async (tx) => {
+    const collabRef = db.collection("collaborations").doc(collaborationIdRaw);
+    const collabSnap = await tx.get(collabRef);
+    if (!collabSnap.exists) {
+      throw new HttpsError("not-found", "collaboration not found");
+    }
+    const collabData = collabSnap.data() as any;
+    const projectId = String(collabData.projectId || "");
+    if (!projectId) {
+      throw new HttpsError("failed-precondition", "collaboration missing project");
+    }
+
+    const projectRef = db.collection("projects").doc(projectId);
+    const projectSnap = await tx.get(projectRef);
+    if (!projectSnap.exists) {
+      throw new HttpsError("not-found", "project not found");
+    }
+    const projectData = projectSnap.data() as any;
+    if (String(projectData.ownerId || "") !== uid) {
+      throw new HttpsError("permission-denied", "only the project owner can upload backing tracks");
+    }
+
+    const now = Timestamp.now();
+    const expiresAt = Timestamp.fromMillis(now.toMillis() + BACKING_UPLOAD_RESERVATION_MINUTES * 60 * 1000);
+    const tokenId = buildBackingTokenId(collaborationIdRaw, uid);
+    const tokenRef = db.collection(BACKING_TOKEN_COLLECTION).doc(tokenId);
+    const tokenSnap = await tx.get(tokenRef);
+    const tokenData = tokenSnap.exists ? (tokenSnap.data() as any) : null;
+    const tokenExpired = tokenData?.expiresAt && tokenData.expiresAt.toMillis() <= now.toMillis();
+    const tokenUsed = tokenData?.used === true;
+
+    if (tokenSnap.exists && tokenData && !tokenUsed && !tokenExpired) {
+      tx.update(tokenRef, {
+        fileExt,
+        expiresAt,
+        updatedAt: now
+      });
+      return {
+        tokenId: tokenRef.id,
+        expiresAt: expiresAt.toMillis()
+      };
+    }
+
+    tx.set(tokenRef, {
+      collabId: collaborationIdRaw,
+      uid,
+      fileExt,
+      createdAt: now,
+      expiresAt,
+      used: false
+    });
+
+    return {
+      tokenId: tokenRef.id,
+      expiresAt: expiresAt.toMillis()
+    };
+  });
+});
+
 export const reserveSubmissionSlot = onCall(async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
@@ -659,6 +736,78 @@ export const cleanupSubmissionReservations = onSchedule("every 5 minutes", async
         invalidReason: invalidReasonParts.join(",")
       });
     });
+  }
+});
+
+export const finalizeBackingUpload = onObjectFinalized({ region: "europe-west1" }, async (event) => {
+  const object = event.data;
+  const filePath = object.name || "";
+  const match = filePath.match(/^collabs\/([^/]+)\/backing\.([^/]+)$/i);
+  if (!match) return;
+  const collabId = match[1];
+  const ext = match[2].toLowerCase();
+
+  const metadata = object.metadata || {};
+  const uploadTokenId = String((metadata as any).backingUploadTokenId || "").trim();
+  const ownerUid = String((metadata as any).ownerUid || "").trim();
+  if (!uploadTokenId || !ownerUid) {
+    return;
+  }
+
+  const tokenRef = db.collection(BACKING_TOKEN_COLLECTION).doc(uploadTokenId);
+  const collabRef = db.collection("collaborations").doc(collabId);
+
+  let shouldDeleteObject = false;
+  let deleteReason = "";
+
+  await db.runTransaction(async (tx) => {
+    const [tokenSnap, collabSnap] = await Promise.all([
+      tx.get(tokenRef),
+      tx.get(collabRef)
+    ]);
+
+    if (!tokenSnap.exists) {
+      return;
+    }
+    const tokenData = tokenSnap.data() as any;
+    const now = Timestamp.now();
+
+    if (tokenData.used === true) {
+      return;
+    }
+
+    const tokenExpired = tokenData.expiresAt && tokenData.expiresAt.toMillis() <= now.toMillis();
+    const invalidReasonParts: string[] = [];
+    if (tokenExpired) invalidReasonParts.push("token-expired");
+    if (String(tokenData.collabId || "") !== collabId) invalidReasonParts.push("token-collab-mismatch");
+    if (String(tokenData.uid || "") !== ownerUid) invalidReasonParts.push("owner-mismatch");
+    if (String(tokenData.fileExt || "").toLowerCase() !== ext) invalidReasonParts.push("file-ext-mismatch");
+    if (!collabSnap.exists) invalidReasonParts.push("collaboration-missing");
+
+    if (invalidReasonParts.length > 0) {
+      tx.update(tokenRef, {
+        used: true,
+        usedAt: now,
+        invalidatedAt: now,
+        invalidReason: invalidReasonParts.join(",")
+      });
+      shouldDeleteObject = true;
+      deleteReason = invalidReasonParts.join(",");
+      return;
+    }
+
+    tx.update(tokenRef, { used: true, usedAt: now });
+    tx.update(collabRef, { backingTrackPath: filePath, updatedAt: now });
+  });
+
+  if (shouldDeleteObject) {
+    try {
+      const bucket = storageAdmin.bucket(object.bucket);
+      await bucket.file(filePath).delete({ ignoreNotFound: true });
+      console.log(`[finalizeBackingUpload] deleted invalid upload ${filePath} reason=${deleteReason}`);
+    } catch (err) {
+      console.error(`[finalizeBackingUpload] failed to delete invalid upload ${filePath}`, err);
+    }
   }
 });
 

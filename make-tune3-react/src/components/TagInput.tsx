@@ -14,7 +14,6 @@ interface TagInputProps {
 export function TagInput({ tags, onChange, disabled, placeholder }: TagInputProps) {
   const [inputValue, setInputValue] = useState('');
   const [suggestions, setSuggestions] = useState<Tag[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -44,7 +43,6 @@ export function TagInput({ tags, onChange, disabled, placeholder }: TagInputProp
     onChange([...tags, trimmed]);
     setInputValue('');
     setError(null);
-    setShowSuggestions(false);
   };
 
   const handleRemoveTag = (index: number) => {
@@ -59,60 +57,68 @@ export function TagInput({ tags, onChange, disabled, placeholder }: TagInputProp
     }
   };
 
+  // Filter available suggestions (exclude already selected)
+  const availableTags = suggestions
+    .filter(s => !tags.includes(s.name))
+    .slice(0, 20);
+
   return (
     <div className="tag-input">
-      {tags.length > 0 && (
-        <div style={{ marginBottom: 8 }}>
-          <label style={{ fontSize: 12, opacity: 0.8, color: 'var(--white)', display: 'block', marginBottom: 4 }}>
-            Selected tags:
-          </label>
-          <div className="tag-input__tags">
-            {tags.map((tag, i) => (
-              <span key={i} className="tag-chip">
-                {tag}
-                {!disabled && (
-                  <button
-                    type="button"
-                    className="tag-chip__remove"
-                    onClick={() => handleRemoveTag(i)}
-                  >
-                    ×
-                  </button>
-                )}
-              </span>
-            ))}
+      <div className="tag-input__columns">
+        {/* Selected Tags Section */}
+        <div className="tag-input__section">
+          <div className="tag-input__label">Selected ({tags.length})</div>
+          <div className="tag-input__list tag-input__list--selected">
+            {tags.length === 0 ? (
+              <div className="tag-input__empty">No tags selected</div>
+            ) : (
+              tags.map((tag, i) => (
+                <span key={i} className="tag-chip">
+                  {tag}
+                  {!disabled && (
+                    <button
+                      type="button"
+                      className="tag-chip__remove"
+                      onClick={() => handleRemoveTag(i)}
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
+              ))
+            )}
           </div>
         </div>
-      )}
-      
-      {!disabled && suggestions.length > 0 && (
-        <div style={{ marginBottom: 8 }}>
-          <label style={{ fontSize: 12, opacity: 0.8, color: 'var(--white)', display: 'block', marginBottom: 4 }}>
-            Available tags (click to add):
-          </label>
-          <div className="tag-input__tags">
-            {suggestions
-              .filter(s => !tags.includes(s.name))
-              .slice(0, 20)
-              .map(tag => {
-                const total = tag.collaborationCount || 0;
-                return (
-                  <button
-                    key={tag.key}
-                    type="button"
-                    className="tag-chip"
-                    style={{ cursor: 'pointer', border: '1px solid var(--primary1-400)' }}
-                    onClick={() => handleAddTag(tag.name)}
-                  >
-                    {tag.name}
-                    {total > 0 && <span style={{ opacity: 0.7, marginLeft: 4 }}>({total})</span>}
-                  </button>
-                );
-              })}
+
+        {/* Available Tags Section */}
+        {!disabled && (
+          <div className="tag-input__section">
+            <div className="tag-input__label">Available</div>
+            <div className="tag-input__list tag-input__list--available">
+              {availableTags.length === 0 ? (
+                <div className="tag-input__empty">No more tags</div>
+              ) : (
+                availableTags.map(tag => {
+                  const total = tag.collaborationCount || 0;
+                  return (
+                    <button
+                      key={tag.key}
+                      type="button"
+                      className="tag-chip tag-chip--suggestion"
+                      onClick={() => handleAddTag(tag.name)}
+                    >
+                      {tag.name}
+                      {total > 0 && <span className="tag-chip__count">{total}</span>}
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </div>
-        </div>
-      )}
-      
+        )}
+      </div>
+
+      {/* Input */}
       {!disabled && (
         <div className="tag-input__input-wrapper">
           <input
@@ -124,12 +130,12 @@ export function TagInput({ tags, onChange, disabled, placeholder }: TagInputProp
               setError(null);
             }}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder || 'Or type custom tag...'}
+            placeholder={placeholder || 'Type custom tag + Enter...'}
             disabled={disabled}
           />
         </div>
       )}
-      
+
       {error && <div className="tag-input__error">{error}</div>}
     </div>
   );

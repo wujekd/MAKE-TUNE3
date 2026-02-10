@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ReportService } from '../services';
 import { useAppStore } from '../stores/appStore';
 import type { Report } from '../types/collaboration';
-import { AdminNav } from '../components/AdminNav';
+import { AdminLayout } from '../components/AdminLayout';
 
 export function AdminResolvedReportsView() {
   const { user } = useAppStore(state => state.auth);
@@ -34,19 +34,11 @@ export function AdminResolvedReportsView() {
   }
 
   return (
-    <div style={{ 
-      padding: '2rem', 
-      color: 'var(--white)',
-      maxWidth: '1200px',
-      margin: '0 auto'
-    }}>
-      <AdminNav />
-      <h1 style={{ margin: '0 0 2rem 0' }}>Resolved Reports History</h1>
-
+    <AdminLayout title="Resolved Reports History">
       {loading ? (
-        <p>Loading reports...</p>
+        <p style={{ color: 'var(--white)' }}>Loading reports...</p>
       ) : reports.length === 0 ? (
-        <p style={{ opacity: 0.7 }}>No resolved reports.</p>
+        <p style={{ opacity: 0.7, color: 'var(--white)' }}>No resolved reports.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {reports.map((report) => (
@@ -56,7 +48,8 @@ export function AdminResolvedReportsView() {
                 backgroundColor: 'rgba(255, 255, 255, 0.05)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
                 borderRadius: '8px',
-                padding: '1.5rem'
+                padding: '1.5rem',
+                color: 'var(--white)'
               }}
             >
               <div style={{
@@ -71,8 +64,8 @@ export function AdminResolvedReportsView() {
                     borderRadius: '12px',
                     fontSize: '0.75rem',
                     fontWeight: 600,
-                    backgroundColor: report.status === 'user-banned' 
-                      ? 'rgba(200, 50, 50, 0.3)' 
+                    backgroundColor: report.status === 'user-banned'
+                      ? 'rgba(200, 50, 50, 0.3)'
                       : 'rgba(100, 100, 100, 0.3)',
                     border: report.status === 'user-banned'
                       ? '1px solid rgba(200, 50, 50, 0.5)'
@@ -96,8 +89,8 @@ export function AdminResolvedReportsView() {
                 )}
               </div>
 
-              <div style={{ 
-                display: 'grid', 
+              <div style={{
+                display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
                 gap: '1rem',
                 marginBottom: '1rem'
@@ -106,15 +99,15 @@ export function AdminResolvedReportsView() {
                   <div style={{ fontSize: '0.875rem', opacity: 0.7, marginBottom: '0.25rem' }}>
                     Submission Path
                   </div>
-                  <div style={{ 
-                    fontSize: '0.75rem', 
+                  <div style={{
+                    fontSize: '0.75rem',
                     fontFamily: 'monospace',
                     wordBreak: 'break-all'
                   }}>
                     {report.submissionPath}
                   </div>
                 </div>
-                
+
                 <div>
                   <div style={{ fontSize: '0.875rem', opacity: 0.7, marginBottom: '0.25rem' }}>
                     Reported By
@@ -129,7 +122,7 @@ export function AdminResolvedReportsView() {
                 <div style={{ fontSize: '0.875rem', opacity: 0.7, marginBottom: '0.25rem' }}>
                   Reason
                 </div>
-                <div style={{ 
+                <div style={{
                   padding: '0.75rem',
                   backgroundColor: 'rgba(0, 0, 0, 0.2)',
                   borderRadius: '4px'
@@ -138,8 +131,8 @@ export function AdminResolvedReportsView() {
                 </div>
               </div>
 
-              <div style={{ 
-                display: 'grid', 
+              <div style={{
+                display: 'grid',
                 gridTemplateColumns: '1fr 1fr 1fr',
                 gap: '1rem',
                 fontSize: '0.875rem',
@@ -162,7 +155,7 @@ export function AdminResolvedReportsView() {
           ))}
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 }
 

@@ -37,4 +37,4 @@ if (process.env.NODE_ENV === 'test' && globalThis.firebaseDb && globalThis.fireb
 export const functions = getFunctions(app, 'europe-west1');
 
 export { db, storage };
-export default app; 
+export default app;

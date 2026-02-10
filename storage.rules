@@ -5,6 +5,29 @@ service firebase.storage {
     function tokenDoc(tokenId) {
       return firestore.get(/databases/(default)/documents/submissionUploadTokens/$(tokenId));
     }
+    function backingTokenDoc(tokenId) {
+      return firestore.get(/databases/(default)/documents/backingUploadTokens/$(tokenId));
+    }
+    function metaOwnerUid() {
+      return request.resource.metadata.ownerUid is string
+        ? request.resource.metadata.ownerUid
+        : request.resource.metadata.owneruid;
+    }
+    function metaUploadTokenId() {
+      return request.resource.metadata.uploadTokenId is string
+        ? request.resource.metadata.uploadTokenId
+        : request.resource.metadata.uploadtokenid;
+    }
+    function metaBackingTokenId() {
+      return request.resource.metadata.backingUploadTokenId is string
+        ? request.resource.metadata.backingUploadTokenId
+        : request.resource.metadata.backinguploadtokenid;
+    }
+    function metaSubmissionId() {
+      return request.resource.metadata.submissionId is string
+        ? request.resource.metadata.submissionId
+        : request.resource.metadata.submissionid;
+    }
     function submissionUserDoc(submissionId) {
       return firestore.get(/databases/(default)/documents/submissionUsers/$(submissionId));
     }
@@ -22,37 +45,48 @@ service firebase.storage {
         && projectDoc(collabDoc(collabId).data.projectId).data.ownerId == request.auth.uid;
     }
     function isValidSubmissionToken(collabId, fileId) {
-      return request.resource.metadata.uploadTokenId is string
-        && request.resource.metadata.ownerUid is string
-        && request.auth.uid == request.resource.metadata.ownerUid
-        && firestore.exists(/databases/(default)/documents/submissionUploadTokens/$(request.resource.metadata.uploadTokenId))
-        && tokenDoc(request.resource.metadata.uploadTokenId).data.collabId == collabId
-        && tokenDoc(request.resource.metadata.uploadTokenId).data.uid == request.auth.uid
-        && tokenDoc(request.resource.metadata.uploadTokenId).data.used == false
-        && tokenDoc(request.resource.metadata.uploadTokenId).data.expiresAt > request.time
-        && fileId.matches("^" + tokenDoc(request.resource.metadata.uploadTokenId).data.submissionId + "\\." + tokenDoc(request.resource.metadata.uploadTokenId).data.fileExt + "$");
+      return metaUploadTokenId() is string
+        && metaOwnerUid() is string
+        && request.auth.uid == metaOwnerUid()
+        && firestore.exists(/databases/(default)/documents/submissionUploadTokens/$(metaUploadTokenId()))
+        && tokenDoc(metaUploadTokenId()).data.collabId == collabId
+        && tokenDoc(metaUploadTokenId()).data.uid == request.auth.uid
+        && tokenDoc(metaUploadTokenId()).data.used == false
+        && tokenDoc(metaUploadTokenId()).data.expiresAt > request.time
+        && fileId.matches("^" + tokenDoc(metaUploadTokenId()).data.submissionId + "\\." + tokenDoc(metaUploadTokenId()).data.fileExt + "$");
+    }
+    function isValidBackingToken(collabId, fileName) {
+      return metaBackingTokenId() is string
+        && metaOwnerUid() is string
+        && request.auth.uid == metaOwnerUid()
+        && firestore.exists(/databases/(default)/documents/backingUploadTokens/$(metaBackingTokenId()))
+        && backingTokenDoc(metaBackingTokenId()).data.collabId == collabId
+        && backingTokenDoc(metaBackingTokenId()).data.uid == request.auth.uid
+        && backingTokenDoc(metaBackingTokenId()).data.used == false
+        && backingTokenDoc(metaBackingTokenId()).data.expiresAt > request.time
+        && fileName.matches("^backing\\." + backingTokenDoc(metaBackingTokenId()).data.fileExt + "$");
     }
     function isValidMultitrackUpload(collabId, fileId) {
       return isValidMultitrackToken(collabId, fileId) || isValidMultitrackOwner(collabId, fileId);
     }
     function isValidMultitrackToken(collabId, fileId) {
-      return request.resource.metadata.uploadTokenId is string
-        && request.resource.metadata.ownerUid is string
-        && request.auth.uid == request.resource.metadata.ownerUid
-        && firestore.exists(/databases/(default)/documents/submissionUploadTokens/$(request.resource.metadata.uploadTokenId))
-        && tokenDoc(request.resource.metadata.uploadTokenId).data.collabId == collabId
-        && tokenDoc(request.resource.metadata.uploadTokenId).data.uid == request.auth.uid
-        && tokenDoc(request.resource.metadata.uploadTokenId).data.expiresAt > request.time
-        && fileId.matches("^" + tokenDoc(request.resource.metadata.uploadTokenId).data.submissionId + "-multitracks\\.zip$");
+      return metaUploadTokenId() is string
+        && metaOwnerUid() is string
+        && request.auth.uid == metaOwnerUid()
+        && firestore.exists(/databases/(default)/documents/submissionUploadTokens/$(metaUploadTokenId()))
+        && tokenDoc(metaUploadTokenId()).data.collabId == collabId
+        && tokenDoc(metaUploadTokenId()).data.uid == request.auth.uid
+        && tokenDoc(metaUploadTokenId()).data.expiresAt > request.time
+        && fileId.matches("^" + tokenDoc(metaUploadTokenId()).data.submissionId + "-multitracks\\.zip$");
     }
     function isValidMultitrackOwner(collabId, fileId) {
-      return request.resource.metadata.submissionId is string
-        && request.resource.metadata.ownerUid is string
-        && request.auth.uid == request.resource.metadata.ownerUid
-        && fileId.matches("^" + request.resource.metadata.submissionId + "-multitracks\\.zip$")
-        && firestore.exists(/databases/(default)/documents/submissionUsers/$(request.resource.metadata.submissionId))
-        && submissionUserDoc(request.resource.metadata.submissionId).data.userId == request.auth.uid
-        && submissionUserDoc(request.resource.metadata.submissionId).data.collaborationId == collabId;
+      return metaSubmissionId() is string
+        && metaOwnerUid() is string
+        && request.auth.uid == metaOwnerUid()
+        && fileId.matches("^" + metaSubmissionId() + "-multitracks\\.zip$")
+        && firestore.exists(/databases/(default)/documents/submissionUsers/$(metaSubmissionId()))
+        && submissionUserDoc(metaSubmissionId()).data.userId == request.auth.uid
+        && submissionUserDoc(metaSubmissionId()).data.collaborationId == collabId;
     }
 
     // Public read for audio assets
@@ -61,10 +95,9 @@ service firebase.storage {
     match /collabs/{collabId}/{fileName} {
       allow read: if true;
       allow write: if isSignedIn()
-        && fileName.matches('^backing\\..+$')
         && request.resource.contentType.matches('audio/.*')
         && request.resource.size < 131072000 // < 125MB
-        && isCollabOwner(collabId);
+        && isValidBackingToken(collabId, fileName);
     }
 
     match /collabs/{collabId}/submissions/{fileId} {

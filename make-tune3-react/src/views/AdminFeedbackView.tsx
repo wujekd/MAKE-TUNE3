@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { FeedbackService } from '../services/feedbackService';
 import type { Feedback, FeedbackCategory, FeedbackStatus } from '../services/feedbackService';
 import { useAppStore } from '../stores/appStore';
-import { AdminNav } from '../components/AdminNav';
+import { AdminLayout } from '../components/AdminLayout';
 import './AdminFeedbackView.css';
 
 const CATEGORY_LABELS: Record<FeedbackCategory, string> = {
@@ -114,10 +114,7 @@ export function AdminFeedbackView() {
   }
 
   return (
-    <div className="admin-feedback">
-      <AdminNav />
-      <h1 className="admin-feedback__title">User Feedback</h1>
-
+    <AdminLayout title="User Feedback">
       <div className="admin-feedback__filters">
         <div className="admin-feedback__filter">
           <label>Category</label>
@@ -273,6 +270,6 @@ export function AdminFeedbackView() {
           })}
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 }
