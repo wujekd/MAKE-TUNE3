@@ -143,7 +143,7 @@ export function AdminTagsView() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <span style={{ color: 'var(--white)', fontWeight: 'bold' }}>{tag.name}</span>
                     <span style={{ color: 'var(--white)', opacity: 0.7, fontSize: 12 }}>
-                      Key: {tag.key} | Projects: {tag.projectCount} | Collabs: {tag.collaborationCount}
+                      Key: {tag.key} | Collabs: {tag.collaborationCount}
                     </span>
                   </div>
                   <button
@@ -169,4 +169,3 @@ export function AdminTagsView() {
     </div>
   );
 }
-

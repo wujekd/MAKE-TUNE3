@@ -1,9 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardService, ProjectService, CollaborationService } from '../services';
 import type { ProjectOverviewItem } from '../services/dashboardService';
-import { TagInput } from './TagInput';
-import { TagUtils } from '../utils/tagUtils';
 import { LoadingSpinner } from './LoadingSpinner';
 import { ProjectListItem } from './ProjectListItem';
 import { UserActivityListItem } from './UserActivityListItem';
@@ -35,7 +33,6 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -45,6 +42,31 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
   const [moderationLoading, setModerationLoading] = useState(false);
   const [moderationLoaded, setModerationLoaded] = useState(false);
   const [moderationError, setModerationError] = useState<string | null>(null);
+  const recountingRef = useRef(false);
+
+  const maybeRecountProjectCount = async (userId: string, projectLength: number) => {
+    if (!user || user.uid !== userId) return;
+    const currentCount = user.projectCount ?? 0;
+    if (currentCount === projectLength) return;
+    if (recountingRef.current) return;
+    recountingRef.current = true;
+    try {
+      const updatedCount = await ProjectService.recountMyProjectCount();
+      useAppStore.setState(state => ({
+        auth: {
+          ...state.auth,
+          user: state.auth.user ? {
+            ...state.auth.user,
+            projectCount: updatedCount
+          } : null
+        }
+      }));
+    } catch (err) {
+      console.warn('Failed to reconcile project count', err);
+    } finally {
+      recountingRef.current = false;
+    }
+  };
 
   const loadProjects = async (userId: string) => {
     setProjectsLoading(true);
@@ -53,6 +75,7 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
       const items = await DashboardService.listMyProjectsOverview();
       setProjects(items);
       setProjectsLoaded(true);
+      await maybeRecountProjectCount(userId, items.length);
     } catch (e: any) {
       console.error('failed to load projects overview', e);
       try {
@@ -69,6 +92,7 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
         setProjectsLoaded(true);
         const friendlyMessage = e?.message || 'failed to load projects overview';
         setProjectsError(`${friendlyMessage}. Showing basic project info.`);
+        await maybeRecountProjectCount(userId, normalized.length);
       } catch (fallbackErr: any) {
         console.error('failed to load fallback projects', fallbackErr);
         setProjectsError(fallbackErr?.message || 'failed to load projects');
@@ -103,17 +127,13 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
     if (trimmed.length > 80) { setFormError('name too long'); return; }
     if (description.length > 500) { setFormError('description too long'); return; }
 
-    const normalized = TagUtils.normalizeTags(tags);
-
     setSaving(true);
     setFormError(null);
     try {
       await ProjectService.createProjectWithUniqueName({
         name: trimmed,
         description,
-        ownerId: user.uid,
-        tags: normalized.display,
-        tagsKey: normalized.keys
+        ownerId: user.uid
       });
       // Update the user's projectCount in the auth store to reflect the new project
       useAppStore.setState(state => ({
@@ -128,7 +148,6 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
       setShowForm(false);
       setName('');
       setDescription('');
-      setTags([]);
       await loadProjects(user.uid);
     } catch (e: any) {
       const msg = e?.message || 'failed to create';
@@ -146,7 +165,6 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
     setShowForm(false);
     setName('');
     setDescription('');
-    setTags([]);
     setFormError(null);
   };
 
@@ -199,7 +217,7 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
               disabled={!user || authLoading}
               onClick={() => setMode('moderate')}
             >
-              review queue{pendingCount > 0 && <span className="user-activity__badge">{pendingCount}</span>}
+              review<br />queue{pendingCount > 0 && <span className="user-activity__badge">{pendingCount}</span>}
             </button>
           )}
           {mode === 'moderate' && (
@@ -262,12 +280,6 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
               onChange={e => setDescription(e.target.value)}
               disabled={!user || saving}
               rows={3}
-            />
-            <TagInput
-              tags={tags}
-              onChange={setTags}
-              disabled={saving}
-              placeholder="Add tags..."
             />
             {formError && <div className="user-activity__form-error">{formError}</div>}
             <div className="user-activity__form-actions">

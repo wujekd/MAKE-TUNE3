@@ -974,8 +974,9 @@ export const createProjectWithUniqueName = onCall(async (request) => {
 
   const nameRaw = String(request.data?.name ?? "").trim();
   const descriptionRaw = String(request.data?.description ?? "");
-  const tags = Array.isArray(request.data?.tags) ? request.data.tags : [];
-  const tagsKey = Array.isArray(request.data?.tagsKey) ? request.data.tagsKey : [];
+  // Project tags are deprecated for beta; projects inherit tags from collaborations.
+  const tags: string[] = [];
+  const tagsKey: string[] = [];
   if (!nameRaw) throw new HttpsError("invalid-argument", "name required");
   const nameKey = buildNameKey(nameRaw);
   const result = await db.runTransaction(async (tx) => {
@@ -1033,6 +1034,24 @@ export const createProjectWithUniqueName = onCall(async (request) => {
     return { id: projRef.id, ...(projectData as any) };
   });
   return result;
+});
+
+export const recountMyProjectCount = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+
+  const ownerProjectsQuery = db.collection("projects").where("ownerId", "==", uid);
+  let projectCount = 0;
+  if (typeof (ownerProjectsQuery as any).count === "function") {
+    const countSnap = await (ownerProjectsQuery as any).count().get();
+    projectCount = Number(countSnap.data()?.count || 0);
+  } else {
+    const ownerProjectsSnap = await ownerProjectsQuery.get();
+    projectCount = ownerProjectsSnap.size;
+  }
+
+  await db.collection("users").doc(uid).set({ projectCount }, { merge: true });
+  return { projectCount };
 });
 
 export const getMySubmissionCollabs = onCall(async (request) => {
@@ -2017,6 +2036,24 @@ export const cleanupProjectOnDelete = onDocumentDeleted(
     const startedAt = Timestamp.now();
 
     console.log(`[cleanupProjectOnDelete] started for project=${projectId}`);
+
+    if (ownerId) {
+      try {
+        const ownerProjectsQuery = db.collection("projects").where("ownerId", "==", ownerId);
+        let projectCount = 0;
+        if (typeof (ownerProjectsQuery as any).count === "function") {
+          const countSnap = await (ownerProjectsQuery as any).count().get();
+          projectCount = Number(countSnap.data()?.count || 0);
+        } else {
+          const ownerProjectsSnap = await ownerProjectsQuery.get();
+          projectCount = ownerProjectsSnap.size;
+        }
+        await db.collection("users").doc(ownerId).set({ projectCount }, { merge: true });
+        console.log(`[cleanupProjectOnDelete] updated projectCount=${projectCount} for owner=${ownerId}`);
+      } catch (err) {
+        console.error(`[cleanupProjectOnDelete] failed to update projectCount for owner=${ownerId}`, err);
+      }
+    }
 
     const historyRef = db.collection(PROJECT_DELETION_HISTORY_COLLECTION).doc();
     await historyRef.set({

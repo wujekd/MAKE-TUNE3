@@ -14,6 +14,7 @@ import styles from './ProjectEditView.module.css';
 export function ProjectEditView() {
   const { projectId } = useParams();
   const [searchParams] = useSearchParams();
+  const { user, loading: authLoading } = useAppStore(state => state.auth);
   const setCurrentProject = useAppStore(s => s.collaboration.setCurrentProject);
   const [project, setProject] = useState<Project | null>(null);
   const [collabs, setCollabs] = useState<Collaboration[]>([]);
@@ -38,22 +39,35 @@ export function ProjectEditView() {
     (async () => {
       try {
         if (!projectId) throw new Error('missing project id');
+        // Wait for auth to settle so we know if we are owner
+        if (authLoading) return;
+
         const p = await ProjectService.getProject(projectId);
         if (!p) throw new Error('project not found');
-        const c = await CollaborationService.getCollaborationsByProject(projectId);
+
+        const isOwner = user?.uid === p.ownerId;
+        const isAdmin = user?.isAdmin === true;
+
+        let c: Collaboration[];
+        if (isOwner || isAdmin) {
+          c = await CollaborationService.getCollaborationsByProject(projectId);
+        } else {
+          c = await CollaborationService.getPublishedCollaborationsByProject(projectId);
+        }
+
         if (!mounted) return;
         setProject(p);
         setCurrentProject(p);
         setCollabs(c);
-        console.log(c)
+        console.log(c);
       } catch (e: any) {
         if (mounted) setError(e?.message || 'failed to load');
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted && !authLoading) setLoading(false);
       }
     })();
     return () => { mounted = false; };
-  }, [projectId, setCurrentProject]);
+  }, [projectId, setCurrentProject, user?.uid, user?.isAdmin, authLoading]);
 
   useEffect(() => {
     if (initialSelectionApplied) return;

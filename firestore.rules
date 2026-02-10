@@ -83,8 +83,15 @@ service cloud.firestore {
     }
 
     match /collaborations/{collabId} {
-      allow read: if (resource.data.status != 'unpublished')
-        || isCollabOwner(collabId)
+      function isOwnerOfCollab() {
+        return isSignedIn()
+          && resource.data.projectId is string
+          && exists(/databases/$(database)/documents/projects/$(resource.data.projectId))
+          && get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.ownerId == request.auth.uid;
+      }
+
+      allow read: if (resource.data.status in ['published', 'submission', 'voting', 'completed'])
+        || isOwnerOfCollab()
         || isAdmin();
 
       allow create: if isSignedIn()

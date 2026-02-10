@@ -71,6 +71,22 @@ function App() {
                   if (!ok) return;
                   try {
                     await ProjectService.deleteProject(project.id);
+                    if (user?.uid && project?.ownerId === user.uid) {
+                      try {
+                        const projects = await ProjectService.listUserProjects(user.uid);
+                        useAppStore.setState(state => ({
+                          auth: {
+                            ...state.auth,
+                            user: state.auth.user ? {
+                              ...state.auth.user,
+                              projectCount: projects.length
+                            } : null
+                          }
+                        }));
+                      } catch (err) {
+                        console.warn('Failed to refresh project count after delete', err);
+                      }
+                    }
                     nav('/collabs');
                   } catch (e) {
                     alert('Failed to delete project');

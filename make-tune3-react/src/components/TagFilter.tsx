@@ -13,7 +13,7 @@ export function TagFilter({ selectedTags, onTagsChange }: TagFilterProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    TagService.getAllTags()
+    TagService.getActiveCollaborationTags()
       .then(setTags)
       .catch(console.error)
       .finally(() => setIsLoading(false));
@@ -56,8 +56,8 @@ export function TagFilter({ selectedTags, onTagsChange }: TagFilterProps) {
       
       <div className="tag-filter__tags">
         {tags.map(tag => {
-          const total = tag.projectCount + tag.collaborationCount;
-          if (total === 0) return null;
+          const total = tag.collaborationCount || 0;
+          if (total <= 0) return null;
           
           const isSelected = selectedTags.includes(tag.key);
           
@@ -77,4 +77,3 @@ export function TagFilter({ selectedTags, onTagsChange }: TagFilterProps) {
     </div>
   );
 }
-

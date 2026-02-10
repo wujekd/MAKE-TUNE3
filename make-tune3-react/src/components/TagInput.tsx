@@ -18,7 +18,7 @@ export function TagInput({ tags, onChange, disabled, placeholder }: TagInputProp
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    TagService.getAllTags().then(setSuggestions).catch(console.error);
+    TagService.getActiveCollaborationTags().then(setSuggestions).catch(console.error);
   }, []);
 
   const handleAddTag = (tagName: string) => {
@@ -95,7 +95,7 @@ export function TagInput({ tags, onChange, disabled, placeholder }: TagInputProp
               .filter(s => !tags.includes(s.name))
               .slice(0, 20)
               .map(tag => {
-                const total = tag.projectCount + tag.collaborationCount;
+                const total = tag.collaborationCount || 0;
                 return (
                   <button
                     key={tag.key}
@@ -134,4 +134,3 @@ export function TagInput({ tags, onChange, disabled, placeholder }: TagInputProp
     </div>
   );
 }
-

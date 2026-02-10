@@ -1,9 +1,9 @@
-import { useContext, useMemo, useRef, useEffect, useState } from 'react';
+import { useContext, useMemo, useState } from 'react';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import type { Track } from '../types/collaboration';
 import { ReportService } from '../services';
 import { useAppStore } from '../stores/appStore';
-import './Favorites.css';
+import styles from './ModerationPanel.module.css';
 
 type Props = {
   tracks: Track[];
@@ -48,18 +48,6 @@ export function ModerationPanel({ tracks, onApprove, onReject }: Props) {
     const sourcePath = normalizeSource(currentSrc);
     return tracks.find(t => t.filePath === sourcePath || t.optimizedPath === sourcePath) || null;
   }, [currentSrc, tracks]);
-
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      el.scrollLeft += e.deltaY;
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, []);
 
   const handleReportClick = () => {
     if (!current) return;
@@ -123,118 +111,90 @@ export function ModerationPanel({ tracks, onApprove, onReject }: Props) {
 
   return (
     <>
-      <section className="favorites-section">
-        <div className="favorites-header">
-          <h2 className="favorites-title">moderation</h2>
+      <section className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <div className={styles.panelHeading}>
+            <span className={styles.panelTitle}>Moderation</span>
+            <span className={styles.panelCount}>{tracks.length} pending</span>
+          </div>
+          {current && <span className={styles.statusPill}>Now reviewing</span>}
         </div>
-        <div className="favorites-container" ref={scrollContainerRef}>
-          {current ? (
-            <div className="favorite-item" style={{ width: '100%' }}>
-              <div className="moderation-actions">
-                <button className="moderation-button moderation-reject" onClick={handleReject}>Reject</button>
-                <button className="moderation-button moderation-approve" onClick={handleApprove}>Approve</button>
-                {user && (
-                  <button
-                    className="moderation-button moderation-report"
-                    onClick={handleReportClick}
-                  >
-                    ⚠ Report
-                  </button>
-                )}
-              </div>
-              <div style={{ color: 'var(--white)', paddingTop: 8 }}>{current.title || current.filePath}</div>
+
+        {current ? (
+          <div className={styles.trackRow}>
+            <div className={styles.trackInfo}>
+              <div className={styles.trackTitle}>{current.title || 'Untitled submission'}</div>
+              <div className={styles.trackMeta}>{current.filePath}</div>
             </div>
-          ) : tracks.length === 0 ? (
-            <div className="no-favorites">
-              <p>all submissions moderated</p>
+            <div className={styles.actions}>
+              <button
+                className={`${styles.actionButton} ${styles.reject}`}
+                onClick={handleReject}
+              >
+                Reject
+              </button>
+              <button
+                className={`${styles.actionButton} ${styles.approve}`}
+                onClick={handleApprove}
+              >
+                Approve
+              </button>
+              {user && (
+                <button
+                  className={`${styles.actionButton} ${styles.report}`}
+                  onClick={handleReportClick}
+                >
+                  Report
+                </button>
+              )}
             </div>
-          ) : (
-            <div className="no-favorites">
-              <p>play a pending submission to moderate</p>
-            </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className={styles.emptyState}>
+            {tracks.length === 0 ? 'All submissions moderated' : 'Play a pending submission to moderate'}
+          </div>
+        )}
       </section>
 
       {showReportModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000
-        }}>
-          <div style={{
-            backgroundColor: 'var(--primary1-900)',
-            borderRadius: '8px',
-            padding: '2rem',
-            maxWidth: '500px',
-            width: '90%',
-            border: '1px solid var(--contrast-600)'
-          }}>
-            <h3 style={{ color: 'var(--white)', marginTop: 0 }}>Report Submission</h3>
-            <p style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>
-              Please describe why you are reporting this submission:
-            </p>
-            <textarea
-              value={reportReason}
-              onChange={(e) => setReportReason(e.target.value)}
-              placeholder="Enter reason for reporting..."
-              style={{
-                width: '100%',
-                minHeight: '120px',
-                padding: '0.75rem',
-                borderRadius: '4px',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                color: 'var(--white)',
-                fontSize: '1rem',
-                fontFamily: 'inherit',
-                resize: 'vertical'
-              }}
-            />
-            <div style={{
-              display: 'flex',
-              gap: '1rem',
-              marginTop: '1.5rem'
-            }}>
+        <div className={styles.reportOverlay} onClick={() => setShowReportModal(false)}>
+          <div className={styles.reportModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.reportHeader}>
+              <h3 className={styles.reportTitle}>Report Submission</h3>
               <button
+                className={styles.reportClose}
                 onClick={() => setShowReportModal(false)}
                 disabled={reporting}
-                style={{
-                  flex: 1,
-                  padding: '0.75rem',
-                  borderRadius: '4px',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  color: 'var(--white)',
-                  cursor: reporting ? 'default' : 'pointer',
-                  opacity: reporting ? 0.5 : 1
-                }}
               >
-                Cancel
+                ×
               </button>
-              <button
-                onClick={handleReportSubmit}
-                disabled={reporting || !reportReason.trim()}
-                style={{
-                  flex: 1,
-                  padding: '0.75rem',
-                  borderRadius: '4px',
-                  border: '1px solid rgba(200, 50, 50, 0.5)',
-                  backgroundColor: 'rgba(200, 50, 50, 0.3)',
-                  color: 'var(--white)',
-                  cursor: reporting || !reportReason.trim() ? 'default' : 'pointer',
-                  opacity: reporting || !reportReason.trim() ? 0.5 : 1
-                }}
-              >
-                {reporting ? 'Submitting...' : 'Submit Report'}
-              </button>
+            </div>
+            <div className={styles.reportBody}>
+              <p className={styles.reportText}>
+                Please describe why you are reporting this submission:
+              </p>
+              <textarea
+                className={styles.reportTextarea}
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                placeholder="Enter reason for reporting..."
+              />
+              <div className={styles.reportActions}>
+                <button
+                  onClick={() => setShowReportModal(false)}
+                  disabled={reporting}
+                  className={`${styles.reportButton} ${styles.reportCancel}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleReportSubmit}
+                  disabled={reporting || !reportReason.trim()}
+                  className={`${styles.reportButton} ${styles.reportSubmit}`}
+                >
+                  {reporting ? 'Submitting...' : 'Submit Report'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

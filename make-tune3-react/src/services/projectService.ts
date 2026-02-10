@@ -60,15 +60,13 @@ export class ProjectService {
     return snap.docs.map(d => ({ ...(d.data() as any), id: d.id } as Project));
   }
 
-  static async createProjectWithUniqueName(params: { name: string; description?: string; ownerId: string; tags?: string[]; tagsKey?: string[] }): Promise<Project> {
+  static async createProjectWithUniqueName(params: { name: string; description?: string; ownerId: string }): Promise<Project> {
     const createFn = httpsCallable(functions, 'createProjectWithUniqueName');
 
     // Call cloud function which handles checks, name reservation, and allowance increment
     const result = await createFn({
       name: params.name,
-      description: params.description,
-      tags: params.tags,
-      tagsKey: params.tagsKey
+      description: params.description
     });
 
     const data = result.data as any;
@@ -87,5 +85,11 @@ export class ProjectService {
       createdAt: restoreTimestamp(data.createdAt),
       updatedAt: restoreTimestamp(data.updatedAt)
     } as Project;
+  }
+
+  static async recountMyProjectCount(): Promise<number> {
+    const recountFn = httpsCallable(functions, 'recountMyProjectCount');
+    const result = await recountFn({});
+    return Number((result.data as any)?.projectCount || 0);
   }
 }

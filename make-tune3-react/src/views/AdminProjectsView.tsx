@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Collaboration, Project } from '../types/collaboration';
 import { CollaborationService, ProjectService } from '../services';
 import { AdminNav } from '../components/AdminNav';
+import { useAppStore } from '../stores/appStore';
 
 type CollabMap = Record<string, Collaboration[]>;
 
@@ -14,6 +15,7 @@ export function AdminProjectsView() {
   const [actionTarget, setActionTarget] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { user } = useAppStore(state => state.auth);
 
   useEffect(() => {
     let isMounted = true;
@@ -102,6 +104,22 @@ export function AdminProjectsView() {
         await CollaborationService.deleteCollaboration(collab.id);
       }
       await ProjectService.deleteProject(projectId);
+      if (user?.uid && project?.ownerId === user.uid) {
+        try {
+          const ownerProjects = await ProjectService.listUserProjects(user.uid);
+          useAppStore.setState(state => ({
+            auth: {
+              ...state.auth,
+              user: state.auth.user ? {
+                ...state.auth.user,
+                projectCount: ownerProjects.length
+              } : null
+            }
+          }));
+        } catch (err) {
+          console.warn('Failed to refresh project count after delete', err);
+        }
+      }
       setProjects(prev => prev.filter(p => p.id !== projectId));
       setCollaborations(prev => {
         const clone = { ...prev };

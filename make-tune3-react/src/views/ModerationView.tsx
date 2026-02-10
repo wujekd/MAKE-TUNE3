@@ -1,5 +1,5 @@
 import { useContext, useEffect } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { ModerationSubmissionItem } from '../components/ModerationSubmissionItem';
@@ -7,8 +7,8 @@ import { Mixer } from '../components/Mixer';
 import { ModerationPanel } from '../components/ModerationPanel';
 import { CollabData } from '../components/CollabData';
 import { CollabHeader } from '../components/CollabHeader';
-import './MainView.css';
-import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
+import ProjectHistory from '../components/ProjectHistory';
+import styles from './ModerationView.module.css';
 
 export function ModerationView() {
   const audioContext = useContext(AudioEngineContext);
@@ -21,9 +21,10 @@ export function ModerationView() {
     rejectSubmission
   } = useAppStore(state => state.collaboration);
   const { playSubmission } = useAppStore(state => state.playback);
+  const { currentProject } = useAppStore(state => state.collaboration);
 
-  const location = useLocation();
   const collabId = useParams().collaborationId as string;
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!collabId || !user) return;
@@ -31,7 +32,7 @@ export function ModerationView() {
   }, [collabId, user, loadCollaborationForModeration]);
 
   if (!audioContext) return null;
-  const { engine, state } = audioContext;
+  const { state } = audioContext;
   useEffect(() => {
     const backingPath = useAppStore.getState().collaboration.currentCollaboration?.backingTrackPath;
     if (!backingPath) return;
@@ -40,70 +41,76 @@ export function ModerationView() {
 
   const pendingTracks = regularTracks.filter(track => track.moderationStatus === 'pending');
 
-  if (currentCollaboration && pendingTracks.length === 0 && regularTracks.length === 0) {
-    return (
-      <div className="main-container">
-        <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 1000 }}>
-          <button onClick={() => (window.location.href = '/collabs')} style={{ padding: '8px 12px' }}>← back to collabs</button>
-        </div>
-        <div className="info-top">
-          <h2>Moderation</h2>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-            <CollabData collab={currentCollaboration as any} />
-            <CollabHeader collaboration={currentCollaboration} />
+  return (
+    <div className={`view-container ${styles.container}`}>
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
+          <div className={styles.headerRow}>
+            <button
+              className={`btn-ghost ${styles.backButton}`}
+              onClick={() => navigate('/collabs')}
+            >
+              ← Back to collabs
+            </button>
+            <span className={styles.sectionLabel}>Moderation Queue</span>
+          </div>
+          <div className={styles.headerCol}>
+            <div className={styles.title}>{currentProject?.name || ''}</div>
+            <div className={styles.subtitle}>{currentProject?.description || ''}</div>
+          </div>
+          <div className={styles.headerCol}>
+            <div className={styles.title}>{currentCollaboration?.name || ''}</div>
+            <div className={styles.subtitle}>{currentCollaboration?.description || ''}</div>
           </div>
         </div>
-        <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>
-          No pending submissions to moderate
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="main-container">
-      <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 1000 }}>
-        <button onClick={() => (window.location.href = '/collabs')} style={{ padding: '8px 12px' }}>← back to collabs</button>
-      </div>
-
-      <div className="info-top">
-        <h2>Moderation</h2>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+        <div className={styles.headerRight}>
+          <ProjectHistory />
           <CollabData collab={currentCollaboration as any} />
           <CollabHeader collaboration={currentCollaboration} />
         </div>
       </div>
 
-      <div className={`submissions-section ${!state.playerController.pastStagePlayback ? 'active-playback' : ''}`}>
-        <div className="audio-player-section">
+      <div className={styles.content}>
+        <div className={`${styles.submissionsSection} ${!state.playerController.pastStagePlayback ? styles.activePlayback : ''}`}>
+          <div className={styles.audioPlayerSection}>
           <ModerationPanel
             tracks={pendingTracks}
             onApprove={(track) => approveSubmission?.(track)}
             onReject={(track) => rejectSubmission?.(track)}
           />
-          <div className="audio-player-title">Submissions</div>
-          <div style={{ display: 'flex', flexDirection: 'row', gap: '10px', flexWrap: 'wrap' }}>
-            {regularTracks.map((track, index) => {
-              const isCurrent =
-                !state.playerController.pastStagePlayback &&
-                !state.playerController.playingFavourite &&
-                state.playerController.currentTrackId === index;
+            <div className={styles.audioPlayerTitle}>Submissions</div>
+            {regularTracks.length === 0 ? (
+              <div className={styles.emptyState}>
+                No pending submissions to moderate.
+              </div>
+            ) : (
+              <div className={`${styles.submissionsScroll} themed-scroll`}>
+                {regularTracks.map((track, index) => {
+                  const isCurrent =
+                    !state.playerController.pastStagePlayback &&
+                    !state.playerController.playingFavourite &&
+                    state.playerController.currentTrackId === index;
 
-              return (
-                <ModerationSubmissionItem
-                  key={track.id}
-                  track={track}
-                  index={index}
-                  isCurrentTrack={isCurrent}
-                  isPlaying={isCurrent && state.player1.isPlaying}
-                  onPlay={(filePath, ix) => playSubmission(filePath, ix, false)}
-                />
-              );
-            })}
+                  return (
+                    <ModerationSubmissionItem
+                      key={track.id}
+                      track={track}
+                      index={index}
+                      isCurrentTrack={isCurrent}
+                      isPlaying={isCurrent && state.player1.isPlaying}
+                      onPlay={(filePath, ix) => playSubmission(filePath, ix, false)}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
+
+        <div className={`mixer-theme ${styles.mixerSection}`}>
+          <Mixer state={state} />
+        </div>
       </div>
-      <Mixer state={state} />
     </div>
   );
 }

@@ -100,6 +100,17 @@ export class CollaborationService {
     return querySnapshot.docs.map(d => ({ ...(d.data() as any), id: d.id }) as Collaboration);
   }
 
+  static async getPublishedCollaborationsByProject(projectId: ProjectId): Promise<Collaboration[]> {
+    const q = query(
+      collection(db, COLLECTIONS.COLLABORATIONS),
+      where('projectId', '==', projectId),
+      where('status', 'in', ['published', 'submission', 'voting', 'completed'])
+    );
+
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(d => ({ ...(d.data() as any), id: d.id }) as Collaboration);
+  }
+
   static async updateCollaboration(collaborationId: CollaborationId, updates: Partial<Collaboration>): Promise<void> {
     const docRef = doc(db, COLLECTIONS.COLLABORATIONS, collaborationId);
     await updateDoc(docRef, {
