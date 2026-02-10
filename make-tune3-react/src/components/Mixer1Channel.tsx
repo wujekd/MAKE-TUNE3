@@ -132,45 +132,40 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
         flexDirection: 'column'
       }}
     >
-      <div className="mixer1-transport" style={{ flexShrink: 0 }}>
-        <div className="mixer1-transport-buttons">
+      <div className="transport" style={{ flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%' }}>
           <button
-            id="mixer1-play-btn"
-            className="mixer1-button"
+            id="play-btn"
             onClick={togglePlayPause}
             disabled={!hasSource}
           >
             {isPlaying ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
                 <rect x="6" y="4" width="4" height="16" fill="#ffffff" />
                 <rect x="14" y="4" width="4" height="16" fill="#ffffff" />
               </svg>
             ) : (
-              <svg width="20" height="20" viewBox="-3 0 28 28" fill="#ffffff">
+              <svg width="32" height="32" viewBox="-3 0 28 28" fill="#ffffff">
                 <path d="M21.4,13.5L4.4,1.3C3.3,0.7,2,0.8,2,2.9v20.1c0,2,1.4,2.3,2.4,1.6l17-12.2C22.2,11.6,22.2,14.3,21.4,13.5" />
               </svg>
             )}
           </button>
           <button
-            id="mixer1-stop-btn"
-            className="mixer1-button"
+            id="stop-btn"
             onClick={() => stopBackingPlayback()}
             disabled={!hasSource}
           >
             stop
           </button>
         </div>
-        <div className="mixer1-timing">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, color: 'var(--dashboard-text-muted)', fontSize: 10 }}>
           <span>{getCurrentTime(state)}</span>
           <span>/</span>
           <span>{getTotalTime(state)}</span>
         </div>
-      </div>
-
-      <div className="mixer1-time-wrapper" style={{ flexShrink: 0 }}>
         <input
           type="range"
-          className="time-slider mixer1-time-slider"
+          className="time-slider"
           min="0"
           max="100"
           step="0.1"
