@@ -6,7 +6,11 @@ This project uses **Vitest** for testing with two types of tests:
 - **Unit Tests**: Test individual functions/components in isolation (with mocks)
 - **Integration Tests**: Test multiple parts working together (with Firebase emulators)
 
-📚 **New to integration testing?** See [INTEGRATION-TEST-TUTORIAL.md](./INTEGRATION-TEST-TUTORIAL.md) for a step-by-step guide.
+to start firebase emulators
+```
+firebase emulators:start
+```
+
 
 ## Setup
 

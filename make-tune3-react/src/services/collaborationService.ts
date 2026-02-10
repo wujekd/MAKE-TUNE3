@@ -1,7 +1,7 @@
 import { doc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, limit as firestoreLimit, Timestamp, setDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import app, { db } from './firebase';
-import type { Collaboration, CollaborationId, ProjectId } from '../types/collaboration';
+import type { Collaboration, CollaborationId, ProjectId, CollaborationDetail } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 
 export class CollaborationService {
@@ -130,7 +130,7 @@ export class CollaborationService {
   static async listPublishedCollaborations(): Promise<Collaboration[]> {
     const q = query(
       collection(db, COLLECTIONS.COLLABORATIONS),
-      where('status', '!=', 'unpublished')
+      where('status', 'in', ['published', 'submission', 'voting', 'completed'])
     );
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ ...(d.data() as any), id: d.id } as Collaboration));

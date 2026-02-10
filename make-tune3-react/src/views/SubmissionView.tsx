@@ -158,7 +158,7 @@ export function SubmissionView() {
       }
       if (!user) {
         setStatus('ready');
-        setResolvedStatusKey(`${user?.uid ?? 'anon'}:${collaborationId}`);
+        setResolvedStatusKey(`anon:${collaborationId}`);
         return;
       }
       try {

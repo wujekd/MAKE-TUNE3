@@ -4,88 +4,144 @@
       "collectionGroup": "collaborations",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "submissionCloseAt", "order": "ASCENDING" }
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "submissionCloseAt",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "collaborations",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "votingCloseAt", "order": "ASCENDING" }
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "votingCloseAt",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "collaborations",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "tagsKey", "arrayConfig": "CONTAINS" },
-        { "fieldPath": "status", "order": "ASCENDING" }
+        {
+          "fieldPath": "tagsKey",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "collaborations",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "projectId", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" }
+        {
+          "fieldPath": "projectId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "projects",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "tagsKey", "arrayConfig": "CONTAINS" },
-        { "fieldPath": "isActive", "order": "ASCENDING" }
+        {
+          "fieldPath": "tagsKey",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "isActive",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "tags",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "projectCount", "order": "DESCENDING" },
-        { "fieldPath": "collaborationCount", "order": "DESCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
+        {
+          "fieldPath": "projectCount",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "collaborationCount",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "userCollaborations",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "collaborationId", "order": "ASCENDING" },
-        { "fieldPath": "finalVote", "order": "ASCENDING" }
+        {
+          "fieldPath": "collaborationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "finalVote",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "submissionUsers",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "userId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "submissionUsers",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "collaborationId", "order": "ASCENDING" },
-        { "fieldPath": "path", "order": "ASCENDING" }
+        {
+          "fieldPath": "collaborationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "path",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "userDownloads",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "userId", "order": "ASCENDING" },
-        { "fieldPath": "lastDownloadedAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "submissionUploadTokens",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lastDownloadedAt",
+          "order": "DESCENDING"
+        }
       ]
     }
   ],
