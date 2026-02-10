@@ -25,6 +25,42 @@
   letter-spacing: 0.05em;
 }
 
+.collab-timeline__dates {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding: 0 2px;
+}
+
+.collab-timeline__date {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.collab-timeline__date--center {
+  align-items: center;
+  text-align: center;
+}
+
+.collab-timeline__date--right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+/* Labels removed per request, but keeping class if needed later */
+.collab-timeline__date-label {
+  display: none;
+}
+
+.collab-timeline__date-value {
+  font-size: 10px;
+  color: var(--white);
+  opacity: 0.5;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
 .collab-timeline__bar {
   display: flex;
   flex-direction: column;

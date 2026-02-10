@@ -203,9 +203,22 @@ export function CollaborationTimeline({
           <div className="collab-progress__divider" />
           <div className="collab-progress__handle" style={{ left: `${handlePosition}%` }} />
         </div>
-        <div className="collab-progress__labels">
-          <span>Submission</span>
-          <span>Voting</span>
+        <div className="collab-timeline__dates">
+          <div className="collab-timeline__date">
+            <div className="collab-timeline__date-value">
+              {TimeUtils.formatDate(publishedMs, { short: true })}
+            </div>
+          </div>
+          <div className="collab-timeline__date collab-timeline__date--center">
+            <div className="collab-timeline__date-value">
+              {TimeUtils.formatDate(submissionEndMs, { short: true })}
+            </div>
+          </div>
+          <div className="collab-timeline__date collab-timeline__date--right">
+            <div className="collab-timeline__date-value">
+              {TimeUtils.formatDate(votingEndMs, { short: true })}
+            </div>
+          </div>
         </div>
       </div>
 

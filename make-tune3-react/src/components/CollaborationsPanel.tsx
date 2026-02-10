@@ -15,6 +15,7 @@ interface CollaborationsPanelProps {
   error: string | null;
   selectedTags: string[];
   onTagsChange: (tagKeys: string[]) => void;
+  availableTags: Array<{ key: string; name: string; count: number }>;
 }
 
 export function CollaborationsPanel({
@@ -22,7 +23,8 @@ export function CollaborationsPanel({
   hasLoaded,
   error,
   selectedTags,
-  onTagsChange
+  onTagsChange,
+  availableTags
 }: CollaborationsPanelProps) {
   const audioState = useAudioStore(s => s.state);
   const playBackingTrack = usePlaybackStore(s => s.playBackingTrack);
@@ -33,7 +35,7 @@ export function CollaborationsPanel({
     <div className={`project-history ${styles.historyColumn}`}>
       <h4 className="project-history-title">collaborations</h4>
       <div className={styles.historyPanel}>
-        <TagFilter selectedTags={selectedTags} onTagsChange={onTagsChange} variant="slim" />
+        <TagFilter selectedTags={selectedTags} onTagsChange={onTagsChange} variant="slim" tags={availableTags} />
         <div className={`collab-list ${styles.collabList}`} aria-busy={!hasLoaded}>
           {!hasLoaded && !error && (
             <div className={styles.spinnerContainer}>

@@ -1,24 +1,19 @@
-import { useState, useEffect } from 'react';
-import { TagService } from '../services';
-import type { Tag } from '../types/collaboration';
 import './TagFilter.css';
+
+interface TagOption {
+  key: string;
+  name: string;
+  count: number;
+}
 
 interface TagFilterProps {
   selectedTags: string[];
   onTagsChange: (tagKeys: string[]) => void;
   variant?: 'default' | 'slim';
+  tags: TagOption[];
 }
 
-export function TagFilter({ selectedTags, onTagsChange, variant = 'default' }: TagFilterProps) {
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    TagService.getActiveCollaborationTags()
-      .then(setTags)
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, []);
+export function TagFilter({ selectedTags, onTagsChange, variant = 'default', tags }: TagFilterProps) {
 
   const toggleTag = (tagKey: string) => {
     if (selectedTags.includes(tagKey)) {
@@ -31,10 +26,6 @@ export function TagFilter({ selectedTags, onTagsChange, variant = 'default' }: T
   const clearAll = () => {
     onTagsChange([]);
   };
-
-  if (isLoading) {
-    return <div className={`tag-filter__loading ${variant === 'slim' ? 'tag-filter__loading--slim' : ''}`}>Loading tags...</div>;
-  }
 
   if (tags.length === 0) {
     return null;
@@ -57,7 +48,7 @@ export function TagFilter({ selectedTags, onTagsChange, variant = 'default' }: T
       
       <div className="tag-filter__tags">
         {tags.map(tag => {
-          const total = tag.collaborationCount || 0;
+          const total = tag.count || 0;
           if (total <= 0) return null;
           
           const isSelected = selectedTags.includes(tag.key);

@@ -29,4 +29,24 @@ export class TimeUtils {
     const max = 60 * 60 * 24 * 14; // 14 days maximum
     return Math.max(min, Math.min(max, seconds));
   }
+
+  static formatDate(target: Date | number, options?: { short?: boolean }): string {
+    if (!target) return 'N/A';
+    const date = target instanceof Date ? target : new Date(target);
+
+    if (options?.short) {
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
 }

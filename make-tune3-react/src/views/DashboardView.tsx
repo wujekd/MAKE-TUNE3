@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Collaboration } from '../types/collaboration';
 import { CollaborationService } from '../services';
+import { TagUtils } from '../utils/tagUtils';
 import { UserActivityPanel } from '../components/UserActivityPanel';
 import { DashboardHeader } from '../components/DashboardHeader';
 import { CollaborationsPanel } from '../components/CollaborationsPanel';
@@ -66,11 +67,60 @@ export function DashboardView() {
   useEffect(() => {
     if (selectedTags.length === 0) {
       setFilteredCollabs(allCollabs);
-    } else {
-      const filtered = CollaborationService.filterCollaborationsByTags(allCollabs, selectedTags);
-      setFilteredCollabs(filtered);
+      return;
     }
+    const normalizedSelected = selectedTags.map(tag => TagUtils.normalizeTag(tag)).filter(Boolean);
+    const filtered = allCollabs.filter(collab => {
+      const rawKeys =
+        Array.isArray(collab.tagsKey) && collab.tagsKey.length > 0
+          ? collab.tagsKey
+          : (collab.tags || []);
+      const keys = rawKeys.map(tag => TagUtils.normalizeTag(tag)).filter(Boolean);
+      if (keys.length === 0) return false;
+      return normalizedSelected.every(tag => keys.includes(tag));
+    });
+    setFilteredCollabs(filtered);
   }, [selectedTags, allCollabs]);
+
+  const availableTags = useMemo(() => {
+    const map = new Map<string, { key: string; name: string; count: number }>();
+    for (const collab of allCollabs) {
+      const hasKeys = Array.isArray(collab.tagsKey) && collab.tagsKey.length > 0;
+      const rawTags = Array.isArray(collab.tags) ? collab.tags : [];
+      if (hasKeys) {
+        for (let i = 0; i < collab.tagsKey.length; i += 1) {
+          const rawKey = collab.tagsKey[i];
+          const key = typeof rawKey === 'string' ? TagUtils.normalizeTag(rawKey) : '';
+          if (!key) continue;
+          const name = rawTags[i] || rawKey || key;
+          const existing = map.get(key);
+          if (existing) {
+            existing.count += 1;
+            if (!existing.name && name) existing.name = name;
+          } else {
+            map.set(key, { key, name, count: 1 });
+          }
+        }
+      } else {
+        for (const tag of rawTags) {
+          const key = TagUtils.normalizeTag(tag);
+          if (!key) continue;
+          const name = tag || key;
+          const existing = map.get(key);
+          if (existing) {
+            existing.count += 1;
+            if (!existing.name && name) existing.name = name;
+          } else {
+            map.set(key, { key, name, count: 1 });
+          }
+        }
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return a.name.localeCompare(b.name);
+    });
+  }, [allCollabs]);
 
   const handleTagsChange = (tagKeys: string[]) => {
     setSelectedTags(tagKeys);
@@ -111,6 +161,7 @@ export function DashboardView() {
             error={error}
             selectedTags={selectedTags}
             onTagsChange={handleTagsChange}
+            availableTags={availableTags}
           />
         </div>
         <div className={`mixer-theme ${styles.mixerColumn}`}>

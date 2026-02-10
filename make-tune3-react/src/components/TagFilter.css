@@ -82,7 +82,7 @@
 .tag-filter--slim {
   background: transparent;
   border: none;
-  padding: 8px 0 6px;
+  padding: 8px 0 0;
 }
 
 .tag-filter--slim .tag-filter__header {
