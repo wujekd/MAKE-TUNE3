@@ -15,7 +15,7 @@ import styles from './DashboardView.module.css';
 export function DashboardView() {
   const [allCollabs, setAllCollabs] = useState<Collaboration[]>([]);
   const [filteredCollabs, setFilteredCollabs] = useState<Collaboration[]>([]);
-  const [needsMod, setNeedsMod] = useState<Collaboration[]>([]);
+
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -48,7 +48,6 @@ export function DashboardView() {
         if (mounted) {
           setAllCollabs(list);
           setFilteredCollabs(list);
-          setNeedsMod(list.filter(c => (c as any).unmoderatedSubmissions));
         }
       } catch (e: any) {
         console.error('DashboardView: error loading collaborations:', e);
@@ -88,8 +87,6 @@ export function DashboardView() {
   // always render view; hydrate when data arrives
 
   const totalCollabs = allCollabs.length;
-  const filteredCount = filteredCollabs.length;
-  const pendingModeration = needsMod.length;
 
   // Compute additional counters
   const totalSubmissions = allCollabs.reduce((sum, c) => sum + (c.submissionsCount || 0), 0);
@@ -100,8 +97,6 @@ export function DashboardView() {
     <div className={`view-container ${styles.container}`}>
       <DashboardHeader
         totalCollabs={totalCollabs}
-        filteredCount={filteredCount}
-        pendingModeration={pendingModeration}
         totalSubmissions={totalSubmissions}
         totalVotes={totalVotes}
         activeCollabs={activeCollabs}

@@ -151,7 +151,7 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
   };
 
   const loadModeration = async () => {
-    if (moderationLoading || moderationLoaded) return;
+    if (moderationLoading) return;
     setModerationLoading(true);
     setModerationError(null);
     try {
@@ -165,19 +165,29 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
     }
   };
 
+  // Eagerly fetch moderation count so badge shows without user clicking
+  useEffect(() => {
+    if (user && !moderationLoaded && !moderationLoading) {
+      void loadModeration();
+    }
+  }, [user]);
+
+  // Reload moderation data when switching to moderate view
   useEffect(() => {
     if (mode === 'moderate' && user) {
       void loadModeration();
     }
   }, [mode, user]);
 
+  const pendingCount = moderationCollabs.length;
+
   return (
     <section className="user-activity__section">
-      <div className="user-activity__section-header">
-        <h4 className="project-history-title card__title user-activity__section-title">
-          {mode === 'list' ? 'my projects' : 'moderation queue'}
+      <div className="user-activity__section-header" style={{ alignItems: 'center' }}>
+        <h4 className="project-history-title card__title user-activity__section-title" style={{ lineHeight: 1.3, minHeight: '2.6em', display: 'flex', alignItems: 'center' }}>
+          {mode === 'list' ? 'my projects' : <>moderation<br />queue</>}
         </h4>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {getProjectAllowance(user) && getProjectAllowance(user)!.limit !== Infinity && (
             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted, #888)' }}>
               {getProjectAllowance(user)!.current} / {getProjectAllowance(user)!.limit}
@@ -189,7 +199,7 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
               disabled={!user || authLoading}
               onClick={() => setMode('moderate')}
             >
-              review queue
+              review queue{pendingCount > 0 && <span className="user-activity__badge">{pendingCount}</span>}
             </button>
           )}
           {mode === 'moderate' && (
@@ -197,7 +207,7 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
               className="user-activity__action-button user-activity__action-button--secondary"
               onClick={() => setMode('list')}
             >
-              back to projects
+              back to<br />projects
             </button>
           )}
           {canCreateProject(user) && (
@@ -206,7 +216,7 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
               disabled={!user || authLoading}
               onClick={() => setShowForm(v => !v)}
             >
-              create project
+              create<br />project
             </button>
           )}
         </div>

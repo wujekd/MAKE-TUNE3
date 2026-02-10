@@ -5,8 +5,6 @@ import styles from '../views/DashboardView.module.css';
 
 interface DashboardHeaderProps {
   totalCollabs: number;
-  filteredCount: number;
-  pendingModeration: number;
   totalSubmissions: number;
   totalVotes: number;
   activeCollabs: number;
@@ -24,8 +22,6 @@ const formatCount = (value: number) => {
 
 export function DashboardHeader({
   totalCollabs,
-  filteredCount,
-  pendingModeration,
   totalSubmissions,
   totalVotes,
   activeCollabs
@@ -59,10 +55,8 @@ export function DashboardHeader({
             <div className={styles.counterGrid}>
               <CounterCard value={totalCollabs} label="collabs" />
               <CounterCard value={activeCollabs} label="active" />
-              <CounterCard value={filteredCount} label="visible" />
               <CounterCard value={totalSubmissions} label="submissions" />
               <CounterCard value={totalVotes} label="votes" />
-              <CounterCard value={pendingModeration} label="pending" highlight={pendingModeration > 0} />
             </div>
           </div>
         </div>
