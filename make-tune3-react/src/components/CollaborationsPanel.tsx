@@ -33,7 +33,7 @@ export function CollaborationsPanel({
     <div className={`project-history ${styles.historyColumn}`}>
       <h4 className="project-history-title">collaborations</h4>
       <div className={styles.historyPanel}>
-        <TagFilter selectedTags={selectedTags} onTagsChange={onTagsChange} />
+        <TagFilter selectedTags={selectedTags} onTagsChange={onTagsChange} variant="slim" />
         <div className={`collab-list ${styles.collabList}`} aria-busy={!hasLoaded}>
           {!hasLoaded && !error && (
             <div className={styles.spinnerContainer}>

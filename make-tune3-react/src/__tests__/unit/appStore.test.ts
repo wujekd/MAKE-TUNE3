@@ -77,6 +77,8 @@ describe('AppStore - Collaboration Slice', () => {
                 isLoadingProject: false,
                 isUpdatingFavorites: false,
                 isUpdatingListened: false,
+                pendingFavoriteActions: {},
+                pendingVotes: {},
                 setCurrentProject: useAppStore.getState().collaboration.setCurrentProject,
                 setCurrentCollaboration: useAppStore.getState().collaboration.setCurrentCollaboration,
                 setUserCollaboration: useAppStore.getState().collaboration.setUserCollaboration,

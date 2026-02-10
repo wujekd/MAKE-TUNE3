@@ -17,6 +17,8 @@ interface SubmissionItemProps {
   voteFor: (trackId: string) => void;
   listenedRatio: number;
   isFinal: boolean;
+  pendingFavoriteAction?: 'adding' | 'removing' | null;
+  isVoting?: boolean;
 }
 
 export default function SubmissionItem({
@@ -30,7 +32,9 @@ export default function SubmissionItem({
   onPlay,
   voteFor,
   listenedRatio,
-  isFinal
+  isFinal,
+  pendingFavoriteAction = null,
+  isVoting = false
 }: SubmissionItemProps) {
 
   const { user } = useAppStore(state => state.auth);
@@ -65,15 +69,31 @@ export default function SubmissionItem({
     onAddToFavorites(track.filePath);
   };
 
+  const isFavoritePending = pendingFavoriteAction === 'adding' || pendingFavoriteAction === 'removing';
+  const isVotePending = isVoting;
+  const isBusy = isFavoritePending || isVotePending;
+  const statusLabel = isVotePending ? 'Voting...' : null;
+
   const containerClass = [
     'submission-container',
     isFinal ? 'voted-for' : '',
     listened ? 'listened' : '',
-    isCurrentTrack ? 'currently-playing' : ''
+    isCurrentTrack ? 'currently-playing' : '',
+    isBusy ? 'pending-action' : ''
   ].filter(Boolean).join(' ');
+
+  const favoriteLabel = !user
+    ? 'Login to add'
+    : (listened ? 'Add to favorites' : `Listen to ${listenedRatio}% to add`);
 
   return (
     <div className={containerClass}>
+      {statusLabel && (
+        <div className="submission-status" aria-live="polite">
+          <LoadingSpinner size={10} />
+          <span>{statusLabel}</span>
+        </div>
+      )}
       <button
         className="play-button"
         onClick={handlePlayClick}
@@ -88,17 +108,19 @@ export default function SubmissionItem({
         <button
           className="vote-button"
           onClick={() => voteFor(track.filePath)}
-          disabled={isFinal}
+          disabled={isFinal || isVotePending || isFavoritePending}
         >
-          {isFinal ? '✓ Voted' : 'Vote'}
+          {isVotePending && <LoadingSpinner size={12} />}
+          {isFinal ? '✓ Voted' : (isVotePending ? 'Voting...' : 'Vote')}
         </button>
       ) : (
         <button
           className="favorite-button"
           onClick={handleAddToFavorites}
-          disabled={!listened || !user}
+          disabled={!listened || !user || isFavoritePending || isVotePending}
         >
-          {!user ? 'Login to add' : (listened ? 'Add to favorites' : `Listen to ${listenedRatio}% to add`)}
+          {pendingFavoriteAction === 'adding' && <LoadingSpinner size={12} />}
+          {favoriteLabel}
         </button>
       )}
     </div>

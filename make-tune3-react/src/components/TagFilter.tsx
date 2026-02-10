@@ -6,9 +6,10 @@ import './TagFilter.css';
 interface TagFilterProps {
   selectedTags: string[];
   onTagsChange: (tagKeys: string[]) => void;
+  variant?: 'default' | 'slim';
 }
 
-export function TagFilter({ selectedTags, onTagsChange }: TagFilterProps) {
+export function TagFilter({ selectedTags, onTagsChange, variant = 'default' }: TagFilterProps) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -32,7 +33,7 @@ export function TagFilter({ selectedTags, onTagsChange }: TagFilterProps) {
   };
 
   if (isLoading) {
-    return <div className="tag-filter__loading">Loading tags...</div>;
+    return <div className={`tag-filter__loading ${variant === 'slim' ? 'tag-filter__loading--slim' : ''}`}>Loading tags...</div>;
   }
 
   if (tags.length === 0) {
@@ -40,7 +41,7 @@ export function TagFilter({ selectedTags, onTagsChange }: TagFilterProps) {
   }
 
   return (
-    <div className="tag-filter">
+    <div className={`tag-filter ${variant === 'slim' ? 'tag-filter--slim' : ''}`}>
       <div className="tag-filter__header">
         <h4>Filter by Tags</h4>
         {selectedTags.length > 0 && (

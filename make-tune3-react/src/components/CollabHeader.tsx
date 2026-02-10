@@ -4,12 +4,17 @@ import { CollaborationTimeline } from './CollaborationTimeline';
 interface CollabHeaderProps {
   collaboration: Collaboration | null;
   onStageChange?: (nextStatus: 'voting' | 'completed') => void;
+  displayStatus?: Collaboration['status'];
 }
 
-export function CollabHeader({ collaboration, onStageChange }: CollabHeaderProps) {
-  if (!collaboration || collaboration.status === 'unpublished' || collaboration.status === 'completed') {
+export function CollabHeader({ collaboration, onStageChange, displayStatus }: CollabHeaderProps) {
+  if (collaboration && (collaboration.status === 'unpublished' || collaboration.status === 'completed')) {
     return null;
   }
+
+  const isPlaceholder = !collaboration;
+  const actualStatus = collaboration?.status ?? displayStatus ?? 'submission';
+  const resolvedDisplayStatus = displayStatus ?? collaboration?.status ?? 'submission';
 
   return (
     <div
@@ -35,11 +40,13 @@ export function CollabHeader({ collaboration, onStageChange }: CollabHeaderProps
         }}
       >
         <CollaborationTimeline
-          status={collaboration.status}
-          publishedAt={collaboration.publishedAt}
-          submissionCloseAt={(collaboration as any).submissionCloseAt}
-          votingCloseAt={(collaboration as any).votingCloseAt}
+          status={actualStatus}
+          publishedAt={collaboration?.publishedAt}
+          submissionCloseAt={(collaboration as any)?.submissionCloseAt}
+          votingCloseAt={(collaboration as any)?.votingCloseAt}
           onStageChange={onStageChange}
+          placeholder={isPlaceholder}
+          displayStatus={resolvedDisplayStatus}
         />
       </div>
     </div>

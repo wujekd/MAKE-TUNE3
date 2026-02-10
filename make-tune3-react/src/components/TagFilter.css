@@ -72,3 +72,85 @@
   opacity: 0.7;
   font-size: 14px;
 }
+
+.tag-filter__loading--slim {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tag-filter--slim {
+  background: transparent;
+  border: none;
+  padding: 8px 0 6px;
+}
+
+.tag-filter--slim .tag-filter__header {
+  margin-bottom: 6px;
+}
+
+.tag-filter--slim .tag-filter__header h4 {
+  font-size: 11px;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tag-filter--slim .tag-filter__clear {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  opacity: 0.7;
+}
+
+.tag-filter--slim .tag-filter__tags {
+  position: relative;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 6px;
+  padding: 6px;
+  background: var(--primary1-700);
+  border-radius: 6px;
+}
+
+.tag-filter--slim .tag-filter__tags::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 50%;
+  height: 6px;
+  background: var(--primary1-600);
+  border-radius: 4px;
+  transform: translateY(-50%);
+  opacity: 0.6;
+}
+
+.tag-filter--slim .tag-filter__tag {
+  position: relative;
+  z-index: 1;
+  padding: 4px 10px;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  border-radius: 999px;
+  border-width: 1px;
+  background: rgba(12, 20, 18, 0.6);
+  backdrop-filter: blur(6px);
+}
+
+.tag-filter--slim .tag-filter__tag:hover {
+  background: rgba(18, 32, 26, 0.7);
+  border-color: var(--contrast-600);
+}
+
+.tag-filter--slim .tag-filter__tag--selected {
+  background: linear-gradient(135deg, #18261d, var(--contrast-600));
+  border-color: var(--contrast-600);
+  color: var(--white);
+}
+
+.tag-filter--slim .tag-filter__count {
+  font-size: 10px;
+  opacity: 0.6;
+}

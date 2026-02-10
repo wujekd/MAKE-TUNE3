@@ -8,9 +8,45 @@ interface TimerDisplayProps {
   completed?: boolean;
   pending?: boolean;
   closing?: boolean;
+  placeholder?: boolean;
 }
 
-export function TimerDisplay({ days, hours, minutes, seconds, completed, pending, closing }: TimerDisplayProps) {
+export function TimerDisplay({
+  days,
+  hours,
+  minutes,
+  seconds,
+  completed,
+  pending,
+  closing,
+  placeholder
+}: TimerDisplayProps) {
+  if (placeholder) {
+    return (
+      <div className="timer-display">
+        <div className="timer-display__unit">
+          <div className="timer-display__value">--</div>
+          <div className="timer-display__label">days</div>
+        </div>
+        <div className="timer-display__separator">:</div>
+        <div className="timer-display__unit">
+          <div className="timer-display__value">--</div>
+          <div className="timer-display__label">hours</div>
+        </div>
+        <div className="timer-display__separator">:</div>
+        <div className="timer-display__unit">
+          <div className="timer-display__value">--</div>
+          <div className="timer-display__label">mins</div>
+        </div>
+        <div className="timer-display__separator">:</div>
+        <div className="timer-display__unit">
+          <div className="timer-display__value">--</div>
+          <div className="timer-display__label">secs</div>
+        </div>
+      </div>
+    );
+  }
+
   if (completed) {
     return (
       <div className="timer-display">

@@ -8,6 +8,7 @@ import { ModerationPanel } from '../components/ModerationPanel';
 import { CollabData } from '../components/CollabData';
 import { CollabHeader } from '../components/CollabHeader';
 import ProjectHistory from '../components/ProjectHistory';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import styles from './ModerationView.module.css';
 
 export function ModerationView() {
@@ -18,7 +19,8 @@ export function ModerationView() {
     currentCollaboration,
     loadCollaborationForModeration,
     approveSubmission,
-    rejectSubmission
+    rejectSubmission,
+    isLoadingCollaboration
   } = useAppStore(state => state.collaboration);
   const { playSubmission } = useAppStore(state => state.playback);
   const { currentProject } = useAppStore(state => state.collaboration);
@@ -40,6 +42,8 @@ export function ModerationView() {
   }, []);
 
   const pendingTracks = regularTracks.filter(track => track.moderationStatus === 'pending');
+  const isModerationLoading = isLoadingCollaboration || !currentCollaboration || currentCollaboration.id !== collabId;
+  const timelineStatus = currentCollaboration?.id === collabId ? currentCollaboration.status : 'submission';
 
   return (
     <div className={`view-container ${styles.container}`}>
@@ -66,43 +70,52 @@ export function ModerationView() {
         <div className={styles.headerRight}>
           <ProjectHistory />
           <CollabData collab={currentCollaboration as any} />
-          <CollabHeader collaboration={currentCollaboration} />
+          <CollabHeader collaboration={currentCollaboration} displayStatus={timelineStatus} />
         </div>
       </div>
 
       <div className={styles.content}>
         <div className={`${styles.submissionsSection} ${!state.playerController.pastStagePlayback ? styles.activePlayback : ''}`}>
           <div className={styles.audioPlayerSection}>
-          <ModerationPanel
-            tracks={pendingTracks}
-            onApprove={(track) => approveSubmission?.(track)}
-            onReject={(track) => rejectSubmission?.(track)}
-          />
-            <div className={styles.audioPlayerTitle}>Submissions</div>
-            {regularTracks.length === 0 ? (
-              <div className={styles.emptyState}>
-                No pending submissions to moderate.
+            {isModerationLoading ? (
+              <div className={styles.loadingState}>
+                <LoadingSpinner size={36} />
+                <div className={styles.loadingText}>Loading moderation queue…</div>
               </div>
             ) : (
-              <div className={`${styles.submissionsScroll} themed-scroll`}>
-                {regularTracks.map((track, index) => {
-                  const isCurrent =
-                    !state.playerController.pastStagePlayback &&
-                    !state.playerController.playingFavourite &&
-                    state.playerController.currentTrackId === index;
+              <>
+                <ModerationPanel
+                  tracks={pendingTracks}
+                  onApprove={(track) => approveSubmission?.(track)}
+                  onReject={(track) => rejectSubmission?.(track)}
+                />
+                <div className={styles.audioPlayerTitle}>Submissions</div>
+                {regularTracks.length === 0 ? (
+                  <div className={styles.emptyState}>
+                    No pending submissions to moderate.
+                  </div>
+                ) : (
+                  <div className={`${styles.submissionsScroll} themed-scroll`}>
+                    {regularTracks.map((track, index) => {
+                      const isCurrent =
+                        !state.playerController.pastStagePlayback &&
+                        !state.playerController.playingFavourite &&
+                        state.playerController.currentTrackId === index;
 
-                  return (
-                    <ModerationSubmissionItem
-                      key={track.id}
-                      track={track}
-                      index={index}
-                      isCurrentTrack={isCurrent}
-                      isPlaying={isCurrent && state.player1.isPlaying}
-                      onPlay={(filePath, ix) => playSubmission(filePath, ix, false)}
-                    />
-                  );
-                })}
-              </div>
+                      return (
+                        <ModerationSubmissionItem
+                          key={track.id}
+                          track={track}
+                          index={index}
+                          isCurrentTrack={isCurrent}
+                          isPlaying={isCurrent && state.player1.isPlaying}
+                          onPlay={(filePath, ix) => playSubmission(filePath, ix, false)}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

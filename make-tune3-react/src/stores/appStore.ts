@@ -64,6 +64,10 @@ interface AppState {
     isLoadingProject: boolean;
     isUpdatingFavorites: boolean;
     isUpdatingListened: boolean;
+    pendingFavoriteActions: Record<string, 'adding' | 'removing'>;
+    pendingVotes: Record<string, boolean>;
+    pendingFavoriteActions: Record<string, 'adding' | 'removing'>;
+    pendingVotes: Record<string, boolean>;
 
     // actions
     setCurrentProject: (project: Project) => void;
@@ -171,7 +175,9 @@ export const useAppStore = create<AppState>((set, get) => ({
           collaboration: {
             ...state.collaboration,
             favorites: [],
-            userCollaboration: null
+            userCollaboration: null,
+            pendingFavoriteActions: {},
+            pendingVotes: {}
           }
         }));
       } catch (error: any) {
@@ -211,7 +217,9 @@ export const useAppStore = create<AppState>((set, get) => ({
                 userCollaborations: collaborations,
                 userCollaboration: null, // will be set when user selects a collaboration
                 // clear favorites when user logs in
-                favorites: []
+                favorites: [],
+                pendingFavoriteActions: {},
+                pendingVotes: {}
               }
             }));
           } catch (error) {
@@ -250,6 +258,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     isLoadingProject: false,
     isUpdatingFavorites: false,
     isUpdatingListened: false,
+    pendingFavoriteActions: {},
+    pendingVotes: {},
+    pendingFavoriteActions: {},
+    pendingVotes: {},
 
     setCurrentProject: (project) => set(state => ({
       collaboration: { ...state.collaboration, currentProject: project }
@@ -661,6 +673,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const { user } = get().auth;
       const { currentCollaboration } = get().collaboration;
       const { engine, state: audioState } = useAudioStore.getState();
+      const pendingAction = get().collaboration.pendingFavoriteActions[filePath];
 
       if (DEBUG_LOGS) console.log('user status:', user ? 'authenticated' : 'anonymous');
       if (DEBUG_LOGS) console.log('current collaboration:', currentCollaboration?.id);
@@ -677,9 +690,20 @@ export const useAppStore = create<AppState>((set, get) => ({
         return;
       }
 
+      if (pendingAction) return;
+
       try {
         if (DEBUG_LOGS) console.log('authenticated user - adding to firebase favorites');
-        set(state => ({ collaboration: { ...state.collaboration, isUpdatingFavorites: true } }));
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            isUpdatingFavorites: true,
+            pendingFavoriteActions: {
+              ...state.collaboration.pendingFavoriteActions,
+              [filePath]: 'adding'
+            }
+          }
+        }));
 
         // firebase call first
         if (DEBUG_LOGS) console.log('calling firebase addTrackToFavorites...');
@@ -695,19 +719,24 @@ export const useAppStore = create<AppState>((set, get) => ({
         const track = get().collaboration.getTrackByFilePath(filePath);
         const updatedFavoritesArray = track ? [...get().collaboration.favorites, track] : get().collaboration.favorites;
 
-        set(state => ({
-          collaboration: {
-            ...state.collaboration,
-            userCollaboration: {
-              ...state.collaboration.userCollaboration!,
-              favoriteTracks: updatedFavorites,
-              lastInteraction: new Date() as any
-            },
-            regularTracks: updateRegularTracks(state.collaboration.allTracks, updatedFavorites),
-            favorites: updatedFavoritesArray,
-            isUpdatingFavorites: false
-          }
-        }));
+        set(state => {
+          const nextPending = { ...state.collaboration.pendingFavoriteActions };
+          delete nextPending[filePath];
+          return {
+            collaboration: {
+              ...state.collaboration,
+              userCollaboration: {
+                ...state.collaboration.userCollaboration!,
+                favoriteTracks: updatedFavorites,
+                lastInteraction: new Date() as any
+              },
+              regularTracks: updateRegularTracks(state.collaboration.allTracks, updatedFavorites),
+              favorites: updatedFavoritesArray,
+              isUpdatingFavorites: false,
+              pendingFavoriteActions: nextPending
+            }
+          };
+        });
 
         if (DEBUG_LOGS) console.log('track added to firebase favorites successfully');
 
@@ -741,7 +770,17 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
       } catch (error) {
         if (DEBUG_LOGS) console.error('failed to add to firebase favorites:', error);
-        set(state => ({ collaboration: { ...state.collaboration, isUpdatingFavorites: false } }));
+        set(state => {
+          const nextPending = { ...state.collaboration.pendingFavoriteActions };
+          delete nextPending[filePath];
+          return {
+            collaboration: {
+              ...state.collaboration,
+              isUpdatingFavorites: false,
+              pendingFavoriteActions: nextPending
+            }
+          };
+        });
       }
     },
 
@@ -750,6 +789,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const { user } = get().auth;
       const { currentCollaboration } = get().collaboration;
       const { engine, state: audioState } = useAudioStore.getState();
+      const pendingAction = get().collaboration.pendingFavoriteActions[filePath];
 
       if (!user) {
         // anonymous users can't remove from favorites
@@ -763,9 +803,20 @@ export const useAppStore = create<AppState>((set, get) => ({
         return;
       }
 
+      if (pendingAction) return;
+
       try {
         if (DEBUG_LOGS) console.log('authenticated user - removing from firebase favorites');
-        set(state => ({ collaboration: { ...state.collaboration, isUpdatingFavorites: true } }));
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            isUpdatingFavorites: true,
+            pendingFavoriteActions: {
+              ...state.collaboration.pendingFavoriteActions,
+              [filePath]: 'removing'
+            }
+          }
+        }));
 
         // firebase call first
         await InteractionService.removeTrackFromFavorites(user.uid, currentCollaboration.id, filePath);
@@ -777,19 +828,24 @@ export const useAppStore = create<AppState>((set, get) => ({
         // update favorites array
         const updatedFavoritesArray = get().collaboration.favorites.filter(track => track.filePath !== filePath);
 
-        set(state => ({
-          collaboration: {
-            ...state.collaboration,
-            userCollaboration: {
-              ...state.collaboration.userCollaboration!,
-              favoriteTracks: updatedFavorites,
-              lastInteraction: new Date() as any
-            },
-            regularTracks: updateRegularTracks(state.collaboration.allTracks, updatedFavorites),
-            favorites: updatedFavoritesArray,
-            isUpdatingFavorites: false
-          }
-        }));
+        set(state => {
+          const nextPending = { ...state.collaboration.pendingFavoriteActions };
+          delete nextPending[filePath];
+          return {
+            collaboration: {
+              ...state.collaboration,
+              userCollaboration: {
+                ...state.collaboration.userCollaboration!,
+                favoriteTracks: updatedFavorites,
+                lastInteraction: new Date() as any
+              },
+              regularTracks: updateRegularTracks(state.collaboration.allTracks, updatedFavorites),
+              favorites: updatedFavoritesArray,
+              isUpdatingFavorites: false,
+              pendingFavoriteActions: nextPending
+            }
+          };
+        });
         if (DEBUG_LOGS) console.log('track removed from firebase favorites successfully');
 
         // update playingFavourite and currentTrackId if this is the currently playing track
@@ -824,7 +880,17 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
       } catch (error) {
         if (DEBUG_LOGS) console.error('failed to remove from firebase favorites:', error);
-        set(state => ({ collaboration: { ...state.collaboration, isUpdatingFavorites: false } }));
+        set(state => {
+          const nextPending = { ...state.collaboration.pendingFavoriteActions };
+          delete nextPending[filePath];
+          return {
+            collaboration: {
+              ...state.collaboration,
+              isUpdatingFavorites: false,
+              pendingFavoriteActions: nextPending
+            }
+          };
+        });
       }
     },
 
@@ -832,20 +898,44 @@ export const useAppStore = create<AppState>((set, get) => ({
       const { user } = get().auth;
       const { currentCollaboration } = get().collaboration;
       if (!user || !currentCollaboration) return;
+      if (get().collaboration.pendingVotes[filePath]) return;
       try {
-        await InteractionService.voteForTrack(user.uid, currentCollaboration.id, filePath);
         set(state => ({
           collaboration: {
             ...state.collaboration,
-            userCollaboration: {
-              ...state.collaboration.userCollaboration!,
-              finalVote: filePath,
-              lastInteraction: new Date() as any
+            pendingVotes: {
+              ...state.collaboration.pendingVotes,
+              [filePath]: true
             }
           }
         }));
+        await InteractionService.voteForTrack(user.uid, currentCollaboration.id, filePath);
+        set(state => {
+          const nextPending = { ...state.collaboration.pendingVotes };
+          delete nextPending[filePath];
+          return {
+            collaboration: {
+              ...state.collaboration,
+              userCollaboration: {
+                ...state.collaboration.userCollaboration!,
+                finalVote: filePath,
+                lastInteraction: new Date() as any
+              },
+              pendingVotes: nextPending
+            }
+          };
+        });
       } catch (e) {
-        // noop
+        set(state => {
+          const nextPending = { ...state.collaboration.pendingVotes };
+          delete nextPending[filePath];
+          return {
+            collaboration: {
+              ...state.collaboration,
+              pendingVotes: nextPending
+            }
+          };
+        });
       }
     },
 

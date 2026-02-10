@@ -33,6 +33,7 @@ export function SubmissionView() {
   const [status, setStatus] = useState<'loading' | 'ready' | 'downloaded' | 'submitted'>('loading');
   const [resolvedStatusKey, setResolvedStatusKey] = useState<string | null>(null);
   const navigate = useNavigate();
+  const timelineStatus = currentCollaboration?.id === collaborationId ? currentCollaboration.status : 'submission';
 
   const effectiveSubmissionLimit = typeof currentCollaboration?.effectiveSubmissionLimit === 'number'
     ? currentCollaboration.effectiveSubmissionLimit
@@ -290,7 +291,11 @@ export function SubmissionView() {
         <div className={styles.headerRight}>
           <ProjectHistory />
           <CollabData collab={currentCollaboration as any} />
-          <CollabHeader collaboration={currentCollaboration} onStageChange={handleStageChange} />
+          <CollabHeader
+            collaboration={currentCollaboration}
+            onStageChange={handleStageChange}
+            displayStatus={timelineStatus}
+          />
         </div>
       </div>
 

@@ -32,7 +32,9 @@ export function VotingView() {
     removeFromFavorites,
     voteFor,
     isTrackListened,
-    isTrackFavorite
+    isTrackFavorite,
+    pendingFavoriteActions,
+    pendingVotes
   } = useAppStore(state => state.collaboration);
   const { playSubmission } = useAppStore(state => state.playback);
   const { currentProject, currentCollaboration } = useAppStore(state => state.collaboration);
@@ -49,6 +51,7 @@ export function VotingView() {
     const match = location.pathname.match(/\/collab\/(.+)$/);
     return match ? decodeURIComponent(match[1]) : null;
   }, [location.pathname]);
+  const timelineStatus = currentCollaboration?.id === collabId ? currentCollaboration.status : 'voting';
 
   useCollaborationLoader(collabId);
   useStageRedirect({
@@ -156,7 +159,11 @@ export function VotingView() {
         <div className={styles.headerRight}>
           <ProjectHistory />
           <CollabData collab={currentCollaboration as any} />
-          <CollabHeader collaboration={currentCollaboration} onStageChange={handleStageChange} />
+          <CollabHeader
+            collaboration={currentCollaboration}
+            onStageChange={handleStageChange}
+            displayStatus={timelineStatus}
+          />
         </div>
       </div>
 
@@ -171,6 +178,8 @@ export function VotingView() {
               voteFor={voteFor}
               listenedRatio={7}
               finalVote={useAppStore.getState().collaboration.userCollaboration?.finalVote || null}
+              pendingFavoriteActions={pendingFavoriteActions}
+              pendingVotes={pendingVotes}
             />
             <div className={styles.audioPlayerTitle}>Submissions</div>
             <div className={styles.submissionsScroll}>
@@ -194,6 +203,8 @@ export function VotingView() {
                     voteFor={voteFor}
                     listenedRatio={7}
                     isFinal={false}
+                    pendingFavoriteAction={pendingFavoriteActions[track.filePath]}
+                    isVoting={!!pendingVotes[track.filePath]}
                   />
                 ))}
             </div>

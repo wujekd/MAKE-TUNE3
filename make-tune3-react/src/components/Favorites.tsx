@@ -2,9 +2,10 @@ import { useRef, useEffect, useContext } from 'react';
 import SubmissionItem from './SubmissionItem';
 import type { Track } from '../types/collaboration';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
+import { LoadingSpinner } from './LoadingSpinner';
 import './Favorites.css';
 
-const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay, voteFor, finalVote, listenedRatio }:
+const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay, voteFor, finalVote, listenedRatio, pendingFavoriteActions, pendingVotes }:
   {
     onRemoveFromFavorites: (trackId: string) => void,
     favorites: Track[],
@@ -12,7 +13,9 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay,
     onPlay: (trackId: string, index: number, favorite: boolean) => void,
     voteFor: (trackId: string) => void,
     finalVote: string | null,
-    listenedRatio: number
+    listenedRatio: number,
+    pendingFavoriteActions: Record<string, 'adding' | 'removing'>,
+    pendingVotes: Record<string, boolean>
   }) => {
   // use favorites passed as prop
 
@@ -97,6 +100,8 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay,
               voteFor={voteFor}
               listenedRatio={listenedRatio}
               isFinal={true}
+              pendingFavoriteAction={pendingFavoriteActions[favorites[finalIndex].filePath]}
+              isVoting={!!pendingVotes[favorites[finalIndex].filePath]}
             />
           ) : (
             <div style={{
@@ -116,13 +121,16 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay,
         {favorites && favorites.length > 0 ? (
           favorites.map((track, index) => {
             if (index === finalIndex) return null;
+            const pendingAction = pendingFavoriteActions[track.filePath];
+            const isRemoving = pendingAction === 'removing';
             return (
               <div key={track.id} className="favorite-item">
                 <button
                   className="remove-button"
                   onClick={() => handleRemoveFromFavorites(track)}
+                  disabled={isRemoving}
                 >
-                  ×
+                  {isRemoving ? <LoadingSpinner size={12} /> : '×'}
                 </button>
                 <SubmissionItem
                   key={track.id}
@@ -141,6 +149,8 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay,
                   voteFor={voteFor}
                   listenedRatio={listenedRatio}
                   isFinal={false}
+                  pendingFavoriteAction={pendingAction}
+                  isVoting={!!pendingVotes[track.filePath]}
                 />
               </div>
             );

@@ -15,6 +15,8 @@ interface CollaborationTimelineProps {
   submissionCloseAt?: MaybeDate;
   votingCloseAt?: MaybeDate;
   onStageChange?: (nextStatus: 'voting' | 'completed') => void;
+  placeholder?: boolean;
+  displayStatus?: CollaborationStatus;
 }
 
 const toMillis = (value: MaybeDate): number => {
@@ -37,10 +39,14 @@ export function CollaborationTimeline({
   publishedAt,
   submissionCloseAt,
   votingCloseAt,
-  onStageChange
+  onStageChange,
+  placeholder,
+  displayStatus
 }: CollaborationTimelineProps) {
   const [now, setNow] = useState(() => Date.now());
   const hasScheduledRefresh = useRef(false);
+  const isPlaceholder = !!placeholder;
+  const timelineStatus = displayStatus ?? status;
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -59,6 +65,10 @@ export function CollaborationTimeline({
   );
 
   useEffect(() => {
+    if (isPlaceholder) {
+      hasScheduledRefresh.current = false;
+      return;
+    }
     if (!awaitingAdvance || !onStageChange) {
       hasScheduledRefresh.current = false;
       return;
@@ -94,7 +104,7 @@ export function CollaborationTimeline({
     if (!submissionEndMs) {
       return { days: 0, hours: 0, minutes: 0, seconds: 0, completed: true };
     }
-    if (status === 'submission') {
+    if (timelineStatus === 'submission') {
       if (submissionCompleted) {
         return { days: 0, hours: 0, minutes: 0, seconds: 0, completed: false, closing: true };
       }
@@ -107,10 +117,10 @@ export function CollaborationTimeline({
     if (!votingEndMs) {
       return { days: 0, hours: 0, minutes: 0, seconds: 0, completed: true };
     }
-    if (status === 'submission') {
+    if (timelineStatus === 'submission') {
       return { days: 0, hours: 0, minutes: 0, seconds: 0, completed: false, pending: true };
     }
-    if (status === 'voting') {
+    if (timelineStatus === 'voting') {
       if (awaitingAdvance) {
         return { days: 0, hours: 0, minutes: 0, seconds: 0, completed: false, closing: true };
       }
@@ -122,9 +132,9 @@ export function CollaborationTimeline({
 
   const submissionFraction = (() => {
     if (!submissionEndMs || !publishedMs || submissionEndMs <= publishedMs) {
-      return submissionCompleted || status !== 'submission' ? 1 : 0;
+      return submissionCompleted || timelineStatus !== 'submission' ? 1 : 0;
     }
-    if (submissionCompleted || status !== 'submission') return 1;
+    if (submissionCompleted || timelineStatus !== 'submission') return 1;
     const total = submissionEndMs - publishedMs;
     const elapsed = clamp((now - publishedMs) / total, 0, 1);
     return elapsed;
@@ -132,10 +142,10 @@ export function CollaborationTimeline({
 
   const votingFraction = (() => {
     if (!votingEndMs || !submissionEndMs || votingEndMs <= submissionEndMs) {
-      return votingCompleted || status === 'completed' ? 1 : 0;
+      return votingCompleted || timelineStatus === 'completed' ? 1 : 0;
     }
-    if (status === 'completed' || votingCompleted) return 1;
-    if (status === 'voting') {
+    if (timelineStatus === 'completed' || votingCompleted) return 1;
+    if (timelineStatus === 'voting') {
       const total = votingEndMs - submissionEndMs;
       const elapsed = clamp((now - submissionEndMs) / total, 0, 1);
       return elapsed;
@@ -143,21 +153,38 @@ export function CollaborationTimeline({
     return 0;
   })();
 
-  const submissionWidth = clamp(submissionFraction, 0, 1) * 50;
-  const votingWidth = clamp(votingFraction, 0, 1) * 50;
-  const showVotingFill = status === 'voting' || status === 'completed' || votingFraction > 0;
-  const handlePosition = clamp(submissionWidth + (showVotingFill ? votingWidth : 0), 0, 100);
+  const submissionWidth = isPlaceholder ? 0 : clamp(submissionFraction, 0, 1) * 50;
+  const votingWidth = isPlaceholder ? 0 : clamp(votingFraction, 0, 1) * 50;
+  const showVotingFill = !isPlaceholder && (timelineStatus === 'voting' || timelineStatus === 'completed' || votingFraction > 0);
+  const handlePosition = isPlaceholder ? 0 : clamp(submissionWidth + (showVotingFill ? votingWidth : 0), 0, 100);
+
+  const placeholderSubmission = isPlaceholder && timelineStatus === 'submission';
+  const placeholderVoting = isPlaceholder && timelineStatus === 'voting';
+
+  const submissionTimerDisplay = isPlaceholder
+    ? placeholderSubmission
+      ? { days: 0, hours: 0, minutes: 0, seconds: 0 }
+      : { days: 0, hours: 0, minutes: 0, seconds: 0, completed: true }
+    : submissionTimer;
+
+  const votingTimerDisplay = isPlaceholder
+    ? placeholderVoting
+      ? { days: 0, hours: 0, minutes: 0, seconds: 0 }
+      : timelineStatus === 'submission'
+        ? { days: 0, hours: 0, minutes: 0, seconds: 0, completed: false, pending: true }
+        : { days: 0, hours: 0, minutes: 0, seconds: 0, completed: true }
+    : votingTimer;
 
   return (
     <div className="collab-timeline">
       <div className="collab-timeline__phases">
         <div className="collab-timeline__phase">
-          <div className="collab-timeline__label">Submission phase</div>
-          <TimerDisplay {...submissionTimer} />
+          <div className="collab-timeline__label">Submission</div>
+          <TimerDisplay {...submissionTimerDisplay} placeholder={placeholderSubmission} />
         </div>
         <div className="collab-timeline__phase">
-          <div className="collab-timeline__label">Voting phase</div>
-          <TimerDisplay {...votingTimer} />
+          <div className="collab-timeline__label">Voting</div>
+          <TimerDisplay {...votingTimerDisplay} placeholder={placeholderVoting} />
         </div>
       </div>
 

@@ -44,6 +44,11 @@
   box-shadow: 0 0 12px rgba(213, 95, 33, 0.25);
 }
 
+.submission-container.pending-action {
+  border-color: rgba(250, 204, 21, 0.6);
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.2);
+}
+
 .submission-container.marking {
   border-color: #facc15;
   box-shadow: 0 0 12px rgba(250, 204, 21, 0.3);
@@ -129,7 +134,29 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
+.submission-status {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--white);
+  font-size: 0.55rem;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  z-index: 3;
+}
+
 .vote-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   background: linear-gradient(135deg,
       rgba(213, 95, 33, 0.3) 0%,
       rgba(213, 95, 33, 0.15) 100%);
@@ -161,6 +188,9 @@
 }
 
 .remove-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: rgba(255, 255, 255, 0.08);
   color: var(--white);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -185,6 +215,10 @@
 }
 
 .favorite-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   background: rgba(255, 255, 255, 0.05);
   color: var(--white);
   border: 1px solid rgba(48, 112, 113, 0.4);

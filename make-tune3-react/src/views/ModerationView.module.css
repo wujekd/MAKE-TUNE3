@@ -161,6 +161,24 @@
   padding: 24px;
 }
 
+/* ===== LOADING STATE ===== */
+.loadingState {
+  flex: 1;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--dashboard-text-muted);
+}
+
+.loadingText {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
 /* ===== MIXER SECTION ===== */
 .mixerSection {
   width: 280px;
