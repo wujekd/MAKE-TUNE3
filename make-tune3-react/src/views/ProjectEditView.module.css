@@ -1,42 +1,9 @@
 /* Abyssal Theme - ProjectEditView */
 .container {
-  /* Theme Variables */
-  --dashboard-bg: #0a1213;
-  --dashboard-panel: rgba(18, 24, 28, 0.6);
-  --dashboard-panel-border: rgba(48, 112, 113, 0.3);
-  --dashboard-accent: var(--contrast-500);
-  --dashboard-text-muted: rgba(220, 230, 230, 0.6);
-  --dashboard-glow: 0 0 20px rgba(213, 95, 33, 0.15);
-  --mixer-glow-rgb: 213, 95, 33;
-
-  position: relative;
-  width: 100%;
-  height: 100%;
+  /* Base provided by .view-container */
   padding: 20px 24px;
-  display: flex;
-  flex-direction: column;
   gap: 16px;
   box-sizing: border-box;
-  overflow: hidden;
-  background: radial-gradient(circle at top right, #1a2a2c 0%, var(--dashboard-bg) 60%);
-  color: var(--white);
-  font-family: 'Inter', system-ui, sans-serif;
-}
-
-/* Grid overlay effect */
-.container::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image:
-    linear-gradient(rgba(48, 113, 113, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(48, 113, 113, 0.05) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events: none;
-  z-index: 0;
 }
 
 /* ===== HERO SECTION ===== */
@@ -202,82 +169,7 @@
   -webkit-backdrop-filter: blur(10px);
 }
 
-/* Override mixer styling within this view */
-.mixerColumn :global(.mixer-section--single) {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  padding: 0;
-  border-radius: 0;
-  width: 100%;
-  max-width: none;
-}
-
-.mixerColumn :global(.mixer1-channel) {
-  background: linear-gradient(180deg, rgba(48, 112, 113, 0.15) 0%, rgba(0, 0, 0, 0.3) 100%);
-  border: 1px solid var(--dashboard-panel-border);
-  border-radius: 12px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 4px 12px rgba(0, 0, 0, 0.2);
-  padding: 12px 8px 12px;
-}
-
-.mixerColumn :global(.mixer1-channel-label) {
-  color: var(--dashboard-text-muted);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.mixerColumn :global(.mixer1-channel-label--bottom) {
-  margin-top: 4px;
-  line-height: 1;
-}
-
-.mixerColumn :global(.mixer1-meter) {
-  display: flex;
-  justify-content: center;
-}
-
-.mixerColumn :global(.transport) {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 12px;
-  padding: 12px;
-  border: 1px solid var(--dashboard-panel-border);
-  margin-bottom: 12px;
-}
-
-.mixerColumn :global(.transport button) {
-  background: rgba(48, 112, 113, 0.3);
-  border: 1px solid rgba(48, 112, 113, 0.5);
-  transition: all 0.2s ease;
-}
-
-.mixerColumn :global(.transport button:hover:not(:disabled)) {
-  background: rgba(48, 112, 113, 0.5);
-  border-color: var(--dashboard-accent);
-  box-shadow: 0 0 10px rgba(213, 95, 33, 0.2);
-}
-
-.mixerColumn :global(#play-btn) {
-  background: var(--dashboard-accent);
-  border: 1px solid var(--dashboard-accent);
-}
-
-.mixerColumn :global(#play-btn:hover) {
-  background: var(--contrast-600);
-  box-shadow: 0 0 15px rgba(213, 95, 33, 0.3);
-}
-
-.mixerColumn :global(.vertical-slider) {
-  background: rgba(48, 112, 113, 0.3);
-}
-
-.mixerColumn :global(.time-slider) {
-  background: rgba(48, 112, 113, 0.3);
-  border-radius: 4px;
-}
+/* Mixer overrides — handled by MixerTheme.css */
 
 /* ===== LIST ITEM OVERRIDES ===== */
 .managerList :global(.simple-list-item) {

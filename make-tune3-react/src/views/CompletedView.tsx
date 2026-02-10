@@ -123,7 +123,7 @@ export function CompletedView() {
   ].filter(Boolean).join(' ');
 
   return (
-    <div className={styles.container}>
+    <div className={`view-container ${styles.container}`}>
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <div className={styles.headerCol}>
@@ -170,7 +170,7 @@ export function CompletedView() {
           </div>
         </div>
 
-        <div className={styles.mixerSection}>
+        <div className={`mixer-theme ${styles.mixerSection}`}>
           {state && <Mixer state={state} />}
         </div>
       </div>

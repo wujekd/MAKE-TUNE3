@@ -1,53 +1,7 @@
 .container {
-  /* Abyssal Theme Overrides */
-  --dashboard-bg: #0a1213;
-  --dashboard-panel: rgba(18, 24, 28, 0.6);
-  --dashboard-panel-border: rgba(48, 112, 113, 0.3);
-  --dashboard-accent: var(--contrast-500);
-  /* Orange */
-  --dashboard-text-muted: rgba(220, 230, 230, 0.6);
-  --dashboard-glow: 0 0 20px rgba(213, 95, 33, 0.15);
-  /* Orange glow */
-
-  /* Mixer Override */
-  --mixer-glow-rgb: 213, 95, 33;
-  /* Orange RGB for mixer glue */
-
-  /* List Item Theme */
-  --list-item-bg: rgba(255, 255, 255, 0.03);
-  --list-item-border: 1px solid rgba(48, 112, 113, 0.2);
-  --list-item-hover-bg: rgba(48, 112, 113, 0.1);
-  --list-item-hover-border: 1px solid var(--dashboard-accent);
-  --list-item-selected-bg: rgba(48, 112, 113, 0.25);
-  --list-item-radius: 8px;
-
   padding: 24px;
-  display: flex;
-  flex-direction: column;
   gap: 20px;
-  height: 100%;
   box-sizing: border-box;
-  overflow: hidden;
-  background: radial-gradient(circle at top right, #1a2a2c 0%, var(--dashboard-bg) 60%);
-  color: var(--white);
-  font-family: 'Inter', system-ui, sans-serif;
-  /* Ensure modern font */
-}
-
-/* Grid overlay effect */
-.container::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image:
-    linear-gradient(rgba(48, 113, 113, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(48, 113, 113, 0.05) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events: none;
-  z-index: 0;
 }
 
 .content,

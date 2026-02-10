@@ -20,7 +20,7 @@ export function ProjectEditView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [mode, setMode] = useState<'none'|'create'|'view'|'edit'>('none');
+  const [mode, setMode] = useState<'none' | 'create' | 'view' | 'edit'>('none');
   const [initialSelectionApplied, setInitialSelectionApplied] = useState(false);
   const audioState = useAudioStore(s => s.state);
   const stopBackingPlayback = usePlaybackStore(s => s.stopBackingPlayback);
@@ -60,7 +60,7 @@ export function ProjectEditView() {
     if (loading || collabs.length === 0) return;
 
     const collabParam = searchParams.get('collab');
-    
+
     if (collabParam) {
       const match = collabs.find(c => c.id === collabParam);
       if (match) {
@@ -71,7 +71,7 @@ export function ProjectEditView() {
       }
     }
 
-    const activeCollab = collabs.find(c => 
+    const activeCollab = collabs.find(c =>
       c.status !== 'unpublished' && c.status !== 'completed'
     );
 
@@ -103,17 +103,17 @@ export function ProjectEditView() {
   }, [stopBackingPlayback]);
 
   return (
-    <div className={styles.container}>
+    <div className={`view-container ${styles.container}`}>
       <div className={styles.hero}>
         <div className={styles.heroTitle}>{project?.name || 'project'}</div>
         <div className={styles.heroDescription}>{project?.description}</div>
         <div className={styles.heroMeta}>
           {project
             ? new Date(
-                (project as any).createdAt?.toMillis
-                  ? (project as any).createdAt.toMillis()
-                  : (project as any).createdAt
-              ).toLocaleString()
+              (project as any).createdAt?.toMillis
+                ? (project as any).createdAt.toMillis()
+                : (project as any).createdAt
+            ).toLocaleString()
             : ''}
         </div>
       </div>
@@ -169,7 +169,7 @@ export function ProjectEditView() {
               </div>
             </div>
           </div>
-          <div className={styles.mixerColumn}>
+          <div className={`mixer-theme ${styles.mixerColumn}`}>
             <Mixer1Channel state={audioState} />
           </div>
         </div>

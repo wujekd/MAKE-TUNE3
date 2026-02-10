@@ -235,7 +235,7 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
               <SmallLEDMeter value={channelLevel} min={0} max={1} vertical={true} />
             </div>
           </div>
-          <span className="mixer1-channel-label mixer1-channel-label--bottom">master</span>
+          <span className="mixer1-channel-label mixer1-channel-label--bottom">Master</span>
         </div>
       </div>
     </section>

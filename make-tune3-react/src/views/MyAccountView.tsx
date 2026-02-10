@@ -27,7 +27,7 @@ export function MyAccountView() {
   const memberSince = formatDate(user?.createdAt);
 
   return (
-    <div className={styles.container}>
+    <div className={`view-container ${styles.container}`}>
       <section className={styles.hero}>
         <div className={styles.heroMain}>
           <div className={styles.avatar} aria-hidden="true">

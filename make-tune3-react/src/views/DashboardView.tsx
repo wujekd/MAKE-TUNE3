@@ -97,7 +97,7 @@ export function DashboardView() {
   const activeCollabs = allCollabs.filter(c => c.status === 'submission' || c.status === 'voting').length;
 
   return (
-    <div className={styles.container}>
+    <div className={`view-container ${styles.container}`}>
       <DashboardHeader
         totalCollabs={totalCollabs}
         filteredCount={filteredCount}
@@ -118,7 +118,7 @@ export function DashboardView() {
             onTagsChange={handleTagsChange}
           />
         </div>
-        <div className={styles.mixerColumn}>
+        <div className={`mixer-theme ${styles.mixerColumn}`}>
           <Mixer1Channel state={audioState} />
         </div>
       </div>

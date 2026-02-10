@@ -1,31 +1,12 @@
 .container {
+  /* Base provided by .view-container */
   --account-panel: rgba(18, 24, 28, 0.72);
   --account-border: rgba(48, 112, 113, 0.3);
   --account-muted: rgba(220, 230, 230, 0.65);
   --account-accent: var(--contrast-500);
   padding: 24px;
-  display: flex;
-  flex-direction: column;
   gap: 20px;
-  height: 100%;
   box-sizing: border-box;
-  overflow: hidden;
-  position: relative;
-  background: radial-gradient(circle at top right, #1a2a2c 0%, #0a1213 60%);
-  color: var(--white);
-  font-family: 'Inter', system-ui, sans-serif;
-}
-
-.container::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(48, 113, 113, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(48, 113, 113, 0.05) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events: none;
-  z-index: 0;
 }
 
 .hero,
@@ -307,12 +288,12 @@
   transition: all 0.2s ease;
 }
 
-.toggle input:checked + .toggleTrack {
+.toggle input:checked+.toggleTrack {
   background: rgba(239, 123, 58, 0.3);
   border-color: rgba(239, 123, 58, 0.6);
 }
 
-.toggle input:checked + .toggleTrack::after {
+.toggle input:checked+.toggleTrack::after {
   transform: translateX(22px);
   background: #fff2e8;
 }

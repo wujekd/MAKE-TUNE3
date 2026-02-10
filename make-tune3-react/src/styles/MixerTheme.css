@@ -1,0 +1,189 @@
+/* =========================================
+   MixerTheme.css — Unified Mixer Overrides
+   Apply by adding class "mixer-theme" to the mixer wrapper div.
+   ========================================= */
+
+/* Reset global mixer-section base styles */
+.mixer-theme .mixer-section {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    border-radius: 0;
+    height: 100%;
+}
+
+/* Also reset for 1-channel mixer */
+.mixer-theme .mixer-section--single {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    border-radius: 0;
+    height: 100%;
+}
+
+/* Transport controls */
+.mixer-theme .transport,
+.mixer-theme .mixer1-transport {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid var(--dashboard-panel-border);
+    margin-bottom: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Transport time slider */
+.mixer-theme .transport .time-slider {
+    width: 100%;
+    margin-top: 8px;
+    background: rgba(48, 112, 113, 0.3);
+    border-radius: 4px;
+    height: 6px;
+}
+
+/* Transport buttons */
+.mixer-theme .transport button,
+.mixer-theme .mixer1-button {
+    background: rgba(48, 112, 113, 0.3);
+    border: 1px solid rgba(48, 112, 113, 0.5);
+    transition: all 0.2s ease;
+}
+
+.mixer-theme .transport button:hover:not(:disabled),
+.mixer-theme .mixer1-button:hover:not(:disabled) {
+    background: rgba(48, 112, 113, 0.5);
+    border-color: var(--dashboard-accent);
+    box-shadow: 0 0 10px rgba(213, 95, 33, 0.2);
+}
+
+.mixer-theme .transport button:disabled,
+.mixer-theme .mixer1-button:disabled {
+    background: rgba(48, 112, 113, 0.15);
+    opacity: 0.5;
+}
+
+/* Play button — orange accent */
+.mixer-theme #play-btn,
+.mixer-theme #mixer1-play-btn {
+    background: var(--dashboard-accent);
+    border: 1px solid var(--dashboard-accent);
+}
+
+.mixer-theme #play-btn:hover,
+.mixer-theme #mixer1-play-btn:hover {
+    background: var(--contrast-600);
+    box-shadow: 0 0 15px rgba(213, 95, 33, 0.3);
+}
+
+/* Channels container */
+.mixer-theme .channels-container {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid var(--dashboard-panel-border);
+    margin-top: 0;
+    gap: 12px;
+    display: flex;
+    justify-content: center;
+    flex: 1;
+    min-height: 0;
+}
+
+/* Individual channel strips */
+.mixer-theme .mixer1-channel {
+    background: linear-gradient(180deg, rgba(48, 112, 113, 0.15) 0%, rgba(0, 0, 0, 0.3) 100%);
+    border: 1px solid var(--dashboard-panel-border);
+    border-radius: 12px;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.05),
+        0 4px 12px rgba(0, 0, 0, 0.2);
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
+    padding: 12px 8px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Channel labels */
+.mixer-theme .mixer1-channel-label {
+    color: var(--dashboard-text-muted);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.mixer-theme .mixer1-channel-label--bottom {
+    margin-top: 4px;
+    line-height: 1;
+}
+
+/* Meter display */
+.mixer-theme .mixer1-meter {
+    display: flex;
+    justify-content: center;
+}
+
+/* Fader track */
+.mixer-theme .vertical-slider {
+    background: rgba(48, 112, 113, 0.3);
+}
+
+.mixer-theme .vertical-slider::-webkit-slider-thumb {
+    background: var(--dashboard-accent);
+    border-color: var(--white);
+}
+
+.mixer-theme .vertical-slider::-moz-range-thumb {
+    background: var(--dashboard-accent);
+    border-color: var(--white);
+}
+
+/* Time slider */
+.mixer-theme .time-slider {
+    background: rgba(48, 112, 113, 0.3);
+    border-radius: 4px;
+}
+
+.mixer-theme .time-slider::-webkit-slider-thumb {
+    background: var(--dashboard-accent);
+    border-color: var(--white);
+}
+
+.mixer-theme .time-slider::-moz-range-thumb {
+    background: var(--dashboard-accent);
+    border-color: var(--white);
+}
+
+/* 1-channel mixer additional overrides */
+.mixer-theme .mixer1-transport-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.mixer-theme .mixer1-timing {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    font-size: 11px;
+    color: var(--dashboard-text-muted);
+}
+
+.mixer-theme .mixer1-time-wrapper {
+    padding: 0 12px;
+}
+
+.mixer-theme .mixer1-time-slider {
+    width: 100%;
+    background: rgba(48, 112, 113, 0.3);
+    border-radius: 4px;
+    height: 6px;
+}

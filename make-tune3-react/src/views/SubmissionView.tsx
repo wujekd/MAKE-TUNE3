@@ -274,7 +274,7 @@ export function SubmissionView() {
   };
 
   return (
-    <div className={styles.container}>
+    <div className={`view-container ${styles.container}`}>
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           {projectInfo && (
@@ -306,7 +306,7 @@ export function SubmissionView() {
           </div>
         </div>
 
-        <div className={styles.mixerSection}>
+        <div className={`mixer-theme ${styles.mixerSection}`}>
           {state && <Mixer state={state} />}
         </div>
       </div>
