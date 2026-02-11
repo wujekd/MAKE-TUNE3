@@ -135,27 +135,23 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
       <div className="transport" style={{ flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%' }}>
           <button
-            id="play-btn"
+            className="play-btn transport-btn"
             onClick={togglePlayPause}
             disabled={!hasSource}
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+            title={isPlaying ? 'Pause' : 'Play'}
           >
-            {isPlaying ? (
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
-                <rect x="6" y="4" width="4" height="16" fill="#ffffff" />
-                <rect x="14" y="4" width="4" height="16" fill="#ffffff" />
-              </svg>
-            ) : (
-              <svg width="32" height="32" viewBox="-3 0 28 28" fill="#ffffff">
-                <path d="M21.4,13.5L4.4,1.3C3.3,0.7,2,0.8,2,2.9v20.1c0,2,1.4,2.3,2.4,1.6l17-12.2C22.2,11.6,22.2,14.3,21.4,13.5" />
-              </svg>
-            )}
+            {isPlaying ? '⏸' : '▶'}
           </button>
           <button
             id="stop-btn"
+            className="transport-btn"
             onClick={() => stopBackingPlayback()}
             disabled={!hasSource}
+            aria-label="Stop"
+            title="Stop"
           >
-            stop
+            ■
           </button>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, color: 'var(--dashboard-text-muted)', fontSize: 10 }}>

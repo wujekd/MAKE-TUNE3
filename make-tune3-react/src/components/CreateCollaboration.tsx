@@ -161,7 +161,7 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      gap: 12,
+      gap: 2,
       width: '100%',
       // Using a slightly more transparent background for the form container itself if needed, 
       // but here we just stick to the layout changes requested.

@@ -6,7 +6,7 @@
 
 .tag-input__columns {
   display: flex;
-  gap: 12px;
+  gap: 2px;
   min-height: 80px;
 }
 

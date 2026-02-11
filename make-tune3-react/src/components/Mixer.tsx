@@ -161,33 +161,31 @@ export function Mixer({ state }: MixerProps) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%' }}>
           <button
             id="back-btn"
+            className="transport-btn"
             onClick={previousTrack}
             disabled={!canGoBack}
+            aria-label="Previous track"
+            title="Previous track"
           >
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
-              <path d="M8 24H40M8 24L16 16M8 24L16 32" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"></path>
-            </svg>
+            ⏮
           </button>
-          <button id="play-btn" onClick={togglePlayPause}>
-            {state.player2.isPlaying ? (
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
-                <rect x="6" y="4" width="4" height="16" fill="#ffffff" />
-                <rect x="14" y="4" width="4" height="16" fill="#ffffff" />
-              </svg>
-            ) : (
-              <svg width="32" height="32" viewBox="-3 0 28 28" fill="#ffffff">
-                <path d="M21.4,13.5L4.4,1.3C3.3,0.7,2,0.8,2,2.9v20.1c0,2,1.4,2.3,2.4,1.6l17-12.2C22.2,11.6,22.2,14.3,21.4,13.5" />
-              </svg>
-            )}
+          <button
+            className="play-btn transport-btn"
+            onClick={togglePlayPause}
+            aria-label={state.player2.isPlaying ? 'Pause' : 'Play'}
+            title={state.player2.isPlaying ? 'Pause' : 'Play'}
+          >
+            {state.player2.isPlaying ? '⏸' : '▶'}
           </button>
           <button
             id="fwd-btn"
+            className="transport-btn"
             onClick={nextTrack}
             disabled={!canGoForward}
+            aria-label="Next track"
+            title="Next track"
           >
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff" transform="rotate(180)">
-              <path d="M8 24H40M8 24L16 16M8 24L16 32" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"></path>
-            </svg>
+            ⏭
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8, color: 'var(--white)' }}>
             <span id="current-time">{getCurrentTime(state)}</span>
@@ -219,6 +217,8 @@ export function Mixer({ state }: MixerProps) {
               }}
             />
           </div>
+
+          <div style={{ flex: 1, minHeight: 0 }} />
 
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
             <div
@@ -260,8 +260,9 @@ export function Mixer({ state }: MixerProps) {
                   position: 'absolute',
                   right: '8%',
                   top: 0,
+                  bottom: 0,
                   display: 'flex',
-                  alignItems: 'flex-start'
+                  alignItems: 'center'
                 }}
               >
                 <SmallLEDMeter value={player1Level} min={0} max={1} vertical={true} />

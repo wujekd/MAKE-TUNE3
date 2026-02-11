@@ -37,12 +37,23 @@ service firebase.storage {
     function projectDoc(projectId) {
       return firestore.get(/databases/(default)/documents/projects/$(projectId));
     }
+    function isAdmin() {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
     function isCollabOwner(collabId) {
       return isSignedIn()
         && firestore.exists(/databases/(default)/documents/collaborations/$(collabId))
         && collabDoc(collabId).data.projectId is string
         && firestore.exists(/databases/(default)/documents/projects/$(collabDoc(collabId).data.projectId))
         && projectDoc(collabDoc(collabId).data.projectId).data.ownerId == request.auth.uid;
+    }
+    function isCollabParticipant(collabId) {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/collaborations/$(collabId))
+        && collabDoc(collabId).data.participantIds is list
+        && request.auth.uid in collabDoc(collabId).data.participantIds;
     }
     function isValidSubmissionToken(collabId, fileId) {
       return metaUploadTokenId() is string
@@ -114,7 +125,7 @@ service firebase.storage {
     }
 
     match /collabs/{collabId}/docs/{fileName} {
-      allow read: if true;
+      allow read: if isCollabOwner(collabId) || isCollabParticipant(collabId) || isAdmin();
       allow write: if isSignedIn()
         && (
           (fileName.matches('^.*\\.pdf$') && request.resource.size < 52428800)
