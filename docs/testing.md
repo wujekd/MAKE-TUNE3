@@ -2,15 +2,35 @@
 
 Unit and integration tests for the Make Tunes React app.
 
+Run commands from the app directory:
+
+```bash
+cd make-tune3-react
+```
+
 ## Quick Start
 
 ```bash
 # Run unit tests
 npm test
 
-# Run integration tests (requires Firebase emulators)
-npm run emulators  # In one terminal
-npm run test:integration  # In another terminal
+# Run integration tests (starts/stops emulators automatically)
+npm run test:integration
+
+# Optional: if emulators are already running
+npm run test:integration:raw
+
+# Run once and exit
+npm run test:run
+
+# Watch mode
+npm run test:watch
+
+# Coverage report
+npm run test:coverage
+
+# Interactive UI
+npm run test:ui
 ```
 
 ---
@@ -234,11 +254,16 @@ Unit tests run without Firebase emulators and test pure functions, components, a
 
 ## Integration Tests
 
-Integration tests with Firebase emulators running on port 8080.
+Integration tests run against Firebase emulators on port `8080` (Firestore) and `9199` (Storage).
 
-### Prerequisites
+### Run integration suite
 ```bash
-npm run emulators
+npm run test:integration
+```
+
+If emulators are already running, use:
+```bash
+npm run test:integration:raw
 ```
 
 ### Voting Service Tests
@@ -379,3 +404,146 @@ npm run test:integration -- --testNamePattern="Voting"
 # Run with watch mode
 npm test -- --watch
 ```
+
+---
+
+## Writing Tests
+
+### Unit Tests
+
+Test individual functions/classes with mocked dependencies.
+
+Example:
+
+```typescript
+import { describe, it, expect } from 'vitest';
+
+describe('MyComponent', () => {
+  it('does something', () => {
+    expect(true).toBe(true);
+  });
+});
+```
+
+### Integration Tests
+
+Test real Firebase operations using emulators.
+
+Key patterns:
+
+1. Always clean up after tests:
+
+```typescript
+const testIds: string[] = [];
+
+afterEach(async () => {
+  for (const id of testIds) {
+    await deleteDoc(doc(db, 'collection', id));
+  }
+  testIds.length = 0;
+});
+```
+
+2. Track created resources:
+
+```typescript
+const result = await CollaborationService.createProject(data);
+testIds.push(result.id);
+```
+
+3. Test the full flow:
+
+```typescript
+const created = await service.create(data);
+const retrieved = await service.get(created.id);
+expect(retrieved).toEqual(created);
+```
+
+---
+
+## Best Practices
+
+### Do
+
+- Write tests before refactoring
+- Test one thing per test case
+- Use descriptive test names
+- Clean up test data
+- Test error cases
+- Test edge cases
+
+### Avoid
+
+- Sharing state between tests
+- Depending on test execution order
+- Using real Firebase services in integration tests (use emulators)
+- Leaving test data in emulators
+- Testing implementation details
+
+---
+
+## Common Patterns
+
+### Testing Async Operations
+
+```typescript
+it('should create a project', async () => {
+  const result = await service.createProject(data);
+  expect(result.id).toBeDefined();
+});
+```
+
+### Testing Timestamps
+
+```typescript
+const before = Date.now();
+const result = await service.create(data);
+const after = Date.now();
+
+expect(result.createdAt.toMillis()).toBeGreaterThanOrEqual(before);
+expect(result.createdAt.toMillis()).toBeLessThanOrEqual(after);
+```
+
+### Testing Uniqueness
+
+```typescript
+const item1 = await service.create(data1);
+const item2 = await service.create(data2);
+expect(item1.id).not.toBe(item2.id);
+```
+
+---
+
+## Debugging and Troubleshooting
+
+### View Emulator Data
+
+Open <http://localhost:4000> while emulators are running to inspect Firestore, Storage, and logs.
+
+### Run Single Test Case
+
+```bash
+npm test -- -t "should create a project"
+```
+
+### Enable Verbose Output
+
+```bash
+npm test -- --reporter=verbose
+```
+
+### Connection refused
+
+- Ensure Firebase emulators are running
+- Check ports `8080` and `9199` are free
+
+### Tests pass individually but fail together
+
+- Check for shared state
+- Verify cleanup logic in `afterEach`
+
+### Flaky tests
+
+- Check for timing issues
+- Use proper `async`/`await`
+- Avoid hardcoded delays
