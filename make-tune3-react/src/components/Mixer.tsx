@@ -1,5 +1,4 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { DeskToggle } from './DeskToggle';
 import { useAppStore } from '../stores/appStore';
 import type { AudioState } from '../types';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
@@ -119,16 +118,6 @@ export function Mixer({ state }: MixerProps) {
   } = useAppStore(state => state.playback);
 
   const { regularTracks, favorites, pastStageTracks } = useAppStore(state => state.collaboration);
-
-  const handleSubmissionVolumeChangeEvent = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const volume = parseFloat(e.target.value);
-    handleSubmissionVolumeChange(volume);
-  };
-
-  const handleMasterVolumeChangeEvent = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const volume = parseFloat(e.target.value);
-    handleMasterVolumeChange(volume);
-  };
 
   const handleTimeSliderChangeEvent = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value);

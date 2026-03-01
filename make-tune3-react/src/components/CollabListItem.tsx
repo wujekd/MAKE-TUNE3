@@ -35,7 +35,7 @@ export function CollabListItem({
   title,
   subtitle,
   children,
-  statusIndicator,
+  statusIndicator: _statusIndicator,
   rightSlot,
   isSelected,
   isActive,

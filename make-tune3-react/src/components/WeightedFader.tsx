@@ -144,7 +144,7 @@ export function WeightedFader({
         const curvedNormalized = Math.pow(newLinear, exponent);
         const actualValue = min + curvedNormalized * (max - min);
         onChange(actualValue);
-    }, [exponent, min, max, step, onChange]);
+    }, [exponent, min, max, onChange]);
 
     // Handle mouse up - end drag
     const handleMouseUp = useCallback(() => {

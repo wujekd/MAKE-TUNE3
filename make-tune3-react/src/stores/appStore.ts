@@ -921,7 +921,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             }
           };
         });
-      } catch (e) {
+      } catch {
         set(state => {
           const nextPending = { ...state.collaboration.pendingVotes };
           delete nextPending[filePath];

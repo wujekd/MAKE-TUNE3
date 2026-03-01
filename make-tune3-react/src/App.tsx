@@ -88,7 +88,7 @@ function App() {
                       }
                     }
                     nav('/collabs');
-                  } catch (e) {
+                  } catch {
                     alert('Failed to delete project');
                   }
                 }

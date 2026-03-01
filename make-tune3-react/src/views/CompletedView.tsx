@@ -17,7 +17,6 @@ import styles from './CompletedView.module.css';
 
 export function CompletedView() {
   const { collaborationId } = useParams();
-  const { user } = useAppStore(s => s.auth);
   const { currentCollaboration, currentProject } = useAppStore(s => s.collaboration);
   const audioCtx = useContext(AudioEngineContext);
   const engine = audioCtx?.engine;

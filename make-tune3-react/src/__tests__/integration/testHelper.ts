@@ -25,7 +25,7 @@ export async function initTestEnvironment(): Promise<RulesTestEnvironment> {
 
     try {
         rules = fs.readFileSync(rulesPath, 'utf8');
-    } catch (e) {
+    } catch {
         // Rules file may not be accessible in test environment
         console.warn('Could not read firestore.rules, using permissive rules');
     }

@@ -5,10 +5,7 @@ import {
   where, 
   getDocs, 
   doc, 
-  updateDoc,
   getDoc,
-  orderBy,
-  Timestamp,
   writeBatch,
   serverTimestamp
 } from 'firebase/firestore';
@@ -149,7 +146,7 @@ export class ReportService {
       
       const snapshot = await getDocs(q);
       return !snapshot.empty;
-    } catch (error) {
+    } catch {
       return false;
     }
   }

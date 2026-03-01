@@ -11,7 +11,6 @@ import {
   getDoc,
   deleteDoc,
   Timestamp,
-  collection,
 } from './testHelper';
 
 /**

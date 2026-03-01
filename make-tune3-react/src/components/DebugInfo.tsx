@@ -3,11 +3,7 @@ import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import './DebugInfo.css';
 import { useAppStore } from '../stores/appStore';
 
-interface DebugInfoProps {
-  engine?: any;
-}
-
-export function DebugInfo({ engine }: DebugInfoProps) {
+export function DebugInfo() {
   const audioContext = useContext(AudioEngineContext);
   const { regularTracks, isTrackFavorite } = useAppStore(s => s.collaboration);
 

@@ -7,7 +7,7 @@ import {
   signInWithPopup,
   deleteUser
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, runTransaction, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, runTransaction } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import type { User, AuthError } from '../types/auth';
 

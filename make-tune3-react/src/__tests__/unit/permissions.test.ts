@@ -2,9 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { canCreateProject, getProjectAllowance } from '../../utils/permissions';
 import type { User } from '../../types/auth';
 
-// Tests use partial User objects - only the fields relevant to permissions are required
-type PartialUser = Parameters<typeof canCreateProject>[0];
-
 describe('canCreateProject', () => {
     describe('tier limits', () => {
         it('should return false for free tier user with no bonus projects', () => {

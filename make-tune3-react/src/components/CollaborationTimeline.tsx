@@ -84,21 +84,21 @@ export function CollaborationTimeline({
       window.clearInterval(intervalId);
       hasScheduledRefresh.current = false;
     };
-  }, [awaitingAdvance, status, onStageChange]);
+  }, [awaitingAdvance, status, onStageChange, isPlaceholder]);
 
   const submissionCountdown = useMemo(() => {
     if (!submissionEndMs) {
       return { days: 0, hours: 0, minutes: 0, seconds: 0, completed: true };
     }
     return TimeUtils.formatCountdown(new Date(submissionEndMs));
-  }, [submissionEndMs, now]);
+  }, [submissionEndMs]);
 
   const votingCountdown = useMemo(() => {
     if (!votingEndMs) {
       return { days: 0, hours: 0, minutes: 0, seconds: 0, completed: true };
     }
     return TimeUtils.formatCountdown(new Date(votingEndMs));
-  }, [votingEndMs, now]);
+  }, [votingEndMs]);
 
   const submissionTimer = (() => {
     if (!submissionEndMs) {

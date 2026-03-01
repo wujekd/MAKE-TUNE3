@@ -19,7 +19,7 @@ export function AdminReportedView() {
     try {
       const pendingReports = await ReportService.getPendingReports();
       setReports(pendingReports);
-    } catch (error) {
+    } catch {
       alert('Failed to load reports');
     } finally {
       setLoading(false);
@@ -36,7 +36,7 @@ export function AdminReportedView() {
     try {
       await ReportService.dismissReport(reportId, user.uid);
       await loadReports();
-    } catch (error) {
+    } catch {
       alert('Failed to dismiss report');
     } finally {
       setProcessing(null);
@@ -203,4 +203,3 @@ export function AdminReportedView() {
     </AdminLayout>
   );
 }
-

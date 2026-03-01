@@ -48,7 +48,6 @@ export function useToolbar() {
 export function AppShell() {
   const { title, crumbs, actions } = useToolbar();
   const currentUser = useAppStore(s => s.auth.user);
-  const signInWithGoogle = useAppStore(s => s.auth.signInWithGoogle);
   const signOut = useAppStore(s => s.auth.signOut);
   const navigate = useNavigate();
   const proj = useAppStore(s => s.collaboration.currentProject);

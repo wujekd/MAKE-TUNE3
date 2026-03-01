@@ -31,7 +31,6 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
     getTimeSliderValue
   } = useAppStore(s => s.playback);
   const stopBackingPlayback = usePlaybackStore(s => s.stopBackingPlayback);
-  const backingPreview = usePlaybackStore(s => s.backingPreview);
 
   // Window height responsive behavior
   useEffect(() => {
@@ -89,11 +88,6 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
   if (!state) {
     return null;
   }
-
-  const handleMasterVolumeChangeEvent = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const volume = parseFloat(e.target.value);
-    handleMasterVolumeChange(volume);
-  };
 
   const handleTimeSliderChangeEvent = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value);

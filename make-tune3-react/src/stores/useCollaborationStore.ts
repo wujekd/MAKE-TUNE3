@@ -11,8 +11,7 @@ import {
   ProjectService,
   UserService,
   InteractionService,
-  DataService,
-  SubmissionService
+  DataService
 } from '../services';
 import { TrackUtils } from '../utils';
 import { AudioUrlUtils } from '../utils/audioUrlUtils';

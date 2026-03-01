@@ -5,7 +5,6 @@ export function usePrefetchAudio(src?: string) {
 
   useEffect(() => {
     if (!src) return;
-    let cancelled = false;
     const audio = new Audio();
     audio.crossOrigin = 'anonymous';
     audio.preload = 'auto';
@@ -22,11 +21,9 @@ export function usePrefetchAudio(src?: string) {
     audio.src = src;
     audio.load();
     return () => {
-      cancelled = true;
       audio.removeEventListener('canplay', onCanPlay);
       audio.removeEventListener('error', onError);
       audioRef.current = null;
     };
   }, [src]);
 }
-

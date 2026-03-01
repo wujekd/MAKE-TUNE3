@@ -36,7 +36,7 @@ export function AdminSettingsView() {
     setError(null);
     setSuccessMsg(null);
     try {
-      const { updatedAt, updatedBy, ...updates } = settings;
+      const { updatedAt: _updatedAt, updatedBy: _updatedBy, ...updates } = settings;
       await SettingsService.updateSystemSettings(updates, adminUser.uid);
       setSuccessMsg('Settings saved successfully');
       await loadSettings();

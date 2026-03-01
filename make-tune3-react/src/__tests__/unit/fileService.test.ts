@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { FileService } from '../../services/fileService';
 import { MAX_SUBMISSION_FILE_SIZE } from '../../config';
 
@@ -197,4 +197,3 @@ describe('FileService', () => {
     });
   });
 });
-

@@ -15,7 +15,7 @@ const merge = (...values: Array<string | false | undefined | null>) => values.fi
 export function SimpleListItem({
   title,
   subtitle,
-  statusIndicator,
+  statusIndicator: _statusIndicator,
   isSelected,
   onClick
 }: SimpleListItemProps) {
@@ -32,4 +32,3 @@ export function SimpleListItem({
     </button>
   );
 }
-

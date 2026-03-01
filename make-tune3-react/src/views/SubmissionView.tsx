@@ -60,7 +60,7 @@ export function SubmissionView() {
         if (!path.startsWith('collabs/')) { if (!cancelled) setBackingUrl(path); return; }
         const url = await getDownloadURL(ref(storage, path));
         if (!cancelled) setBackingUrl(url);
-      } catch (e) {
+      } catch {
         if (!cancelled) setBackingUrl('');
       }
     })();

@@ -18,7 +18,7 @@ export function AdminResolvedReportsView() {
     try {
       const resolvedReports = await ReportService.getResolvedReports();
       setReports(resolvedReports);
-    } catch (error) {
+    } catch {
       alert('Failed to load resolved reports');
     } finally {
       setLoading(false);
@@ -158,4 +158,3 @@ export function AdminResolvedReportsView() {
     </AdminLayout>
   );
 }
-

@@ -1,4 +1,3 @@
-import { Timestamp } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import app from './firebase';
 import { UserService } from './userService';

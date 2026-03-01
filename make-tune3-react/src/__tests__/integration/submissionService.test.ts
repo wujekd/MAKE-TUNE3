@@ -10,7 +10,6 @@ import {
   setDoc,
   getDoc,
   Timestamp,
-  collection,
 } from './testHelper';
 
 /**
