@@ -22,6 +22,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 export function SubmissionView() {
   const audioContext = useContext(AudioEngineContext);
   const { user, loading: authLoading } = useAppStore(s => s.auth);
+  const userId = user?.uid ?? null;
   const { currentCollaboration, refreshCollaborationStatus } = useAppStore(s => s.collaboration);
   const { collaborationId } = useParams();
 
@@ -157,15 +158,15 @@ export function SubmissionView() {
       if (authLoading) {
         return;
       }
-      if (!user) {
+      if (!userId) {
         setStatus('ready');
         setResolvedStatusKey(`anon:${collaborationId}`);
         return;
       }
       try {
         const [downloaded, submitted] = await Promise.all([
-          UserService.hasDownloadedBacking(user.uid, currentCollaboration.id),
-          SubmissionService.hasUserSubmitted(currentCollaboration.id, user.uid)
+          UserService.hasDownloadedBacking(userId, currentCollaboration.id),
+          SubmissionService.hasUserSubmitted(currentCollaboration.id, userId)
         ]);
         if (submitted) {
           setStatus('submitted');
@@ -174,14 +175,14 @@ export function SubmissionView() {
         } else {
           setStatus('ready');
         }
-        setResolvedStatusKey(`${user?.uid ?? 'anon'}:${collaborationId}`);
+        setResolvedStatusKey(`${userId ?? 'anon'}:${collaborationId}`);
       } catch (e) {
         console.error('failed to resolve submission status', e);
         setStatus('ready');
-        setResolvedStatusKey(`${user?.uid ?? 'anon'}:${collaborationId}`);
+        setResolvedStatusKey(`${userId ?? 'anon'}:${collaborationId}`);
       }
     })();
-  }, [user?.uid, currentCollaboration?.id, collaborationId, authLoading]);
+  }, [userId, currentCollaboration?.id, collaborationId, authLoading]);
 
   useEffect(() => {
     if (status !== 'submitted') return;

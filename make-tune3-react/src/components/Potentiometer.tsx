@@ -141,7 +141,7 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('mouseup', handleUp);
     };
-  }, [dragging, dragValue, min, max, step, sensitivity, onChange]);
+  }, [dragging, dragValue, min, max, step, sensitivity, onChange, onInput, exponent]);
 
   const startDrag = (e: React.MouseEvent) => {
     if (disabled) return;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FeedbackService } from '../services/feedbackService';
 import type { Feedback, FeedbackCategory, FeedbackStatus } from '../services/feedbackService';
 import { useAppStore } from '../stores/appStore';
@@ -41,11 +41,7 @@ export function AdminFeedbackView() {
   const [filterCategory, setFilterCategory] = useState<FeedbackCategory | ''>('');
   const [filterStatus, setFilterStatus] = useState<FeedbackStatus | ''>('');
 
-  useEffect(() => {
-    loadFeedback();
-  }, [filterCategory, filterStatus]);
-
-  const loadFeedback = async () => {
+  const loadFeedback = useCallback(async () => {
     setLoading(true);
     try {
       const filters: { category?: FeedbackCategory; status?: FeedbackStatus } = {};
@@ -60,7 +56,11 @@ export function AdminFeedbackView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterCategory, filterStatus]);
+
+  useEffect(() => {
+    void loadFeedback();
+  }, [loadFeedback]);
 
   const handleUpdateStatus = async (id: string, status: FeedbackStatus) => {
     setProcessing(id);

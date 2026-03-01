@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardService, ProjectService, CollaborationService } from '../services';
 import type { ProjectOverviewItem } from '../services/dashboardService';
@@ -25,6 +25,7 @@ const formatDateTime = (value: number | null | undefined): string => {
 };
 
 export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
+  const userId = user?.uid;
   const [projects, setProjects] = useState<ProjectOverviewItem[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [projectsLoaded, setProjectsLoaded] = useState(false);
@@ -44,9 +45,9 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
   const [moderationError, setModerationError] = useState<string | null>(null);
   const recountingRef = useRef(false);
 
-  const maybeRecountProjectCount = async (userId: string, projectLength: number) => {
-    if (!user || user.uid !== userId) return;
-    const currentCount = user.projectCount ?? 0;
+  const maybeRecountProjectCount = useCallback(async (targetUserId: string, projectLength: number) => {
+    if (!userId || userId !== targetUserId) return;
+    const currentCount = user?.projectCount ?? 0;
     if (currentCount === projectLength) return;
     if (recountingRef.current) return;
     recountingRef.current = true;
@@ -66,20 +67,20 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
     } finally {
       recountingRef.current = false;
     }
-  };
+  }, [userId, user?.projectCount]);
 
-  const loadProjects = async (userId: string) => {
+  const loadProjects = useCallback(async (targetUserId: string) => {
     setProjectsLoading(true);
     setProjectsError(null);
     try {
       const items = await DashboardService.listMyProjectsOverview();
       setProjects(items);
       setProjectsLoaded(true);
-      await maybeRecountProjectCount(userId, items.length);
+      await maybeRecountProjectCount(targetUserId, items.length);
     } catch (e: any) {
       console.error('failed to load projects overview', e);
       try {
-        const fallback = await ProjectService.listUserProjects(userId);
+        const fallback = await ProjectService.listUserProjects(targetUserId);
         const normalized: ProjectOverviewItem[] = fallback.map((p) => ({
           projectId: p.id,
           projectName: p.name,
@@ -92,7 +93,7 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
         setProjectsLoaded(true);
         const friendlyMessage = e?.message || 'failed to load projects overview';
         setProjectsError(`${friendlyMessage}. Showing basic project info.`);
-        await maybeRecountProjectCount(userId, normalized.length);
+        await maybeRecountProjectCount(targetUserId, normalized.length);
       } catch (fallbackErr: any) {
         console.error('failed to load fallback projects', fallbackErr);
         setProjectsError(fallbackErr?.message || 'failed to load projects');
@@ -101,17 +102,17 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
     } finally {
       setProjectsLoading(false);
     }
-  };
+  }, [maybeRecountProjectCount]);
 
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       setProjects([]);
       setProjectsLoaded(false);
       setShowForm(false);
       return;
     }
-    void loadProjects(user.uid);
-  }, [user]);
+    void loadProjects(userId);
+  }, [userId, loadProjects]);
 
   useEffect(() => {
     if (!user || projectsLoading || !projectsLoaded) return;
@@ -168,7 +169,7 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
     setFormError(null);
   };
 
-  const loadModeration = async () => {
+  const loadModeration = useCallback(async () => {
     if (moderationLoading) return;
     setModerationLoading(true);
     setModerationError(null);
@@ -181,21 +182,21 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
     } finally {
       setModerationLoading(false);
     }
-  };
+  }, [moderationLoading]);
 
   // Eagerly fetch moderation count so badge shows without user clicking
   useEffect(() => {
-    if (user && !moderationLoaded && !moderationLoading) {
+    if (userId && !moderationLoaded && !moderationLoading) {
       void loadModeration();
     }
-  }, [user]);
+  }, [userId, loadModeration, moderationLoaded, moderationLoading]);
 
   // Reload moderation data when switching to moderate view
   useEffect(() => {
-    if (mode === 'moderate' && user) {
+    if (mode === 'moderate' && userId) {
       void loadModeration();
     }
-  }, [mode, user]);
+  }, [mode, userId, loadModeration]);
 
   const pendingCount = moderationCollabs.length;
 

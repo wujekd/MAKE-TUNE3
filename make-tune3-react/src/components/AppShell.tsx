@@ -13,7 +13,7 @@ type Action = { key: string; label: string; onClick: () => void; visible?: boole
 
 import '../styles/theme-abyssal.css';
 
-export function useToolbar() {
+function useToolbar() {
   const matches = useMatches();
   const navigate = useNavigate();
   const params = useParams();

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardService, SubmissionService, CollaborationService } from '../services';
 import type { DownloadSummaryItem } from '../services/dashboardService';
@@ -50,7 +50,7 @@ export function UserActivityPanel() {
 
 
 
-  const loadSubmissions = async () => {
+  const loadSubmissions = useCallback(async () => {
     if (submissionsLoading || submissionsLoaded) return;
     setSubmissionsLoading(true);
     setSubmissionsError(null);
@@ -63,9 +63,9 @@ export function UserActivityPanel() {
     } finally {
       setSubmissionsLoading(false);
     }
-  };
+  }, [submissionsLoading, submissionsLoaded]);
 
-  const loadDownloads = async () => {
+  const loadDownloads = useCallback(async () => {
     if (downloadsLoading || downloadsLoaded) return;
     setDownloadsLoading(true);
     setDownloadsError(null);
@@ -78,7 +78,7 @@ export function UserActivityPanel() {
     } finally {
       setDownloadsLoading(false);
     }
-  };
+  }, [downloadsLoading, downloadsLoaded]);
 
 
 
@@ -98,7 +98,7 @@ export function UserActivityPanel() {
       void loadSubmissions();
       void loadDownloads();
     }
-  }, [activeTab, user]);
+  }, [activeTab, user, loadSubmissions, loadDownloads]);
 
   useEffect(() => {
     if (!user) {

@@ -5,6 +5,7 @@ type LoaderState = 'idle' | 'loading' | 'error';
 
 export function useCollaborationLoader(collabId?: string | null) {
   const user = useAppStore(state => state.auth.user);
+  const userId = user?.uid;
   const loadCollaboration = useAppStore(state => state.collaboration.loadCollaboration);
   const loadCollaborationAnonymousById = useAppStore(state => state.collaboration.loadCollaborationAnonymousById);
 
@@ -19,8 +20,8 @@ export function useCollaborationLoader(collabId?: string | null) {
       setStatus('loading');
       setError(null);
       try {
-        if (user) {
-          await loadCollaboration(user.uid, collabId);
+        if (userId) {
+          await loadCollaboration(userId, collabId);
         } else {
           await loadCollaborationAnonymousById(collabId);
         }
@@ -40,7 +41,7 @@ export function useCollaborationLoader(collabId?: string | null) {
     return () => {
       cancelled = true;
     };
-  }, [collabId, user?.uid, loadCollaboration, loadCollaborationAnonymousById]);
+  }, [collabId, userId, loadCollaboration, loadCollaborationAnonymousById]);
 
   return { status, error };
 }

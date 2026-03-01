@@ -1,17 +1,9 @@
-import React, { createContext, useRef, useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { AudioEngine } from './audio-engine';
 import type { AudioState } from '../types';
 import { useAudioStore } from '../stores';
-
-// Context value holds both the engine and its current state
-interface AudioEngineContextValue {
-  engine: AudioEngine;
-  state: AudioState;
-}
-
-// Create context with null default
-export const AudioEngineContext = createContext<AudioEngineContextValue | null>(null);
+import { AudioEngineContext } from './AudioEngineContext';
 
 export function AudioEngineProvider({ children }: { children: ReactNode }) {
   // Refs to two <audio> elements
