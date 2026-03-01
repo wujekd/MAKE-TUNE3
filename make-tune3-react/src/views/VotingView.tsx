@@ -19,6 +19,8 @@ import styles from './VotingView.module.css';
 export function VotingView() {
   const audioContext = useContext(AudioEngineContext);
   const navigate = useNavigate();
+  const stageCheckInFlightRef = useRef(false);
+  const location = useLocation();
 
   // get data from different slices
   const { user } = useAppStore(state => state.auth);
@@ -40,14 +42,10 @@ export function VotingView() {
   const { playSubmission } = useAppStore(state => state.playback);
   const { currentProject, currentCollaboration } = useAppStore(state => state.collaboration);
 
-  if (!audioContext) {
-    return <div>Audio engine not available</div>;
-  }
-  const { engine, state } = audioContext;
-  const stageCheckInFlightRef = useRef(false);
+  const engine = audioContext?.engine;
+  const state = audioContext?.state;
 
   // read collabId from url
-  const location = useLocation();
   const collabId = useMemo(() => {
     const match = location.pathname.match(/\/collab\/(.+)$/);
     return match ? decodeURIComponent(match[1]) : null;
@@ -109,7 +107,7 @@ export function VotingView() {
     };
   }, [engine]);
 
-  const handleStageChange = useCallback(async (nextStatus: 'voting' | 'completed') => {
+  const handleStageChange = useCallback(async () => {
     if (stageCheckInFlightRef.current) return;
     stageCheckInFlightRef.current = true;
     try {
@@ -135,6 +133,10 @@ export function VotingView() {
   const isVotingLoading = isLoadingCollaboration
     || !currentCollaboration
     || (collabId ? currentCollaboration.id !== collabId : false);
+
+  if (!audioContext || !state) {
+    return <div>Audio engine not available</div>;
+  }
 
   return (
     <div className={`view-container ${styles.container}`}>

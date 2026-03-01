@@ -33,14 +33,9 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay,
   // };
 
   const audioContext = useContext(AudioEngineContext);
-
-  if (!audioContext) {
-    return <div>Loading audio engine...</div>;
-  }
-  const { state } = audioContext;
-
   // reference to favorites container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const state = audioContext?.state;
 
   // add wheel event listener for horizontal scrolling
   useEffect(() => {
@@ -66,6 +61,10 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay,
 
   const finalIndex = finalVote ? favorites.findIndex(t => t.filePath === finalVote) : -1;
   const hasFinal = finalIndex >= 0;
+
+  if (!audioContext || !state) {
+    return <div>Loading audio engine...</div>;
+  }
 
   return (
     <section className="favorites-section">
@@ -96,7 +95,7 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay,
               listened={true}
               favorite={true}
               onAddToFavorites={() => onAddToFavorites(favorites[finalIndex].filePath)}
-              onPlay={(_trackId, _index) => onPlay(favorites[finalIndex].filePath, finalIndex, true)}
+              onPlay={() => onPlay(favorites[finalIndex].filePath, finalIndex, true)}
               voteFor={voteFor}
               listenedRatio={listenedRatio}
               isFinal={true}
@@ -145,7 +144,7 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay,
                   listened={true}
                   favorite={true}
                   onAddToFavorites={() => onAddToFavorites(track.filePath)}
-                  onPlay={(_trackId) => onPlay(track.filePath, index, true)}
+                  onPlay={() => onPlay(track.filePath, index, true)}
                   voteFor={voteFor}
                   listenedRatio={listenedRatio}
                   isFinal={false}

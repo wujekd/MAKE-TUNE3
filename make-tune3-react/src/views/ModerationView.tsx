@@ -13,6 +13,7 @@ import styles from './ModerationView.module.css';
 
 export function ModerationView() {
   const audioContext = useContext(AudioEngineContext);
+  const state = audioContext?.state;
   const { user } = useAppStore(state => state.auth);
   const {
     regularTracks,
@@ -33,17 +34,18 @@ export function ModerationView() {
     loadCollaborationForModeration(collabId);
   }, [collabId, user, loadCollaborationForModeration]);
 
-  if (!audioContext) return null;
-  const { state } = audioContext;
   useEffect(() => {
+    if (!audioContext) return;
     const backingPath = useAppStore.getState().collaboration.currentCollaboration?.backingTrackPath;
     if (!backingPath) return;
     // If already resolved elsewhere to full URL, we could resolve here; otherwise, rely on submission view logic.
-  }, []);
+  }, [audioContext]);
 
   const pendingTracks = regularTracks.filter(track => track.moderationStatus === 'pending');
   const isModerationLoading = isLoadingCollaboration || !currentCollaboration || currentCollaboration.id !== collabId;
   const timelineStatus = currentCollaboration?.id === collabId ? currentCollaboration.status : 'submission';
+
+  if (!audioContext || !state) return null;
 
   return (
     <div className={`view-container ${styles.container}`}>
@@ -69,7 +71,7 @@ export function ModerationView() {
         </div>
         <div className={styles.headerRight}>
           <ProjectHistory />
-          <CollabData collab={currentCollaboration as any} />
+          <CollabData collab={currentCollaboration as any} showBars={false} />
           <CollabHeader collaboration={currentCollaboration} displayStatus={timelineStatus} />
         </div>
       </div>

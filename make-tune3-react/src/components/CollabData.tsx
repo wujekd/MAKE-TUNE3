@@ -2,7 +2,10 @@ import React, { useMemo } from 'react';
 import type { Collaboration } from '../types/collaboration';
 import './CollabData.css';
 
-type Props = { collab?: Collaboration | null };
+type Props = {
+  collab?: Collaboration | null;
+  showBars?: boolean;
+};
 
 const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
 
@@ -20,7 +23,7 @@ const formatCount = (value: number) => {
   return standardFormatter.format(value);
 };
 
-export function CollabData({ collab }: Props) {
+export function CollabData({ collab, showBars = true }: Props) {
   const { submissionsCount, votesCount, favoritesCount, participantsCount, results, winner } = useMemo(() => {
     const status = (collab as any)?.status || 'unknown';
 
@@ -90,10 +93,12 @@ export function CollabData({ collab }: Props) {
                   {stat.suffix && <span className="collab-data__stat-suffix">{stat.suffix}</span>}
                 </span>
               </div>
-              <div className="collab-data__stat-bar" aria-hidden="true">
-                <div className="collab-data__stat-fill" style={{ width: `${percent}%` }} />
-                <div className="collab-data__stat-handle" style={{ left: `${percent}%` }} />
-              </div>
+              {showBars && (
+                <div className="collab-data__stat-bar" aria-hidden="true">
+                  <div className="collab-data__stat-fill" style={{ width: `${percent}%` }} />
+                  <div className="collab-data__stat-handle" style={{ left: `${percent}%` }} />
+                </div>
+              )}
             </div>
           );
         })}

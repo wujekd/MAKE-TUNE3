@@ -13,14 +13,12 @@ type Props = {
 
 export function ModerationPanel({ tracks, onApprove, onReject }: Props) {
   const ctx = useContext(AudioEngineContext);
+  const state = ctx?.state;
   const { user } = useAppStore(state => state.auth);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reporting, setReporting] = useState(false);
-
-  if (!ctx) return null;
-  const { state } = ctx;
-  const currentSrc = state.player1.source;
+  const currentSrc = state?.player1.source ?? '';
   const normalizeSource = (src: string): string => {
     if (!src) return '';
     if (src.startsWith('/test-audio/')) {
@@ -48,6 +46,8 @@ export function ModerationPanel({ tracks, onApprove, onReject }: Props) {
     const sourcePath = normalizeSource(currentSrc);
     return tracks.find(t => t.filePath === sourcePath || t.optimizedPath === sourcePath) || null;
   }, [currentSrc, tracks]);
+
+  if (!ctx || !state) return null;
 
   const handleReportClick = () => {
     if (!current) return;
@@ -82,7 +82,7 @@ export function ModerationPanel({ tracks, onApprove, onReject }: Props) {
 
       alert('Report submitted successfully.');
       setShowReportModal(false);
-    } catch (error) {
+    } catch {
       alert('Failed to submit report. Please try again.');
     } finally {
       setReporting(false);
