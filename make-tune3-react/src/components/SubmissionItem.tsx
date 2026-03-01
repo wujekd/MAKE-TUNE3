@@ -39,17 +39,16 @@ export default function SubmissionItem({
 
   const { user } = useAppStore(state => state.auth);
   const audioContext = useContext(AudioEngineContext);
-  if (!audioContext) {
-    return <div>Loading audio engine...</div>;
-  }
-  const { engine, state } = audioContext;
   const [pendingPlay, setPendingPlay] = useState(false);
+  const engine = audioContext?.engine;
+  const state = audioContext?.state;
 
-  const displayProgress = isCurrentTrack && state.player1.duration > 0
+  const displayProgress = isCurrentTrack && state && state.player1.duration > 0
     ? (state.player1.currentTime / state.player1.duration) * 100
     : 0;
 
   const handlePlayClick = () => {
+    if (!engine) return;
     if (isPlaying && isCurrentTrack) {
       engine.pause();
       setPendingPlay(false);
@@ -73,6 +72,10 @@ export default function SubmissionItem({
   const isVotePending = isVoting;
   const isBusy = isFavoritePending || isVotePending;
   const statusLabel = isVotePending ? 'Voting...' : null;
+
+  if (!audioContext || !state) {
+    return <div>Loading audio engine...</div>;
+  }
 
   const containerClass = [
     'submission-container',

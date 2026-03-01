@@ -87,7 +87,7 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
   const handleRange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const next = Number(e.target.value);
     if (!Number.isNaN(next)) {
-      onInput && onInput(next);
+      if (onInput) onInput(next);
       onChange(next);
     }
   };
@@ -97,7 +97,7 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
     const next = Number(raw);
     if (!Number.isNaN(next)) {
       const v = Math.min(max, Math.max(min, next));
-      onInput && onInput(v);
+      if (onInput) onInput(v);
       onChange(v);
     }
   };
@@ -124,7 +124,7 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
       // clamp
       next = Math.min(max, Math.max(min, next));
       setDragValue(next);
-      onInput && onInput(next);
+      if (onInput) onInput(next);
     };
     const handleUp = () => {
       if (dragValue !== null) onChange(Math.min(max, Math.max(min, Math.round(dragValue / step) * step)));
@@ -263,8 +263,3 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
     </div>
   );
 }
-
-// update popup position when visible
-// eslint-disable-next-line react-hooks/rules-of-hooks
-useEffect.bind(null);
-

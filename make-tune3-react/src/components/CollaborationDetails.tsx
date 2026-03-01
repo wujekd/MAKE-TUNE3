@@ -167,7 +167,7 @@ export function CollaborationDetails({
               if (!backingPath) return;
               const { storage } = await import('../services/firebase');
               const { ref, getBlob } = await import('firebase/storage');
-              let filename = backingPath.split('/').pop() || 'backing';
+              const filename = backingPath.split('/').pop() || 'backing';
               if (backingPath.startsWith('collabs/')) {
                 const storageRef = ref(storage, backingPath);
                 const blob = await getBlob(storageRef);
@@ -287,7 +287,7 @@ export function CollaborationDetails({
               if (!path) throw new Error('No winner path available');
               const { storage } = await import('../services/firebase');
               const { ref, getBlob } = await import('firebase/storage');
-              let filename = path.split('/').pop() || 'winner';
+              const filename = path.split('/').pop() || 'winner';
               if (path.startsWith('collabs/')) {
                 const storageRef = ref(storage, path);
                 const blob = await getBlob(storageRef);

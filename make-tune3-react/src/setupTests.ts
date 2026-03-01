@@ -90,7 +90,8 @@ if (process.env.NODE_ENV === 'test') {
   try {
     connectFirestoreEmulator(db, 'localhost', 8080);
     connectStorageEmulator(storage, 'localhost', 9199);
-  } catch (e) {
+  } catch {
+    // Emulators may already be connected in this test process.
   }
 }
 

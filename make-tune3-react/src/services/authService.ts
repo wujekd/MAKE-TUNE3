@@ -22,7 +22,7 @@ export class AuthService {
         try {
           await this.claimUsername(user.uid, username);
         } catch (e) {
-          try { await deleteUser(user); } catch {}
+          try { await deleteUser(user); } catch { /* best-effort rollback */ }
           throw e;
         }
       }

@@ -24,22 +24,18 @@ export class ReportService {
     reportedByUsername: string | undefined,
     reason: string
   ): Promise<string> {
-    try {
-      const reportData = {
-        submissionPath,
-        collaborationId,
-        reportedBy,
-        reportedByUsername,
-        reason,
-        status: 'pending' as ReportStatus,
-        createdAt: new Date()
-      };
+    const reportData = {
+      submissionPath,
+      collaborationId,
+      reportedBy,
+      reportedByUsername,
+      reason,
+      status: 'pending' as ReportStatus,
+      createdAt: new Date()
+    };
 
-      const docRef = await addDoc(collection(db, 'reports'), reportData);
-      return docRef.id;
-    } catch (error) {
-      throw error;
-    }
+    const docRef = await addDoc(collection(db, 'reports'), reportData);
+    return docRef.id;
   }
 
   static async getPendingReports(): Promise<Report[]> {
@@ -198,4 +194,3 @@ export class ReportService {
     }
   }
 }
-
