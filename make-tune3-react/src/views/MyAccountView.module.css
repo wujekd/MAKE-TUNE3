@@ -1,15 +1,16 @@
 .container {
-  /* Base provided by .view-container */
   --account-panel: rgba(18, 24, 28, 0.72);
   --account-border: rgba(48, 112, 113, 0.3);
   --account-muted: rgba(220, 230, 230, 0.65);
   --account-accent: var(--contrast-500);
+  --unsaved-color: rgba(239, 123, 58, 0.85);
   padding: 24px;
   gap: 20px;
   box-sizing: border-box;
 }
 
 .hero,
+.tabsRow,
 .tabs,
 .tabContent {
   position: relative;
@@ -80,10 +81,32 @@
   opacity: 0.6;
 }
 
+.emailButton {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.emailButton:hover {
+  color: var(--white);
+}
+
 .heroActions {
   display: flex;
   gap: 10px;
   flex-shrink: 0;
+}
+
+.tabsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .tabs {
@@ -124,7 +147,7 @@
 .tabContent {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .panel {
@@ -134,9 +157,11 @@
   padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  height: 100%;
-  overflow: auto;
+  gap: 14px;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  box-sizing: border-box;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
@@ -177,20 +202,28 @@
   letter-spacing: 0.05em;
 }
 
-.formGrid {
+.formLayout {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: minmax(340px, 1.1fr) minmax(300px, 0.9fr);
   gap: 16px;
+  align-items: stretch;
+  margin-bottom: 0;
+}
+
+.formColumn {
+  min-width: 0;
+  display: flex;
 }
 
 .card {
-  border: 1px solid rgba(48, 112, 113, 0.4);
+  border: 1px solid rgba(48, 112, 113, 0.62);
   border-radius: 12px;
   padding: 16px;
-  background: rgba(10, 18, 19, 0.6);
+  background: rgba(10, 18, 19, 0.74);
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
 }
 
 .cardHeader {
@@ -198,6 +231,10 @@
   justify-content: space-between;
   gap: 12px;
   align-items: center;
+}
+
+.visibilityHeader {
+  margin-bottom: 28px;
 }
 
 .cardTitle {
@@ -217,6 +254,27 @@
   color: var(--account-muted);
 }
 
+.inlineFieldRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inlineFieldLabel {
+  width: 52px;
+  flex: 0 0 52px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--account-muted);
+}
+
+.inputWrap {
+  position: relative;
+  border-radius: 10px;
+  flex: 1;
+}
+
 .input,
 .textarea {
   width: 100%;
@@ -227,6 +285,7 @@
   color: var(--white);
   font-size: 0.9rem;
   box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .input:focus,
@@ -244,7 +303,8 @@
 .toggleList {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+  padding-bottom: 0;
 }
 
 .toggleRow {
@@ -253,6 +313,12 @@
   align-items: center;
   font-size: 0.9rem;
   color: var(--white);
+  border: 1px solid rgba(48, 112, 113, 0.35);
+  border-radius: 10px;
+  background: rgba(10, 18, 19, 0.52);
+  padding: 10px 12px;
+  gap: 10px;
+  position: relative;
 }
 
 .toggle {
@@ -288,20 +354,90 @@
   transition: all 0.2s ease;
 }
 
-.toggle input:checked+.toggleTrack {
+.toggle input:checked + .toggleTrack {
   background: rgba(239, 123, 58, 0.3);
   border-color: rgba(239, 123, 58, 0.6);
 }
 
-.toggle input:checked+.toggleTrack::after {
+.toggle input:checked + .toggleTrack::after {
   transform: translateX(22px);
   background: #fff2e8;
 }
 
 .formActions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 10px;
+  margin-top: 14px;
+  padding-top: 0;
+  border-top: none;
+}
+
+.saveButton {
+  min-width: 220px;
+}
+
+.unsavedField {
+  box-shadow: 0 0 0 1px rgba(239, 123, 58, 0.5), 0 0 14px rgba(239, 123, 58, 0.16);
+  animation: unsavedFieldPulse 1.8s ease-in-out infinite;
+}
+
+.unsavedField::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--unsaved-color);
+  box-shadow: 0 0 0 rgba(239, 123, 58, 0.6);
+  animation: unsavedDotPulse 1.1s ease-out infinite;
+  pointer-events: none;
+}
+
+.unsavedInput {
+  border-color: rgba(239, 123, 58, 0.65);
+  box-shadow: 0 0 0 1px rgba(239, 123, 58, 0.22);
+  background: rgba(73, 38, 17, 0.45);
+}
+
+.unsavedSaveButton {
+  position: relative;
+  box-shadow: 0 0 0 1px rgba(239, 123, 58, 0.5), 0 0 6px rgba(239, 123, 58, 0.2);
+  animation: unsavedButtonPulse 1.8s ease-in-out infinite;
+}
+
+.unsavedSaveButton::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffd7bb;
+  box-shadow: 0 0 0 rgba(255, 215, 187, 0.65);
+  animation: unsavedDotPulse 1.1s ease-out infinite;
+}
+
+.statusMessage {
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  border: 1px solid transparent;
+}
+
+.statusSuccess {
+  background: rgba(48, 112, 113, 0.2);
+  border-color: rgba(48, 112, 113, 0.45);
+  color: #d7f2ef;
+}
+
+.statusError {
+  background: rgba(173, 66, 52, 0.2);
+  border-color: rgba(173, 66, 52, 0.45);
+  color: #ffd9d2;
 }
 
 .ticketActions {
@@ -319,6 +455,67 @@
   border-radius: 12px;
   padding: 20px;
   border: 1px dashed rgba(48, 112, 113, 0.4);
+}
+
+.ticketItems {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ticketItem {
+  border: 1px solid rgba(48, 112, 113, 0.35);
+  border-radius: 10px;
+  background: rgba(10, 18, 19, 0.7);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ticketTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.ticketCategory {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+  color: var(--account-muted);
+}
+
+.ticketStatus {
+  border-radius: 999px;
+  border: 1px solid rgba(239, 123, 58, 0.5);
+  background: rgba(239, 123, 58, 0.15);
+  padding: 2px 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.65rem;
+  color: #ffd8be;
+}
+
+.ticketStatusResolved {
+  border-color: rgba(48, 112, 113, 0.5);
+  background: rgba(48, 112, 113, 0.2);
+  color: #cfeceb;
+}
+
+.ticketMessage {
+  margin: 0;
+  line-height: 1.45;
+  color: var(--white);
+}
+
+.ticketMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--account-muted);
 }
 
 .emptyState {
@@ -382,6 +579,47 @@
   cursor: not-allowed;
 }
 
+@keyframes unsavedFieldPulse {
+  0%,
+  100% {
+    background-color: rgba(73, 38, 17, 0.2);
+  }
+  50% {
+    background-color: rgba(73, 38, 17, 0.38);
+  }
+}
+
+@keyframes unsavedButtonPulse {
+  0%,
+  100% {
+    background-color: rgba(239, 123, 58, 0.2);
+  }
+  50% {
+    background-color: rgba(239, 123, 58, 0.36);
+  }
+}
+
+@keyframes unsavedDotPulse {
+  0% {
+    transform: scale(0.92);
+    box-shadow: 0 0 0 0 rgba(239, 123, 58, 0.6);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(239, 123, 58, 0);
+  }
+  100% {
+    transform: scale(0.92);
+    box-shadow: 0 0 0 0 rgba(239, 123, 58, 0);
+  }
+}
+
+@media (max-width: 940px) {
+  .formLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 720px) {
   .hero {
     flex-direction: column;
@@ -391,6 +629,17 @@
   .heroActions {
     width: 100%;
     justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .tabsRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tabs {
+    width: 100%;
+    flex-wrap: wrap;
   }
 
   .sectionHeader {

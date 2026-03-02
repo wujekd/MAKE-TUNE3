@@ -22,7 +22,7 @@ const CREATOR_QUESTIONS = [
 
 export function FeedbackModal() {
   const location = useLocation();
-  const { feedbackModal, closeFeedbackModal } = useUIStore();
+  const { feedbackModal, closeFeedbackModal, markFeedbackSubmitted } = useUIStore();
   const { user } = useAppStore(state => state.auth);
 
   const [category, setCategory] = useState<FeedbackCategory>('other');
@@ -74,6 +74,7 @@ export function FeedbackModal() {
         answers: category === 'creator_request' ? answers : undefined,
         route: location.pathname
       });
+      markFeedbackSubmitted();
       setSuccess(true);
     } catch (e: any) {
       setError(e?.message || 'Failed to submit feedback');

@@ -171,6 +171,19 @@ export interface UserProfile {
   email: string;
   createdAt: Timestamp;
   collaborationIds: string[]; // collaboration ids user interacted with
+  username?: string;
+  description?: string;
+  socialLinks?: {
+    link1?: string;
+    link2?: string;
+    link3?: string;
+  };
+  visibility?: {
+    publicProfile?: boolean;
+    showSocialLinks?: boolean;
+    showCollaborationHistory?: boolean;
+    allowCreatorContact?: boolean;
+  };
 }
 
 export interface CollaborationData {

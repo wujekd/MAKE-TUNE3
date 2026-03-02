@@ -13,6 +13,7 @@ type Props = {
   onChange: (v: number) => void;
   onInput?: (v: number) => void;
   showValue?: boolean;
+  showDragLabel?: boolean;
   color?: string;
   middleText?: string;
   startText?: string;
@@ -21,7 +22,7 @@ type Props = {
   exponent?: number;
 };
 
-export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, label, disabled = false, onChange, onInput, showValue = true, color, middleText, startText, endText, exponent = 1 }: Props) {
+export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, label, disabled = false, onChange, onInput, showValue = true, showDragLabel = true, color, middleText, startText, endText, exponent = 1 }: Props) {
   const clamped = Math.min(max, Math.max(min, value));
 
   const [dragValue, setDragValue] = useState<number | null>(null);
@@ -206,7 +207,7 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
             </div>
           )}
         </div>
-        {!showValue && dragging && popupPos && createPortal(
+        {!showValue && showDragLabel && dragging && popupPos && createPortal(
           <div
             style={{
               position: 'fixed',

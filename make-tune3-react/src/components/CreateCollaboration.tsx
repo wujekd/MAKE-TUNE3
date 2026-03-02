@@ -159,11 +159,15 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      gap: 2,
+      justifyContent: 'space-evenly',
       width: '100%',
+      height: '100%',
+      minHeight: '100%',
+      overflowY: 'auto',
       // Using a slightly more transparent background for the form container itself if needed, 
       // but here we just stick to the layout changes requested.
-      padding: 4 // tiny padding
+      padding: 8,
+      boxSizing: 'border-box'
     }}>
       <input
         placeholder="Collaboration Name"
@@ -235,6 +239,7 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
               onChange={val => setSubmissionDuration(TimeUtils.clampDuration(val))}
               onInput={val => setSubmissionDuration(TimeUtils.clampDuration(val))}
               showValue={false}
+              showDragLabel={false}
               size={48}
             />
           </div>
@@ -282,6 +287,7 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
               onChange={val => setVotingDuration(TimeUtils.clampDuration(val))}
               onInput={val => setVotingDuration(TimeUtils.clampDuration(val))}
               showValue={false}
+              showDragLabel={false}
               size={48}
             />
           </div>
@@ -301,25 +307,30 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
         </div>
       </div>
 
-      {/* Upload Sections - Inline */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Upload Sections - Title above each uploader */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: 10
+      }}>
 
         {/* Backing Track */}
         <div style={{
           display: 'flex',
-          alignItems: 'center',
-          gap: 12,
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          gap: 6,
           padding: 8,
           // slightly lighter/different bg for distinct sections
           background: 'rgba(255,255,255,0.03)',
           borderRadius: 8,
           border: '1px solid var(--primary1-600)'
         }}>
-          <div style={{ width: 100, fontSize: 12, fontWeight: 600, color: 'var(--primary1-200)', flexShrink: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary1-200)' }}>
             Backing Track
           </div>
 
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+          <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
             {mode === 'edit' && initial?.backingTrackPath && !replaceBacking ? (
               <>
                 <div style={{
@@ -448,18 +459,19 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
         {/* PDF */}
         <div style={{
           display: 'flex',
-          alignItems: 'center',
-          gap: 12,
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          gap: 6,
           padding: 8,
           background: 'rgba(255,255,255,0.03)',
           borderRadius: 8,
           border: '1px solid var(--primary1-600)'
         }}>
-          <div style={{ width: 100, fontSize: 12, fontWeight: 600, color: 'var(--primary1-200)', flexShrink: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary1-200)' }}>
             PDF
             <span style={{ display: 'block', fontSize: 9, opacity: 0.6, fontWeight: 400 }}>optional</span>
           </div>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+          <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
             {mode === 'edit' && initial?.pdfPath && !replacePdf ? (
               <>
                 <span style={{
@@ -550,18 +562,19 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
         {/* Resources ZIP */}
         <div style={{
           display: 'flex',
-          alignItems: 'center',
-          gap: 12,
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          gap: 6,
           padding: 8,
           background: 'rgba(255,255,255,0.03)',
           borderRadius: 8,
           border: '1px solid var(--primary1-600)'
         }}>
-          <div style={{ width: 100, fontSize: 12, fontWeight: 600, color: 'var(--primary1-200)', flexShrink: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary1-200)' }}>
             Resources ZIP
             <span style={{ display: 'block', fontSize: 9, opacity: 0.6, fontWeight: 400 }}>optional</span>
           </div>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+          <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
             {mode === 'edit' && initial?.resourcesZipPath && !replaceZip ? (
               <>
                 <span style={{
@@ -652,19 +665,17 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
 
       {error && <div style={{ color: 'var(--dashboard-accent)', fontSize: 13, marginTop: 4 }}>{error}</div>}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-        {saving && backingFile && (
-          <div style={{ width: 180, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{ width: `${progress}%`, height: '100%', background: 'var(--dashboard-accent)', transition: 'width 0.2s' }} />
-          </div>
-        )}
-        <div style={{ flex: 1 }}></div>
+      <div style={{ display: 'flex', width: '100%', alignItems: 'center', marginTop: 8 }}>
         <button
           onClick={create}
           disabled={saving}
           style={{
-            background: 'linear-gradient(135deg, var(--dashboard-accent) 0%, var(--contrast-600) 100%)',
-            border: 'none',
+            position: 'relative',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, rgba(213, 95, 33, 0.25) 0%, rgba(213, 95, 33, 0.15) 100%)',
+            border: '1px solid rgba(213, 95, 33, 0.45)',
+            isolation: 'isolate',
+            width: '100%',
             borderRadius: 8,
             color: 'white',
             padding: '8px 20px',
@@ -675,7 +686,21 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
             boxShadow: '0 4px 12px rgba(213, 95, 33, 0.2)'
           }}
         >
-          {saving ? (backingFile ? `Uploading ${Math.round(progress)}%` : (mode === 'edit' ? 'Saving...' : 'Creating...')) : (mode === 'edit' ? 'Save Changes' : 'Create Collaboration')}
+          {saving && (
+            <span
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: `${backingFile ? progress : 100}%`,
+                background: 'linear-gradient(135deg, var(--dashboard-accent) 0%, var(--contrast-600) 100%)',
+                transition: 'width 0.2s ease',
+                zIndex: 0
+              }}
+            />
+          )}
+          <span style={{ position: 'relative', zIndex: 1 }}>
+            {saving ? (backingFile ? `Uploading ${Math.round(progress)}%` : (mode === 'edit' ? 'Saving...' : 'Creating...')) : (mode === 'edit' ? 'Save Changes' : 'Create Collaboration')}
+          </span>
         </button>
       </div>
     </div>

@@ -152,10 +152,3 @@ The following hardening changes were applied before beta:
    - A user can only set `users.username` if they have claimed `usernames/{name}`.
    - Prevents bypassing username uniqueness by direct profile edits.
 
-## Deployment Order
-
-1. Deploy Cloud Functions.
-2. Deploy updated frontend.
-3. Deploy Firestore + Storage rules.
-
-This order avoids locking out uploads before the new flow is available.

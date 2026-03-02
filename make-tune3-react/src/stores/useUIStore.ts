@@ -11,17 +11,20 @@ interface UIState {
   showAuth: boolean;
   debug: boolean;
   feedbackModal: FeedbackModalState;
+  feedbackLastSubmittedAt: number;
   setLoading: (loading: boolean) => void;
   setShowAuth: (show: boolean) => void;
   setDebug: (debug: boolean) => void;
   openFeedbackModal: (category?: FeedbackCategory) => void;
   closeFeedbackModal: () => void;
+  markFeedbackSubmitted: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
   isLoading: false,
   showAuth: false,
   debug: false,
+  feedbackLastSubmittedAt: 0,
   feedbackModal: {
     isOpen: false,
     initialCategory: null
@@ -41,6 +44,6 @@ export const useUIStore = create<UIState>((set) => ({
       isOpen: false,
       initialCategory: null
     }
-  })
+  }),
+  markFeedbackSubmitted: () => set({ feedbackLastSubmittedAt: Date.now() })
 }));
-

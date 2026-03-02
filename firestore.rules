@@ -148,23 +148,74 @@ service cloud.firestore {
         && existsAfter(/databases/$(database)/documents/usernames/$(request.resource.data.username))
         && getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.username)).data.uid == userId;
     }
+    function validUserDescription(data) {
+      return !('description' in data)
+        || (data.description is string && data.description.size() <= 500);
+    }
+    function validUserSocialLinks(data) {
+      return !('socialLinks' in data)
+        || (
+          data.socialLinks is map
+          && data.socialLinks.keys().hasOnly(['link1', 'link2', 'link3'])
+          && (!('link1' in data.socialLinks) || (data.socialLinks.link1 is string && data.socialLinks.link1.size() <= 300))
+          && (!('link2' in data.socialLinks) || (data.socialLinks.link2 is string && data.socialLinks.link2.size() <= 300))
+          && (!('link3' in data.socialLinks) || (data.socialLinks.link3 is string && data.socialLinks.link3.size() <= 300))
+        );
+    }
+    function validUserVisibility(data) {
+      return !('visibility' in data)
+        || (
+          data.visibility is map
+          && data.visibility.keys().hasOnly([
+            'publicProfile',
+            'showSocialLinks',
+            'showCollaborationHistory',
+            'allowCreatorContact'
+          ])
+          && (!('publicProfile' in data.visibility) || data.visibility.publicProfile is bool)
+          && (!('showSocialLinks' in data.visibility) || data.visibility.showSocialLinks is bool)
+          && (!('showCollaborationHistory' in data.visibility) || data.visibility.showCollaborationHistory is bool)
+          && (!('allowCreatorContact' in data.visibility) || data.visibility.allowCreatorContact is bool)
+        );
+    }
     function isValidUserCreate(userId) {
-      return request.resource.data.keys().hasOnly(['uid', 'email', 'createdAt', 'collaborationIds', 'username'])
+      return request.resource.data.keys().hasOnly([
+          'uid',
+          'email',
+          'createdAt',
+          'collaborationIds',
+          'username',
+          'description',
+          'socialLinks',
+          'visibility'
+        ])
         && request.resource.data.uid == userId
         && request.resource.data.email is string
         && request.resource.data.createdAt is timestamp
         && request.resource.data.collaborationIds is list
+        && validUserDescription(request.resource.data)
+        && validUserSocialLinks(request.resource.data)
+        && validUserVisibility(request.resource.data)
         && (
           !('username' in request.resource.data)
           || usernameClaimedByUser(userId)
         );
     }
     function isValidUserSelfUpdate(userId) {
-      return userChangedKeys().hasOnly(['collaborationIds', 'username'])
+      return userChangedKeys().hasOnly([
+          'collaborationIds',
+          'username',
+          'description',
+          'socialLinks',
+          'visibility'
+        ])
         && request.resource.data.uid == userId
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.email == resource.data.email
         && request.resource.data.collaborationIds is list
+        && validUserDescription(request.resource.data)
+        && validUserSocialLinks(request.resource.data)
+        && validUserVisibility(request.resource.data)
         && (!('username' in request.resource.data) || request.resource.data.username is string)
         && (
           !('username' in request.resource.data)
@@ -295,7 +346,8 @@ service cloud.firestore {
         && request.resource.data.route is string
         && request.resource.data.createdAt is timestamp
         && !('adminNote' in request.resource.data);
-      allow read, update, delete: if isAdmin();
+      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow update, delete: if isAdmin();
     }
 
     match /adminLogs/{logId} {

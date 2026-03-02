@@ -101,6 +101,20 @@ export class FeedbackService {
     } as Feedback));
   }
 
+  static async getUserFeedback(uid: string): Promise<Feedback[]> {
+    const q = query(collection(db, 'feedback'), where('uid', '==', uid));
+    const snapshot = await getDocs(q);
+    const rows = snapshot.docs.map(docSnap => ({
+      id: docSnap.id,
+      ...docSnap.data()
+    } as Feedback));
+    return rows.sort((a, b) => {
+      const aTime = typeof a.createdAt?.toMillis === 'function' ? a.createdAt.toMillis() : 0;
+      const bTime = typeof b.createdAt?.toMillis === 'function' ? b.createdAt.toMillis() : 0;
+      return bTime - aTime;
+    });
+  }
+
   static async updateFeedbackStatus(
     feedbackId: string,
     status: FeedbackStatus,
