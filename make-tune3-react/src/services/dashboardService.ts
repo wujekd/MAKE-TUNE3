@@ -1,4 +1,5 @@
-import { auth, db } from './firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import app, { auth, db } from './firebase';
 import {
   collection,
   query,
@@ -42,6 +43,13 @@ type DownloadSummaryItem = {
   backingPath: string;
   lastDownloadedAt: number | null;
   downloadCount: number;
+};
+
+type MyAccountStats = {
+  collabs: number;
+  active: number;
+  submissions: number;
+  votes: number;
 };
 
 export class DashboardService {
@@ -244,6 +252,39 @@ export class DashboardService {
     });
   }
 
+  static async getMyAccountStats(): Promise<MyAccountStats> {
+    const uid = auth.currentUser?.uid;
+    if (!uid) {
+      return {
+        collabs: 0,
+        active: 0,
+        submissions: 0,
+        votes: 0
+      };
+    }
+
+    try {
+      const functions = getFunctions(app, 'europe-west1');
+      const callable = httpsCallable(functions, 'getMyAccountStats');
+      const res: any = await callable({});
+      const data = (res?.data as any) || {};
+
+      return {
+        collabs: Number(data.collabs || 0),
+        active: Number(data.active || 0),
+        submissions: Number(data.submissions || 0),
+        votes: Number(data.votes || 0)
+      };
+    } catch {
+      return {
+        collabs: 0,
+        active: 0,
+        submissions: 0,
+        votes: 0
+      };
+    }
+  }
+
 }
 
-export type { ProjectOverviewItem, DownloadSummaryItem };
+export type { ProjectOverviewItem, DownloadSummaryItem, MyAccountStats };

@@ -61,27 +61,30 @@
 .feedbackCta {
   align-self: flex-start;
   margin-top: 8px;
-  padding: 0.5rem 1rem;
-  background: rgba(239, 123, 58, 0.15);
-  border: 1px solid var(--contrast-600);
-  border-radius: var(--radius-sm);
-  color: var(--contrast-500);
-  font-size: 0.8125rem;
-  font-weight: 500;
+  padding: 8px 16px;
+  background: rgba(239, 123, 58, 0.18);
+  border: 1px solid rgba(239, 123, 58, 0.5);
+  border-radius: 999px;
+  color: var(--white);
+  font-size: 0.7rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.15s, border-color 0.15s, transform 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s, color 0.15s;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  box-shadow: 0 0 10px rgba(239, 123, 58, 0.16);
 }
 
 .feedbackCta:hover {
-  background: rgba(239, 123, 58, 0.25);
-  border-color: var(--contrast-500);
-  transform: translateY(-1px);
+  background: rgba(239, 123, 58, 0.26);
+  border-color: rgba(239, 123, 58, 0.62);
+  color: var(--white);
+  box-shadow: 0 0 12px rgba(239, 123, 58, 0.22);
 }
 
 .feedbackCta:active {
-  transform: translateY(0);
+  background: rgba(239, 123, 58, 0.22);
 }
 
 .heroActions {

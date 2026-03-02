@@ -206,7 +206,7 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
         <h4 className="project-history-title card__title user-activity__section-title" style={{ lineHeight: 1.3, minHeight: '2.6em', display: 'flex', alignItems: 'center' }}>
           {mode === 'list' ? 'my projects' : <>moderation<br />queue</>}
         </h4>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="user-activity__header-actions">
           {getProjectAllowance(user) && getProjectAllowance(user)!.limit !== Infinity && (
             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted, #888)' }}>
               {getProjectAllowance(user)!.current} / {getProjectAllowance(user)!.limit}
@@ -214,28 +214,28 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
           )}
           {mode === 'list' && (
             <button
-              className="user-activity__action-button user-activity__action-button--secondary"
+              className="user-activity__action-button user-activity__action-button--queue"
               disabled={!user || authLoading}
               onClick={() => setMode('moderate')}
             >
-              review<br />queue{pendingCount > 0 && <span className="user-activity__badge">{pendingCount}</span>}
+              review queue{pendingCount > 0 && <span className="user-activity__badge">{pendingCount}</span>}
             </button>
           )}
           {mode === 'moderate' && (
             <button
-              className="user-activity__action-button user-activity__action-button--secondary"
+              className="user-activity__action-button user-activity__action-button--queue"
               onClick={() => setMode('list')}
             >
-              back to<br />projects
+              back to projects
             </button>
           )}
           {canCreateProject(user) && (
             <button
-              className="user-activity__action-button"
+              className="user-activity__action-button user-activity__action-button--create"
               disabled={!user || authLoading}
               onClick={() => setShowForm(v => !v)}
             >
-              create<br />project
+              create project
             </button>
           )}
         </div>

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FeedbackService, UserService } from '../services';
+import { DashboardService, FeedbackService, UserService } from '../services';
 import { useAppStore } from '../stores/appStore';
 import { useUIStore } from '../stores/useUIStore';
 import type { User } from '../types/auth';
 import type { Feedback } from '../services/feedbackService';
+import type { MyAccountStats } from '../services/dashboardService';
 import styles from './MyAccountView.module.css';
 
 type AccountTab = 'profile' | 'support';
@@ -25,6 +26,23 @@ const DEFAULT_VISIBILITY: Required<NonNullable<User['visibility']>> = {
   showSocialLinks: true,
   showCollaborationHistory: false,
   allowCreatorContact: true
+};
+
+const DEFAULT_ACCOUNT_STATS: MyAccountStats = {
+  collabs: 0,
+  active: 0,
+  submissions: 0,
+  votes: 0
+};
+
+const compactFormatter = new Intl.NumberFormat('en', {
+  notation: 'compact',
+  maximumFractionDigits: 1
+});
+
+const formatCount = (value: number): string => {
+  if (!Number.isFinite(value)) return '0';
+  return Math.abs(value) >= 10000 ? compactFormatter.format(value) : String(value);
 };
 
 const formatDate = (value: unknown): string => {
@@ -95,6 +113,8 @@ export function MyAccountView() {
   const [ticketsLoading, setTicketsLoading] = useState(false);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
   const [showFullEmail, setShowFullEmail] = useState(false);
+  const [accountStats, setAccountStats] = useState<MyAccountStats>(DEFAULT_ACCOUNT_STATS);
+  const [statsLoading, setStatsLoading] = useState(false);
 
   const displayName = useMemo(() => {
     if (!user) return 'Guest';
@@ -192,6 +212,34 @@ export function MyAccountView() {
       cancelled = true;
     };
   }, [feedbackLastSubmittedAt, activeTab, user]);
+
+  useEffect(() => {
+    if (!user) {
+      setAccountStats(DEFAULT_ACCOUNT_STATS);
+      setStatsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const loadStats = async () => {
+      setStatsLoading(true);
+      try {
+        const stats = await DashboardService.getMyAccountStats();
+        if (!cancelled) {
+          setAccountStats(stats);
+        }
+      } finally {
+        if (!cancelled) {
+          setStatsLoading(false);
+        }
+      }
+    };
+
+    void loadStats();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid]);
 
   const dirty = useMemo(
     () => isProfileDirty(profileForm, initialProfileForm),
@@ -321,17 +369,59 @@ export function MyAccountView() {
             </div>
           </div>
         </div>
-        {!user && (
-          <div className={styles.heroActions}>
+        <div className={styles.heroActions}>
+          {user && (
+            <div className={styles.counterWrap}>
+              <div className={styles.counterGrid}>
+                <div className={styles.counterCard}>
+                  <div className={styles.counterHeader}>
+                    <div className={styles.counterLabel}>collabs</div>
+                    <div className={styles.counterValue}>
+                      {statsLoading ? '...' : formatCount(accountStats.collabs)}
+                    </div>
+                  </div>
+                </div>
+                <div className={styles.counterCard}>
+                  <div className={styles.counterHeader}>
+                    <div className={styles.counterLabel}>active</div>
+                    <div className={styles.counterValue}>
+                      {statsLoading ? '...' : formatCount(accountStats.active)}
+                    </div>
+                  </div>
+                </div>
+                <div className={styles.counterCard}>
+                  <div className={styles.counterHeader}>
+                    <div className={styles.counterLabel}>submissions</div>
+                    <div className={styles.counterValue}>
+                      {statsLoading ? '...' : formatCount(accountStats.submissions)}
+                    </div>
+                  </div>
+                </div>
+                <div className={styles.counterCard}>
+                  <div className={styles.counterHeader}>
+                    <div className={styles.counterLabel}>votes</div>
+                    <div className={styles.counterValue}>
+                      {statsLoading ? '...' : formatCount(accountStats.votes)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {!user && (
             <button className={styles.primaryButton} onClick={() => navigate('/auth?mode=login')}>
               Login
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </section>
 
       <div className={styles.tabsRow}>
         <div className={styles.tabs}>
+          <span
+            aria-hidden="true"
+            className={`${styles.tabSlider} ${activeTab === 'support' ? styles.tabSliderSupport : ''}`}
+          />
           <button
             className={`${styles.tab} ${activeTab === 'profile' ? styles.tabActive : ''}`}
             onClick={() => setActiveTab('profile')}

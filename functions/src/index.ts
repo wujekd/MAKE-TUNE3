@@ -117,6 +117,15 @@ const toMillis = (value: any): number | null => {
   return null;
 };
 
+const chunkArray = <T>(items: T[], size: number): T[][] => {
+  if (size <= 0) return [items];
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+};
+
 const findSubmissionByPath = (detailData: any, filePath: string) => {
   const submissions: any[] = Array.isArray(detailData?.submissions) ? detailData.submissions : [];
   return submissions.find(
@@ -2012,6 +2021,76 @@ export const getMyDownloadedCollabs = onCall(async (request) => {
   });
 
   return { items };
+});
+
+export const getMyAccountStats = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) {
+    return {
+      collabs: 0,
+      active: 0,
+      submissions: 0,
+      votes: 0,
+      unauthenticated: true
+    };
+  }
+
+  const [submissionUsersSnap, userCollaborationsSnap, userDownloadsSnap] = await Promise.all([
+    db
+      .collection("submissionUsers")
+      .where("userId", "==", uid)
+      .get(),
+    db
+      .collection("userCollaborations")
+      .where("userId", "==", uid)
+      .get(),
+    db
+      .collection("userDownloads")
+      .where("userId", "==", uid)
+      .get()
+  ]);
+
+  const collabIdsSet = new Set<string>();
+  submissionUsersSnap.forEach((docSnap) => {
+    const collabId = String((docSnap.data() as any).collaborationId || "");
+    if (collabId) collabIdsSet.add(collabId);
+  });
+  userCollaborationsSnap.forEach((docSnap) => {
+    const collabId = String((docSnap.data() as any).collaborationId || "");
+    if (collabId) collabIdsSet.add(collabId);
+  });
+  userDownloadsSnap.forEach((docSnap) => {
+    const collabId = String((docSnap.data() as any).collaborationId || "");
+    if (collabId) collabIdsSet.add(collabId);
+  });
+
+  const collabIds = Array.from(collabIdsSet);
+
+  let active = 0;
+  const collabRefs = collabIds.map((id) => db.collection("collaborations").doc(id));
+  const refChunks = chunkArray(collabRefs, 200);
+  for (const refs of refChunks) {
+    const collabSnaps = refs.length ? await db.getAll(...refs) : [];
+    for (const collabSnap of collabSnaps) {
+      if (!collabSnap.exists) continue;
+      const status = String((collabSnap.data() as any)?.status || "");
+      if (ACTIVE_COLLAB_STATUSES.has(status)) {
+        active += 1;
+      }
+    }
+  }
+
+  const votes = userCollaborationsSnap.docs.reduce((sum, docSnap) => {
+    const finalVote = (docSnap.data() as any).finalVote;
+    return typeof finalVote === "string" && finalVote.trim() ? sum + 1 : sum;
+  }, 0);
+
+  return {
+    collabs: collabIds.length,
+    active,
+    submissions: submissionUsersSnap.size,
+    votes
+  };
 });
 
 export const syncTagsOnProjectWrite = onDocumentWritten(

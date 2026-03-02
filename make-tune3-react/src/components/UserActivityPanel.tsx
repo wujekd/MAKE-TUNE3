@@ -310,6 +310,10 @@ export function UserActivityPanel() {
   return (
     <div className="project-history user-activity">
       <div className="user-activity__tabs">
+        <span
+          aria-hidden="true"
+          className={`user-activity__tab-slider ${activeTab === 'projects' ? 'user-activity__tab-slider--projects' : ''}`}
+        />
         <button
           className={`user-activity__tab ${activeTab === 'activity' ? 'user-activity__tab--active' : ''}`}
           onClick={() => setActiveTab('activity')}
