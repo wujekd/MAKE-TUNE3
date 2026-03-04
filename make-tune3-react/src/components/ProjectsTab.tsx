@@ -5,6 +5,7 @@ import type { ProjectOverviewItem } from '../services/dashboardService';
 import { LoadingSpinner } from './LoadingSpinner';
 import { ProjectListItem } from './ProjectListItem';
 import { UserActivityListItem } from './UserActivityListItem';
+import { CountUpValue } from './CountUpValue';
 import { computeStageInfo } from '../utils/stageUtils';
 import { canCreateProject, getProjectAllowance } from '../utils/permissions';
 import { useUIStore } from '../stores/useUIStore';
@@ -218,7 +219,7 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
               disabled={!user || authLoading}
               onClick={() => setMode('moderate')}
             >
-              review queue{pendingCount > 0 && <span className="user-activity__badge">{pendingCount}</span>}
+              review queue{pendingCount > 0 && <span className="user-activity__badge"><CountUpValue value={pendingCount} /></span>}
             </button>
           )}
           {mode === 'moderate' && (

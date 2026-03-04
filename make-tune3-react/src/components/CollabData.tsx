@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import type { Collaboration } from '../types/collaboration';
+import { CountUpValue } from './CountUpValue';
 import './CollabData.css';
 
 type Props = {
@@ -89,7 +90,7 @@ export function CollabData({ collab, showBars = true }: Props) {
               <div className="collab-data__stat-head">
                 <span className="collab-data__stat-label">{stat.label}</span>
                 <span className="collab-data__stat-value">
-                  {formatCount(stat.value)}
+                  <CountUpValue value={stat.value} formatValue={formatCount} />
                   {stat.suffix && <span className="collab-data__stat-suffix">{stat.suffix}</span>}
                 </span>
               </div>

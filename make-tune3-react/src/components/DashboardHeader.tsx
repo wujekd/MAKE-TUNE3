@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
 import { useUIStore } from '../stores/useUIStore';
+import { CountUpValue } from './CountUpValue';
 import styles from '../views/DashboardView.module.css';
 
 interface DashboardHeaderProps {
@@ -80,7 +81,7 @@ function CounterCard({ value, label, highlight }: CounterCardProps) {
     <div className={cardClass}>
       <div className={styles.counterHeader}>
         <div className={styles.counterLabel}>{label}</div>
-        <div className={styles.counterValue}>{formatCount(value)}</div>
+        <CountUpValue className={styles.counterValue} value={value} formatValue={formatCount} />
       </div>
     </div>
   );

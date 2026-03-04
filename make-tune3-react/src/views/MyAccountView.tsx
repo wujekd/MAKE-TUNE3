@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardService, FeedbackService, UserService } from '../services';
+import { CountUpValue } from '../components/CountUpValue';
 import { useAppStore } from '../stores/appStore';
 import { useUIStore } from '../stores/useUIStore';
 import type { User } from '../types/auth';
@@ -114,7 +115,6 @@ export function MyAccountView() {
   const [ticketsError, setTicketsError] = useState<string | null>(null);
   const [showFullEmail, setShowFullEmail] = useState(false);
   const [accountStats, setAccountStats] = useState<MyAccountStats>(DEFAULT_ACCOUNT_STATS);
-  const [statsLoading, setStatsLoading] = useState(false);
 
   const displayName = useMemo(() => {
     if (!user) return 'Guest';
@@ -216,22 +216,15 @@ export function MyAccountView() {
   useEffect(() => {
     if (!user) {
       setAccountStats(DEFAULT_ACCOUNT_STATS);
-      setStatsLoading(false);
       return;
     }
 
     let cancelled = false;
     const loadStats = async () => {
-      setStatsLoading(true);
-      try {
-        const stats = await DashboardService.getMyAccountStats();
-        if (!cancelled) {
-          setAccountStats(stats);
-        }
-      } finally {
-        if (!cancelled) {
-          setStatsLoading(false);
-        }
+      setAccountStats(DEFAULT_ACCOUNT_STATS);
+      const stats = await DashboardService.getMyAccountStats();
+      if (!cancelled) {
+        setAccountStats(stats);
       }
     };
 
@@ -376,33 +369,41 @@ export function MyAccountView() {
                 <div className={styles.counterCard}>
                   <div className={styles.counterHeader}>
                     <div className={styles.counterLabel}>collabs</div>
-                    <div className={styles.counterValue}>
-                      {statsLoading ? '...' : formatCount(accountStats.collabs)}
-                    </div>
+                    <CountUpValue
+                      className={styles.counterValue}
+                      value={accountStats.collabs}
+                      formatValue={formatCount}
+                    />
                   </div>
                 </div>
                 <div className={styles.counterCard}>
                   <div className={styles.counterHeader}>
                     <div className={styles.counterLabel}>active</div>
-                    <div className={styles.counterValue}>
-                      {statsLoading ? '...' : formatCount(accountStats.active)}
-                    </div>
+                    <CountUpValue
+                      className={styles.counterValue}
+                      value={accountStats.active}
+                      formatValue={formatCount}
+                    />
                   </div>
                 </div>
                 <div className={styles.counterCard}>
                   <div className={styles.counterHeader}>
                     <div className={styles.counterLabel}>submissions</div>
-                    <div className={styles.counterValue}>
-                      {statsLoading ? '...' : formatCount(accountStats.submissions)}
-                    </div>
+                    <CountUpValue
+                      className={styles.counterValue}
+                      value={accountStats.submissions}
+                      formatValue={formatCount}
+                    />
                   </div>
                 </div>
                 <div className={styles.counterCard}>
                   <div className={styles.counterHeader}>
                     <div className={styles.counterLabel}>votes</div>
-                    <div className={styles.counterValue}>
-                      {statsLoading ? '...' : formatCount(accountStats.votes)}
-                    </div>
+                    <CountUpValue
+                      className={styles.counterValue}
+                      value={accountStats.votes}
+                      formatValue={formatCount}
+                    />
                   </div>
                 </div>
               </div>

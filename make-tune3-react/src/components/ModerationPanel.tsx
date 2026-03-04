@@ -3,6 +3,7 @@ import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import type { Track } from '../types/collaboration';
 import { ReportService } from '../services';
 import { useAppStore } from '../stores/appStore';
+import { CountUpValue } from './CountUpValue';
 import styles from './ModerationPanel.module.css';
 
 type Props = {
@@ -115,7 +116,9 @@ export function ModerationPanel({ tracks, onApprove, onReject }: Props) {
         <div className={styles.panelHeader}>
           <div className={styles.panelHeading}>
             <span className={styles.panelTitle}>Moderation</span>
-            <span className={styles.panelCount}>{tracks.length} pending</span>
+            <span className={styles.panelCount}>
+              <CountUpValue value={tracks.length} /> pending
+            </span>
           </div>
           {current && <span className={styles.statusPill}>Now reviewing</span>}
         </div>
