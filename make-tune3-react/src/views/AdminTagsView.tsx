@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { TagService } from '../services';
 import type { Tag } from '../types/collaboration';
-import { db } from '../services/firebase';
+import { db } from '../services/firebaseDb';
 import { collection, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { COLLECTIONS } from '../types/collaboration';
 import { TagUtils } from '../utils/tagUtils';

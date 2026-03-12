@@ -1,6 +1,5 @@
-import { ref, uploadBytesResumable } from 'firebase/storage';
-import { storage } from './firebase';
 import { MAX_SUBMISSION_FILE_SIZE, MAX_PDF_FILE_SIZE, MAX_ZIP_FILE_SIZE } from '../config';
+import { uploadFileToStorage } from './storageService';
 
 export class FileService {
   static inferContentType(fileName: string): string | null {
@@ -83,25 +82,7 @@ export class FileService {
       fileSize: file.size,
       metadataKeys: metadata ? Object.keys(metadata) : []
     });
-    const storageRef = ref(storage, path);
-    const task = uploadBytesResumable(storageRef, file, {
-      contentType,
-      customMetadata: metadata
-    });
-    
-    await new Promise<void>((resolve, reject) => {
-      task.on(
-        'state_changed',
-        (snap) => {
-          if (onProgress) {
-            const pct = (snap.bytesTransferred / snap.totalBytes) * 100;
-            onProgress(Math.round(pct));
-          }
-        },
-        (err) => reject(err),
-        () => resolve()
-      );
-    });
+    await uploadFileToStorage({ path, file, contentType, metadata, onProgress });
   }
 
   static async uploadPdf(

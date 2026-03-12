@@ -1,5 +1,5 @@
 import { doc, getDoc, updateDoc, addDoc, collection, query, where, getDocs, Timestamp, setDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { db } from './firebaseDb';
 import type { UserProfile, UserCollaboration, UserId, CollaborationId, ResourceDocType } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 

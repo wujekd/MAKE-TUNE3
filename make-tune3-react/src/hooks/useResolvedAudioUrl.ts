@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { storage } from '../services/firebase';
-import { getDownloadURL, ref } from 'firebase/storage';
+import { resolveStorageDownloadUrl } from '../services/storageService';
 
 export function normalizeAudioPath(path?: string | null): string | null {
   if (!path) return null;
@@ -26,7 +25,7 @@ export function useResolvedAudioUrl(path?: string | null) {
     let cancelled = false;
     setLoading(true);
 
-    getDownloadURL(ref(storage, normalized))
+    resolveStorageDownloadUrl(normalized)
       .then(resolved => {
         if (!cancelled) {
           setUrl(resolved);

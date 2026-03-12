@@ -1,17 +1,29 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import type { Collaboration } from '../types/collaboration';
-import { CollaborationService } from '../services';
+import { DashboardCollaborationService } from '../services/dashboardCollaborationService';
 import { TagUtils } from '../utils/tagUtils';
 import { UserActivityPanel } from '../components/UserActivityPanel';
 import { DashboardHeader } from '../components/DashboardHeader';
 import { CollaborationsPanel } from '../components/CollaborationsPanel';
-import { Mixer1Channel } from '../components/Mixer1Channel';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useAudioStore } from '../stores';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { useAppStore } from '../stores/appStore';
 import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
 import { useCollabBackingsPrefetch } from '../hooks/useCollabBackingsPrefetch';
 import styles from './DashboardView.module.css';
+
+const Mixer1Channel = lazy(() =>
+  import('../components/Mixer1Channel').then(module => ({ default: module.Mixer1Channel }))
+);
+
+function MixerPlaceholder() {
+  return (
+    <div className={styles.mixerPlaceholder} aria-hidden="true">
+      <LoadingSpinner size={28} />
+    </div>
+  );
+}
 
 export function DashboardView() {
   const [allCollabs, setAllCollabs] = useState<Collaboration[]>([]);
@@ -44,7 +56,7 @@ export function DashboardView() {
     (async () => {
       try {
         console.log('DashboardView: fetching published collaborations...');
-        const list = await CollaborationService.listPublishedCollaborations();
+        const list = await DashboardCollaborationService.listPublishedCollaborations();
         console.log('DashboardView: received', list.length, 'published collaborations:', list);
         if (mounted) {
           setAllCollabs(list);
@@ -165,7 +177,9 @@ export function DashboardView() {
           />
         </div>
         <div className={`mixer-theme ${styles.mixerColumn}`}>
-          <Mixer1Channel state={audioState} />
+          <Suspense fallback={<MixerPlaceholder />}>
+            <Mixer1Channel state={audioState} />
+          </Suspense>
         </div>
       </div>
     </div>

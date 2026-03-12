@@ -5,8 +5,7 @@ import { DownloadBacking } from '../../components/DownloadBacking';
 
 const hoistedMocks = vi.hoisted(() => ({
   markResourceDownloaded: vi.fn(),
-  getBlobMock: vi.fn(),
-  refMock: vi.fn()
+  getStorageBlobMock: vi.fn()
 }));
 
 vi.mock('../../services', () => ({
@@ -15,15 +14,11 @@ vi.mock('../../services', () => ({
   }
 }));
 
-vi.mock('firebase/storage', () => ({
-  ref: (_storage: unknown, path: string) => {
-    hoistedMocks.refMock(path);
-    return { path };
-  },
-  getBlob: hoistedMocks.getBlobMock
+vi.mock('../../services/storageService', () => ({
+  getStorageBlob: hoistedMocks.getStorageBlobMock
 }));
 
-const { markResourceDownloaded, getBlobMock, refMock } = hoistedMocks;
+const { markResourceDownloaded, getStorageBlobMock } = hoistedMocks;
 
 const originalCreateObjectURL = global.URL.createObjectURL;
 const originalRevokeObjectURL = global.URL.revokeObjectURL;
@@ -32,10 +27,9 @@ const originalAnchorClick = HTMLAnchorElement.prototype.click;
 describe('DownloadBacking', () => {
   beforeEach(() => {
     markResourceDownloaded.mockReset();
-    getBlobMock.mockReset();
-    refMock.mockReset();
+    getStorageBlobMock.mockReset();
 
-    getBlobMock.mockResolvedValue(new Blob(['test'], { type: 'audio/mpeg' }));
+    getStorageBlobMock.mockResolvedValue(new Blob(['test'], { type: 'audio/mpeg' }));
     markResourceDownloaded.mockResolvedValue(undefined);
 
     (global.URL as any).createObjectURL = vi.fn(() => 'blob:test');
@@ -64,8 +58,8 @@ describe('DownloadBacking', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(getBlobMock).toHaveBeenCalledTimes(1);
-      expect(refMock).toHaveBeenCalledWith('collabs/collab-1/backing.mp3');
+      expect(getStorageBlobMock).toHaveBeenCalledTimes(1);
+      expect(getStorageBlobMock).toHaveBeenCalledWith('collabs/collab-1/backing.mp3');
       expect(markResourceDownloaded).toHaveBeenCalledWith(
         'user-1',
         'collab-1',

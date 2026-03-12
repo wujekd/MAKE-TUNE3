@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useContext } from 'react';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { useAppStore } from '../stores/appStore';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
-import { SubmissionService } from '../services';
+import { SubmissionService } from '../services/submissionService';
 import { ListPlayButton } from './ListPlayButton';
 
 interface UploadSubmissionProps {

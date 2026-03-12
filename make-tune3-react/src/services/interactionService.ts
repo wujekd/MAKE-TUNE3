@@ -1,6 +1,5 @@
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import app from './firebase';
 import { UserService } from './userService';
+import { callFirebaseFunction } from './firebaseFunctions';
 import type { UserId, CollaborationId } from '../types/collaboration';
 
 export class InteractionService {
@@ -18,21 +17,15 @@ export class InteractionService {
   }
 
   static async addTrackToFavorites(userId: UserId, collaborationId: CollaborationId, filePath: string): Promise<void> {
-    const functions = getFunctions(app, 'europe-west1');
-    const callable = httpsCallable(functions, 'addFavoriteTrack');
-    await callable({ collaborationId, filePath });
+    await callFirebaseFunction('addFavoriteTrack', { collaborationId, filePath });
   }
 
   static async removeTrackFromFavorites(userId: UserId, collaborationId: CollaborationId, filePath: string): Promise<void> {
-    const functions = getFunctions(app, 'europe-west1');
-    const callable = httpsCallable(functions, 'removeFavoriteTrack');
-    await callable({ collaborationId, filePath });
+    await callFirebaseFunction('removeFavoriteTrack', { collaborationId, filePath });
   }
 
   static async voteForTrack(userId: UserId, collaborationId: CollaborationId, filePath: string): Promise<void> {
-    const functions = getFunctions(app, 'europe-west1');
-    const callable = httpsCallable(functions, 'voteForTrack');
-    await callable({ collaborationId, filePath });
+    await callFirebaseFunction('voteForTrack', { collaborationId, filePath });
   }
 
   static async setListenedRatio(userId: UserId, collaborationId: CollaborationId, ratio: number): Promise<void> {

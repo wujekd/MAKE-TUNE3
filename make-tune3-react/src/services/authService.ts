@@ -8,7 +8,8 @@ import {
   deleteUser
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, runTransaction } from 'firebase/firestore';
-import { auth, db } from './firebase';
+import { auth } from './firebaseAuth';
+import { db } from './firebaseDb';
 import type { User, AuthError } from '../types/auth';
 
 export class AuthService {

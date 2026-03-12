@@ -1,6 +1,7 @@
 import { useContext, useEffect, useState } from 'react';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import type { Track } from '../types/collaboration';
+import { getStorageBlob } from '../services/storageService';
 import { DownloadButton } from './DownloadButton';
 import './SubmissionItem.css';
 
@@ -72,11 +73,8 @@ export function ModerationSubmissionItem({ track, index, isPlaying, isCurrentTra
           variant="compact"
           onDownload={async () => {
             const path = track.multitrackZipPath!;
-            const { storage } = await import('../services/firebase');
-            const { ref, getBlob } = await import('firebase/storage');
             const filename = path.split('/').pop() || 'multitracks.zip';
-            const storageRef = ref(storage, path);
-            const blob = await getBlob(storageRef);
+            const blob = await getStorageBlob(path);
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;

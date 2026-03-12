@@ -1,17 +1,33 @@
 import { Outlet, useMatches, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
 import './AppShell.css';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useContext, useEffect, useRef, useState } from 'react';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
-import { DebugInfo } from './DebugInfo';
-import { StorePanel } from './StorePanel';
 import { SHOW_DEBUG_TOOLS } from '../config';
 import { FeedbackButton } from './FeedbackButton';
-import { FeedbackModal } from './FeedbackModal';
+import { LoadingSpinner } from './LoadingSpinner';
 
 type Action = { key: string; label: string; onClick: () => void; visible?: boolean; disabled?: boolean };
 
 import '../styles/theme-abyssal.css';
+
+const DebugInfo = lazy(() =>
+  import('./DebugInfo').then(module => ({ default: module.DebugInfo }))
+);
+const StorePanel = lazy(() =>
+  import('./StorePanel').then(module => ({ default: module.StorePanel }))
+);
+const FeedbackModal = lazy(() =>
+  import('./FeedbackModal').then(module => ({ default: module.FeedbackModal }))
+);
+
+function OverlayLoadingFallback() {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: 12 }}>
+      <LoadingSpinner size={20} />
+    </div>
+  );
+}
 
 function useToolbar() {
   const matches = useMatches();
@@ -209,12 +225,16 @@ export function AppShell() {
       <div className="app-shell__content" style={{ flex: 1, minHeight: 0 }}>
         {showDebug && (
           <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, maxWidth: 640, width: '90%' }}>
-            <DebugInfo />
+            <Suspense fallback={<OverlayLoadingFallback />}>
+              <DebugInfo />
+            </Suspense>
           </div>
         )}
         {showStore && (
           <div style={{ position: 'absolute', top: 0, left: 8, zIndex: 1000, display: 'inline-block' }}>
-            <StorePanel />
+            <Suspense fallback={<OverlayLoadingFallback />}>
+              <StorePanel />
+            </Suspense>
           </div>
         )}
         {!currentUser?.username && currentUser ? (
@@ -224,7 +244,9 @@ export function AppShell() {
         )}
       </div>
       <FeedbackButton />
-      <FeedbackModal />
+      <Suspense fallback={null}>
+        <FeedbackModal />
+      </Suspense>
     </div>
   );
 }

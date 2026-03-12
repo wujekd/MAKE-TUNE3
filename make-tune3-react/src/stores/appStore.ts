@@ -16,16 +16,16 @@ import {
   onAuthStateChanged
 } from 'firebase/auth';
 import type { User as FirebaseUser } from 'firebase/auth';
-import { auth } from '../services/firebase';
+import { auth } from '../services/firebaseAuth';
 import { AuthService } from '../services/authService';
 import {
   CollaborationService,
   ProjectService,
   UserService,
   InteractionService,
-  DataService,
-  SubmissionService
+  DataService
 } from '../services';
+import { setSubmissionModeration } from '../services/submissionModerationService';
 import { TrackUtils, AudioUrlUtils, PlaybackUtils } from '../utils';
 import { useAudioStore } from './useAudioStore';
 
@@ -985,7 +985,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       const submissionIdentifier = track.submissionId || track.filePath;
       try {
-        await SubmissionService.setSubmissionModeration(
+        await setSubmissionModeration(
           currentCollaboration.id,
           submissionIdentifier,
           'approved',
@@ -1046,7 +1046,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       const submissionIdentifier = track.submissionId || track.filePath;
       try {
-        await SubmissionService.setSubmissionModeration(
+        await setSubmissionModeration(
           currentCollaboration.id,
           submissionIdentifier,
           'rejected',

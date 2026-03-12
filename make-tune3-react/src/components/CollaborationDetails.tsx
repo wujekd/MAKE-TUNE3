@@ -7,6 +7,7 @@ import { ListPlayButton } from './ListPlayButton';
 import { DownloadButton } from './DownloadButton';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { useAudioStore, useAppStore } from '../stores';
+import { getStorageBlob } from '../services/storageService';
 
 interface CollaborationDetailsProps {
   mode: 'none' | 'create' | 'view' | 'edit';
@@ -165,12 +166,9 @@ export function CollaborationDetails({
             disabled={!backingPath}
             onDownload={async () => {
               if (!backingPath) return;
-              const { storage } = await import('../services/firebase');
-              const { ref, getBlob } = await import('firebase/storage');
               const filename = backingPath.split('/').pop() || 'backing';
               if (backingPath.startsWith('collabs/')) {
-                const storageRef = ref(storage, backingPath);
-                const blob = await getBlob(storageRef);
+                const blob = await getStorageBlob(backingPath);
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -192,17 +190,14 @@ export function CollaborationDetails({
           {col.pdfPath && (
             <DownloadButton
               label="PDF"
-              variant="compact"
-              onDownload={async () => {
-                const path = col.pdfPath!;
-                const { storage } = await import('../services/firebase');
-                const { ref, getBlob } = await import('firebase/storage');
-                const filename = path.split('/').pop() || 'instructions.pdf';
-                const storageRef = ref(storage, path);
-                const blob = await getBlob(storageRef);
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
+            variant="compact"
+            onDownload={async () => {
+              const path = col.pdfPath!;
+              const filename = path.split('/').pop() || 'instructions.pdf';
+              const blob = await getStorageBlob(path);
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
                 a.download = filename;
                 document.body.appendChild(a);
                 a.click();
@@ -214,17 +209,14 @@ export function CollaborationDetails({
           {col.resourcesZipPath && (
             <DownloadButton
               label="ZIP"
-              variant="compact"
-              onDownload={async () => {
-                const path = col.resourcesZipPath!;
-                const { storage } = await import('../services/firebase');
-                const { ref, getBlob } = await import('firebase/storage');
-                const filename = path.split('/').pop() || 'resources.zip';
-                const storageRef = ref(storage, path);
-                const blob = await getBlob(storageRef);
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
+            variant="compact"
+            onDownload={async () => {
+              const path = col.resourcesZipPath!;
+              const filename = path.split('/').pop() || 'resources.zip';
+              const blob = await getStorageBlob(path);
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
                 a.download = filename;
                 document.body.appendChild(a);
                 a.click();
@@ -285,12 +277,9 @@ export function CollaborationDetails({
             onDownload={async () => {
               const path = (col as any).winnerPath as string | undefined;
               if (!path) throw new Error('No winner path available');
-              const { storage } = await import('../services/firebase');
-              const { ref, getBlob } = await import('firebase/storage');
               const filename = path.split('/').pop() || 'winner';
               if (path.startsWith('collabs/')) {
-                const storageRef = ref(storage, path);
-                const blob = await getBlob(storageRef);
+                const blob = await getStorageBlob(path);
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;

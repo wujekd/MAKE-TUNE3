@@ -1,7 +1,7 @@
 import React, { createContext, useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { User as FirebaseUser } from 'firebase/auth';
-import { auth } from '../services/firebase';
+import { auth } from '../services/firebaseAuth';
 import { AuthService } from '../services/authService';
 import type { User } from '../types/auth';
 

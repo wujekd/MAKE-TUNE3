@@ -1,21 +1,37 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
-import { VotingView } from './views/VotingView'
 import { DashboardView } from './views/DashboardView'
-import { ProjectEditView } from './views/ProjectEditView'
-import { SubmissionView } from './views/SubmissionView'
 import { useAppStore } from './stores/appStore'
 import { useUIStore } from './stores'
 import { AppShell } from './components/AppShell';
-import { AuthRoute } from './components/AuthRoute';
 import { AdminRoute } from './components/AdminRoute';
-import { CompletedView } from './views/CompletedView';
 import { UsernameOnboarding } from './views/UsernameOnboarding';
 import { AccessDeniedView } from './views/AccessDeniedView';
 import { ProjectService } from './services';
 import { RootErrorView } from './components/RootErrorView';
 import { LoadingSpinner } from './components/LoadingSpinner';
 
+const importVotingView = () => import('./views/VotingView');
+const importProjectEditView = () => import('./views/ProjectEditView');
+const importSubmissionView = () => import('./views/SubmissionView');
+const importCompletedView = () => import('./views/CompletedView');
+const importAuthRoute = () => import('./components/AuthRoute');
+
+const VotingView = lazy(() =>
+  importVotingView().then(module => ({ default: module.VotingView }))
+);
+const ProjectEditView = lazy(() =>
+  importProjectEditView().then(module => ({ default: module.ProjectEditView }))
+);
+const SubmissionView = lazy(() =>
+  importSubmissionView().then(module => ({ default: module.SubmissionView }))
+);
+const CompletedView = lazy(() =>
+  importCompletedView().then(module => ({ default: module.CompletedView }))
+);
+const AuthRoute = lazy(() =>
+  importAuthRoute().then(module => ({ default: module.AuthRoute }))
+);
 const ModerationView = lazy(() =>
   import('./views/ModerationView').then(module => ({ default: module.ModerationView }))
 );
@@ -60,6 +76,10 @@ function LazyAdminRoute({ children }: { children: React.ReactNode }) {
   );
 }
 
+function LazyRoute({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<RouteLoadingFallback />}>{children}</Suspense>;
+}
+
 function App() {
   const { user, loading } = useAppStore(state => state.auth);
   const { setShowAuth } = useUIStore();
@@ -74,6 +94,37 @@ function App() {
       setShowAuth(false);
     }
   }, [user, setShowAuth]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const prefetchRoutes = () => {
+      if (cancelled) return;
+      void importVotingView();
+      void importSubmissionView();
+      void importCompletedView();
+    };
+
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const idleId = window.requestIdleCallback(() => {
+        prefetchRoutes();
+      }, { timeout: 1500 });
+
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(idleId);
+      };
+    }
+
+    const timeoutId = globalThis.setTimeout(() => {
+      prefetchRoutes();
+    }, 1200);
+
+    return () => {
+      cancelled = true;
+      globalThis.clearTimeout(timeoutId);
+    };
+  }, []);
 
   const router = createBrowserRouter([
     {
@@ -93,7 +144,11 @@ function App() {
         },
         {
           path: 'project/:projectId',
-          element: <ProjectEditView />,
+          element: (
+            <LazyRoute>
+              <ProjectEditView />
+            </LazyRoute>
+          ),
           handle: {
             title: 'Project',
             breadcrumb: 'Project',
@@ -134,7 +189,11 @@ function App() {
         },
         {
           path: 'collab/:collaborationId',
-          element: <VotingView key={user?.uid || 'anonymous'} />,
+          element: (
+            <LazyRoute>
+              <VotingView key={user?.uid || 'anonymous'} />
+            </LazyRoute>
+          ),
           handle: {
             title: 'Voting',
             breadcrumb: 'Voting',
@@ -159,7 +218,11 @@ function App() {
         },
         {
           path: 'collab/:collaborationId/completed',
-          element: <CompletedView />,
+          element: (
+            <LazyRoute>
+              <CompletedView />
+            </LazyRoute>
+          ),
           handle: {
             title: 'Completed',
             breadcrumb: 'Completed',
@@ -171,7 +234,11 @@ function App() {
         },
         {
           path: 'collab/:collaborationId/submit',
-          element: <SubmissionView />,
+          element: (
+            <LazyRoute>
+              <SubmissionView />
+            </LazyRoute>
+          ),
           handle: {
             title: 'Submit',
             breadcrumb: 'Submit',
@@ -269,7 +336,14 @@ function App() {
         { path: '*', element: <Navigate to="/collabs" replace /> }
       ]
     },
-    { path: '/auth', element: <AuthRoute /> }
+    {
+      path: '/auth',
+      element: (
+        <LazyRoute>
+          <AuthRoute />
+        </LazyRoute>
+      )
+    }
   ]);
 
   return <RouterProvider router={router} />;

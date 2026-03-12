@@ -26,11 +26,14 @@ vi.mock('../../services', () => ({
   UserService: {
     hasDownloadedBacking: hoisted.hasDownloadedBacking
   },
-  SubmissionService: {
-    hasUserSubmitted: hoisted.hasUserSubmitted
-  },
   ProjectService: {
     getProject: hoisted.getProject
+  }
+}));
+
+vi.mock('../../services/submissionService', () => ({
+  SubmissionService: {
+    hasUserSubmitted: hoisted.hasUserSubmitted
   }
 }));
 
@@ -38,13 +41,8 @@ vi.mock('../../stores', () => ({
   useAudioStore: hoisted.useAudioStore
 }));
 
-vi.mock('../../services/firebase', () => ({
-  storage: {}
-}));
-
-vi.mock('firebase/storage', () => ({
-  ref: vi.fn(),
-  getDownloadURL: vi.fn()
+vi.mock('../../services/storageService', () => ({
+  resolveStorageDownloadUrl: vi.fn()
 }));
 
 vi.mock('../../components/Mixer', () => ({

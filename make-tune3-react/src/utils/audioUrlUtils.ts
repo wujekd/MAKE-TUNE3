@@ -1,5 +1,4 @@
-import { ref, getDownloadURL } from 'firebase/storage';
-import { storage } from '../services/firebase';
+import { resolveStorageDownloadUrl } from '../services/storageService';
 
 const urlCache = new Map<string, string>();
 const DEBUG_PERFORMANCE = false;
@@ -19,13 +18,13 @@ export class AudioUrlUtils {
     if (DEBUG_PERFORMANCE) {
       console.log('[AudioUrlUtils] Cache MISS - fetching from Firebase:', path.substring(0, 50) + '...');
       const start = performance.now();
-      const url = await getDownloadURL(ref(storage, path));
+      const url = await resolveStorageDownloadUrl(path);
       const duration = performance.now() - start;
       console.log(`[AudioUrlUtils] Firebase fetch took ${duration.toFixed(0)}ms`);
       urlCache.set(path, url);
       return url;
     } else {
-      const url = await getDownloadURL(ref(storage, path));
+      const url = await resolveStorageDownloadUrl(path);
       urlCache.set(path, url);
       return url;
     }

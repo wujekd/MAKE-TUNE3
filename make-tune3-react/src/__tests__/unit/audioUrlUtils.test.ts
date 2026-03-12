@@ -1,16 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AudioUrlUtils } from '../../utils/audioUrlUtils';
 
-vi.mock('firebase/storage', () => ({
-  ref: vi.fn(),
-  getDownloadURL: vi.fn()
+vi.mock('../../services/storageService', () => ({
+  resolveStorageDownloadUrl: vi.fn()
 }));
 
-vi.mock('../../services/firebase', () => ({
-  storage: {}
-}));
-
-import { getDownloadURL } from 'firebase/storage';
+import { resolveStorageDownloadUrl } from '../../services/storageService';
 
 describe('AudioUrlUtils', () => {
   beforeEach(() => {
@@ -50,26 +45,26 @@ describe('AudioUrlUtils', () => {
       const path = 'collabs/collab-1/backing.mp3';
       const mockUrl = 'https://storage.googleapis.com/bucket/collabs/collab-1/backing.mp3';
       
-      vi.mocked(getDownloadURL).mockResolvedValue(mockUrl);
+      vi.mocked(resolveStorageDownloadUrl).mockResolvedValue(mockUrl);
 
       const result = await AudioUrlUtils.resolveAudioUrl(path);
       
       expect(result).toBe(mockUrl);
-      expect(getDownloadURL).toHaveBeenCalledTimes(1);
+      expect(resolveStorageDownloadUrl).toHaveBeenCalledTimes(1);
     });
 
     it('should return cached URL on second call', async () => {
       const path = 'collabs/collab-1/backing.mp3';
       const mockUrl = 'https://storage.googleapis.com/bucket/collabs/collab-1/backing.mp3';
       
-      vi.mocked(getDownloadURL).mockResolvedValue(mockUrl);
+      vi.mocked(resolveStorageDownloadUrl).mockResolvedValue(mockUrl);
 
       const result1 = await AudioUrlUtils.resolveAudioUrl(path);
       const result2 = await AudioUrlUtils.resolveAudioUrl(path);
       
       expect(result1).toBe(mockUrl);
       expect(result2).toBe(mockUrl);
-      expect(getDownloadURL).toHaveBeenCalledTimes(1);
+      expect(resolveStorageDownloadUrl).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -78,7 +73,7 @@ describe('AudioUrlUtils', () => {
       const path = 'collabs/collab-1/backing.mp3';
       const mockUrl = 'https://storage.googleapis.com/bucket/collabs/collab-1/backing.mp3';
       
-      vi.mocked(getDownloadURL).mockResolvedValue(mockUrl);
+      vi.mocked(resolveStorageDownloadUrl).mockResolvedValue(mockUrl);
 
       await AudioUrlUtils.resolveAudioUrl(path);
       expect(AudioUrlUtils.getCacheSize()).toBe(1);
@@ -91,7 +86,7 @@ describe('AudioUrlUtils', () => {
       const path1 = 'collabs/collab-1/backing.mp3';
       const path2 = 'collabs/collab-1/submission1.mp3';
       
-      vi.mocked(getDownloadURL).mockResolvedValue('https://example.com/url');
+      vi.mocked(resolveStorageDownloadUrl).mockResolvedValue('https://example.com/url');
 
       expect(AudioUrlUtils.getCacheSize()).toBe(0);
       
@@ -106,7 +101,7 @@ describe('AudioUrlUtils', () => {
       const path = 'collabs/collab-1/backing.mp3';
       const mockUrl = 'https://storage.googleapis.com/bucket/collabs/collab-1/backing.mp3';
       
-      vi.mocked(getDownloadURL).mockResolvedValue(mockUrl);
+      vi.mocked(resolveStorageDownloadUrl).mockResolvedValue(mockUrl);
 
       expect(AudioUrlUtils.getCachedUrl(path)).toBeUndefined();
       

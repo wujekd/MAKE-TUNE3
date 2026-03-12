@@ -1,6 +1,6 @@
 import { doc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, limit as firestoreLimit, Timestamp, setDoc } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import app, { db } from './firebase';
+import { db } from './firebaseDb';
+import { callFirebaseFunction } from './firebaseFunctions';
 import type { Collaboration, CollaborationId, ProjectId, CollaborationDetail } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 
@@ -53,10 +53,10 @@ export class CollaborationService {
   static async getCollaborationWithDetails(collaborationId: CollaborationId): Promise<Collaboration | null> {
     // Use cloud function for server-side filtering of submissions
     try {
-      const functions = getFunctions(app, 'europe-west1');
-      const callable = httpsCallable(functions, 'getCollaborationData');
-      const response: any = await callable({ collaborationId });
-      const data = response?.data;
+      const data = await callFirebaseFunction<{ collaborationId: CollaborationId }, { collaboration?: Collaboration }>(
+        'getCollaborationData',
+        { collaborationId }
+      );
       if (data?.collaboration) {
         console.log("GET COLLAB WITH DETAILS via cloud function");
         return data.collaboration as Collaboration;
@@ -75,10 +75,10 @@ export class CollaborationService {
    */
   static async getCollaborationForModeration(collaborationId: CollaborationId): Promise<Collaboration | null> {
     try {
-      const functions = getFunctions(app, 'europe-west1');
-      const callable = httpsCallable(functions, 'getModerationData');
-      const response: any = await callable({ collaborationId });
-      const data = response?.data;
+      const data = await callFirebaseFunction<{ collaborationId: CollaborationId }, { collaboration?: Collaboration }>(
+        'getModerationData',
+        { collaborationId }
+      );
       if (data?.collaboration) {
         console.log("GET COLLAB FOR MODERATION via cloud function");
         return data.collaboration as Collaboration;
@@ -166,10 +166,10 @@ export class CollaborationService {
     submissionCloseAt: number | null;
     votingCloseAt: number | null;
   }> {
-    const functions = getFunctions(app, 'europe-west1');
-    const callable = httpsCallable(functions, 'publishCollaboration');
-    const response: any = await callable({ collaborationId });
-    const data = response?.data ?? {};
+    const data = await callFirebaseFunction<
+      { collaborationId: CollaborationId },
+      { submissionCloseAt?: number; votingCloseAt?: number }
+    >('publishCollaboration', { collaborationId });
     return {
       submissionCloseAt: typeof data.submissionCloseAt === 'number' ? data.submissionCloseAt : null,
       votingCloseAt: typeof data.votingCloseAt === 'number' ? data.votingCloseAt : null
@@ -184,10 +184,10 @@ export class CollaborationService {
   }
 
   static async listMyModerationQueue(): Promise<Array<{ id: string; name: string; projectId: string | null }>> {
-    const functions = getFunctions(app, 'europe-west1');
-    const callable = httpsCallable(functions, 'getMyModerationQueue');
-    const response: any = await callable({});
-    const data = response?.data;
+    const data = await callFirebaseFunction<Record<string, never>, { items?: Array<{ id: string; name: string; projectId: string | null }> }>(
+      'getMyModerationQueue',
+      {}
+    );
     return data?.items || [];
   }
 }

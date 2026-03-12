@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Collaboration } from '../types/collaboration';
-import { CollaborationService, SubmissionService } from '../services';
+import { CollaborationService } from '../services';
+import { SubmissionService } from '../services/submissionService';
 import { FileService } from '../services/fileService';
 import { Potentiometer } from './Potentiometer';
 import { TagInput } from './TagInput';

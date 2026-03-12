@@ -1,5 +1,5 @@
 import { collection, query, orderBy, getDocs, doc, getDoc, limit, where } from 'firebase/firestore';
-import { db } from './firebase';
+import { db } from './firebaseDb';
 import type { Tag } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 

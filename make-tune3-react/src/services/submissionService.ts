@@ -1,8 +1,9 @@
 import { doc, getDoc } from 'firebase/firestore';
-import { ref, uploadBytesResumable } from 'firebase/storage';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import app, { db, storage } from './firebase';
+import { db } from './firebaseDb';
+import { callFirebaseFunction } from './firebaseFunctions';
 import { FileService } from './fileService';
+import { uploadFileToStorage } from './storageService';
+import { setSubmissionModeration as setSubmissionModerationRequest } from './submissionModerationService';
 import { DEBUG_ALLOW_MULTIPLE_SUBMISSIONS } from '../config';
 import type { Collaboration, CollaborationId, UserId, SubmissionSettings, SubmissionModerationStatus } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
@@ -43,13 +44,13 @@ export class SubmissionService {
     const ext = FileService.getPreferredAudioExtension(file);
     const path = `collabs/${collaborationId}/backing.${ext}`;
 
-    const functions = getFunctions(app, 'europe-west1');
-    const reserveBacking = httpsCallable(functions, 'reserveBackingUpload');
-    const reserveRes: any = await reserveBacking({
+    const tokenData = await callFirebaseFunction<
+      { collaborationId: string; fileExt: string },
+      { tokenId?: string; expiresAt?: unknown }
+    >('reserveBackingUpload', {
       collaborationId,
       fileExt: ext
     });
-    const tokenData = reserveRes?.data || {};
     const uploadTokenId = String(tokenData.tokenId || '').trim();
     console.info('[uploadBackingTrack] reserved token', {
       collaborationId,
@@ -99,14 +100,14 @@ export class SubmissionService {
     }
 
     const ext = FileService.getPreferredAudioExtension(file);
-    const functions = getFunctions(app, 'europe-west1');
-    const reserveSlot = httpsCallable(functions, 'reserveSubmissionSlot');
-    const reserveRes: any = await reserveSlot({
+    const tokenData = await callFirebaseFunction<
+      { collaborationId: CollaborationId; fileExt: string; settings: SubmissionSettings | null },
+      { submissionId?: string; tokenId?: string; expiresAt?: unknown }
+    >('reserveSubmissionSlot', {
       collaborationId,
       fileExt: ext,
       settings: settings ?? null
     });
-    const tokenData = reserveRes?.data || {};
     const submissionId = String(tokenData.submissionId || '').trim();
     const uploadTokenId = String(tokenData.tokenId || '').trim();
     if (!submissionId || !uploadTokenId) {
@@ -114,7 +115,6 @@ export class SubmissionService {
     }
 
     const path = `collabs/${collaborationId}/submissions/${submissionId}.${ext}`;
-    const r = ref(storage, path);
     console.info('[uploadSubmission] reserved token', {
       collaborationId,
       userId,
@@ -126,26 +126,17 @@ export class SubmissionService {
       fileType: file.type,
       fileSize: file.size
     });
-    const task = uploadBytesResumable(r, file, {
-      contentType: file.type,
-      customMetadata: {
+    await uploadFileToStorage({
+      path,
+      file,
+      contentType: file.type || FileService.inferContentType(file.name) || 'application/octet-stream',
+      metadata: {
         ownerUid: userId,
         owneruid: userId,
         uploadTokenId,
         uploadtokenid: uploadTokenId
-      }
-    });
-
-    await new Promise<void>((resolve, reject) => {
-      task.on(
-        'state_changed',
-        (snap) => {
-          const pct = (snap.bytesTransferred / snap.totalBytes) * 100;
-          if (onProgress) onProgress(Math.round(pct));
-        },
-        (err) => reject(err),
-        () => resolve()
-      );
+      },
+      onProgress
     });
 
     let multitrackZipPath: string | undefined;
@@ -164,10 +155,10 @@ export class SubmissionService {
   }
 
   static async listMySubmissionCollabs(): Promise<SubmissionCollabSummary[]> {
-    const functions = getFunctions(app, 'europe-west1');
-    const getMine = httpsCallable(functions, 'getMySubmissionCollabs');
-    const res: any = await getMine({});
-    const data = (res?.data as any) || {};
+    const data = await callFirebaseFunction<Record<string, never>, { unauthenticated?: boolean; items?: any[] }>(
+      'getMySubmissionCollabs',
+      {}
+    );
     if (data?.unauthenticated) return [];
     const items: any[] = Array.isArray(data.items) ? data.items : [];
     return items.map(item => ({
@@ -201,19 +192,11 @@ export class SubmissionService {
     status: SubmissionModerationStatus,
     moderatorId: UserId
   ): Promise<SubmissionModerationStatus> {
-    const functions = getFunctions(app, 'europe-west1');
-    const callable = httpsCallable(functions, 'setSubmissionModeration');
-    const res: any = await callable({
+    return setSubmissionModerationRequest(
       collaborationId,
       submissionIdentifier,
       status,
       moderatorId
-    });
-    const data = res?.data || {};
-    const result = data?.status;
-    if (!['pending', 'approved', 'rejected'].includes(result)) {
-      throw new Error('moderation-failed');
-    }
-    return result as SubmissionModerationStatus;
+    );
   }
 }

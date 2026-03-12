@@ -7,18 +7,24 @@ import { useAppStore } from '../../stores/appStore';
 const hoisted = vi.hoisted(() => ({
   listMySubmissionCollabs: vi.fn(),
   listMyDownloadedCollabs: vi.fn(),
-  getCollaboration: vi.fn()
+  getCollaborationMeta: vi.fn()
 }));
 
-vi.mock('../../services', () => ({
+vi.mock('../../services/submissionService', () => ({
   SubmissionService: {
     listMySubmissionCollabs: hoisted.listMySubmissionCollabs
-  },
+  }
+}));
+
+vi.mock('../../services/dashboardService', () => ({
   DashboardService: {
     listMyDownloadedCollabs: hoisted.listMyDownloadedCollabs
-  },
-  CollaborationService: {
-    getCollaboration: hoisted.getCollaboration
+  }
+}));
+
+vi.mock('../../services/dashboardCollaborationMetaService', () => ({
+  DashboardCollaborationMetaService: {
+    getCollaborationMeta: hoisted.getCollaborationMeta
   }
 }));
 
@@ -40,7 +46,7 @@ describe('UserActivityPanel', () => {
   beforeEach(() => {
     hoisted.listMySubmissionCollabs.mockReset();
     hoisted.listMyDownloadedCollabs.mockReset();
-    hoisted.getCollaboration.mockReset();
+    hoisted.getCollaborationMeta.mockReset();
 
     hoisted.listMySubmissionCollabs.mockResolvedValue([]);
     hoisted.listMyDownloadedCollabs.mockResolvedValue([
@@ -51,7 +57,7 @@ describe('UserActivityPanel', () => {
         status: 'completed'
       }
     ]);
-    hoisted.getCollaboration.mockResolvedValue(null);
+    hoisted.getCollaborationMeta.mockResolvedValue(null);
 
     act(() => {
       useAppStore.setState(initialAppState, true);

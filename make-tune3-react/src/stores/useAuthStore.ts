@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { User as FirebaseUser } from 'firebase/auth';
 import type { User } from '../types/auth';
-import { auth } from '../services/firebase';
+import { auth } from '../services/firebaseAuth';
 import { AuthService } from '../services/authService';
 
 const DEBUG_LOGS = false;

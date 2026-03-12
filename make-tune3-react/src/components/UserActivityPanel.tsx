@@ -1,17 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { DashboardService, SubmissionService, CollaborationService } from '../services';
 import type { DownloadSummaryItem } from '../services/dashboardService';
 import type { SubmissionCollabSummary } from '../services/submissionService';
 import { useAppStore } from '../stores/appStore';
 import { LoadingSpinner } from './LoadingSpinner';
-import { ProjectsTab } from './ProjectsTab';
 import { UserActivityListItem } from './UserActivityListItem';
 import { computeStageInfo } from '../utils/stageUtils';
 import './ProjectHistory.css';
 import './UserActivityStyles.css';
 
 type ActiveTab = 'projects' | 'activity';
+
+const ProjectsTab = lazy(() =>
+  import('./ProjectsTab').then(module => ({ default: module.ProjectsTab }))
+);
 
 const formatDateTime = (value: number | null | undefined): string => {
   if (!value) return '—';
@@ -33,6 +35,7 @@ export function UserActivityPanel() {
   const [downloadsLoading, setDownloadsLoading] = useState(false);
   const [downloadsLoaded, setDownloadsLoaded] = useState(false);
   const [downloadsError, setDownloadsError] = useState<string | null>(null);
+  const [projectsTabRequested, setProjectsTabRequested] = useState(false);
 
   const [collabMeta, setCollabMeta] = useState<Record<string, {
     submissionDurationMs: number | null;
@@ -55,6 +58,7 @@ export function UserActivityPanel() {
     setSubmissionsLoading(true);
     setSubmissionsError(null);
     try {
+      const { SubmissionService } = await import('../services/submissionService');
       const items = await SubmissionService.listMySubmissionCollabs();
       setSubmissionSummaries(items);
       setSubmissionsLoaded(true);
@@ -70,6 +74,7 @@ export function UserActivityPanel() {
     setDownloadsLoading(true);
     setDownloadsError(null);
     try {
+      const { DashboardService } = await import('../services/dashboardService');
       const items = await DashboardService.listMyDownloadedCollabs();
       setDownloadSummaries(items);
       setDownloadsLoaded(true);
@@ -101,6 +106,12 @@ export function UserActivityPanel() {
   }, [activeTab, user, loadSubmissions, loadDownloads]);
 
   useEffect(() => {
+    if (activeTab === 'projects') {
+      setProjectsTabRequested(true);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
     if (!user) {
       setCollabMeta({});
       return;
@@ -130,10 +141,11 @@ export function UserActivityPanel() {
 
     let cancelled = false;
     (async () => {
+      const { DashboardCollaborationMetaService } = await import('../services/dashboardCollaborationMetaService');
       const results = await Promise.all(
         missing.map(async collabId => {
           try {
-            const collab = await CollaborationService.getCollaboration(collabId);
+            const collab = await DashboardCollaborationMetaService.getCollaborationMeta(collabId);
             if (!collab) return null;
             const submissionDurationMs =
               typeof collab.submissionDuration === 'number' && collab.submissionDuration > 0
@@ -329,7 +341,11 @@ export function UserActivityPanel() {
       </div>
 
       {/* TODO: maek smoler */}
-      {activeTab === 'projects' && <ProjectsTab user={user} authLoading={authLoading} />}
+      {activeTab === 'projects' && projectsTabRequested && (
+        <Suspense fallback={<div className="user-activity__loading"><LoadingSpinner size={24} /></div>}>
+          <ProjectsTab user={user} authLoading={authLoading} />
+        </Suspense>
+      )}
 
 
 

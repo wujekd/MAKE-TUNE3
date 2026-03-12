@@ -11,7 +11,7 @@ import {
   increment,
   Timestamp
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { db } from './firebaseDb';
 
 export type FeedbackCategory = 'bug' | 'idea' | 'ui' | 'creator_request' | 'other';
 export type FeedbackStatus = 'new' | 'reviewed' | 'resolved';

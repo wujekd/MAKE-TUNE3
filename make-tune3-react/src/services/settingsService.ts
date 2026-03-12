@@ -1,5 +1,5 @@
 import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
-import { db } from './firebase';
+import { db } from './firebaseDb';
 import type { SystemSettings } from '../types/collaboration';
 import { COLLECTIONS, SYSTEM_SETTINGS_DOC } from '../types/collaboration';
 

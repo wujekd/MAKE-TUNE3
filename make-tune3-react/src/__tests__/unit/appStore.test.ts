@@ -45,12 +45,13 @@ vi.mock('../../services', async (importOriginal) => {
             loadCollaborationDataAnonymous: vi.fn(),
             loadCollaborationStatus: vi.fn()
         },
-        SubmissionService: {
-            setSubmissionModeration: vi.fn()
-        },
         // TrackUtils imported separately from utils (not mocked)
     };
 });
+
+vi.mock('../../services/submissionModerationService', () => ({
+    setSubmissionModeration: vi.fn()
+}));
 
 vi.mock('firebase/storage', () => ({
     ref: vi.fn(),

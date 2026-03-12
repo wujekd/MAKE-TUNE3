@@ -9,8 +9,8 @@ import {
   writeBatch,
   serverTimestamp
 } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { db, functions } from './firebase';
+import { db } from './firebaseDb';
+import { callFirebaseFunction } from './firebaseFunctions';
 import type { Report, ReportStatus } from '../types/collaboration';
 
 export class ReportService {
@@ -116,14 +116,11 @@ export class ReportService {
     collaborationId: string
   ): Promise<void> {
     try {
-      const banUserBySubmission = httpsCallable(functions, 'banUserBySubmission');
-      const result = await banUserBySubmission({
+      await callFirebaseFunction('banUserBySubmission', {
         reportId,
         submissionPath,
         collaborationId
       });
-      
-      return result.data as any;
     } catch (error) {
       console.error('Error banning user:', error);
       throw error;

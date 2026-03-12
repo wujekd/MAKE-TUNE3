@@ -1,6 +1,6 @@
 import { doc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
-import { db, functions } from './firebase';
-import { httpsCallable } from 'firebase/functions';
+import { db } from './firebaseDb';
+import { callFirebaseFunction } from './firebaseFunctions';
 import type { Project, ProjectId } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 
@@ -61,15 +61,13 @@ export class ProjectService {
   }
 
   static async createProjectWithUniqueName(params: { name: string; description?: string; ownerId: string }): Promise<Project> {
-    const createFn = httpsCallable(functions, 'createProjectWithUniqueName');
-
-    // Call cloud function which handles checks, name reservation, and allowance increment
-    const result = await createFn({
+    const data = await callFirebaseFunction<
+      { name: string; description?: string },
+      any
+    >('createProjectWithUniqueName', {
       name: params.name,
       description: params.description
     });
-
-    const data = result.data as any;
 
     // Helper to restore timestamps from JSON representation if needed
     const restoreTimestamp = (val: any) => {
@@ -88,8 +86,10 @@ export class ProjectService {
   }
 
   static async recountMyProjectCount(): Promise<number> {
-    const recountFn = httpsCallable(functions, 'recountMyProjectCount');
-    const result = await recountFn({});
-    return Number((result.data as any)?.projectCount || 0);
+    const result = await callFirebaseFunction<Record<string, never>, { projectCount?: number }>(
+      'recountMyProjectCount',
+      {}
+    );
+    return Number(result?.projectCount || 0);
   }
 }

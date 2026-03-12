@@ -1,5 +1,6 @@
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import app, { auth, db } from './firebase';
+import { auth } from './firebaseAuth';
+import { db } from './firebaseDb';
+import { callFirebaseFunction } from './firebaseFunctions';
 import {
   collection,
   query,
@@ -264,10 +265,10 @@ export class DashboardService {
     }
 
     try {
-      const functions = getFunctions(app, 'europe-west1');
-      const callable = httpsCallable(functions, 'getMyAccountStats');
-      const res: any = await callable({});
-      const data = (res?.data as any) || {};
+      const data = await callFirebaseFunction<Record<string, never>, Partial<MyAccountStats>>(
+        'getMyAccountStats',
+        {}
+      );
 
       return {
         collabs: Number(data.collabs || 0),

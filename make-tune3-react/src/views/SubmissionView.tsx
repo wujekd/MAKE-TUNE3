@@ -8,11 +8,11 @@ import ProjectHistory from '../components/ProjectHistory';
 import '../components/ProjectHistory.css';
 import { CollabData } from '../components/CollabData';
 import { CollabHeader } from '../components/CollabHeader';
-import { UserService, SubmissionService, ProjectService } from '../services';
+import { UserService, ProjectService } from '../services';
+import { SubmissionService } from '../services/submissionService';
 import { DownloadBacking } from '../components/DownloadBacking';
 import { UploadSubmission } from '../components/UploadSubmission';
-import { storage } from '../services/firebase';
-import { ref, getDownloadURL } from 'firebase/storage';
+import { resolveStorageDownloadUrl } from '../services/storageService';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
 import '../components/Favorites.css';
@@ -59,7 +59,7 @@ export function SubmissionView() {
       if (!path) { if (!cancelled) setBackingUrl(''); return; }
       try {
         if (!path.startsWith('collabs/')) { if (!cancelled) setBackingUrl(path); return; }
-        const url = await getDownloadURL(ref(storage, path));
+        const url = await resolveStorageDownloadUrl(path);
         if (!cancelled) setBackingUrl(url);
       } catch {
         if (!cancelled) setBackingUrl('');

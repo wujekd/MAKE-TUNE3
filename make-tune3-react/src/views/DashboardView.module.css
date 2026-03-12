@@ -267,6 +267,16 @@
   backdrop-filter: blur(10px);
 }
 
+.mixerPlaceholder {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 0;
+}
+
 .statCard {
   min-width: 90px;
   text-align: right;

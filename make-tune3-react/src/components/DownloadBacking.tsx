@@ -1,6 +1,5 @@
-import { storage } from '../services/firebase';
-import { ref, getBlob } from 'firebase/storage';
 import { UserService } from '../services';
+import { getStorageBlob } from '../services/storageService';
 import { DownloadButton } from './DownloadButton';
 
 interface DownloadBackingProps {
@@ -16,7 +15,7 @@ async function downloadFile(path: string, fallbackName: string): Promise<void> {
   const filename = path.split('/').pop() || fallbackName;
   let blob: Blob;
   if (path.startsWith('collabs/')) {
-    blob = await getBlob(ref(storage, path));
+    blob = await getStorageBlob(path);
   } else {
     const res = await fetch(path);
     blob = await res.blob();
