@@ -1,20 +1,11 @@
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { VotingView } from './views/VotingView'
 import { DashboardView } from './views/DashboardView'
 import { ProjectEditView } from './views/ProjectEditView'
 import { SubmissionView } from './views/SubmissionView'
-import { AdminTagsView } from './views/AdminTagsView'
-import { AdminProjectsView } from './views/AdminProjectsView'
-import { AdminReportedView } from './views/AdminReportedView'
-import { AdminResolvedReportsView } from './views/AdminResolvedReportsView'
-import { AdminFeedbackView } from './views/AdminFeedbackView'
-import { AdminUsersView } from './views/AdminUsersView'
-import { AdminSettingsView } from './views/AdminSettingsView'
-import { MyAccountView } from './views/MyAccountView'
 import { useAppStore } from './stores/appStore'
 import { useUIStore } from './stores'
-import { ModerationView } from './views/ModerationView'
 import { AppShell } from './components/AppShell';
 import { AuthRoute } from './components/AuthRoute';
 import { AdminRoute } from './components/AdminRoute';
@@ -23,6 +14,51 @@ import { UsernameOnboarding } from './views/UsernameOnboarding';
 import { AccessDeniedView } from './views/AccessDeniedView';
 import { ProjectService } from './services';
 import { RootErrorView } from './components/RootErrorView';
+import { LoadingSpinner } from './components/LoadingSpinner';
+
+const ModerationView = lazy(() =>
+  import('./views/ModerationView').then(module => ({ default: module.ModerationView }))
+);
+const MyAccountView = lazy(() =>
+  import('./views/MyAccountView').then(module => ({ default: module.MyAccountView }))
+);
+const AdminTagsView = lazy(() =>
+  import('./views/AdminTagsView').then(module => ({ default: module.AdminTagsView }))
+);
+const AdminProjectsView = lazy(() =>
+  import('./views/AdminProjectsView').then(module => ({ default: module.AdminProjectsView }))
+);
+const AdminReportedView = lazy(() =>
+  import('./views/AdminReportedView').then(module => ({ default: module.AdminReportedView }))
+);
+const AdminResolvedReportsView = lazy(() =>
+  import('./views/AdminResolvedReportsView').then(module => ({ default: module.AdminResolvedReportsView }))
+);
+const AdminFeedbackView = lazy(() =>
+  import('./views/AdminFeedbackView').then(module => ({ default: module.AdminFeedbackView }))
+);
+const AdminUsersView = lazy(() =>
+  import('./views/AdminUsersView').then(module => ({ default: module.AdminUsersView }))
+);
+const AdminSettingsView = lazy(() =>
+  import('./views/AdminSettingsView').then(module => ({ default: module.AdminSettingsView }))
+);
+
+function RouteLoadingFallback() {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 16px' }}>
+      <LoadingSpinner size={24} />
+    </div>
+  );
+}
+
+function LazyAdminRoute({ children }: { children: React.ReactNode }) {
+  return (
+    <AdminRoute>
+      <Suspense fallback={<RouteLoadingFallback />}>{children}</Suspense>
+    </AdminRoute>
+  );
+}
 
 function App() {
   const { user, loading } = useAppStore(state => state.auth);
@@ -110,7 +146,11 @@ function App() {
         },
         {
           path: 'collab/:collaborationId/moderate',
-          element: <ModerationView />,
+          element: (
+            <Suspense fallback={<RouteLoadingFallback />}>
+              <ModerationView />
+            </Suspense>
+          ),
           handle: {
             title: 'Moderation',
             breadcrumb: 'Moderation',
@@ -142,7 +182,7 @@ function App() {
         },
         {
           path: 'admin/tags',
-          element: <AdminRoute><AdminTagsView /></AdminRoute>,
+          element: <LazyAdminRoute><AdminTagsView /></LazyAdminRoute>,
           handle: {
             title: 'Manage Tags',
             breadcrumb: 'Tags',
@@ -151,7 +191,7 @@ function App() {
         },
         {
           path: 'admin/projects',
-          element: <AdminRoute><AdminProjectsView /></AdminRoute>,
+          element: <LazyAdminRoute><AdminProjectsView /></LazyAdminRoute>,
           handle: {
             title: 'Manage Projects',
             breadcrumb: 'Projects',
@@ -160,7 +200,7 @@ function App() {
         },
         {
           path: 'admin/reported',
-          element: <AdminRoute><AdminReportedView /></AdminRoute>,
+          element: <LazyAdminRoute><AdminReportedView /></LazyAdminRoute>,
           handle: {
             title: 'Reported Submissions',
             breadcrumb: 'Reported',
@@ -169,7 +209,7 @@ function App() {
         },
         {
           path: 'admin/resolved',
-          element: <AdminRoute><AdminResolvedReportsView /></AdminRoute>,
+          element: <LazyAdminRoute><AdminResolvedReportsView /></LazyAdminRoute>,
           handle: {
             title: 'Resolved Reports',
             breadcrumb: 'Resolved',
@@ -178,7 +218,7 @@ function App() {
         },
         {
           path: 'admin/feedback',
-          element: <AdminRoute><AdminFeedbackView /></AdminRoute>,
+          element: <LazyAdminRoute><AdminFeedbackView /></LazyAdminRoute>,
           handle: {
             title: 'User Feedback',
             breadcrumb: 'Feedback',
@@ -187,7 +227,7 @@ function App() {
         },
         {
           path: 'admin/users',
-          element: <AdminRoute><AdminUsersView /></AdminRoute>,
+          element: <LazyAdminRoute><AdminUsersView /></LazyAdminRoute>,
           handle: {
             title: 'User Management',
             breadcrumb: 'Users',
@@ -196,7 +236,7 @@ function App() {
         },
         {
           path: 'admin/settings',
-          element: <AdminRoute><AdminSettingsView /></AdminRoute>,
+          element: <LazyAdminRoute><AdminSettingsView /></LazyAdminRoute>,
           handle: {
             title: 'Global Settings',
             breadcrumb: 'Settings',
@@ -213,7 +253,11 @@ function App() {
         },
         {
           path: 'account',
-          element: <MyAccountView />,
+          element: (
+            <Suspense fallback={<RouteLoadingFallback />}>
+              <MyAccountView />
+            </Suspense>
+          ),
           handle: {
             title: 'My Account',
             breadcrumb: 'My Account',
