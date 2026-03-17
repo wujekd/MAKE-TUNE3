@@ -1,8 +1,8 @@
 import type { Collaboration } from '../types/collaboration';
 import { TagFilter } from './TagFilter';
-import { LoadingSpinner } from './LoadingSpinner';
 import { ListPlayButton } from './ListPlayButton';
 import { CollabListItem } from './CollabListItem';
+import { DashboardPlaceholderItem } from './DashboardPlaceholderItem';
 import { useAudioStore } from '../stores';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { useAppStore } from '../stores/appStore';
@@ -30,6 +30,7 @@ export function CollaborationsPanel({
   const playBackingTrack = usePlaybackStore(s => s.playBackingTrack);
   const backingPreview = usePlaybackStore(s => s.backingPreview);
   const togglePlayPause = useAppStore(s => s.playback.togglePlayPause);
+  const loadingPlaceholders = [0, 1, 2, 3];
 
   return (
     <div className={`project-history ${styles.historyColumn}`}>
@@ -38,8 +39,10 @@ export function CollaborationsPanel({
         <TagFilter selectedTags={selectedTags} onTagsChange={onTagsChange} variant="slim" tags={availableTags} />
         <div className={`collab-list ${styles.collabList}`} aria-busy={!hasLoaded}>
           {!hasLoaded && !error && (
-            <div className={styles.spinnerContainer}>
-              <LoadingSpinner size={24} />
+            <div className={styles.placeholderList}>
+              {loadingPlaceholders.map(index => (
+                <DashboardPlaceholderItem key={index} variant="collaboration" />
+              ))}
             </div>
           )}
           {error && <div className={styles.emptyState}>{error}</div>}

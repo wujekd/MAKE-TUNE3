@@ -1,0 +1,152 @@
+.dashboard-placeholder-item {
+  position: relative;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.dashboard-placeholder-item:hover {
+  transform: none;
+  box-shadow: inherit;
+}
+
+.dashboard-placeholder-item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.03) 35%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.03) 65%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: dashboard-placeholder-shimmer 1.7s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.dashboard-placeholder-item__bar,
+.dashboard-placeholder-item__chip,
+.dashboard-placeholder-item__button-shell,
+.dashboard-placeholder-item__progress-track,
+.dashboard-placeholder-item__progress-fill {
+  position: relative;
+  z-index: 1;
+}
+
+.dashboard-placeholder-item__bar,
+.dashboard-placeholder-item__chip,
+.dashboard-placeholder-item__button-shell {
+  display: block;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.08)),
+    rgba(255, 255, 255, 0.05);
+  color: transparent;
+}
+
+.dashboard-placeholder-item__bar--activity-title {
+  width: min(58%, 220px);
+  height: 0.95rem;
+}
+
+.dashboard-placeholder-item__bar--activity-subtitle {
+  width: min(34%, 140px);
+  height: 0.75rem;
+}
+
+.dashboard-placeholder-item__bar--collab-title {
+  width: min(54%, 200px);
+  height: 0.85rem;
+}
+
+.dashboard-placeholder-item__bar--meta {
+  width: 8.5rem;
+  height: 0.72rem;
+}
+
+.dashboard-placeholder-item__bar--meta-short {
+  width: 6.4rem;
+}
+
+.dashboard-placeholder-item__bar--progress-label {
+  width: 7.25rem;
+  height: 0.72rem;
+}
+
+.dashboard-placeholder-item__bar--activity-action {
+  width: 3rem;
+  height: 1.85rem;
+}
+
+.dashboard-placeholder-item__bar--tag {
+  width: 3.4rem;
+  height: 1rem;
+}
+
+.dashboard-placeholder-item__bar--stage-label {
+  width: 6.8rem;
+  height: 0.72rem;
+}
+
+.dashboard-placeholder-item__bar--stage-label-short {
+  width: 5rem;
+}
+
+.dashboard-placeholder-item__chip {
+  width: 5.25rem;
+  height: 1.35rem;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.dashboard-placeholder-item__button-shell {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dashboard-placeholder-item__tag-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.dashboard-placeholder-item__inline-meta {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.dashboard-placeholder-item__progress-track {
+  display: block;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(48, 112, 113, 0.3);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+
+.dashboard-placeholder-item__progress-fill {
+  display: block;
+  width: 41%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.4));
+}
+
+.dashboard-placeholder-item__progress-fill--collaboration {
+  width: 48%;
+}
+
+@keyframes dashboard-placeholder-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}

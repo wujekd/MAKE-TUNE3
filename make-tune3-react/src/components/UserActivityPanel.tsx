@@ -5,6 +5,7 @@ import type { SubmissionCollabSummary } from '../services/submissionService';
 import { useAppStore } from '../stores/appStore';
 import { LoadingSpinner } from './LoadingSpinner';
 import { UserActivityListItem } from './UserActivityListItem';
+import { DashboardPlaceholderItem } from './DashboardPlaceholderItem';
 import { computeStageInfo } from '../utils/stageUtils';
 import './ProjectHistory.css';
 import './UserActivityStyles.css';
@@ -23,6 +24,7 @@ const formatDateTime = (value: number | null | undefined): string => {
 
 export function UserActivityPanel() {
   const { user, loading: authLoading } = useAppStore(state => state.auth);
+  const loadingPlaceholders = [0, 1, 2];
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('activity');
 
@@ -356,8 +358,10 @@ export function UserActivityPanel() {
           </div>
           <div className="collab-list list user-activity__list">
             {(authLoading || (user && (!downloadsLoaded || !submissionsLoaded))) && (
-              <div className="user-activity__loading">
-                <LoadingSpinner size={24} />
+              <div className="user-activity__placeholder-list">
+                {loadingPlaceholders.map(index => (
+                  <DashboardPlaceholderItem key={index} variant="activity" />
+                ))}
               </div>
             )}
             {!authLoading && !user && (

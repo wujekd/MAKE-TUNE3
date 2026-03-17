@@ -104,6 +104,12 @@
   flex-shrink: 0;
 }
 
+.user-activity__placeholder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .user-activity__loading,
 .user-activity__message {
   display: flex;
