@@ -12,7 +12,7 @@
 
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  background-color: var(--background-floor);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -37,6 +37,7 @@ body {
   min-height: 100vh;
   width: 100%;
   overflow: hidden;
+  background: var(--background-floor);
 }
 
 html,
@@ -45,6 +46,26 @@ body,
   height: 100%;
   width: 100%;
   overflow: hidden;
+}
+
+@keyframes app-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell__content--fade {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
 }
 
 /* design system imports moved to top */
@@ -80,7 +101,7 @@ button:focus-visible {
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
-    background-color: #ffffff;
+    background-color: var(--background-floor);
   }
 
   a:hover {

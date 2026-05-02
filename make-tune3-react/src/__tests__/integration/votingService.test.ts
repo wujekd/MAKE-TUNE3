@@ -159,6 +159,33 @@ describe('Voting Service Integration', () => {
             });
         });
 
+        it('should track submission likes and collaboration preferences', async () => {
+            const likedTrack = `collabs/${testCollaborationId}/submissions/liked.mp3`;
+
+            const env = await initTestEnvironment();
+            await env.withSecurityRulesDisabled(async (context) => {
+                const db = context.firestore();
+                const userCollabRef = doc(db, 'userCollaborations', `${testUserId}_${testCollaborationId}`);
+
+                await setDoc(userCollabRef, {
+                    userId: testUserId,
+                    collaborationId: testCollaborationId,
+                    listenedTracks: [likedTrack],
+                    likedTracks: [likedTrack],
+                    favoriteTracks: [],
+                    likedCollaboration: true,
+                    favoritedCollaboration: true,
+                    listenedRatio: 1.0,
+                    lastInteraction: Timestamp.now(),
+                });
+
+                const snap = await getDoc(userCollabRef);
+                expect(snap.data()?.likedTracks).toEqual([likedTrack]);
+                expect(snap.data()?.likedCollaboration).toBe(true);
+                expect(snap.data()?.favoritedCollaboration).toBe(true);
+            });
+        });
+
         it('should allow vote changes', async () => {
             const track1 = `collabs/${testCollaborationId}/submissions/track1.mp3`;
             const track2 = `collabs/${testCollaborationId}/submissions/track2.mp3`;

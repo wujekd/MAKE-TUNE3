@@ -2,6 +2,8 @@
   position: relative;
   pointer-events: none;
   overflow: hidden;
+  opacity: 1;
+  transition: opacity 0.2s ease;
 }
 
 .dashboard-placeholder-item:hover {
@@ -143,6 +145,18 @@
 
 .dashboard-placeholder-item__progress-fill--collaboration {
   width: 48%;
+}
+
+.dashboard-placeholder-stack > .dashboard-placeholder-item:nth-child(2) {
+  opacity: 0.52;
+}
+
+.dashboard-placeholder-stack > .dashboard-placeholder-item:nth-child(3) {
+  opacity: 0.24;
+}
+
+.dashboard-placeholder-stack > .dashboard-placeholder-item:nth-child(n + 4) {
+  opacity: 0.1;
 }
 
 @keyframes dashboard-placeholder-shimmer {

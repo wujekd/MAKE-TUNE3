@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '../stores/appStore';
 
-type LoaderState = 'idle' | 'loading' | 'error';
+type LoaderState = 'idle' | 'loading' | 'not_found' | 'error';
 
 export function useCollaborationLoader(collabId?: string | null) {
   const user = useAppStore(state => state.auth.user);
   const userId = user?.uid;
+  const currentCollaborationId = useAppStore(state => state.collaboration.currentCollaboration?.id);
   const loadCollaboration = useAppStore(state => state.collaboration.loadCollaboration);
   const loadCollaborationAnonymousById = useAppStore(state => state.collaboration.loadCollaborationAnonymousById);
 
@@ -14,6 +15,11 @@ export function useCollaborationLoader(collabId?: string | null) {
 
   useEffect(() => {
     if (!collabId) return;
+    if (currentCollaborationId === collabId) {
+      setStatus('idle');
+      setError(null);
+      return;
+    }
     let cancelled = false;
 
     const run = async () => {
@@ -26,6 +32,12 @@ export function useCollaborationLoader(collabId?: string | null) {
           await loadCollaborationAnonymousById(collabId);
         }
         if (!cancelled) {
+          const loadedCollaboration = useAppStore.getState().collaboration.currentCollaboration;
+          if (!loadedCollaboration || loadedCollaboration.id !== collabId) {
+            setStatus('not_found');
+            setError('collaboration not found');
+            return;
+          }
           setStatus('idle');
         }
       } catch (err: any) {
@@ -41,7 +53,7 @@ export function useCollaborationLoader(collabId?: string | null) {
     return () => {
       cancelled = true;
     };
-  }, [collabId, userId, loadCollaboration, loadCollaborationAnonymousById]);
+  }, [collabId, currentCollaborationId, userId, loadCollaboration, loadCollaborationAnonymousById]);
 
   return { status, error };
 }

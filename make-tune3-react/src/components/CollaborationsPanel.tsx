@@ -36,10 +36,16 @@ export function CollaborationsPanel({
     <div className={`project-history ${styles.historyColumn}`}>
       <h4 className="project-history-title">collaborations</h4>
       <div className={styles.historyPanel}>
-        <TagFilter selectedTags={selectedTags} onTagsChange={onTagsChange} variant="slim" tags={availableTags} />
+        <TagFilter
+          selectedTags={selectedTags}
+          onTagsChange={onTagsChange}
+          variant="slim"
+          tags={availableTags}
+          loading={!hasLoaded}
+        />
         <div className={`collab-list ${styles.collabList}`} aria-busy={!hasLoaded}>
           {!hasLoaded && !error && (
-            <div className={styles.placeholderList}>
+            <div className={`${styles.placeholderList} dashboard-placeholder-stack`}>
               {loadingPlaceholders.map(index => (
                 <DashboardPlaceholderItem key={index} variant="collaboration" />
               ))}

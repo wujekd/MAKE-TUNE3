@@ -13,22 +13,41 @@ import { AudioUrlUtils } from '../utils/audioUrlUtils';
 import { useCollaborationLoader } from '../hooks/useCollaborationLoader';
 import { useStageRedirect } from '../hooks/useStageRedirect';
 import { WinnerCard } from '../components/WinnerCard';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+import { MissingCollaborationState } from '../components/MissingCollaborationState';
+import { CollaborationPreferenceBar } from '../components/CollaborationPreferenceBar';
 import styles from './CompletedView.module.css';
 
 export function CompletedView() {
   const { collaborationId } = useParams();
-  const { currentCollaboration, currentProject } = useAppStore(s => s.collaboration);
+  const { user } = useAppStore(s => s.auth);
+  const {
+    currentCollaboration,
+    currentProject,
+    userCollaboration,
+    likeCollaboration,
+    unlikeCollaboration,
+    favoriteCollaboration,
+    unfavoriteCollaboration,
+    isUpdatingCollaborationLike,
+    isUpdatingCollaborationFavorite
+  } = useAppStore(s => s.collaboration);
   const audioCtx = useContext(AudioEngineContext);
   const engine = audioCtx?.engine;
   const navigate = useNavigate();
   const [isPlayingWinner, setIsPlayingWinner] = useState(false);
   const playInFlightRef = useRef(false);
   const winnerResolvedUrlRef = useRef<string | null>(null);
+  const loader = useCollaborationLoader(collaborationId);
+  const requestedCollaboration = currentCollaboration?.id === collaborationId ? currentCollaboration : null;
+  const requestedProject =
+    requestedCollaboration && currentProject?.id === requestedCollaboration.projectId
+      ? currentProject
+      : null;
 
-  useCollaborationLoader(collaborationId);
   useStageRedirect({
     expected: 'completed',
-    collaboration: currentCollaboration,
+    collaboration: requestedCollaboration,
     collabId: collaborationId,
     navigate
   });
@@ -40,24 +59,24 @@ export function CompletedView() {
   }, [engine]);
 
   const winner = useMemo(() => {
-    if (!currentCollaboration?.winnerPath) return null;
-    const path = currentCollaboration.winnerPath;
-    const entry = currentCollaboration.submissions?.find(s => s.path === path);
+    if (!requestedCollaboration?.winnerPath) return null;
+    const path = requestedCollaboration.winnerPath;
+    const entry = requestedCollaboration.submissions?.find(s => s.path === path);
     return { path, settings: entry?.settings };
-  }, [currentCollaboration]);
+  }, [requestedCollaboration]);
 
   useEffect(() => {
-    if (!winner?.path || !currentCollaboration?.backingTrackPath) return;
+    if (!winner?.path || !requestedCollaboration?.backingTrackPath) return;
 
     Promise.all([
       AudioUrlUtils.resolveAudioUrl(winner.path),
-      AudioUrlUtils.resolveAudioUrl(currentCollaboration.backingTrackPath)
+      AudioUrlUtils.resolveAudioUrl(requestedCollaboration.backingTrackPath)
     ]).then(() => {
-      console.log('[CompletedView] Winner audio URLs prefetched');
+      if (import.meta.env.DEV) console.log('[CompletedView] Winner audio URLs prefetched');
     }).catch(err => {
       console.warn('[CompletedView] Failed to prefetch winner audio', err);
     });
-  }, [winner?.path, currentCollaboration?.backingTrackPath]);
+  }, [winner?.path, requestedCollaboration?.backingTrackPath]);
 
   const isWinnerPlaying = audioCtx?.state.player1.source === winnerResolvedUrlRef.current && winnerResolvedUrlRef.current !== null;
   const displayProgress = isWinnerPlaying && audioCtx?.state.player1.duration > 0
@@ -65,7 +84,7 @@ export function CompletedView() {
     : 0;
 
   const playWinner = useCallback(async () => {
-    if (!engine || !winner?.path || !currentCollaboration?.backingTrackPath || playInFlightRef.current) return;
+    if (!engine || !winner?.path || !requestedCollaboration?.backingTrackPath || playInFlightRef.current) return;
 
     if (isWinnerPlaying && audioCtx?.state.player1.isPlaying) {
       engine.pause();
@@ -88,10 +107,9 @@ export function CompletedView() {
       }
 
       const subUrl = await AudioUrlUtils.resolveAudioUrl(winner.path);
-      const backUrl = await AudioUrlUtils.resolveAudioUrl(currentCollaboration.backingTrackPath);
+      const backUrl = await AudioUrlUtils.resolveAudioUrl(requestedCollaboration.backingTrackPath);
 
       winnerResolvedUrlRef.current = subUrl;
-
       engine.playSubmission(subUrl, backUrl, 0);
     } catch (err) {
       console.error('[CompletedView] Failed to play winner', err);
@@ -99,7 +117,7 @@ export function CompletedView() {
       setIsPlayingWinner(false);
       playInFlightRef.current = false;
     }
-  }, [engine, winner, currentCollaboration?.backingTrackPath, audioCtx?.state, isWinnerPlaying]);
+  }, [engine, winner, requestedCollaboration?.backingTrackPath, audioCtx?.state, isWinnerPlaying]);
 
   useEffect(() => {
     if (isWinnerPlaying && audioCtx?.state.player1.isPlaying) {
@@ -113,9 +131,24 @@ export function CompletedView() {
     }
   }, [audioCtx?.state.player1.source]);
 
-  if (!audioCtx || !audioCtx.state) return <div className={styles.loading}>Audio engine not available</div>;
-  const state = audioCtx.state;
+  if (loader.status === 'not_found') {
+    return <MissingCollaborationState collaborationId={collaborationId} viewLabel="completed view" />;
+  }
 
+  if (!audioCtx || !audioCtx.state) return <div className={styles.loading}>Audio engine not available</div>;
+
+  if (loader.status === 'loading' || !requestedCollaboration) {
+    return (
+      <div className={styles.loading}>
+        <div className={styles.loadingStack}>
+          <LoadingSpinner size={32} />
+          <div>Loading completed view…</div>
+        </div>
+      </div>
+    );
+  }
+
+  const state = audioCtx.state;
   const winnerCardWrapperClass = [
     styles.winnerCardWrapper,
     isWinnerPlaying && audioCtx?.state.player1.isPlaying ? styles.playing : ''
@@ -126,12 +159,33 @@ export function CompletedView() {
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <div className={styles.headerCol}>
-            <div className={styles.title}>{currentProject?.name || ''}</div>
-            <div className={styles.subtitle}>{currentProject?.description || ''}</div>
+            <div className={styles.title}>{requestedProject?.name || ''}</div>
+            <div className={styles.subtitle}>{requestedProject?.description || ''}</div>
           </div>
           <div className={styles.headerCol}>
-            <div className={styles.title}>{currentCollaboration?.name || ''}</div>
-            <div className={styles.subtitle}>{currentCollaboration?.description || ''}</div>
+            <div className={styles.title}>{requestedCollaboration?.name || ''}</div>
+            <div className={styles.subtitle}>{requestedCollaboration?.description || ''}</div>
+            <CollaborationPreferenceBar
+              disabled={!user}
+              liked={Boolean(userCollaboration?.likedCollaboration)}
+              favorited={Boolean(userCollaboration?.favoritedCollaboration)}
+              isUpdatingLike={isUpdatingCollaborationLike}
+              isUpdatingFavorite={isUpdatingCollaborationFavorite}
+              onToggleLike={() => {
+                if (userCollaboration?.likedCollaboration) {
+                  unlikeCollaboration();
+                } else {
+                  likeCollaboration();
+                }
+              }}
+              onToggleFavorite={() => {
+                if (userCollaboration?.favoritedCollaboration) {
+                  unfavoriteCollaboration();
+                } else {
+                  favoriteCollaboration();
+                }
+              }}
+            />
           </div>
         </div>
         <div className={styles.headerRight}>
@@ -139,9 +193,9 @@ export function CompletedView() {
           <div className="card collab-timeline">
             <div className="collab-timeline__inner">
               <CompletedCollaborationTimeline
-                publishedAt={currentCollaboration?.publishedAt}
-                submissionCloseAt={(currentCollaboration as any)?.submissionCloseAt}
-                votingCloseAt={(currentCollaboration as any)?.votingCloseAt}
+                publishedAt={requestedCollaboration?.publishedAt}
+                submissionCloseAt={(requestedCollaboration as any)?.submissionCloseAt}
+                votingCloseAt={(requestedCollaboration as any)?.votingCloseAt}
                 progress={displayProgress}
               />
             </div>
@@ -155,7 +209,7 @@ export function CompletedView() {
             <h2 className={styles.sectionTitle}>Collaboration Results</h2>
             <div className={winnerCardWrapperClass}>
               <WinnerCard
-                name={currentCollaboration?.winnerUserName || 'Anonymous'}
+                name={requestedCollaboration?.winnerUserName || 'Anonymous'}
                 progressPercent={displayProgress}
                 isPlaying={isWinnerPlaying && audioCtx?.state.player1.isPlaying}
                 isLoading={isPlayingWinner}
@@ -165,7 +219,7 @@ export function CompletedView() {
             </div>
           </div>
           <div className={styles.collabDataSection}>
-            <CollabData collab={currentCollaboration as any} />
+            <CollabData collab={requestedCollaboration as any} />
           </div>
         </div>
 

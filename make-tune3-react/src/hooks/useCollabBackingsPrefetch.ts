@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import type { Collaboration } from '../types/collaboration';
 import { AudioUrlUtils } from '../utils';
 
-export function useCollabBackingsPrefetch(collabs: Collaboration[], limit = 10) {
+export function useCollabBackingsPrefetch(collabs: Collaboration[], limit = 10, enabled = true) {
   const [urls, setUrls] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!collabs.length) {
+    if (!enabled || !collabs.length || limit <= 0) {
       setUrls([]);
       return;
     }
@@ -48,7 +48,7 @@ export function useCollabBackingsPrefetch(collabs: Collaboration[], limit = 10) 
     return () => {
       cancelled = true;
     };
-  }, [collabs, limit]);
+  }, [collabs, enabled, limit]);
 
   return urls;
 }

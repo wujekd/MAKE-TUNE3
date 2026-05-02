@@ -1,13 +1,19 @@
 import { useEffect, useRef } from 'react';
 
-export function usePrefetchAudio(src?: string) {
+interface UsePrefetchAudioOptions {
+  enabled?: boolean;
+  preload?: 'auto' | 'metadata' | 'none';
+}
+
+export function usePrefetchAudio(src?: string, options: UsePrefetchAudioOptions = {}) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { enabled = true, preload = 'auto' } = options;
 
   useEffect(() => {
-    if (!src) return;
+    if (!enabled || !src) return;
     const audio = new Audio();
     audio.crossOrigin = 'anonymous';
-    audio.preload = 'auto';
+    audio.preload = preload;
     audioRef.current = audio;
     const onCanPlay = () => {
       /* ready */
@@ -25,5 +31,5 @@ export function usePrefetchAudio(src?: string) {
       audio.removeEventListener('error', onError);
       audioRef.current = null;
     };
-  }, [src]);
+  }, [enabled, preload, src]);
 }

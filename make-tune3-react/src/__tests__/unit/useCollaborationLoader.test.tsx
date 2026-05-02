@@ -19,7 +19,15 @@ describe('useCollaborationLoader', () => {
   });
 
   it('loads as authenticated when user is present', async () => {
-    const loadCollaboration = vi.fn().mockResolvedValue(undefined);
+    const loadCollaboration = vi.fn().mockImplementation(async (_userId: string, collabId: string) => {
+      useAppStore.setState(state => ({
+        ...state,
+        collaboration: {
+          ...state.collaboration,
+          currentCollaboration: { id: collabId } as any
+        }
+      }));
+    });
     const loadCollaborationAnonymousById = vi.fn().mockResolvedValue(undefined);
 
     act(() => {
@@ -52,7 +60,15 @@ describe('useCollaborationLoader', () => {
 
   it('loads anonymously when no user is present', async () => {
     const loadCollaboration = vi.fn().mockResolvedValue(undefined);
-    const loadCollaborationAnonymousById = vi.fn().mockResolvedValue(undefined);
+    const loadCollaborationAnonymousById = vi.fn().mockImplementation(async (collabId: string) => {
+      useAppStore.setState(state => ({
+        ...state,
+        collaboration: {
+          ...state.collaboration,
+          currentCollaboration: { id: collabId } as any
+        }
+      }));
+    });
 
     act(() => {
       useAppStore.setState(state => ({
@@ -76,5 +92,34 @@ describe('useCollaborationLoader', () => {
       expect(loadCollaborationAnonymousById).toHaveBeenCalledWith('collab-2');
     });
     expect(loadCollaboration).not.toHaveBeenCalled();
+  });
+
+  it('returns not_found when the requested collaboration is missing', async () => {
+    const loadCollaboration = vi.fn().mockResolvedValue(undefined);
+    const loadCollaborationAnonymousById = vi.fn().mockResolvedValue(undefined);
+
+    act(() => {
+      useAppStore.setState(state => ({
+        ...state,
+        auth: {
+          ...state.auth,
+          user: null,
+          loading: false
+        },
+        collaboration: {
+          ...state.collaboration,
+          currentCollaboration: null,
+          loadCollaboration,
+          loadCollaborationAnonymousById
+        }
+      }));
+    });
+
+    const { result } = renderHook(() => useCollaborationLoader('missing-collab'));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('not_found');
+    });
+    expect(result.current.error).toBe('collaboration not found');
   });
 });

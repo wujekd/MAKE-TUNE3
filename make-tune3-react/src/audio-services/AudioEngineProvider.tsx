@@ -34,6 +34,21 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
       setEngine(audioEngine); // Store engine reference in Zustand
       setAudioState(audioEngine.getState()); // Initial state sync
     }
+
+    return () => {
+      const engine = engineRef.current;
+      if (engine) {
+        try {
+          engine.clearPlaybackSources();
+        } catch {
+          // Ignore teardown failures during route changes.
+        }
+      }
+      engineRef.current = null;
+      setState(null);
+      setEngine(null);
+      setAudioState(null);
+    };
   }, [setEngine, setAudioState]); // Only run once - dependencies for Zustand actions
 
   return (

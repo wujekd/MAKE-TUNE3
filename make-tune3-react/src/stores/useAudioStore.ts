@@ -5,8 +5,8 @@ import type { AudioState } from '../types';
 interface AudioStoreState {
   engine: AudioEngine | null;
   state: AudioState | null;
-  setEngine: (engine: AudioEngine) => void;
-  setState: (state: AudioState) => void;
+  setEngine: (engine: AudioEngine | null) => void;
+  setState: (state: AudioState | null) => void;
 }
 
 export const useAudioStore = create<AudioStoreState>((set) => ({
@@ -16,4 +16,3 @@ export const useAudioStore = create<AudioStoreState>((set) => ({
   setEngine: (engine) => set({ engine }),
   setState: (state) => set({ state })
 }));
-

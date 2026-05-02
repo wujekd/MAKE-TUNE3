@@ -1,7 +1,7 @@
 /* Abyssal Theme - Auth Styles */
 .auth-container {
   /* Theme Variables */
-  --dashboard-bg: #0a1213;
+  --dashboard-bg: var(--background-floor);
   --dashboard-panel: rgba(18, 24, 28, 0.6);
   --dashboard-panel-border: rgba(48, 112, 113, 0.3);
   --dashboard-accent: var(--contrast-500);
@@ -13,7 +13,7 @@
   align-items: center;
   min-height: 100vh;
   padding: 1.5rem;
-  background: radial-gradient(circle at top right, #1a2a2c 0%, var(--dashboard-bg) 60%);
+  background: radial-gradient(circle at top right, #1a2a2c 0%, var(--background-floor) 68%);
   font-family: 'Inter', system-ui, sans-serif;
   position: relative;
 }

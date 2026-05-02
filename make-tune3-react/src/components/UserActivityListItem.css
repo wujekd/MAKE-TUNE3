@@ -61,12 +61,14 @@
 .user-activity-list-item__header {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 0.75rem;
   min-width: 0;
 }
 
 .user-activity-list-item__title {
+  flex: 1;
+  min-width: 0;
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--white);
@@ -74,6 +76,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.4;
+}
+
+.user-activity-list-item__header .collab-status-label {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .user-activity-list-item__subtitle {

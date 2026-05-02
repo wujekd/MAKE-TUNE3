@@ -358,7 +358,7 @@ export function UserActivityPanel() {
           </div>
           <div className="collab-list list user-activity__list">
             {(authLoading || (user && (!downloadsLoaded || !submissionsLoaded))) && (
-              <div className="user-activity__placeholder-list">
+              <div className="user-activity__placeholder-list dashboard-placeholder-stack">
                 {loadingPlaceholders.map(index => (
                   <DashboardPlaceholderItem key={index} variant="activity" />
                 ))}

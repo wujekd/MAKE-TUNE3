@@ -161,14 +161,20 @@ describe('UserService Integration', () => {
           userId: testUserId,
           collaborationId: testCollaborationId,
           listenedTracks: ['track1'],
+          likedTracks: ['track1'],
           favoriteTracks: ['track1', 'track2'],
+          likedCollaboration: true,
+          favoritedCollaboration: true,
           listenedRatio: 0.5,
           finalVote: 'track1',
           lastInteraction: Timestamp.now(),
         });
 
         const snap = await getDoc(userCollabRef);
+        expect(snap.data()?.likedTracks).toEqual(['track1']);
         expect(snap.data()?.favoriteTracks).toEqual(['track1', 'track2']);
+        expect(snap.data()?.likedCollaboration).toBe(true);
+        expect(snap.data()?.favoritedCollaboration).toBe(true);
         expect(snap.data()?.finalVote).toBe('track1');
       });
     });

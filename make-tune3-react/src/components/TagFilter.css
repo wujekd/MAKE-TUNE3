@@ -37,6 +37,28 @@
   gap: 6px;
 }
 
+.tag-filter__tags--placeholder {
+  position: relative;
+  overflow: hidden;
+}
+
+.tag-filter__tags--placeholder::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.03) 35%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.03) 65%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: tag-filter-placeholder-shimmer 1.7s ease-in-out infinite;
+  pointer-events: none;
+}
+
 .tag-filter__tag {
   display: inline-flex;
   align-items: center;
@@ -64,6 +86,42 @@
 .tag-filter__count {
   opacity: 0.6;
   font-size: 10px;
+}
+
+.tag-filter__tag--placeholder {
+  pointer-events: none;
+  cursor: default;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: transparent;
+}
+
+.tag-filter__placeholder-label,
+.tag-filter__placeholder-count {
+  display: block;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.08)),
+    rgba(255, 255, 255, 0.05);
+}
+
+.tag-filter__placeholder-label {
+  height: 0.65rem;
+  width: 3.6rem;
+}
+
+.tag-filter__placeholder-count {
+  height: 0.55rem;
+  width: 1.65rem;
+  opacity: 0.8;
+}
+
+.tag-filter__tag--placeholder-2 .tag-filter__placeholder-label {
+  width: 4.8rem;
+}
+
+.tag-filter__tag--placeholder-3 .tag-filter__placeholder-label {
+  width: 2.8rem;
 }
 
 .tag-filter__loading {
@@ -142,4 +200,10 @@
 .tag-filter--slim .tag-filter__count {
   font-size: 10px;
   opacity: 0.6;
+}
+
+@keyframes tag-filter-placeholder-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }

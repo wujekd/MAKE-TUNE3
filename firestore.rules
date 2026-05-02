@@ -261,7 +261,10 @@ service cloud.firestore {
     function validUserCollabUpdate(userId) {
       return request.resource.data.userId == resource.data.userId
         && request.resource.data.collaborationId == resource.data.collaborationId
+        && request.resource.data.get('likedTracks', []) == resource.data.get('likedTracks', [])
         && request.resource.data.get('favoriteTracks', []) == resource.data.get('favoriteTracks', [])
+        && request.resource.data.get('likedCollaboration', false) == resource.data.get('likedCollaboration', false)
+        && request.resource.data.get('favoritedCollaboration', false) == resource.data.get('favoritedCollaboration', false)
         && request.resource.data.get('finalVote', null) == resource.data.get('finalVote', null)
         && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null)
         && request.resource.data.get('hasSubmitted', false) == resource.data.get('hasSubmitted', false)

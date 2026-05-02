@@ -7,6 +7,7 @@ import { SmallLEDMeter } from './SmallLEDMeter';
 import { SubmissionEQ } from './SubmissionEQ';
 import { Potentiometer } from './Potentiometer';
 import { WeightedFader } from './WeightedFader';
+import type { SubmissionSettings } from '../types/collaboration';
 
 interface MixerProps {
   state: AudioState;
@@ -144,6 +145,17 @@ export function Mixer({ state }: MixerProps) {
     }
   }
 
+  let activeSubmissionSettings: SubmissionSettings | undefined;
+  if (hasActiveTrack) {
+    if (pastStagePlayback) {
+      activeSubmissionSettings = pastStageTracks[currentTrackIndex]?.submissionSettings;
+    } else if (isPlayingFavourite) {
+      activeSubmissionSettings = favorites[currentTrackIndex]?.submissionSettings;
+    } else {
+      activeSubmissionSettings = regularTracks[currentTrackIndex]?.submissionSettings;
+    }
+  }
+
   return (
     <section className="mixer-section" id="mixer">
       <div className="transport">
@@ -199,6 +211,9 @@ export function Mixer({ state }: MixerProps) {
           <div className="mixer1-meter" style={{ flexShrink: 0 }}>
             <SubmissionEQ
               muted={submissionMuted}
+              currentEq={state.eq}
+              trackKey={`${pastStagePlayback ? 'past' : isPlayingFavourite ? 'fav' : 'regular'}:${currentTrackIndex}:${state.player1.source ?? ''}`}
+              savedEq={activeSubmissionSettings?.eq}
               onMuteChange={(next) => {
                 if (!audioCtx?.engine) return;
                 setSubmissionMuted(next);

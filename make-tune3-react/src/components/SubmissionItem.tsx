@@ -11,13 +11,16 @@ interface SubmissionItemProps {
   isPlaying: boolean;
   isCurrentTrack: boolean;
   listened: boolean;
+  liked: boolean;
   favorite: boolean;
+  onToggleLike: (trackId: string) => void;
   onAddToFavorites: (trackId: string) => void;
   onPlay: (trackId: string, index: number, favorite: boolean) => void;
   voteFor: (trackId: string) => void;
   listenedRatio: number;
   isFinal: boolean;
   pendingFavoriteAction?: 'adding' | 'removing' | null;
+  pendingLikeAction?: 'adding' | 'removing' | null;
   isVoting?: boolean;
 }
 
@@ -27,13 +30,16 @@ export default function SubmissionItem({
   isPlaying,
   isCurrentTrack,
   listened,
+  liked,
   favorite,
+  onToggleLike,
   onAddToFavorites,
   onPlay,
   voteFor,
   listenedRatio,
   isFinal,
   pendingFavoriteAction = null,
+  pendingLikeAction = null,
   isVoting = false
 }: SubmissionItemProps) {
 
@@ -67,10 +73,14 @@ export default function SubmissionItem({
   const handleAddToFavorites = () => {
     onAddToFavorites(track.filePath);
   };
+  const handleToggleLike = () => {
+    onToggleLike(track.filePath);
+  };
 
   const isFavoritePending = pendingFavoriteAction === 'adding' || pendingFavoriteAction === 'removing';
+  const isLikePending = pendingLikeAction === 'adding' || pendingLikeAction === 'removing';
   const isVotePending = isVoting;
-  const isBusy = isFavoritePending || isVotePending;
+  const isBusy = isFavoritePending || isLikePending || isVotePending;
   const statusLabel = isVotePending ? 'Voting...' : null;
 
   if (!audioContext || !state) {
@@ -88,6 +98,8 @@ export default function SubmissionItem({
   const favoriteLabel = !user
     ? 'Login to add'
     : (listened ? 'Add to favorites' : `Listen to ${listenedRatio}% to add`);
+  const likeLabel = !user ? 'Like' : (liked ? 'Liked' : 'Like');
+  const favoriteIconLabel = favorite ? 'Favorited track' : favoriteLabel;
 
   return (
     <div className={containerClass}>
@@ -107,25 +119,38 @@ export default function SubmissionItem({
         </span>
       </button>
 
-      {favorite ? (
+      <div className="submission-actions">
         <button
-          className="vote-button"
-          onClick={() => voteFor(track.filePath)}
-          disabled={isFinal || isVotePending || isFavoritePending}
+          className={`like-button${liked ? ' liked' : ''}`}
+          onClick={handleToggleLike}
+          disabled={!user || isLikePending || isVotePending}
+          aria-label={likeLabel}
+          title={likeLabel}
         >
-          {isVotePending && <LoadingSpinner size={12} />}
-          {isFinal ? '✓ Voted' : (isVotePending ? 'Voting...' : 'Vote')}
+          {isLikePending ? <LoadingSpinner size={12} /> : '👍'}
         </button>
-      ) : (
-        <button
-          className="favorite-button"
-          onClick={handleAddToFavorites}
-          disabled={!listened || !user || isFavoritePending || isVotePending}
-        >
-          {pendingFavoriteAction === 'adding' && <LoadingSpinner size={12} />}
-          {favoriteLabel}
-        </button>
-      )}
+
+        {favorite ? (
+          <button
+            className="vote-button"
+            onClick={() => voteFor(track.filePath)}
+            disabled={isFinal || isVotePending || isFavoritePending}
+          >
+            {isVotePending && <LoadingSpinner size={12} />}
+            {isFinal ? '✓ Voted' : (isVotePending ? 'Voting...' : 'Vote')}
+          </button>
+        ) : (
+          <button
+            className={`favorite-button${favorite ? ' favorited' : ''}`}
+            onClick={handleAddToFavorites}
+            disabled={!listened || !user || isFavoritePending || isVotePending}
+            aria-label={favoriteIconLabel}
+            title={favoriteLabel}
+          >
+            {pendingFavoriteAction === 'adding' ? <LoadingSpinner size={12} /> : '♥'}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

@@ -3,6 +3,17 @@ import { db } from './firebaseDb';
 import type { UserProfile, UserCollaboration, UserId, CollaborationId, ResourceDocType } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 
+const normalizeUserCollaboration = (data: Record<string, any>): UserCollaboration => ({
+  ...data,
+  listenedTracks: Array.isArray(data.listenedTracks) ? data.listenedTracks : [],
+  likedTracks: Array.isArray(data.likedTracks) ? data.likedTracks : [],
+  favoriteTracks: Array.isArray(data.favoriteTracks) ? data.favoriteTracks : [],
+  likedCollaboration: Boolean(data.likedCollaboration),
+  favoritedCollaboration: Boolean(data.favoritedCollaboration),
+  finalVote: typeof data.finalVote === 'string' ? data.finalVote : null,
+  listenedRatio: typeof data.listenedRatio === 'number' ? data.listenedRatio : 0
+}) as UserCollaboration;
+
 export class UserService {
   static async getUserProfile(userId: UserId): Promise<UserProfile | null> {
     const docRef = doc(db, COLLECTIONS.USERS, userId);
@@ -53,7 +64,7 @@ export class UserService {
     }
     
     const docSnap = querySnapshot.docs[0];
-    return { ...docSnap.data() } as UserCollaboration;
+    return normalizeUserCollaboration(docSnap.data() as Record<string, any>);
   }
 
   static async updateUserCollaboration(

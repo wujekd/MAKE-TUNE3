@@ -5,6 +5,7 @@ import { TagUtils } from '../utils/tagUtils';
 import { UserActivityPanel } from '../components/UserActivityPanel';
 import { DashboardHeader } from '../components/DashboardHeader';
 import { CollaborationsPanel } from '../components/CollaborationsPanel';
+import { AudioRouteBoundary } from '../components/AudioRouteBoundary';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useAudioStore } from '../stores';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
@@ -33,12 +34,46 @@ export function DashboardView() {
   const [error, setError] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const audioState = useAudioStore(s => s.state);
+  const isAudioReady = useAudioStore(s => Boolean(s.engine && s.state));
+  const authLoading = useAppStore(state => state.auth.loading);
   const stopBackingPlayback = usePlaybackStore(s => s.stopBackingPlayback);
 
-  const prefetchedUrls = useCollabBackingsPrefetch(filteredCollabs);
-  usePrefetchAudio(prefetchedUrls[0]);
-  usePrefetchAudio(prefetchedUrls[1]);
-  usePrefetchAudio(prefetchedUrls[2]);
+  const [prefetchEnabled, setPrefetchEnabled] = useState(false);
+
+  const connection = typeof navigator !== 'undefined'
+    ? (navigator as Navigator & {
+        connection?: { effectiveType?: string; saveData?: boolean };
+      }).connection
+    : undefined;
+  const effectiveType = connection?.effectiveType ?? '';
+  const saveData = connection?.saveData === true;
+  const prefetchLimit = saveData ? 0 : effectiveType === '3g' ? 1 : 3;
+
+  useEffect(() => {
+    if (!hasLoaded || authLoading || !isAudioReady || prefetchLimit <= 0) {
+      setPrefetchEnabled(false);
+      return;
+    }
+
+    let cancelled = false;
+    const enablePrefetch = () => {
+      if (!cancelled) {
+        setPrefetchEnabled(true);
+      }
+    };
+
+    const timeoutId = window.setTimeout(enablePrefetch, effectiveType === '4g' ? 1200 : 2000);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [authLoading, effectiveType, hasLoaded, isAudioReady, prefetchLimit]);
+
+  const prefetchedUrls = useCollabBackingsPrefetch(filteredCollabs, prefetchLimit, prefetchEnabled);
+  usePrefetchAudio(prefetchedUrls[0], { enabled: prefetchEnabled });
+  usePrefetchAudio(prefetchedUrls[1], { enabled: prefetchEnabled });
+  usePrefetchAudio(prefetchedUrls[2], { enabled: prefetchEnabled });
 
   useEffect(() => {
     useAppStore.setState(state => ({
@@ -177,9 +212,16 @@ export function DashboardView() {
           />
         </div>
         <div className={`mixer-theme ${styles.mixerColumn}`}>
-          <Suspense fallback={<MixerPlaceholder />}>
-            <Mixer1Channel state={audioState} />
-          </Suspense>
+          <AudioRouteBoundary defer deferMs={200}>
+            {null}
+          </AudioRouteBoundary>
+          {audioState ? (
+            <Suspense fallback={<MixerPlaceholder />}>
+              <Mixer1Channel state={audioState} />
+            </Suspense>
+          ) : (
+            <MixerPlaceholder />
+          )}
         </div>
       </div>
     </div>

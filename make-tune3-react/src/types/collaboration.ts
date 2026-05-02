@@ -158,7 +158,10 @@ export interface UserCollaboration {
   userId: string;
   collaborationId: string;
   listenedTracks: string[]; // file paths
+  likedTracks?: string[]; // file paths
   favoriteTracks: string[]; // file paths
+  likedCollaboration?: boolean;
+  favoritedCollaboration?: boolean;
   finalVote: string | null; // file path
   listenedRatio: number;
   hasSubmitted?: boolean;

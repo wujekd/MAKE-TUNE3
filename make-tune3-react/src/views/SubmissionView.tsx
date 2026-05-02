@@ -15,16 +15,32 @@ import { UploadSubmission } from '../components/UploadSubmission';
 import { resolveStorageDownloadUrl } from '../services/storageService';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
+import { useCollaborationLoader } from '../hooks/useCollaborationLoader';
+import { useStageRedirect } from '../hooks/useStageRedirect';
 import '../components/Favorites.css';
 import styles from './SubmissionView.module.css';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { MissingCollaborationState } from '../components/MissingCollaborationState';
+import { CollaborationPreferenceBar } from '../components/CollaborationPreferenceBar';
 
 export function SubmissionView() {
   const audioContext = useContext(AudioEngineContext);
   const { user, loading: authLoading } = useAppStore(s => s.auth);
   const userId = user?.uid ?? null;
-  const { currentCollaboration, refreshCollaborationStatus } = useAppStore(s => s.collaboration);
+  const {
+    currentCollaboration,
+    userCollaboration,
+    refreshCollaborationStatus,
+    likeCollaboration,
+    unlikeCollaboration,
+    favoriteCollaboration,
+    unfavoriteCollaboration,
+    isUpdatingCollaborationLike,
+    isUpdatingCollaborationFavorite
+  } = useAppStore(s => s.collaboration);
   const { collaborationId } = useParams();
+  const loader = useCollaborationLoader(collaborationId);
+  const requestedCollaboration = currentCollaboration?.id === collaborationId ? currentCollaboration : null;
 
   const [backingUrl, setBackingUrl] = useState<string>('');
   const pendingBackingUrlRef = useRef<string>('');
@@ -34,15 +50,22 @@ export function SubmissionView() {
   const [status, setStatus] = useState<'loading' | 'ready' | 'downloaded' | 'submitted'>('loading');
   const [resolvedStatusKey, setResolvedStatusKey] = useState<string | null>(null);
   const navigate = useNavigate();
-  const timelineStatus = (currentCollaboration && currentCollaboration.id === collaborationId) ? currentCollaboration.status : 'submission';
+  const timelineStatus = requestedCollaboration?.status ?? 'submission';
 
-  const effectiveSubmissionLimit = typeof currentCollaboration?.effectiveSubmissionLimit === 'number'
-    ? currentCollaboration.effectiveSubmissionLimit
+  const effectiveSubmissionLimit = typeof requestedCollaboration?.effectiveSubmissionLimit === 'number'
+    ? requestedCollaboration.effectiveSubmissionLimit
     : null;
-  const submissionsUsed = typeof currentCollaboration?.submissionsUsedCount === 'number'
-    ? currentCollaboration.submissionsUsedCount
-    : (typeof currentCollaboration?.submissionsCount === 'number' ? currentCollaboration.submissionsCount : 0);
+  const submissionsUsed = typeof requestedCollaboration?.submissionsUsedCount === 'number'
+    ? requestedCollaboration.submissionsUsedCount
+    : (typeof requestedCollaboration?.submissionsCount === 'number' ? requestedCollaboration.submissionsCount : 0);
   const limitReached = effectiveSubmissionLimit !== null && submissionsUsed >= effectiveSubmissionLimit;
+
+  useStageRedirect({
+    expected: 'submission',
+    collaboration: requestedCollaboration,
+    collabId: collaborationId,
+    navigate
+  });
 
   usePrefetchAudio(backingUrl);
 
@@ -55,7 +78,7 @@ export function SubmissionView() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const path = currentCollaboration?.backingTrackPath || '';
+      const path = requestedCollaboration?.backingTrackPath || '';
       if (!path) { if (!cancelled) setBackingUrl(''); return; }
       try {
         if (!path.startsWith('collabs/')) { if (!cancelled) setBackingUrl(path); return; }
@@ -66,7 +89,7 @@ export function SubmissionView() {
       }
     })();
     return () => { cancelled = true; };
-  }, [currentCollaboration?.backingTrackPath]);
+  }, [requestedCollaboration?.backingTrackPath]);
 
   useEffect(() => {
     const engine = audioContext?.engine;
@@ -85,24 +108,9 @@ export function SubmissionView() {
   }, [audioContext?.engine]);
 
   useEffect(() => {
-    if (!collaborationId) return;
+    if (!collaborationId || requestedCollaboration?.id !== collaborationId) return;
     refreshCollaborationStatus(collaborationId);
-  }, [collaborationId, refreshCollaborationStatus]);
-
-  // Redirect if collaboration is in wrong stage
-  useEffect(() => {
-    if (!currentCollaboration || !collaborationId) return;
-
-    const collabStatus = currentCollaboration.status;
-
-    if (collabStatus === 'voting') {
-      console.log('[SubmissionView] Collaboration is in voting stage, redirecting...');
-      navigate(`/collab/${collaborationId}`, { replace: true });
-    } else if (collabStatus === 'completed') {
-      console.log('[SubmissionView] Collaboration is in completed stage, redirecting...');
-      navigate(`/collab/${collaborationId}/completed`, { replace: true });
-    }
-  }, [currentCollaboration, collaborationId, navigate]);
+  }, [collaborationId, requestedCollaboration?.id, refreshCollaborationStatus]);
 
   const handleStageChange = useCallback(async (nextStatus: 'voting' | 'completed') => {
     if (stageCheckInFlightRef.current) {
@@ -133,12 +141,12 @@ export function SubmissionView() {
 
   useEffect(() => {
     (async () => {
-      if (!currentCollaboration?.projectId) {
+      if (!requestedCollaboration?.projectId) {
         setProjectInfo(null);
         return;
       }
       try {
-        const project = await ProjectService.getProject(currentCollaboration.projectId);
+        const project = await ProjectService.getProject(requestedCollaboration.projectId);
         if (project) {
           setProjectInfo({ name: project.name, description: project.description });
         }
@@ -146,13 +154,13 @@ export function SubmissionView() {
         setProjectInfo(null);
       }
     })();
-  }, [currentCollaboration?.projectId]);
+  }, [requestedCollaboration?.projectId]);
 
   useEffect(() => {
     (async () => {
       setStatus('loading');
       setResolvedStatusKey(null);
-      if (!collaborationId || currentCollaboration?.id !== collaborationId) {
+      if (!collaborationId || requestedCollaboration?.id !== collaborationId) {
         return;
       }
       if (authLoading) {
@@ -165,8 +173,8 @@ export function SubmissionView() {
       }
       try {
         const [downloaded, submitted] = await Promise.all([
-          UserService.hasDownloadedBacking(userId, currentCollaboration.id),
-          SubmissionService.hasUserSubmitted(currentCollaboration.id, userId)
+          UserService.hasDownloadedBacking(userId, requestedCollaboration.id),
+          SubmissionService.hasUserSubmitted(requestedCollaboration.id, userId)
         ]);
         if (submitted) {
           setStatus('submitted');
@@ -182,7 +190,7 @@ export function SubmissionView() {
         setResolvedStatusKey(`${userId ?? 'anon'}:${collaborationId}`);
       }
     })();
-  }, [userId, currentCollaboration?.id, collaborationId, authLoading]);
+  }, [userId, requestedCollaboration?.id, collaborationId, authLoading]);
 
   useEffect(() => {
     if (status !== 'submitted') return;
@@ -196,11 +204,37 @@ export function SubmissionView() {
     };
   }, [audioContext?.engine]);
 
+  if (loader.status === 'not_found') {
+    return <MissingCollaborationState collaborationId={collaborationId} viewLabel="submission view" />;
+  }
+
   if (!audioContext) return <div>audio engine not available</div>;
 
-  const isCollabReady = Boolean(collaborationId && currentCollaboration?.id === collaborationId);
+  const isCollabReady = Boolean(collaborationId && requestedCollaboration?.id === collaborationId);
   const statusKey = `${user?.uid ?? 'anon'}:${collaborationId ?? 'none'}`;
   const isStatusResolved = isCollabReady && !authLoading && resolvedStatusKey === statusKey;
+
+  if (loader.status === 'loading' || !isCollabReady) {
+    return (
+      <div className={`view-container ${styles.container}`}>
+        <div className={styles.content}>
+          <div className={styles.submissionsSection}>
+            <div className={styles.submissionPaneWrapper}>
+              <div className={styles.submissionPane}>
+                <div className={styles.loadingSpinnerWrap}>
+                  <LoadingSpinner size={32} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className={`mixer-theme ${styles.mixerSection}`}>
+            {state && <Mixer state={state} />}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const renderPane = () => {
     if (!isStatusResolved || status === 'loading') {
@@ -239,14 +273,14 @@ export function SubmissionView() {
       );
     }
 
-    if (status === 'ready' && user && currentCollaboration?.backingTrackPath) {
+    if (status === 'ready' && user && requestedCollaboration?.backingTrackPath) {
       return (
         <DownloadBacking
           userId={user.uid}
-          collaborationId={currentCollaboration.id}
-          backingPath={currentCollaboration.backingTrackPath}
-          pdfPath={currentCollaboration.pdfPath}
-          resourcesZipPath={currentCollaboration.resourcesZipPath}
+          collaborationId={requestedCollaboration.id}
+          backingPath={requestedCollaboration.backingTrackPath}
+          pdfPath={requestedCollaboration.pdfPath}
+          resourcesZipPath={requestedCollaboration.resourcesZipPath}
           onDownloaded={() => setStatus('downloaded')}
         />
       );
@@ -287,13 +321,34 @@ export function SubmissionView() {
               )}
             </div>
           )}
-          <h2 className={styles.collabTitle}>{currentCollaboration?.name || 'Submission'}</h2>
+          <h2 className={styles.collabTitle}>{requestedCollaboration?.name || 'Submission'}</h2>
+          <CollaborationPreferenceBar
+            disabled={!user}
+            liked={Boolean(userCollaboration?.likedCollaboration)}
+            favorited={Boolean(userCollaboration?.favoritedCollaboration)}
+            isUpdatingLike={isUpdatingCollaborationLike}
+            isUpdatingFavorite={isUpdatingCollaborationFavorite}
+            onToggleLike={() => {
+              if (userCollaboration?.likedCollaboration) {
+                unlikeCollaboration();
+              } else {
+                likeCollaboration();
+              }
+            }}
+            onToggleFavorite={() => {
+              if (userCollaboration?.favoritedCollaboration) {
+                unfavoriteCollaboration();
+              } else {
+                favoriteCollaboration();
+              }
+            }}
+          />
         </div>
         <div className={styles.headerRight}>
           <ProjectHistory />
-          <CollabData collab={currentCollaboration as any} />
+          <CollabData collab={requestedCollaboration as any} />
           <CollabHeader
-            collaboration={currentCollaboration}
+            collaboration={requestedCollaboration}
             onStageChange={handleStageChange}
             displayStatus={timelineStatus}
           />

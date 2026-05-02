@@ -1,9 +1,10 @@
-import { Suspense, lazy, useEffect } from 'react';
+import { Suspense, lazy, useEffect, useMemo } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { DashboardView } from './views/DashboardView'
 import { useAppStore } from './stores/appStore'
 import { useUIStore } from './stores'
 import { AppShell } from './components/AppShell';
+import { AudioRouteBoundary } from './components/AudioRouteBoundary';
 import { AdminRoute } from './components/AdminRoute';
 import { UsernameOnboarding } from './views/UsernameOnboarding';
 import { AccessDeniedView } from './views/AccessDeniedView';
@@ -126,7 +127,7 @@ function App() {
     };
   }, []);
 
-  const router = createBrowserRouter([
+  const router = useMemo(() => createBrowserRouter([
     {
       element: <AppShell />,
       errorElement: <RootErrorView />,
@@ -145,9 +146,11 @@ function App() {
         {
           path: 'project/:projectId',
           element: (
-            <LazyRoute>
-              <ProjectEditView />
-            </LazyRoute>
+            <AudioRouteBoundary defer>
+              <LazyRoute>
+                <ProjectEditView />
+              </LazyRoute>
+            </AudioRouteBoundary>
           ),
           handle: {
             title: 'Project',
@@ -190,9 +193,11 @@ function App() {
         {
           path: 'collab/:collaborationId',
           element: (
-            <LazyRoute>
-              <VotingView key={user?.uid || 'anonymous'} />
-            </LazyRoute>
+            <AudioRouteBoundary fallback={<RouteLoadingFallback />}>
+              <LazyRoute>
+                <VotingView key={user?.uid || 'anonymous'} />
+              </LazyRoute>
+            </AudioRouteBoundary>
           ),
           handle: {
             title: 'Voting',
@@ -206,9 +211,11 @@ function App() {
         {
           path: 'collab/:collaborationId/moderate',
           element: (
-            <Suspense fallback={<RouteLoadingFallback />}>
-              <ModerationView />
-            </Suspense>
+            <AudioRouteBoundary fallback={<RouteLoadingFallback />}>
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <ModerationView />
+              </Suspense>
+            </AudioRouteBoundary>
           ),
           handle: {
             title: 'Moderation',
@@ -219,9 +226,11 @@ function App() {
         {
           path: 'collab/:collaborationId/completed',
           element: (
-            <LazyRoute>
-              <CompletedView />
-            </LazyRoute>
+            <AudioRouteBoundary fallback={<RouteLoadingFallback />}>
+              <LazyRoute>
+                <CompletedView />
+              </LazyRoute>
+            </AudioRouteBoundary>
           ),
           handle: {
             title: 'Completed',
@@ -235,9 +244,11 @@ function App() {
         {
           path: 'collab/:collaborationId/submit',
           element: (
-            <LazyRoute>
-              <SubmissionView />
-            </LazyRoute>
+            <AudioRouteBoundary fallback={<RouteLoadingFallback />}>
+              <LazyRoute>
+                <SubmissionView />
+              </LazyRoute>
+            </AudioRouteBoundary>
           ),
           handle: {
             title: 'Submit',
@@ -344,7 +355,7 @@ function App() {
         </LazyRoute>
       )
     }
-  ]);
+  ]), [user?.uid]);
 
   return <RouterProvider router={router} />;
 }

@@ -25,6 +25,7 @@ const storageAdmin = getStorage();
 const HISTORY_LIMIT = 100;
 const DEFAULT_WINNER_NAME = "no name";
 const ACTIVE_COLLAB_STATUSES = new Set(["submission", "voting"]);
+const COLLAB_REACTION_STATUSES = new Set(["published", "submission", "voting", "completed"]);
 const PROJECT_DELETION_HISTORY_COLLECTION = "projectDeletionHistory";
 
 const BAD = ["foo", "bar"];
@@ -131,6 +132,59 @@ const findSubmissionByPath = (detailData: any, filePath: string) => {
   return submissions.find(
     (entry) => entry?.path === filePath || entry?.optimizedPath === filePath
   ) || null;
+};
+
+const normalizeStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+const buildUserCollaborationPayload = (
+  uid: string,
+  collaborationId: string,
+  now: Timestamp,
+  currentData?: any
+) => {
+  const base: Record<string, any> = {
+    userId: uid,
+    collaborationId,
+    listenedTracks: normalizeStringArray(currentData?.listenedTracks),
+    likedTracks: normalizeStringArray(currentData?.likedTracks),
+    favoriteTracks: normalizeStringArray(currentData?.favoriteTracks),
+    listenedRatio: toNumber(currentData?.listenedRatio, 0),
+    likedCollaboration: Boolean(currentData?.likedCollaboration),
+    favoritedCollaboration: Boolean(currentData?.favoritedCollaboration),
+    finalVote: typeof currentData?.finalVote === "string" && currentData.finalVote.trim()
+      ? currentData.finalVote
+      : null,
+    createdAt: currentData?.createdAt ?? now,
+    lastInteraction: now
+  };
+  if (typeof currentData?.hasSubmitted === "boolean") {
+    base.hasSubmitted = currentData.hasSubmitted;
+  }
+  return base;
+};
+
+const getUserCollaborationTx = async (
+  tx: FirebaseFirestore.Transaction,
+  uid: string,
+  collaborationId: string
+) => {
+  const userCollabQuery = db
+    .collection("userCollaborations")
+    .where("userId", "==", uid)
+    .where("collaborationId", "==", collaborationId)
+    .limit(1);
+  const userCollabSnap = await tx.get(userCollabQuery);
+  const userCollabRef = userCollabSnap.empty
+    ? db.collection("userCollaborations").doc()
+    : userCollabSnap.docs[0].ref;
+  const userCollabData = userCollabSnap.empty ? null : userCollabSnap.docs[0].data();
+  return { userCollabSnap, userCollabRef, userCollabData };
 };
 
 const getEffectiveSubmissionLimit = (collabData: any, settings: SystemSettings) => {
@@ -1589,56 +1643,24 @@ export const addFavoriteTrack = onCall(async (request) => {
       throw new HttpsError("failed-precondition", "submission not approved");
     }
 
-    const userCollabQuery = db
-      .collection("userCollaborations")
-      .where("userId", "==", uid)
-      .where("collaborationId", "==", collaborationIdRaw)
-      .limit(1);
-    const userCollabSnap = await tx.get(userCollabQuery);
-    const userCollabRef = userCollabSnap.empty
-      ? db.collection("userCollaborations").doc()
-      : userCollabSnap.docs[0].ref;
-    const userCollabData = userCollabSnap.empty ? null : userCollabSnap.docs[0].data();
+    const { userCollabData, userCollabRef } = await getUserCollaborationTx(
+      tx,
+      uid,
+      collaborationIdRaw
+    );
+    const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
 
-    const favorites = Array.isArray(userCollabData?.favoriteTracks)
-      ? [...userCollabData.favoriteTracks]
-      : [];
+    const favorites = [...nextUserCollab.favoriteTracks];
     if (favorites.includes(filePath)) {
-      if (userCollabSnap.empty) {
-        tx.set(userCollabRef, {
-          userId: uid,
-          collaborationId: collaborationIdRaw,
-          favoriteTracks: favorites,
-          listenedTracks: [],
-          listenedRatio: 0,
-          finalVote: null,
-          createdAt: now,
-          lastInteraction: now
-        });
-      } else {
-        tx.update(userCollabRef, { lastInteraction: now });
-      }
+      tx.set(userCollabRef, nextUserCollab, { merge: true });
       return { updated: false };
     }
 
     favorites.push(filePath);
-    if (userCollabSnap.empty) {
-      tx.set(userCollabRef, {
-        userId: uid,
-        collaborationId: collaborationIdRaw,
-        favoriteTracks: favorites,
-        listenedTracks: [],
-        listenedRatio: 0,
-        finalVote: null,
-        createdAt: now,
-        lastInteraction: now
-      });
-    } else {
-      tx.update(userCollabRef, {
-        favoriteTracks: favorites,
-        lastInteraction: now
-      });
-    }
+    tx.set(userCollabRef, {
+      ...nextUserCollab,
+      favoriteTracks: favorites
+    }, { merge: true });
 
     const favoritesCount = toNumber(collabData.favoritesCount, 0);
     tx.update(collabRef, { favoritesCount: favoritesCount + 1, updatedAt: now });
@@ -1696,31 +1718,27 @@ export const removeFavoriteTrack = onCall(async (request) => {
       throw new HttpsError("failed-precondition", "submission not approved");
     }
 
-    const userCollabQuery = db
-      .collection("userCollaborations")
-      .where("userId", "==", uid)
-      .where("collaborationId", "==", collaborationIdRaw)
-      .limit(1);
-    const userCollabSnap = await tx.get(userCollabQuery);
+    const { userCollabSnap, userCollabRef, userCollabData } = await getUserCollaborationTx(
+      tx,
+      uid,
+      collaborationIdRaw
+    );
     if (userCollabSnap.empty) {
       return { updated: false };
     }
-    const userCollabRef = userCollabSnap.docs[0].ref;
-    const userCollabData = userCollabSnap.docs[0].data();
+    const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
 
-    const favorites = Array.isArray(userCollabData?.favoriteTracks)
-      ? [...userCollabData.favoriteTracks]
-      : [];
+    const favorites = [...nextUserCollab.favoriteTracks];
     if (!favorites.includes(filePath)) {
       tx.update(userCollabRef, { lastInteraction: now });
       return { updated: false };
     }
 
     const updatedFavorites = favorites.filter((path) => path !== filePath);
-    tx.update(userCollabRef, {
-      favoriteTracks: updatedFavorites,
-      lastInteraction: now
-    });
+    tx.set(userCollabRef, {
+      ...nextUserCollab,
+      favoriteTracks: updatedFavorites
+    }, { merge: true });
 
     const favoritesCount = toNumber(collabData.favoritesCount, 0);
     tx.update(collabRef, {
@@ -1728,6 +1746,150 @@ export const removeFavoriteTrack = onCall(async (request) => {
       updatedAt: now
     });
     return { updated: true, favoritesCount: Math.max(0, favoritesCount - 1) };
+  });
+});
+
+export const likeTrack = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+
+  await checkUserNotSuspended(uid);
+
+  const collaborationIdRaw = String(request.data?.collaborationId || "").trim();
+  const filePath = String(request.data?.filePath || "").trim();
+  if (!collaborationIdRaw || !filePath) {
+    throw new HttpsError("invalid-argument", "collaborationId and filePath required");
+  }
+
+  const settings = await getSystemSettings();
+  if (!settings.votingEnabled) {
+    throw new HttpsError("failed-precondition", "Voting is currently disabled");
+  }
+
+  return db.runTransaction(async (tx) => {
+    const now = Timestamp.now();
+    const collabRef = db.collection("collaborations").doc(collaborationIdRaw);
+    const detailRef = db.collection("collaborationDetails").doc(collaborationIdRaw);
+
+    const [collabSnap, detailSnap] = await Promise.all([
+      tx.get(collabRef),
+      tx.get(detailRef)
+    ]);
+
+    if (!collabSnap.exists) {
+      throw new HttpsError("not-found", "collaboration not found");
+    }
+    const collabData = collabSnap.data() as any;
+    const status = String(collabData.status || "");
+    if (!ACTIVE_COLLAB_STATUSES.has(status)) {
+      throw new HttpsError("failed-precondition", "collaboration not active");
+    }
+    if (status === "voting") {
+      const votingCloseMillis = toMillis(collabData.votingCloseAt);
+      if (votingCloseMillis !== null && votingCloseMillis <= now.toMillis()) {
+        throw new HttpsError("failed-precondition", "voting closed");
+      }
+    }
+
+    const submissionEntry = findSubmissionByPath(detailSnap.exists ? detailSnap.data() : null, filePath);
+    if (!submissionEntry) {
+      throw new HttpsError("not-found", "submission not found");
+    }
+    if (collabData.requiresModeration && submissionEntry.moderationStatus !== "approved") {
+      throw new HttpsError("failed-precondition", "submission not approved");
+    }
+
+    const { userCollabData, userCollabRef } = await getUserCollaborationTx(
+      tx,
+      uid,
+      collaborationIdRaw
+    );
+    const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
+    const likedTracks = [...nextUserCollab.likedTracks];
+    if (likedTracks.includes(filePath)) {
+      tx.set(userCollabRef, nextUserCollab, { merge: true });
+      return { updated: false };
+    }
+
+    likedTracks.push(filePath);
+    tx.set(userCollabRef, {
+      ...nextUserCollab,
+      likedTracks
+    }, { merge: true });
+    return { updated: true };
+  });
+});
+
+export const unlikeTrack = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+
+  await checkUserNotSuspended(uid);
+
+  const collaborationIdRaw = String(request.data?.collaborationId || "").trim();
+  const filePath = String(request.data?.filePath || "").trim();
+  if (!collaborationIdRaw || !filePath) {
+    throw new HttpsError("invalid-argument", "collaborationId and filePath required");
+  }
+
+  const settings = await getSystemSettings();
+  if (!settings.votingEnabled) {
+    throw new HttpsError("failed-precondition", "Voting is currently disabled");
+  }
+
+  return db.runTransaction(async (tx) => {
+    const now = Timestamp.now();
+    const collabRef = db.collection("collaborations").doc(collaborationIdRaw);
+    const detailRef = db.collection("collaborationDetails").doc(collaborationIdRaw);
+
+    const [collabSnap, detailSnap] = await Promise.all([
+      tx.get(collabRef),
+      tx.get(detailRef)
+    ]);
+
+    if (!collabSnap.exists) {
+      throw new HttpsError("not-found", "collaboration not found");
+    }
+    const collabData = collabSnap.data() as any;
+    const status = String(collabData.status || "");
+    if (!ACTIVE_COLLAB_STATUSES.has(status)) {
+      throw new HttpsError("failed-precondition", "collaboration not active");
+    }
+    if (status === "voting") {
+      const votingCloseMillis = toMillis(collabData.votingCloseAt);
+      if (votingCloseMillis !== null && votingCloseMillis <= now.toMillis()) {
+        throw new HttpsError("failed-precondition", "voting closed");
+      }
+    }
+
+    const submissionEntry = findSubmissionByPath(detailSnap.exists ? detailSnap.data() : null, filePath);
+    if (!submissionEntry) {
+      throw new HttpsError("not-found", "submission not found");
+    }
+    if (collabData.requiresModeration && submissionEntry.moderationStatus !== "approved") {
+      throw new HttpsError("failed-precondition", "submission not approved");
+    }
+
+    const { userCollabSnap, userCollabData, userCollabRef } = await getUserCollaborationTx(
+      tx,
+      uid,
+      collaborationIdRaw
+    );
+    if (userCollabSnap.empty) {
+      return { updated: false };
+    }
+
+    const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
+    if (!nextUserCollab.likedTracks.includes(filePath)) {
+      tx.update(userCollabRef, { lastInteraction: now });
+      return { updated: false };
+    }
+
+    tx.set(userCollabRef, {
+      ...nextUserCollab,
+      likedTracks: nextUserCollab.likedTracks.filter((path: string) => path !== filePath)
+    }, { merge: true });
+    return { updated: true };
   });
 });
 
@@ -1779,54 +1941,27 @@ export const voteForTrack = onCall(async (request) => {
       throw new HttpsError("failed-precondition", "submission not approved");
     }
 
-    const userCollabQuery = db
-      .collection("userCollaborations")
-      .where("userId", "==", uid)
-      .where("collaborationId", "==", collaborationIdRaw)
-      .limit(1);
-    const userCollabSnap = await tx.get(userCollabQuery);
-    const userCollabRef = userCollabSnap.empty
-      ? db.collection("userCollaborations").doc()
-      : userCollabSnap.docs[0].ref;
-    const userCollabData = userCollabSnap.empty ? null : userCollabSnap.docs[0].data();
+    const { userCollabData, userCollabRef } = await getUserCollaborationTx(
+      tx,
+      uid,
+      collaborationIdRaw
+    );
+    const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
 
-    const currentVote = String(userCollabData?.finalVote || "");
+    const currentVote = String(nextUserCollab.finalVote || "");
     if (currentVote === filePath) {
-      if (userCollabSnap.empty) {
-        tx.set(userCollabRef, {
-          userId: uid,
-          collaborationId: collaborationIdRaw,
-          favoriteTracks: [],
-          listenedTracks: [],
-          listenedRatio: 0,
-          finalVote: filePath,
-          createdAt: now,
-          lastInteraction: now
-        });
-      } else {
-        tx.update(userCollabRef, { lastInteraction: now });
-      }
+      tx.set(userCollabRef, {
+        ...nextUserCollab,
+        finalVote: filePath
+      }, { merge: true });
       return { updated: false };
     }
 
     const isFirstVote = !currentVote;
-    if (userCollabSnap.empty) {
-      tx.set(userCollabRef, {
-        userId: uid,
-        collaborationId: collaborationIdRaw,
-        favoriteTracks: [],
-        listenedTracks: [],
-        listenedRatio: 0,
-        finalVote: filePath,
-        createdAt: now,
-        lastInteraction: now
-      });
-    } else {
-      tx.update(userCollabRef, {
-        finalVote: filePath,
-        lastInteraction: now
-      });
-    }
+    tx.set(userCollabRef, {
+      ...nextUserCollab,
+      finalVote: filePath
+    }, { merge: true });
 
     if (isFirstVote) {
       const votesCount = toNumber(collabData.votesCount, 0);
@@ -1835,6 +1970,190 @@ export const voteForTrack = onCall(async (request) => {
     }
 
     return { updated: true, votesCount: toNumber(collabData.votesCount, 0) };
+  });
+});
+
+export const likeCollaboration = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+
+  await checkUserNotSuspended(uid);
+
+  const collaborationIdRaw = String(request.data?.collaborationId || "").trim();
+  if (!collaborationIdRaw) {
+    throw new HttpsError("invalid-argument", "collaborationId required");
+  }
+
+  return db.runTransaction(async (tx) => {
+    const now = Timestamp.now();
+    const collabRef = db.collection("collaborations").doc(collaborationIdRaw);
+    const collabSnap = await tx.get(collabRef);
+    if (!collabSnap.exists) {
+      throw new HttpsError("not-found", "collaboration not found");
+    }
+
+    const collabData = collabSnap.data() as any;
+    const status = String(collabData.status || "");
+    if (!COLLAB_REACTION_STATUSES.has(status)) {
+      throw new HttpsError("failed-precondition", "collaboration not available");
+    }
+
+    const { userCollabData, userCollabRef } = await getUserCollaborationTx(
+      tx,
+      uid,
+      collaborationIdRaw
+    );
+    const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
+    if (nextUserCollab.likedCollaboration) {
+      tx.set(userCollabRef, nextUserCollab, { merge: true });
+      return { updated: false };
+    }
+
+    tx.set(userCollabRef, {
+      ...nextUserCollab,
+      likedCollaboration: true
+    }, { merge: true });
+    return { updated: true };
+  });
+});
+
+export const unlikeCollaboration = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+
+  await checkUserNotSuspended(uid);
+
+  const collaborationIdRaw = String(request.data?.collaborationId || "").trim();
+  if (!collaborationIdRaw) {
+    throw new HttpsError("invalid-argument", "collaborationId required");
+  }
+
+  return db.runTransaction(async (tx) => {
+    const now = Timestamp.now();
+    const collabRef = db.collection("collaborations").doc(collaborationIdRaw);
+    const collabSnap = await tx.get(collabRef);
+    if (!collabSnap.exists) {
+      throw new HttpsError("not-found", "collaboration not found");
+    }
+
+    const collabData = collabSnap.data() as any;
+    const status = String(collabData.status || "");
+    if (!COLLAB_REACTION_STATUSES.has(status)) {
+      throw new HttpsError("failed-precondition", "collaboration not available");
+    }
+
+    const { userCollabSnap, userCollabData, userCollabRef } = await getUserCollaborationTx(
+      tx,
+      uid,
+      collaborationIdRaw
+    );
+    if (userCollabSnap.empty) {
+      return { updated: false };
+    }
+
+    const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
+    if (!nextUserCollab.likedCollaboration) {
+      tx.update(userCollabRef, { lastInteraction: now });
+      return { updated: false };
+    }
+
+    tx.set(userCollabRef, {
+      ...nextUserCollab,
+      likedCollaboration: false
+    }, { merge: true });
+    return { updated: true };
+  });
+});
+
+export const favoriteCollaboration = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+
+  await checkUserNotSuspended(uid);
+
+  const collaborationIdRaw = String(request.data?.collaborationId || "").trim();
+  if (!collaborationIdRaw) {
+    throw new HttpsError("invalid-argument", "collaborationId required");
+  }
+
+  return db.runTransaction(async (tx) => {
+    const now = Timestamp.now();
+    const collabRef = db.collection("collaborations").doc(collaborationIdRaw);
+    const collabSnap = await tx.get(collabRef);
+    if (!collabSnap.exists) {
+      throw new HttpsError("not-found", "collaboration not found");
+    }
+
+    const collabData = collabSnap.data() as any;
+    const status = String(collabData.status || "");
+    if (!COLLAB_REACTION_STATUSES.has(status)) {
+      throw new HttpsError("failed-precondition", "collaboration not available");
+    }
+
+    const { userCollabData, userCollabRef } = await getUserCollaborationTx(
+      tx,
+      uid,
+      collaborationIdRaw
+    );
+    const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
+    if (nextUserCollab.favoritedCollaboration) {
+      tx.set(userCollabRef, nextUserCollab, { merge: true });
+      return { updated: false };
+    }
+
+    tx.set(userCollabRef, {
+      ...nextUserCollab,
+      favoritedCollaboration: true
+    }, { merge: true });
+    return { updated: true };
+  });
+});
+
+export const unfavoriteCollaboration = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+
+  await checkUserNotSuspended(uid);
+
+  const collaborationIdRaw = String(request.data?.collaborationId || "").trim();
+  if (!collaborationIdRaw) {
+    throw new HttpsError("invalid-argument", "collaborationId required");
+  }
+
+  return db.runTransaction(async (tx) => {
+    const now = Timestamp.now();
+    const collabRef = db.collection("collaborations").doc(collaborationIdRaw);
+    const collabSnap = await tx.get(collabRef);
+    if (!collabSnap.exists) {
+      throw new HttpsError("not-found", "collaboration not found");
+    }
+
+    const collabData = collabSnap.data() as any;
+    const status = String(collabData.status || "");
+    if (!COLLAB_REACTION_STATUSES.has(status)) {
+      throw new HttpsError("failed-precondition", "collaboration not available");
+    }
+
+    const { userCollabSnap, userCollabData, userCollabRef } = await getUserCollaborationTx(
+      tx,
+      uid,
+      collaborationIdRaw
+    );
+    if (userCollabSnap.empty) {
+      return { updated: false };
+    }
+
+    const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
+    if (!nextUserCollab.favoritedCollaboration) {
+      tx.update(userCollabRef, { lastInteraction: now });
+      return { updated: false };
+    }
+
+    tx.set(userCollabRef, {
+      ...nextUserCollab,
+      favoritedCollaboration: false
+    }, { merge: true });
+    return { updated: true };
   });
 });
 

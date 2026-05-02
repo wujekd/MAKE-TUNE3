@@ -1,7 +1,7 @@
-import React, { useContext, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { AudioState } from '../types';
-import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { useAppStore } from '../stores/appStore';
+import { useAudioStore } from '../stores';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { AnalogVUMeter } from './AnalogVUMeter';
 import { SmallLEDMeter } from './SmallLEDMeter';
@@ -13,7 +13,7 @@ interface Mixer1ChannelProps {
 }
 
 export function Mixer1Channel({ state }: Mixer1ChannelProps) {
-  const audioCtx = useContext(AudioEngineContext);
+  const audioEngine = useAudioStore(s => s.engine);
   const [masterLevel, setMasterLevel] = useState(0);
   const [channelLevel, setChannelLevel] = useState(0);
   const [isCompactMode, setIsCompactMode] = useState(window.innerHeight < 700);
@@ -42,11 +42,11 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
   }, []);
 
   useEffect(() => {
-    if (!audioCtx?.engine) return;
+    if (!audioEngine) return;
     const tauAttack = 0.1;
     const tauRelease = 0.3;
     const sensitivity = 8.5;
-    const unsubscribe = audioCtx.engine.onMasterLevel(({ rms }) => {
+    const unsubscribe = audioEngine.onMasterLevel(({ rms }) => {
       const now = performance.now();
       const last = masterLastTsRef.current ?? now;
       const dt = Math.max(0, (now - last) / 1000);
@@ -61,14 +61,14 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
       setMasterLevel(d);
     });
     return unsubscribe;
-  }, [audioCtx?.engine]);
+  }, [audioEngine]);
 
   useEffect(() => {
-    if (!audioCtx?.engine) return;
+    if (!audioEngine) return;
     const tauAttack = 0.05;
     const tauRelease = 0.3;
     const sensitivity = 4.5;
-    const unsubscribe = audioCtx.engine.onPlayer2Level(({ rms }) => {
+    const unsubscribe = audioEngine.onPlayer2Level(({ rms }) => {
       const now = performance.now();
       const last = channelLastTsRef.current ?? now;
       const dt = Math.max(0, (now - last) / 1000);
@@ -83,7 +83,7 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
       setChannelLevel(d);
     });
     return unsubscribe;
-  }, [audioCtx?.engine]);
+  }, [audioEngine]);
 
   if (!state) {
     return null;

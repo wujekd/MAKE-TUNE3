@@ -14,6 +14,8 @@ import { useCollaborationLoader } from '../hooks/useCollaborationLoader';
 import { useStageRedirect } from '../hooks/useStageRedirect';
 import { useResolvedAudioUrl } from '../hooks/useResolvedAudioUrl';
 import { useAudioPreload } from '../hooks/useAudioPreload';
+import { MissingCollaborationState } from '../components/MissingCollaborationState';
+import { CollaborationPreferenceBar } from '../components/CollaborationPreferenceBar';
 import styles from './VotingView.module.css';
 
 export function VotingView() {
@@ -32,12 +34,23 @@ export function VotingView() {
     loadCollaborationAnonymousById,
     addToFavorites,
     removeFromFavorites,
+    likeTrack,
+    unlikeTrack,
     voteFor,
     isTrackListened,
+    isTrackLiked,
     isTrackFavorite,
     isLoadingCollaboration,
     pendingFavoriteActions,
-    pendingVotes
+    pendingTrackLikeActions,
+    pendingVotes,
+    userCollaboration,
+    likeCollaboration,
+    unlikeCollaboration,
+    favoriteCollaboration,
+    unfavoriteCollaboration,
+    isUpdatingCollaborationLike,
+    isUpdatingCollaborationFavorite
   } = useAppStore(state => state.collaboration);
   const { playSubmission } = useAppStore(state => state.playback);
   const { currentProject, currentCollaboration } = useAppStore(state => state.collaboration);
@@ -50,12 +63,17 @@ export function VotingView() {
     const match = location.pathname.match(/\/collab\/(.+)$/);
     return match ? decodeURIComponent(match[1]) : null;
   }, [location.pathname]);
-  const timelineStatus = currentCollaboration?.id === collabId ? currentCollaboration.status : 'voting';
+  const loader = useCollaborationLoader(collabId);
+  const requestedCollaboration = currentCollaboration?.id === collabId ? currentCollaboration : null;
+  const requestedProject =
+    requestedCollaboration && currentProject?.id === requestedCollaboration.projectId
+      ? currentProject
+      : null;
+  const timelineStatus = requestedCollaboration?.status ?? 'voting';
 
-  useCollaborationLoader(collabId);
   useStageRedirect({
     expected: 'voting',
-    collaboration: currentCollaboration,
+    collaboration: requestedCollaboration,
     collabId: collabId ?? undefined,
     navigate
   });
@@ -131,11 +149,26 @@ export function VotingView() {
   }, [user, loadCollaboration, loadCollaborationAnonymousById, navigate]);
 
   const isVotingLoading = isLoadingCollaboration
-    || !currentCollaboration
-    || (collabId ? currentCollaboration.id !== collabId : false);
+    || loader.status === 'loading'
+    || !requestedCollaboration;
+
+  if (loader.status === 'not_found') {
+    return <MissingCollaborationState collaborationId={collabId} viewLabel="voting view" />;
+  }
 
   if (!audioContext || !state) {
     return <div>Audio engine not available</div>;
+  }
+
+  if (isVotingLoading) {
+    return (
+      <div className={`view-container ${styles.container}`}>
+        <div className={styles.loadingState}>
+          <LoadingSpinner size={36} />
+          <div className={styles.loadingText}>Loading voting view…</div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -143,19 +176,40 @@ export function VotingView() {
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <div className={styles.headerCol}>
-            <div className={styles.title}>{currentProject?.name || ''}</div>
-            <div className={styles.subtitle}>{currentProject?.description || ''}</div>
+            <div className={styles.title}>{requestedProject?.name || ''}</div>
+            <div className={styles.subtitle}>{requestedProject?.description || ''}</div>
           </div>
           <div className={styles.headerCol}>
-            <div className={styles.title}>{currentCollaboration?.name || ''}</div>
-            <div className={styles.subtitle}>{currentCollaboration?.description || ''}</div>
+            <div className={styles.title}>{requestedCollaboration?.name || ''}</div>
+            <div className={styles.subtitle}>{requestedCollaboration?.description || ''}</div>
+            <CollaborationPreferenceBar
+              disabled={!user}
+              liked={Boolean(userCollaboration?.likedCollaboration)}
+              favorited={Boolean(userCollaboration?.favoritedCollaboration)}
+              isUpdatingLike={isUpdatingCollaborationLike}
+              isUpdatingFavorite={isUpdatingCollaborationFavorite}
+              onToggleLike={() => {
+                if (userCollaboration?.likedCollaboration) {
+                  unlikeCollaboration();
+                } else {
+                  likeCollaboration();
+                }
+              }}
+              onToggleFavorite={() => {
+                if (userCollaboration?.favoritedCollaboration) {
+                  unfavoriteCollaboration();
+                } else {
+                  favoriteCollaboration();
+                }
+              }}
+            />
           </div>
         </div>
         <div className={styles.headerRight}>
           <ProjectHistory />
-          <CollabData collab={currentCollaboration as any} />
+          <CollabData collab={requestedCollaboration as any} />
           <CollabHeader
-            collaboration={currentCollaboration}
+            collaboration={requestedCollaboration}
             onStageChange={handleStageChange}
             displayStatus={timelineStatus}
           />
@@ -176,11 +230,20 @@ export function VotingView() {
                   onRemoveFromFavorites={(trackId) => removeFromFavorites(trackId)}
                   favorites={favorites}
                   onAddToFavorites={(trackId) => addToFavorites(trackId)}
+                  onToggleLike={(trackId) => {
+                    if (isTrackLiked(trackId)) {
+                      unlikeTrack(trackId);
+                    } else {
+                      likeTrack(trackId);
+                    }
+                  }}
+                  isTrackLiked={isTrackLiked}
                   onPlay={(trackId, index, favorite) => playSubmission(trackId, index, favorite)}
                   voteFor={voteFor}
                   listenedRatio={7}
                   finalVote={useAppStore.getState().collaboration.userCollaboration?.finalVote || null}
                   pendingFavoriteActions={pendingFavoriteActions}
+                  pendingLikeActions={pendingTrackLikeActions}
                   pendingVotes={pendingVotes}
                 />
                 <div className={styles.audioPlayerTitle}>Submissions</div>
@@ -199,13 +262,22 @@ export function VotingView() {
                         }
                         isPlaying={state.player1.isPlaying}
                         listened={isTrackListened(track.filePath)}
+                        liked={isTrackLiked(track.filePath)}
                         favorite={isTrackFavorite(track.filePath)}
+                        onToggleLike={() => {
+                          if (isTrackLiked(track.filePath)) {
+                            unlikeTrack(track.filePath);
+                          } else {
+                            likeTrack(track.filePath);
+                          }
+                        }}
                         onAddToFavorites={() => addToFavorites(track.filePath)}
                         onPlay={(filePath, idx) => playSubmission(filePath, idx, false)}
                         voteFor={voteFor}
                         listenedRatio={7}
                         isFinal={false}
                         pendingFavoriteAction={pendingFavoriteActions[track.filePath]}
+                        pendingLikeAction={pendingTrackLikeActions[track.filePath]}
                         isVoting={!!pendingVotes[track.filePath]}
                       />
                     ))}

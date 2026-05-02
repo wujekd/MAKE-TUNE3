@@ -83,6 +83,7 @@ const initialAppState = useAppStore.getState();
 
 describe('SubmissionView', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     mockNavigate.mockReset();
     hoisted.hasDownloadedBacking.mockReset();
     hoisted.hasUserSubmitted.mockReset();
@@ -115,13 +116,16 @@ describe('SubmissionView', () => {
             backingTrackPath: '',
             submissionsCount: 0
           } as any,
-          refreshCollaborationStatus: vi.fn().mockResolvedValue(undefined)
+          refreshCollaborationStatus: vi.fn().mockResolvedValue(undefined),
+          loadCollaboration: vi.fn().mockResolvedValue(undefined),
+          loadCollaborationAnonymousById: vi.fn().mockResolvedValue(undefined)
         }
       }));
     });
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     act(() => {
       useAppStore.setState(initialAppState, true);
     });
@@ -135,11 +139,15 @@ describe('SubmissionView', () => {
       clearPlaybackSources: vi.fn()
     };
 
-    render(
-      <AudioEngineContext.Provider value={{ engine: engine as any, state: {} as any }}>
-        <SubmissionView />
-      </AudioEngineContext.Provider>
-    );
+    await act(async () => {
+      render(
+        <AudioEngineContext.Provider value={{ engine: engine as any, state: {} as any }}>
+          <SubmissionView />
+        </AudioEngineContext.Provider>
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('upload-submission')).toHaveTextContent('collab-1');
@@ -147,5 +155,41 @@ describe('SubmissionView', () => {
 
     expect(hoisted.hasDownloadedBacking).not.toHaveBeenCalled();
     expect(hoisted.hasUserSubmitted).not.toHaveBeenCalled();
+  });
+
+  it('shows missing collaboration info and redirects to main page when the collab does not exist', async () => {
+    vi.useFakeTimers();
+
+    act(() => {
+      useAppStore.setState(state => ({
+        ...state,
+        collaboration: {
+          ...state.collaboration,
+          currentCollaboration: null,
+          refreshCollaborationStatus: vi.fn().mockResolvedValue(undefined),
+          loadCollaboration: vi.fn().mockResolvedValue(undefined),
+          loadCollaborationAnonymousById: vi.fn().mockResolvedValue(undefined)
+        }
+      }));
+    });
+
+    await act(async () => {
+      render(
+        <AudioEngineContext.Provider value={{ engine: { clearPlaybackSources: vi.fn() } as any, state: {} as any }}>
+          <SubmissionView />
+        </AudioEngineContext.Provider>
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText('This collaboration no longer exists.')).toBeInTheDocument();
+    expect(screen.getByText(/Returning to the main page in 5 seconds\./i)).toBeInTheDocument();
+
+    await act(async () => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith('/collabs', { replace: true });
   });
 });

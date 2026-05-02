@@ -1,8 +1,8 @@
 import { Outlet, useMatches, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
+import { useAudioStore } from '../stores';
 import './AppShell.css';
-import { Suspense, lazy, useContext, useEffect, useRef, useState } from 'react';
-import { AudioEngineContext } from '../audio-services/AudioEngineContext';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { SHOW_DEBUG_TOOLS } from '../config';
 import { FeedbackButton } from './FeedbackButton';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -80,14 +80,14 @@ export function AppShell() {
 
   // Reset playback when route changes (most DRY approach - single location for all routes)
   const location = useLocation();
-  const audioContext = useContext(AudioEngineContext);
+  const audioEngine = useAudioStore(s => s.engine);
   const prevPathnameRef = useRef(location.pathname);
   useEffect(() => {
     if (prevPathnameRef.current !== location.pathname) {
       prevPathnameRef.current = location.pathname;
-      audioContext?.engine?.resetPlayback();
+      audioEngine?.resetPlayback();
     }
-  }, [location.pathname, audioContext?.engine]);
+  }, [location.pathname, audioEngine]);
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
       const t = e.target as Node;
@@ -222,7 +222,7 @@ export function AppShell() {
           ))}
         </div>
       </header>
-      <div className="app-shell__content" style={{ flex: 1, minHeight: 0 }}>
+      <div className="app-shell__content app-shell__content--fade" style={{ flex: 1, minHeight: 0 }}>
         {showDebug && (
           <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, maxWidth: 640, width: '90%' }}>
             <Suspense fallback={<OverlayLoadingFallback />}>

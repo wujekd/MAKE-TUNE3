@@ -4,6 +4,8 @@ import { callFirebaseFunction } from './firebaseFunctions';
 import type { Collaboration, CollaborationId, ProjectId, CollaborationDetail } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 
+const DEBUG_LOGS = import.meta.env.DEV;
+
 export class CollaborationService {
   static async createCollaboration(collaboration: Omit<Collaboration, 'id' | 'createdAt' | 'updatedAt'>): Promise<Collaboration> {
     const now = Timestamp.now();
@@ -42,7 +44,7 @@ export class CollaborationService {
   static async getCollaboration(collaborationId: CollaborationId): Promise<Collaboration | null> {
     const docRef = doc(db, COLLECTIONS.COLLABORATIONS, collaborationId);
     const docSnap = await getDoc(docRef);
-    console.log("GET COLLAB TRIGGERED");
+    if (DEBUG_LOGS) console.log("GET COLLAB TRIGGERED");
     if (!docSnap.exists()) {
       return null;
     }
@@ -58,7 +60,7 @@ export class CollaborationService {
         { collaborationId }
       );
       if (data?.collaboration) {
-        console.log("GET COLLAB WITH DETAILS via cloud function");
+        if (DEBUG_LOGS) console.log("GET COLLAB WITH DETAILS via cloud function");
         return data.collaboration as Collaboration;
       }
       return null;
@@ -80,7 +82,7 @@ export class CollaborationService {
         { collaborationId }
       );
       if (data?.collaboration) {
-        console.log("GET COLLAB FOR MODERATION via cloud function");
+        if (DEBUG_LOGS) console.log("GET COLLAB FOR MODERATION via cloud function");
         return data.collaboration as Collaboration;
       }
       return null;

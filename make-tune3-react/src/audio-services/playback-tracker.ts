@@ -12,12 +12,12 @@ export class PlaybackTracker {
     constructor(onTrackListened: (trackSrc: string) => void) {
       this.onTrackListened = onTrackListened;
       this.listenRatio = 80; // Default value
-      console.log("playback tracker init with default ratio: ", this.listenRatio);
+      if (PlaybackTracker.DEBUG) console.log("playback tracker init with default ratio: ", this.listenRatio);
     }
     
     setListenRatio(ratio: number): void {
       this.listenRatio = ratio;
-      console.log("playback tracker ratio updated to: ", this.listenRatio);
+      if (PlaybackTracker.DEBUG) console.log("playback tracker ratio updated to: ", this.listenRatio);
     }
     startTracking(trackSrc: string): void {
       if (PlaybackTracker.DEBUG) console.log('PlaybackTracker: Starting tracking for', trackSrc);

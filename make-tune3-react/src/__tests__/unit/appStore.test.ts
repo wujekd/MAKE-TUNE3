@@ -36,9 +36,15 @@ vi.mock('../../services', async (importOriginal) => {
         },
         InteractionService: {
             markTrackAsListened: vi.fn(),
+            likeTrack: vi.fn(),
+            unlikeTrack: vi.fn(),
             addTrackToFavorites: vi.fn(),
             removeTrackFromFavorites: vi.fn(),
-            voteForTrack: vi.fn()
+            voteForTrack: vi.fn(),
+            likeCollaboration: vi.fn(),
+            unlikeCollaboration: vi.fn(),
+            favoriteCollaboration: vi.fn(),
+            unfavoriteCollaboration: vi.fn()
         },
         DataService: {
             loadCollaborationData: vi.fn(),
@@ -77,18 +83,28 @@ describe('AppStore - Collaboration Slice', () => {
                 isLoadingCollaboration: false,
                 isLoadingProject: false,
                 isUpdatingFavorites: false,
+                isUpdatingTrackLikes: false,
                 isUpdatingListened: false,
                 pendingFavoriteActions: {},
+                pendingTrackLikeActions: {},
                 pendingVotes: {},
+                isUpdatingCollaborationLike: false,
+                isUpdatingCollaborationFavorite: false,
                 setCurrentProject: useAppStore.getState().collaboration.setCurrentProject,
                 setCurrentCollaboration: useAppStore.getState().collaboration.setCurrentCollaboration,
                 setUserCollaboration: useAppStore.getState().collaboration.setUserCollaboration,
                 setUserCollaborations: useAppStore.getState().collaboration.setUserCollaborations,
                 setTracks: useAppStore.getState().collaboration.setTracks,
                 markAsListened: useAppStore.getState().collaboration.markAsListened,
+                likeTrack: useAppStore.getState().collaboration.likeTrack,
+                unlikeTrack: useAppStore.getState().collaboration.unlikeTrack,
                 addToFavorites: useAppStore.getState().collaboration.addToFavorites,
                 removeFromFavorites: useAppStore.getState().collaboration.removeFromFavorites,
                 voteFor: useAppStore.getState().collaboration.voteFor,
+                likeCollaboration: useAppStore.getState().collaboration.likeCollaboration,
+                unlikeCollaboration: useAppStore.getState().collaboration.unlikeCollaboration,
+                favoriteCollaboration: useAppStore.getState().collaboration.favoriteCollaboration,
+                unfavoriteCollaboration: useAppStore.getState().collaboration.unfavoriteCollaboration,
                 setListenedRatio: useAppStore.getState().collaboration.setListenedRatio,
                 loadUserCollaborations: useAppStore.getState().collaboration.loadUserCollaborations,
                 loadCollaboration: useAppStore.getState().collaboration.loadCollaboration,
@@ -98,6 +114,7 @@ describe('AppStore - Collaboration Slice', () => {
                 refreshCollaborationStatus: useAppStore.getState().collaboration.refreshCollaborationStatus,
                 loadProject: useAppStore.getState().collaboration.loadProject,
                 isTrackListened: useAppStore.getState().collaboration.isTrackListened,
+                isTrackLiked: useAppStore.getState().collaboration.isTrackLiked,
                 isTrackFavorite: useAppStore.getState().collaboration.isTrackFavorite,
                 getTrackByFilePath: useAppStore.getState().collaboration.getTrackByFilePath,
                 approveSubmission: useAppStore.getState().collaboration.approveSubmission,
@@ -245,7 +262,10 @@ describe('AppStore - Collaboration Slice', () => {
                     userId: 'user-1',
                     collaborationId: 'collab-1',
                     listenedTracks: ['path/to/listened.mp3'],
+                    likedTracks: ['path/to/liked.mp3'],
                     favoriteTracks: [],
+                    likedCollaboration: false,
+                    favoritedCollaboration: false,
                     finalVote: null,
                     listenedRatio: 80,
                     lastInteraction: new Date() as any,
@@ -258,6 +278,64 @@ describe('AppStore - Collaboration Slice', () => {
 
         expect(collaboration.isTrackListened('path/to/listened.mp3')).toBe(true);
         expect(collaboration.isTrackListened('path/to/other.mp3')).toBe(false);
+    });
+
+    it('should check if track is liked', () => {
+        useAppStore.setState({
+            collaboration: {
+                ...useAppStore.getState().collaboration,
+                userCollaboration: {
+                    userId: 'user-1',
+                    collaborationId: 'collab-1',
+                    listenedTracks: [],
+                    likedTracks: ['path/to/liked.mp3'],
+                    favoriteTracks: [],
+                    likedCollaboration: false,
+                    favoritedCollaboration: false,
+                    finalVote: null,
+                    listenedRatio: 0,
+                    lastInteraction: new Date() as any,
+                    createdAt: new Date() as any
+                }
+            }
+        });
+
+        const { collaboration } = useAppStore.getState();
+
+        expect(collaboration.isTrackLiked('path/to/liked.mp3')).toBe(true);
+        expect(collaboration.isTrackLiked('path/to/other.mp3')).toBe(false);
+    });
+
+    it('should add a track like to local user collaboration state', async () => {
+        useAppStore.setState({
+            auth: {
+                ...useAppStore.getState().auth,
+                user: { uid: 'user-1', email: 'test@example.com' } as any
+            },
+            collaboration: {
+                ...useAppStore.getState().collaboration,
+                currentCollaboration: {
+                    id: 'collab-1'
+                } as any,
+                userCollaboration: {
+                    userId: 'user-1',
+                    collaborationId: 'collab-1',
+                    listenedTracks: [],
+                    likedTracks: [],
+                    favoriteTracks: [],
+                    likedCollaboration: false,
+                    favoritedCollaboration: false,
+                    finalVote: null,
+                    listenedRatio: 0,
+                    lastInteraction: new Date() as any,
+                    createdAt: new Date() as any
+                }
+            }
+        });
+
+        await useAppStore.getState().collaboration.likeTrack('path/to/liked.mp3');
+
+        expect(useAppStore.getState().collaboration.userCollaboration?.likedTracks).toEqual(['path/to/liked.mp3']);
     });
 
     it('should return false for listened check when user is anonymous', () => {
@@ -281,7 +359,10 @@ describe('AppStore - Collaboration Slice', () => {
                     userId: 'user-1',
                     collaborationId: 'collab-1',
                     listenedTracks: [],
+                    likedTracks: [],
                     favoriteTracks: [],
+                    likedCollaboration: false,
+                    favoritedCollaboration: false,
                     finalVote: null,
                     listenedRatio: 50,
                     lastInteraction: new Date() as any,
@@ -294,6 +375,52 @@ describe('AppStore - Collaboration Slice', () => {
         collaboration.setListenedRatio(75);
 
         expect(useAppStore.getState().collaboration.userCollaboration?.listenedRatio).toBe(75);
+    });
+
+    it('should update collaboration like flags', async () => {
+        useAppStore.setState({
+            auth: {
+                ...useAppStore.getState().auth,
+                user: { uid: 'user-1', email: 'test@example.com' } as any
+            },
+            collaboration: {
+                ...useAppStore.getState().collaboration,
+                currentCollaboration: {
+                    id: 'collab-1',
+                    projectId: 'project-1',
+                    name: 'Test Collaboration',
+                    description: 'Test description',
+                    status: 'submission',
+                    backingTrackPath: 'path/to/backing.mp3',
+                    submissionDuration: 7,
+                    votingDuration: 3,
+                    publishedAt: null,
+                    tags: [],
+                    tagsKey: [],
+                    createdAt: new Date() as any,
+                    updatedAt: new Date() as any
+                } as any,
+                userCollaboration: {
+                    userId: 'user-1',
+                    collaborationId: 'collab-1',
+                    listenedTracks: [],
+                    likedTracks: [],
+                    favoriteTracks: [],
+                    likedCollaboration: false,
+                    favoritedCollaboration: false,
+                    finalVote: null,
+                    listenedRatio: 0,
+                    lastInteraction: new Date() as any,
+                    createdAt: new Date() as any
+                }
+            }
+        });
+
+        await useAppStore.getState().collaboration.likeCollaboration();
+        expect(useAppStore.getState().collaboration.userCollaboration?.likedCollaboration).toBe(true);
+
+        await useAppStore.getState().collaboration.favoriteCollaboration();
+        expect(useAppStore.getState().collaboration.userCollaboration?.favoritedCollaboration).toBe(true);
     });
 
     it('should not set listened ratio when no user collaboration', () => {

@@ -11,6 +11,7 @@
   --primary1-700: #2a595b;
   --primary1-800: #25494a;
   --primary1-900: #1b3031;
+  --primary1-950: #060f10;
 
   --secondary: #2d5052;
   --secondary1-400: #3c686a;
@@ -19,7 +20,8 @@
   --contrast-600: #d55f21;
   --contrast-700: #b1481d;
 
-  --background: #3f7072;
+  --background-floor: var(--primary1-950);
+  --background: radial-gradient(circle at top right, var(--primary1-600) 0%, var(--background-floor) 68%);
   --offblue: #488083;
 
   --white: #eeeeee;
@@ -37,7 +39,7 @@
   --yellow-900: #713f12;
 
   /* Semantic aliases */
-  --color-bg: var(--background);
+  --color-bg: var(--background-floor);
   --color-panel: var(--primary1-600);
   --color-panel-2: var(--primary1-700);
   --color-text: var(--white);

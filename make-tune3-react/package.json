@@ -39,6 +39,7 @@
     "@vitejs/plugin-react": "^4.6.0",
     "@vitest/coverage-v8": "^4.0.18",
     "@vitest/ui": "^4.0.3",
+    "@welldone-software/why-did-you-render": "^10.0.1",
     "eslint": "^9.30.1",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",

@@ -26,6 +26,7 @@ const stageToPath = (stage: Stage, id: string) => {
 export function useStageRedirect({ expected, collaboration, collabId, navigate }: RedirectOptions) {
   useEffect(() => {
     if (!collaboration || !collabId) return;
+    if (collaboration.id !== collabId) return;
     const status = String(collaboration.status || '').toLowerCase() as Stage;
     if (status === expected) return;
 

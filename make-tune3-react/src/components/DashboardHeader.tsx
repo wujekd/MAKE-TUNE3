@@ -21,6 +21,24 @@ const formatCount = (value: number) => {
   return Math.abs(value) >= 10000 ? compactFormatter.format(value) : String(value);
 };
 
+const dashboardSteps = [
+  {
+    number: '01',
+    title: 'Discover',
+    description: 'Filter open collaborations by tag and preview the backing track before you jump in.'
+  },
+  {
+    number: '02',
+    title: 'Submit',
+    description: 'Open a live collaboration, upload your version during submissions, and keep an eye on deadlines.'
+  },
+  {
+    number: '03',
+    title: 'Vote + Track',
+    description: 'Return for voting, then follow your activity and finished rounds from the dashboard.'
+  }
+] as const;
+
 export function DashboardHeader({
   totalCollabs,
   totalSubmissions,
@@ -36,7 +54,7 @@ export function DashboardHeader({
         <div className={styles.heroIntro}>
           <div className={styles.heroLabel}>dashboard</div>
           <div className={styles.heroDescription}>
-            here ill make some kinda collab recommendations based on user and collab tags i think...
+            I&apos;d appreciate your feedback on how you would like to use this website.
           </div>
           <button
             className={styles.feedbackCta}
@@ -50,6 +68,19 @@ export function DashboardHeader({
           >
             {user ? 'Send Feedback' : 'Login to Send Feedback'}
           </button>
+        </div>
+        <div className={styles.heroProcessColumn}>
+          <div className={styles.heroProcess} aria-label="Dashboard collaboration flow">
+            {dashboardSteps.map(step => (
+              <div key={step.number} className={styles.heroProcessCard}>
+                <div className={styles.heroProcessNumber}>{step.number}</div>
+                <div className={styles.heroProcessContent}>
+                  <div className={styles.heroProcessTitle}>{step.title}</div>
+                  <div className={styles.heroProcessDescription}>{step.description}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
         <div className={styles.heroActions}>
           <div className={styles.counterWrap}>

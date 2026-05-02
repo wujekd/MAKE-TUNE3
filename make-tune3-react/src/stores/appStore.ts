@@ -63,9 +63,13 @@ interface AppState {
     isLoadingCollaboration: boolean;
     isLoadingProject: boolean;
     isUpdatingFavorites: boolean;
+    isUpdatingTrackLikes: boolean;
     isUpdatingListened: boolean;
     pendingFavoriteActions: Record<string, 'adding' | 'removing'>;
+    pendingTrackLikeActions: Record<string, 'adding' | 'removing'>;
     pendingVotes: Record<string, boolean>;
+    isUpdatingCollaborationLike: boolean;
+    isUpdatingCollaborationFavorite: boolean;
 
     // actions
     setCurrentProject: (project: Project) => void;
@@ -74,9 +78,15 @@ interface AppState {
     setUserCollaborations: (collaborations: Collaboration[]) => void;
     setTracks: (tracks: { filePath: string }[]) => void;
     markAsListened: (filePath: string) => Promise<void>;
+    likeTrack: (filePath: string) => Promise<void>;
+    unlikeTrack: (filePath: string) => Promise<void>;
     addToFavorites: (filePath: string) => Promise<void>;
     removeFromFavorites: (filePath: string) => Promise<void>;
     voteFor: (filePath: string) => void;
+    likeCollaboration: () => Promise<void>;
+    unlikeCollaboration: () => Promise<void>;
+    favoriteCollaboration: () => Promise<void>;
+    unfavoriteCollaboration: () => Promise<void>;
     setListenedRatio: (ratio: number) => void;
     loadUserCollaborations: (userId: string) => Promise<void>;
     loadCollaboration: (userId: string, collaborationId: string) => Promise<void>;
@@ -88,6 +98,7 @@ interface AppState {
 
     // computed
     isTrackListened: (filePath: string) => boolean;
+    isTrackLiked: (filePath: string) => boolean;
     isTrackFavorite: (filePath: string) => boolean;
     getTrackByFilePath: (filePath: string) => Track | undefined;
     // moderation
@@ -118,6 +129,44 @@ const resolveAudioUrl = AudioUrlUtils.resolveAudioUrl;
 const updateRegularTracks = (allTracks: Track[], favoriteFilePaths: string[]) => {
   return TrackUtils.filterByFavorites(allTracks, favoriteFilePaths).regular;
 };
+const buildLocalUserCollaboration = (
+  userId: string,
+  collaborationId: string,
+  current?: UserCollaboration | null
+): UserCollaboration => ({
+  userId,
+  collaborationId,
+  listenedTracks: current?.listenedTracks || [],
+  likedTracks: current?.likedTracks || [],
+  favoriteTracks: current?.favoriteTracks || [],
+  likedCollaboration: current?.likedCollaboration || false,
+  favoritedCollaboration: current?.favoritedCollaboration || false,
+  finalVote: current?.finalVote || null,
+  listenedRatio: current?.listenedRatio || 0,
+  hasSubmitted: current?.hasSubmitted,
+  lastInteraction: new Date() as any,
+  createdAt: current?.createdAt || new Date() as any
+});
+const clearLoadedCollaborationState = (state: AppState['collaboration']) => ({
+  ...state,
+  currentProject: null,
+  currentCollaboration: null,
+  userCollaboration: null,
+  allTracks: [],
+  regularTracks: [],
+  pastStageTracks: [],
+  backingTrack: null,
+  favorites: [],
+  isLoadingCollaboration: false,
+  isUpdatingFavorites: false,
+  isUpdatingTrackLikes: false,
+  isUpdatingListened: false,
+  pendingFavoriteActions: {},
+  pendingTrackLikeActions: {},
+  pendingVotes: {},
+  isUpdatingCollaborationLike: false,
+  isUpdatingCollaborationFavorite: false
+});
 
 // create store
 export const useAppStore = create<AppState>((set, get) => ({
@@ -174,8 +223,12 @@ export const useAppStore = create<AppState>((set, get) => ({
             ...state.collaboration,
             favorites: [],
             userCollaboration: null,
+            isUpdatingTrackLikes: false,
+            pendingTrackLikeActions: {},
             pendingFavoriteActions: {},
-            pendingVotes: {}
+            pendingVotes: {},
+            isUpdatingCollaborationLike: false,
+            isUpdatingCollaborationFavorite: false
           }
         }));
       } catch (error: any) {
@@ -216,8 +269,12 @@ export const useAppStore = create<AppState>((set, get) => ({
                 userCollaboration: null, // will be set when user selects a collaboration
                 // clear favorites when user logs in
                 favorites: [],
+                isUpdatingTrackLikes: false,
+                pendingTrackLikeActions: {},
                 pendingFavoriteActions: {},
-                pendingVotes: {}
+                pendingVotes: {},
+                isUpdatingCollaborationLike: false,
+                isUpdatingCollaborationFavorite: false
               }
             }));
           } catch (error) {
@@ -232,7 +289,13 @@ export const useAppStore = create<AppState>((set, get) => ({
               ...state.collaboration,
               userCollaboration: null,
               userCollaborations: [],
-              favorites: []
+              favorites: [],
+              isUpdatingTrackLikes: false,
+              pendingTrackLikeActions: {},
+              pendingFavoriteActions: {},
+              pendingVotes: {},
+              isUpdatingCollaborationLike: false,
+              isUpdatingCollaborationFavorite: false
             }
           }));
         }
@@ -255,9 +318,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     isLoadingCollaboration: false,
     isLoadingProject: false,
     isUpdatingFavorites: false,
+    isUpdatingTrackLikes: false,
     isUpdatingListened: false,
     pendingFavoriteActions: {},
+    pendingTrackLikeActions: {},
     pendingVotes: {},
+    isUpdatingCollaborationLike: false,
+    isUpdatingCollaborationFavorite: false,
 
     setCurrentProject: (project) => set(state => ({
       collaboration: { ...state.collaboration, currentProject: project }
@@ -318,7 +385,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         if (!collaborationData.collaboration) {
           if (DEBUG_LOGS) console.error('collaboration data is null for collaborationId:', collaborationId);
           if (DEBUG_LOGS) console.error('Full response:', collaborationData);
-          set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
+          set(state => ({ collaboration: clearLoadedCollaborationState(state.collaboration) }));
           return;
         }
 
@@ -414,7 +481,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         if (!collaborationData.collaboration) {
           if (DEBUG_LOGS) console.error('collaboration data is null (anon)');
-          set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
+          set(state => ({ collaboration: clearLoadedCollaborationState(state.collaboration) }));
           return;
         }
 
@@ -476,7 +543,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         if (!collaborationData.collaboration) {
           if (DEBUG_LOGS) console.error('collaboration data is null (anon by id)');
-          set(state => ({ collaboration: { ...state.collaboration, isLoadingCollaboration: false } }));
+          set(state => ({ collaboration: clearLoadedCollaborationState(state.collaboration) }));
           return;
         }
 
@@ -644,15 +711,21 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         // update local state only after firebase success
         const { userCollaboration } = get().collaboration;
-        const updatedListenedTracks = [...(userCollaboration?.listenedTracks || []), filePath];
+        const updatedListenedTracks = [...(userCollaboration?.listenedTracks || [])];
+        if (!updatedListenedTracks.includes(filePath)) {
+          updatedListenedTracks.push(filePath);
+        }
 
         set(state => ({
           collaboration: {
             ...state.collaboration,
             userCollaboration: {
-              ...state.collaboration.userCollaboration!,
-              listenedTracks: updatedListenedTracks,
-              lastInteraction: new Date() as any
+              ...buildLocalUserCollaboration(
+                user.uid,
+                currentCollaboration.id,
+                state.collaboration.userCollaboration
+              ),
+              listenedTracks: updatedListenedTracks
             },
             isUpdatingListened: false
           }
@@ -661,6 +734,121 @@ export const useAppStore = create<AppState>((set, get) => ({
       } catch (error) {
         if (DEBUG_LOGS) console.error('failed to mark as listened in firebase:', error);
         set(state => ({ collaboration: { ...state.collaboration, isUpdatingListened: false } }));
+      }
+    },
+
+    likeTrack: async (filePath) => {
+      const { user } = get().auth;
+      const { currentCollaboration } = get().collaboration;
+      const pendingAction = get().collaboration.pendingTrackLikeActions[filePath];
+
+      if (!user || !currentCollaboration || pendingAction) return;
+
+      try {
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            isUpdatingTrackLikes: true,
+            pendingTrackLikeActions: {
+              ...state.collaboration.pendingTrackLikeActions,
+              [filePath]: 'adding'
+            }
+          }
+        }));
+
+        await InteractionService.likeTrack(user.uid, currentCollaboration.id, filePath);
+
+        set(state => {
+          const nextPending = { ...state.collaboration.pendingTrackLikeActions };
+          delete nextPending[filePath];
+          const nextUserCollaboration = buildLocalUserCollaboration(
+            user.uid,
+            currentCollaboration.id,
+            state.collaboration.userCollaboration
+          );
+          const likedTracks = nextUserCollaboration.likedTracks || [];
+          return {
+            collaboration: {
+              ...state.collaboration,
+              userCollaboration: {
+                ...nextUserCollaboration,
+                likedTracks: likedTracks.includes(filePath) ? likedTracks : [...likedTracks, filePath]
+              },
+              isUpdatingTrackLikes: false,
+              pendingTrackLikeActions: nextPending
+            }
+          };
+        });
+      } catch (error) {
+        if (DEBUG_LOGS) console.error('failed to like track:', error);
+        set(state => {
+          const nextPending = { ...state.collaboration.pendingTrackLikeActions };
+          delete nextPending[filePath];
+          return {
+            collaboration: {
+              ...state.collaboration,
+              isUpdatingTrackLikes: false,
+              pendingTrackLikeActions: nextPending
+            }
+          };
+        });
+      }
+    },
+
+    unlikeTrack: async (filePath) => {
+      const { user } = get().auth;
+      const { currentCollaboration } = get().collaboration;
+      const pendingAction = get().collaboration.pendingTrackLikeActions[filePath];
+
+      if (!user || !currentCollaboration || pendingAction) return;
+
+      try {
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            isUpdatingTrackLikes: true,
+            pendingTrackLikeActions: {
+              ...state.collaboration.pendingTrackLikeActions,
+              [filePath]: 'removing'
+            }
+          }
+        }));
+
+        await InteractionService.unlikeTrack(user.uid, currentCollaboration.id, filePath);
+
+        set(state => {
+          const nextPending = { ...state.collaboration.pendingTrackLikeActions };
+          delete nextPending[filePath];
+          const nextUserCollaboration = buildLocalUserCollaboration(
+            user.uid,
+            currentCollaboration.id,
+            state.collaboration.userCollaboration
+          );
+          return {
+            collaboration: {
+              ...state.collaboration,
+              userCollaboration: {
+                ...nextUserCollaboration,
+                likedTracks: (nextUserCollaboration.likedTracks || []).filter(path => path !== filePath)
+              },
+              isUpdatingTrackLikes: false,
+              pendingTrackLikeActions: nextPending
+            }
+          };
+        });
+      } catch (error) {
+        if (DEBUG_LOGS) console.error('failed to unlike track:', error);
+        set(state => {
+          const nextPending = { ...state.collaboration.pendingTrackLikeActions };
+          delete nextPending[filePath];
+          return {
+            collaboration: {
+              ...state.collaboration,
+              isUpdatingTrackLikes: false,
+              pendingTrackLikeActions: nextPending
+            }
+          };
+        });
       }
     },
 
@@ -708,7 +896,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         // update local state only after firebase success
         const { userCollaboration } = get().collaboration;
-        const updatedFavorites = [...(userCollaboration?.favoriteTracks || []), filePath];
+        const updatedFavorites = [...(userCollaboration?.favoriteTracks || [])];
+        if (!updatedFavorites.includes(filePath)) {
+          updatedFavorites.push(filePath);
+        }
         if (DEBUG_LOGS) console.log('updated favorites array:', updatedFavorites);
 
         // update favorites array
@@ -722,9 +913,12 @@ export const useAppStore = create<AppState>((set, get) => ({
             collaboration: {
               ...state.collaboration,
               userCollaboration: {
-                ...state.collaboration.userCollaboration!,
-                favoriteTracks: updatedFavorites,
-                lastInteraction: new Date() as any
+                ...buildLocalUserCollaboration(
+                  user.uid,
+                  currentCollaboration.id,
+                  state.collaboration.userCollaboration
+                ),
+                favoriteTracks: updatedFavorites
               },
               regularTracks: updateRegularTracks(state.collaboration.allTracks, updatedFavorites),
               favorites: updatedFavoritesArray,
@@ -831,9 +1025,12 @@ export const useAppStore = create<AppState>((set, get) => ({
             collaboration: {
               ...state.collaboration,
               userCollaboration: {
-                ...state.collaboration.userCollaboration!,
-                favoriteTracks: updatedFavorites,
-                lastInteraction: new Date() as any
+                ...buildLocalUserCollaboration(
+                  user.uid,
+                  currentCollaboration.id,
+                  state.collaboration.userCollaboration
+                ),
+                favoriteTracks: updatedFavorites
               },
               regularTracks: updateRegularTracks(state.collaboration.allTracks, updatedFavorites),
               favorites: updatedFavoritesArray,
@@ -913,9 +1110,12 @@ export const useAppStore = create<AppState>((set, get) => ({
             collaboration: {
               ...state.collaboration,
               userCollaboration: {
-                ...state.collaboration.userCollaboration!,
-                finalVote: filePath,
-                lastInteraction: new Date() as any
+                ...buildLocalUserCollaboration(
+                  user.uid,
+                  currentCollaboration.id,
+                  state.collaboration.userCollaboration
+                ),
+                finalVote: filePath
               },
               pendingVotes: nextPending
             }
@@ -932,6 +1132,158 @@ export const useAppStore = create<AppState>((set, get) => ({
             }
           };
         });
+      }
+    },
+
+    likeCollaboration: async () => {
+      const { user } = get().auth;
+      const { currentCollaboration, isUpdatingCollaborationLike } = get().collaboration;
+      if (!user || !currentCollaboration || isUpdatingCollaborationLike) return;
+
+      try {
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            isUpdatingCollaborationLike: true
+          }
+        }));
+        await InteractionService.likeCollaboration(user.uid, currentCollaboration.id);
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            userCollaboration: {
+              ...buildLocalUserCollaboration(
+                user.uid,
+                currentCollaboration.id,
+                state.collaboration.userCollaboration
+              ),
+              likedCollaboration: true
+            },
+            isUpdatingCollaborationLike: false
+          }
+        }));
+      } catch (error) {
+        if (DEBUG_LOGS) console.error('failed to like collaboration:', error);
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            isUpdatingCollaborationLike: false
+          }
+        }));
+      }
+    },
+
+    unlikeCollaboration: async () => {
+      const { user } = get().auth;
+      const { currentCollaboration, isUpdatingCollaborationLike } = get().collaboration;
+      if (!user || !currentCollaboration || isUpdatingCollaborationLike) return;
+
+      try {
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            isUpdatingCollaborationLike: true
+          }
+        }));
+        await InteractionService.unlikeCollaboration(user.uid, currentCollaboration.id);
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            userCollaboration: {
+              ...buildLocalUserCollaboration(
+                user.uid,
+                currentCollaboration.id,
+                state.collaboration.userCollaboration
+              ),
+              likedCollaboration: false
+            },
+            isUpdatingCollaborationLike: false
+          }
+        }));
+      } catch (error) {
+        if (DEBUG_LOGS) console.error('failed to unlike collaboration:', error);
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            isUpdatingCollaborationLike: false
+          }
+        }));
+      }
+    },
+
+    favoriteCollaboration: async () => {
+      const { user } = get().auth;
+      const { currentCollaboration, isUpdatingCollaborationFavorite } = get().collaboration;
+      if (!user || !currentCollaboration || isUpdatingCollaborationFavorite) return;
+
+      try {
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            isUpdatingCollaborationFavorite: true
+          }
+        }));
+        await InteractionService.favoriteCollaboration(user.uid, currentCollaboration.id);
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            userCollaboration: {
+              ...buildLocalUserCollaboration(
+                user.uid,
+                currentCollaboration.id,
+                state.collaboration.userCollaboration
+              ),
+              favoritedCollaboration: true
+            },
+            isUpdatingCollaborationFavorite: false
+          }
+        }));
+      } catch (error) {
+        if (DEBUG_LOGS) console.error('failed to favorite collaboration:', error);
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            isUpdatingCollaborationFavorite: false
+          }
+        }));
+      }
+    },
+
+    unfavoriteCollaboration: async () => {
+      const { user } = get().auth;
+      const { currentCollaboration, isUpdatingCollaborationFavorite } = get().collaboration;
+      if (!user || !currentCollaboration || isUpdatingCollaborationFavorite) return;
+
+      try {
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            isUpdatingCollaborationFavorite: true
+          }
+        }));
+        await InteractionService.unfavoriteCollaboration(user.uid, currentCollaboration.id);
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            userCollaboration: {
+              ...buildLocalUserCollaboration(
+                user.uid,
+                currentCollaboration.id,
+                state.collaboration.userCollaboration
+              ),
+              favoritedCollaboration: false
+            },
+            isUpdatingCollaborationFavorite: false
+          }
+        }));
+      } catch (error) {
+        if (DEBUG_LOGS) console.error('failed to unfavorite collaboration:', error);
+        set(state => ({
+          collaboration: {
+            ...state.collaboration,
+            isUpdatingCollaborationFavorite: false
+          }
+        }));
       }
     },
 
@@ -961,6 +1313,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       // authenticated: check firebase data
       return userCollaboration?.listenedTracks.includes(filePath) || false;
+    },
+
+    isTrackLiked: (filePath) => {
+      const { userCollaboration } = get().collaboration;
+      return userCollaboration?.likedTracks?.includes(filePath) || false;
     },
 
     isTrackFavorite: (filePath) => {

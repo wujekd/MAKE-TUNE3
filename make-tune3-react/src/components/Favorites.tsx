@@ -5,16 +5,19 @@ import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { LoadingSpinner } from './LoadingSpinner';
 import './Favorites.css';
 
-const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay, voteFor, finalVote, listenedRatio, pendingFavoriteActions, pendingVotes }:
+const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onToggleLike, isTrackLiked, onPlay, voteFor, finalVote, listenedRatio, pendingFavoriteActions, pendingLikeActions, pendingVotes }:
   {
     onRemoveFromFavorites: (trackId: string) => void,
     favorites: Track[],
     onAddToFavorites: (trackId: string) => void,
+    onToggleLike: (trackId: string) => void,
+    isTrackLiked: (trackId: string) => boolean,
     onPlay: (trackId: string, index: number, favorite: boolean) => void,
     voteFor: (trackId: string) => void,
     finalVote: string | null,
     listenedRatio: number,
     pendingFavoriteActions: Record<string, 'adding' | 'removing'>,
+    pendingLikeActions: Record<string, 'adding' | 'removing'>,
     pendingVotes: Record<string, boolean>
   }) => {
   // use favorites passed as prop
@@ -93,13 +96,16 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay,
               }
               isPlaying={state.player1.isPlaying}
               listened={true}
+              liked={isTrackLiked(favorites[finalIndex].filePath)}
               favorite={true}
+              onToggleLike={() => onToggleLike(favorites[finalIndex].filePath)}
               onAddToFavorites={() => onAddToFavorites(favorites[finalIndex].filePath)}
               onPlay={() => onPlay(favorites[finalIndex].filePath, finalIndex, true)}
               voteFor={voteFor}
               listenedRatio={listenedRatio}
               isFinal={true}
               pendingFavoriteAction={pendingFavoriteActions[favorites[finalIndex].filePath]}
+              pendingLikeAction={pendingLikeActions[favorites[finalIndex].filePath]}
               isVoting={!!pendingVotes[favorites[finalIndex].filePath]}
             />
           ) : (
@@ -142,13 +148,16 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onPlay,
                   }
                   isPlaying={state.player1.isPlaying}
                   listened={true}
+                  liked={isTrackLiked(track.filePath)}
                   favorite={true}
+                  onToggleLike={() => onToggleLike(track.filePath)}
                   onAddToFavorites={() => onAddToFavorites(track.filePath)}
                   onPlay={() => onPlay(track.filePath, index, true)}
                   voteFor={voteFor}
                   listenedRatio={listenedRatio}
                   isFinal={false}
                   pendingFavoriteAction={pendingAction}
+                  pendingLikeAction={pendingLikeActions[track.filePath]}
                   isVoting={!!pendingVotes[track.filePath]}
                 />
               </div>
