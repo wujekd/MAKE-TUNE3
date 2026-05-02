@@ -1,5 +1,17 @@
 import { callFirebaseFunction } from './firebaseFunctions';
 import type { User } from '../types/auth';
+import {
+  collection,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  startAfter,
+  type DocumentData,
+  type QueryDocumentSnapshot
+} from 'firebase/firestore';
+import { db } from './firebaseDb';
+import { COLLECTIONS, type InteractionEvent } from '../types/collaboration';
 
 export interface UserSearchResult extends User {
   uid: string;
@@ -8,6 +20,17 @@ export interface UserSearchResult extends User {
 export interface UserUpdateData {
   bonusProjects?: number;
   suspended?: boolean;
+}
+
+export interface InteractionEventsPage {
+  events: (InteractionEvent & { id: string })[];
+  nextCursor: QueryDocumentSnapshot<DocumentData> | null;
+  hasMore: boolean;
+}
+
+export interface ListInteractionEventsOptions {
+  pageSize?: number;
+  cursor?: QueryDocumentSnapshot<DocumentData> | null;
 }
 
 export class AdminService {
@@ -40,5 +63,29 @@ export class AdminService {
 
   static async unsuspendUser(userId: string): Promise<void> {
     await this.updateUserPermissions(userId, { suspended: false });
+  }
+
+  static async listInteractionEvents(
+    options: ListInteractionEventsOptions = {}
+  ): Promise<InteractionEventsPage> {
+    const pageSize = Math.max(1, Math.min(100, options.pageSize ?? 25));
+    const constraints = [orderBy('createdAt', 'desc'), limit(pageSize + 1)] as const;
+
+    const baseQuery = options.cursor
+      ? query(collection(db, COLLECTIONS.INTERACTION_EVENTS), ...constraints, startAfter(options.cursor))
+      : query(collection(db, COLLECTIONS.INTERACTION_EVENTS), ...constraints);
+
+    const snapshot = await getDocs(baseQuery);
+    const docs = snapshot.docs;
+    const visibleDocs = docs.slice(0, pageSize);
+
+    return {
+      events: visibleDocs.map(docSnap => ({
+        id: docSnap.id,
+        ...(docSnap.data() as InteractionEvent)
+      })),
+      nextCursor: visibleDocs.length > 0 ? visibleDocs[visibleDocs.length - 1] : null,
+      hasMore: docs.length > pageSize
+    };
   }
 }

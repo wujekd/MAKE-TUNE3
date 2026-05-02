@@ -285,6 +285,11 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /interactionEvents/{eventId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
     match /userDownloads/{downloadId} {
       allow read: if isSignedIn() && (
         downloadId.split('__')[0] == request.auth.uid

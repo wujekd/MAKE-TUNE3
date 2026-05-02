@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const ADMIN_LINKS = [
+  { path: '/admin/events', label: 'Events' },
   { path: '/admin/feedback', label: 'Feedback' },
   { path: '/admin/users', label: 'Users' },
   { path: '/admin/reported', label: 'Reported' },

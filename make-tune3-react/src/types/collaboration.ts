@@ -169,6 +169,32 @@ export interface UserCollaboration {
   createdAt: Timestamp;
 }
 
+export type InteractionEntityType = 'submission' | 'collaboration';
+
+export type InteractionEventType =
+  | 'submission_like'
+  | 'submission_unlike'
+  | 'submission_favorite'
+  | 'submission_unfavorite'
+  | 'submission_vote'
+  | 'collaboration_like'
+  | 'collaboration_unlike'
+  | 'collaboration_favorite'
+  | 'collaboration_unfavorite';
+
+export interface InteractionEvent {
+  userId: string;
+  projectId: string | null;
+  collaborationId: string;
+  trackPath: string | null;
+  entityType: InteractionEntityType;
+  eventType: InteractionEventType;
+  createdAt: Timestamp;
+  metadata?: {
+    previousTrackPath?: string | null;
+  };
+}
+
 export interface UserProfile {
   uid: string;
   email: string;
@@ -233,6 +259,7 @@ export const COLLECTIONS = {
   COLLABORATIONS: 'collaborations',
   COLLABORATION_DETAILS: 'collaborationDetails',
   USER_COLLABORATIONS: 'userCollaborations',
+  INTERACTION_EVENTS: 'interactionEvents',
   USERS: 'users',
   SUBMISSION_USERS: 'submissionUsers',
   USER_DOWNLOADS: 'userDownloads',

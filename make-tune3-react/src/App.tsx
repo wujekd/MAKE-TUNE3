@@ -54,6 +54,9 @@ const AdminResolvedReportsView = lazy(() =>
 const AdminFeedbackView = lazy(() =>
   import('./views/AdminFeedbackView').then(module => ({ default: module.AdminFeedbackView }))
 );
+const AdminInteractionEventsView = lazy(() =>
+  import('./views/AdminInteractionEventsView').then(module => ({ default: module.AdminInteractionEventsView }))
+);
 const AdminUsersView = lazy(() =>
   import('./views/AdminUsersView').then(module => ({ default: module.AdminUsersView }))
 );
@@ -291,6 +294,15 @@ function App() {
           handle: {
             title: 'Resolved Reports',
             breadcrumb: 'Resolved',
+            actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
+          }
+        },
+        {
+          path: 'admin/events',
+          element: <LazyAdminRoute><AdminInteractionEventsView /></LazyAdminRoute>,
+          handle: {
+            title: 'Interaction Events',
+            breadcrumb: 'Events',
             actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
           }
         },

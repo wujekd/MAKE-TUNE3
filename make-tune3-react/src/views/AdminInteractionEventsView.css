@@ -1,0 +1,149 @@
+.admin-events {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+
+.admin-events__toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 14px;
+}
+
+.admin-events__toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.admin-events__button {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--white);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.admin-events__button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.admin-events__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.admin-events__state {
+  padding: 20px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.admin-events__error {
+  color: #ffd4d4;
+  background: rgba(148, 36, 36, 0.32);
+}
+
+.admin-events__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-events__card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03)),
+    rgba(9, 12, 21, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-events__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-events__meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-events__pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.admin-events__pill--type {
+  background: rgba(255, 210, 120, 0.14);
+  color: #ffd27a;
+}
+
+.admin-events__pill--entity {
+  background: rgba(126, 179, 255, 0.14);
+  color: #91c0ff;
+}
+
+.admin-events__time {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+}
+
+.admin-events__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.admin-events__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-events__field label {
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.admin-events__field code,
+.admin-events__field span {
+  color: var(--white);
+  word-break: break-word;
+}
+
+@media (max-width: 640px) {
+  .admin-events__toolbar {
+    align-items: stretch;
+  }
+
+  .admin-events__toolbar-actions {
+    width: 100%;
+  }
+
+  .admin-events__button {
+    flex: 1;
+  }
+}

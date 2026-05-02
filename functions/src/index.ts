@@ -16,6 +16,16 @@ import * as fs from "fs";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegStatic from "ffmpeg-static";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import {
+  INTERACTION_EVENTS_COLLECTION,
+  INTERACTION_EVENT_TYPES,
+  addValueIfMissing,
+  buildInteractionEvent,
+  removeValueIfPresent,
+  setBooleanValue,
+  setFinalVote,
+  type InteractionEventInput
+} from "./interactionEvents.js";
 setGlobalOptions({ region: "europe-west1", maxInstances: 10 });
 
 initializeApp();
@@ -140,6 +150,20 @@ const normalizeStringArray = (value: unknown): string[] => {
     .filter((item): item is string => typeof item === "string")
     .map((item) => item.trim())
     .filter(Boolean);
+};
+
+const getProjectId = (collabData: any): string | null =>
+  typeof collabData?.projectId === "string" && collabData.projectId.trim()
+    ? collabData.projectId
+    : null;
+
+const writeInteractionEventTx = (
+  tx: FirebaseFirestore.Transaction,
+  event: InteractionEventInput,
+  createdAt: Timestamp
+) => {
+  const eventRef = db.collection(INTERACTION_EVENTS_COLLECTION).doc();
+  tx.set(eventRef, buildInteractionEvent(event, createdAt));
 };
 
 const buildUserCollaborationPayload = (
@@ -1650,20 +1674,27 @@ export const addFavoriteTrack = onCall(async (request) => {
     );
     const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
 
-    const favorites = [...nextUserCollab.favoriteTracks];
-    if (favorites.includes(filePath)) {
+    const favoriteChange = addValueIfMissing(nextUserCollab.favoriteTracks, filePath);
+    if (!favoriteChange.changed) {
       tx.set(userCollabRef, nextUserCollab, { merge: true });
       return { updated: false };
     }
 
-    favorites.push(filePath);
     tx.set(userCollabRef, {
       ...nextUserCollab,
-      favoriteTracks: favorites
+      favoriteTracks: favoriteChange.next
     }, { merge: true });
 
     const favoritesCount = toNumber(collabData.favoritesCount, 0);
     tx.update(collabRef, { favoritesCount: favoritesCount + 1, updatedAt: now });
+    writeInteractionEventTx(tx, {
+      userId: uid,
+      projectId: getProjectId(collabData),
+      collaborationId: collaborationIdRaw,
+      trackPath: filePath,
+      entityType: "submission",
+      eventType: INTERACTION_EVENT_TYPES.SUBMISSION_FAVORITE
+    }, now);
     return { updated: true, favoritesCount: favoritesCount + 1 };
   });
 });
@@ -1728,16 +1759,15 @@ export const removeFavoriteTrack = onCall(async (request) => {
     }
     const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
 
-    const favorites = [...nextUserCollab.favoriteTracks];
-    if (!favorites.includes(filePath)) {
+    const favoriteChange = removeValueIfPresent(nextUserCollab.favoriteTracks, filePath);
+    if (!favoriteChange.changed) {
       tx.update(userCollabRef, { lastInteraction: now });
       return { updated: false };
     }
 
-    const updatedFavorites = favorites.filter((path) => path !== filePath);
     tx.set(userCollabRef, {
       ...nextUserCollab,
-      favoriteTracks: updatedFavorites
+      favoriteTracks: favoriteChange.next
     }, { merge: true });
 
     const favoritesCount = toNumber(collabData.favoritesCount, 0);
@@ -1745,6 +1775,14 @@ export const removeFavoriteTrack = onCall(async (request) => {
       favoritesCount: Math.max(0, favoritesCount - 1),
       updatedAt: now
     });
+    writeInteractionEventTx(tx, {
+      userId: uid,
+      projectId: getProjectId(collabData),
+      collaborationId: collaborationIdRaw,
+      trackPath: filePath,
+      entityType: "submission",
+      eventType: INTERACTION_EVENT_TYPES.SUBMISSION_UNFAVORITE
+    }, now);
     return { updated: true, favoritesCount: Math.max(0, favoritesCount - 1) };
   });
 });
@@ -1805,17 +1843,24 @@ export const likeTrack = onCall(async (request) => {
       collaborationIdRaw
     );
     const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
-    const likedTracks = [...nextUserCollab.likedTracks];
-    if (likedTracks.includes(filePath)) {
+    const likeChange = addValueIfMissing(nextUserCollab.likedTracks, filePath);
+    if (!likeChange.changed) {
       tx.set(userCollabRef, nextUserCollab, { merge: true });
       return { updated: false };
     }
 
-    likedTracks.push(filePath);
     tx.set(userCollabRef, {
       ...nextUserCollab,
-      likedTracks
+      likedTracks: likeChange.next
     }, { merge: true });
+    writeInteractionEventTx(tx, {
+      userId: uid,
+      projectId: getProjectId(collabData),
+      collaborationId: collaborationIdRaw,
+      trackPath: filePath,
+      entityType: "submission",
+      eventType: INTERACTION_EVENT_TYPES.SUBMISSION_LIKE
+    }, now);
     return { updated: true };
   });
 });
@@ -1880,15 +1925,24 @@ export const unlikeTrack = onCall(async (request) => {
     }
 
     const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
-    if (!nextUserCollab.likedTracks.includes(filePath)) {
+    const likeChange = removeValueIfPresent(nextUserCollab.likedTracks, filePath);
+    if (!likeChange.changed) {
       tx.update(userCollabRef, { lastInteraction: now });
       return { updated: false };
     }
 
     tx.set(userCollabRef, {
       ...nextUserCollab,
-      likedTracks: nextUserCollab.likedTracks.filter((path: string) => path !== filePath)
+      likedTracks: likeChange.next
     }, { merge: true });
+    writeInteractionEventTx(tx, {
+      userId: uid,
+      projectId: getProjectId(collabData),
+      collaborationId: collaborationIdRaw,
+      trackPath: filePath,
+      entityType: "submission",
+      eventType: INTERACTION_EVENT_TYPES.SUBMISSION_UNLIKE
+    }, now);
     return { updated: true };
   });
 });
@@ -1948,8 +2002,8 @@ export const voteForTrack = onCall(async (request) => {
     );
     const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
 
-    const currentVote = String(nextUserCollab.finalVote || "");
-    if (currentVote === filePath) {
+    const voteChange = setFinalVote(nextUserCollab.finalVote, filePath);
+    if (!voteChange.changed) {
       tx.set(userCollabRef, {
         ...nextUserCollab,
         finalVote: filePath
@@ -1957,11 +2011,20 @@ export const voteForTrack = onCall(async (request) => {
       return { updated: false };
     }
 
-    const isFirstVote = !currentVote;
+    const isFirstVote = !nextUserCollab.finalVote;
     tx.set(userCollabRef, {
       ...nextUserCollab,
-      finalVote: filePath
+      finalVote: voteChange.next
     }, { merge: true });
+    writeInteractionEventTx(tx, {
+      userId: uid,
+      projectId: getProjectId(collabData),
+      collaborationId: collaborationIdRaw,
+      trackPath: filePath,
+      entityType: "submission",
+      eventType: INTERACTION_EVENT_TYPES.SUBMISSION_VOTE,
+      metadata: voteChange.metadata
+    }, now);
 
     if (isFirstVote) {
       const votesCount = toNumber(collabData.votesCount, 0);
@@ -2004,15 +2067,24 @@ export const likeCollaboration = onCall(async (request) => {
       collaborationIdRaw
     );
     const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
-    if (nextUserCollab.likedCollaboration) {
+    const likeChange = setBooleanValue(nextUserCollab.likedCollaboration, true);
+    if (!likeChange.changed) {
       tx.set(userCollabRef, nextUserCollab, { merge: true });
       return { updated: false };
     }
 
     tx.set(userCollabRef, {
       ...nextUserCollab,
-      likedCollaboration: true
+      likedCollaboration: likeChange.next
     }, { merge: true });
+    writeInteractionEventTx(tx, {
+      userId: uid,
+      projectId: getProjectId(collabData),
+      collaborationId: collaborationIdRaw,
+      trackPath: null,
+      entityType: "collaboration",
+      eventType: INTERACTION_EVENT_TYPES.COLLABORATION_LIKE
+    }, now);
     return { updated: true };
   });
 });
@@ -2052,15 +2124,24 @@ export const unlikeCollaboration = onCall(async (request) => {
     }
 
     const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
-    if (!nextUserCollab.likedCollaboration) {
+    const likeChange = setBooleanValue(nextUserCollab.likedCollaboration, false);
+    if (!likeChange.changed) {
       tx.update(userCollabRef, { lastInteraction: now });
       return { updated: false };
     }
 
     tx.set(userCollabRef, {
       ...nextUserCollab,
-      likedCollaboration: false
+      likedCollaboration: likeChange.next
     }, { merge: true });
+    writeInteractionEventTx(tx, {
+      userId: uid,
+      projectId: getProjectId(collabData),
+      collaborationId: collaborationIdRaw,
+      trackPath: null,
+      entityType: "collaboration",
+      eventType: INTERACTION_EVENT_TYPES.COLLABORATION_UNLIKE
+    }, now);
     return { updated: true };
   });
 });
@@ -2096,15 +2177,24 @@ export const favoriteCollaboration = onCall(async (request) => {
       collaborationIdRaw
     );
     const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
-    if (nextUserCollab.favoritedCollaboration) {
+    const favoriteChange = setBooleanValue(nextUserCollab.favoritedCollaboration, true);
+    if (!favoriteChange.changed) {
       tx.set(userCollabRef, nextUserCollab, { merge: true });
       return { updated: false };
     }
 
     tx.set(userCollabRef, {
       ...nextUserCollab,
-      favoritedCollaboration: true
+      favoritedCollaboration: favoriteChange.next
     }, { merge: true });
+    writeInteractionEventTx(tx, {
+      userId: uid,
+      projectId: getProjectId(collabData),
+      collaborationId: collaborationIdRaw,
+      trackPath: null,
+      entityType: "collaboration",
+      eventType: INTERACTION_EVENT_TYPES.COLLABORATION_FAVORITE
+    }, now);
     return { updated: true };
   });
 });
@@ -2144,15 +2234,24 @@ export const unfavoriteCollaboration = onCall(async (request) => {
     }
 
     const nextUserCollab = buildUserCollaborationPayload(uid, collaborationIdRaw, now, userCollabData);
-    if (!nextUserCollab.favoritedCollaboration) {
+    const favoriteChange = setBooleanValue(nextUserCollab.favoritedCollaboration, false);
+    if (!favoriteChange.changed) {
       tx.update(userCollabRef, { lastInteraction: now });
       return { updated: false };
     }
 
     tx.set(userCollabRef, {
       ...nextUserCollab,
-      favoritedCollaboration: false
+      favoritedCollaboration: favoriteChange.next
     }, { merge: true });
+    writeInteractionEventTx(tx, {
+      userId: uid,
+      projectId: getProjectId(collabData),
+      collaborationId: collaborationIdRaw,
+      trackPath: null,
+      entityType: "collaboration",
+      eventType: INTERACTION_EVENT_TYPES.COLLABORATION_UNFAVORITE
+    }, now);
     return { updated: true };
   });
 });
