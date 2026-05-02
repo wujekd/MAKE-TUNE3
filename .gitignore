@@ -10,3 +10,6 @@ firestore-debug.log
 .DS_Store
 docs/react-app-design-patterns.md
 /docs/docz
+/recommendation-system/venv
+/recommendation-system/data
+recommendation-system/recommender.env

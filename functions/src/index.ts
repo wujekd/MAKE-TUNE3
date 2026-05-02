@@ -8,11 +8,13 @@ import { initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
 import { setGlobalOptions } from "firebase-functions";
 import { onObjectFinalized } from "firebase-functions/v2/storage";
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params";
 import { getStorage } from "firebase-admin/storage";
 import * as path from "path";
 import * as os from "os";
 import * as fs from "fs";
+import * as crypto from "crypto";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegStatic from "ffmpeg-static";
 import { onSchedule } from "firebase-functions/v2/scheduler";
@@ -37,6 +39,8 @@ const DEFAULT_WINNER_NAME = "no name";
 const ACTIVE_COLLAB_STATUSES = new Set(["submission", "voting"]);
 const COLLAB_REACTION_STATUSES = new Set(["published", "submission", "voting", "completed"]);
 const PROJECT_DELETION_HISTORY_COLLECTION = "projectDeletionHistory";
+const RECOMMENDATIONS_COLLECTION = "recommendations";
+const RECOMMENDATION_API_TOKEN = defineSecret("RECOMMENDATION_API_TOKEN");
 
 const BAD = ["foo", "bar"];
 const TIER_LIMITS: Record<string, number> = {
@@ -151,6 +155,77 @@ const normalizeStringArray = (value: unknown): string[] => {
     .map((item) => item.trim())
     .filter(Boolean);
 };
+
+const getBearerToken = (headerValue: unknown): string | null => {
+  if (typeof headerValue !== "string") return null;
+  const trimmed = headerValue.trim();
+  if (!trimmed.startsWith("Bearer ")) return null;
+  const token = trimmed.slice("Bearer ".length).trim();
+  return token || null;
+};
+
+const tokensMatch = (provided: string | null, expected: string | null): boolean => {
+  if (!provided || !expected) return false;
+  const providedBuffer = Buffer.from(provided);
+  const expectedBuffer = Buffer.from(expected);
+  if (providedBuffer.length !== expectedBuffer.length) return false;
+  return crypto.timingSafeEqual(providedBuffer, expectedBuffer);
+};
+
+const requireRecommendationApiToken = (authHeader: unknown) => {
+  const provided = getBearerToken(authHeader);
+  const expected = RECOMMENDATION_API_TOKEN.value();
+  if (!tokensMatch(provided, expected)) {
+    throw new HttpsError("unauthenticated", "invalid recommendation api token");
+  }
+};
+
+const toIsoString = (value: any): string | null => {
+  if (value == null) return null;
+  if (typeof value?.toDate === "function") {
+    return value.toDate().toISOString();
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  if (typeof value === "string" && value.trim()) {
+    return value;
+  }
+  return null;
+};
+
+const parseStringArrayField = (value: unknown): string[] => normalizeStringArray(value);
+
+const serializeInteractionEvent = (id: string, data: any) => ({
+  id,
+  userId: String(data?.userId || ""),
+  projectId: String(data?.projectId || ""),
+  collaborationId: String(data?.collaborationId || ""),
+  trackPath: typeof data?.trackPath === "string" ? data.trackPath : null,
+  entityType: String(data?.entityType || ""),
+  eventType: String(data?.eventType || ""),
+  createdAt: toIsoString(data?.createdAt),
+  tags: parseStringArrayField(data?.tags)
+});
+
+const serializeCollaborationForRecommendationExport = (id: string, data: any) => ({
+  id,
+  projectId: String(data?.projectId || ""),
+  name: String(data?.name || ""),
+  status: String(data?.status || ""),
+  tags: parseStringArrayField(data?.tags),
+  tagsKey: parseStringArrayField(data?.tagsKey),
+  publishedAt: toIsoString(data?.publishedAt)
+});
+
+const serializeProjectForRecommendationExport = (id: string, data: any) => ({
+  id,
+  name: String(data?.name || "")
+});
+
+const serializeUserForRecommendationExport = (id: string) => ({
+  id
+});
 
 const getProjectId = (collabData: any): string | null =>
   typeof collabData?.projectId === "string" && collabData.projectId.trim()
@@ -2510,6 +2585,162 @@ export const getMyAccountStats = onCall(async (request) => {
     votes
   };
 });
+
+export const recommendationExport = onRequest(
+  { secrets: [RECOMMENDATION_API_TOKEN] },
+  async (req, res) => {
+    if (req.method !== "GET") {
+      res.status(405).json({ error: "method-not-allowed" });
+      return;
+    }
+
+    try {
+      requireRecommendationApiToken(req.headers.authorization);
+    } catch (_err) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+
+    try {
+      const [eventsSnap, collaborationsSnap, projectsSnap, usersSnap] = await Promise.all([
+        db.collection(INTERACTION_EVENTS_COLLECTION).orderBy("createdAt", "asc").get(),
+        db.collection("collaborations").get(),
+        db.collection("projects").get(),
+        db.collection("users").get()
+      ]);
+
+      const interactionEvents = eventsSnap.docs.map((docSnap) =>
+        serializeInteractionEvent(docSnap.id, docSnap.data())
+      );
+      const collaborations = collaborationsSnap.docs.map((docSnap) =>
+        serializeCollaborationForRecommendationExport(docSnap.id, docSnap.data())
+      );
+      const projects = projectsSnap.docs.map((docSnap) =>
+        serializeProjectForRecommendationExport(docSnap.id, docSnap.data())
+      );
+      const users = usersSnap.docs.map((docSnap) =>
+        serializeUserForRecommendationExport(docSnap.id)
+      );
+
+      res.status(200).json({
+        generatedAt: new Date().toISOString(),
+        modelInputVersion: "v1",
+        interactionEvents,
+        collaborations,
+        projects,
+        users
+      });
+    } catch (err) {
+      console.error("[recommendationExport] failed", err);
+      res.status(500).json({ error: "internal" });
+    }
+  }
+);
+
+export const recommendationImport = onRequest(
+  { secrets: [RECOMMENDATION_API_TOKEN] },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).json({ error: "method-not-allowed" });
+      return;
+    }
+
+    try {
+      requireRecommendationApiToken(req.headers.authorization);
+    } catch (_err) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+
+    const generatedAt = typeof req.body?.generatedAt === "string" ? req.body.generatedAt.trim() : "";
+    const modelVersion = typeof req.body?.modelVersion === "string" ? req.body.modelVersion.trim() : "";
+    const recommendations = Array.isArray(req.body?.recommendations) ? req.body.recommendations : null;
+
+    if (!generatedAt || !modelVersion || !recommendations) {
+      res.status(400).json({ error: "invalid-payload" });
+      return;
+    }
+
+    const importedAt = Timestamp.now();
+    const sanitizedDocs: Array<{
+      userId: string;
+      recommendations: Array<{
+        rank: number;
+        collaborationId: string;
+        projectId: string;
+        score: number;
+        highlightedTrackPath: string | null;
+      }>;
+    }> = [];
+    type RecommendationImportItem = {
+      rank: number;
+      collaborationId: string;
+      projectId: string;
+      score: number;
+      highlightedTrackPath: string | null;
+    };
+
+    for (const entry of recommendations) {
+      const userId = typeof entry?.userId === "string" ? entry.userId.trim() : "";
+      const items = Array.isArray(entry?.collaborations) ? entry.collaborations : null;
+      if (!userId || !items) {
+        res.status(400).json({ error: "invalid-recommendation-entry" });
+        return;
+      }
+
+      const sanitizedItems = items
+        .map((item: any): RecommendationImportItem => ({
+          rank: Number(item?.rank),
+          collaborationId: typeof item?.collaborationId === "string" ? item.collaborationId.trim() : "",
+          projectId: typeof item?.projectId === "string" ? item.projectId.trim() : "",
+          score: Number(item?.score),
+          highlightedTrackPath: typeof item?.highlightedTrackPath === "string" &&
+            item.highlightedTrackPath.trim()
+            ? item.highlightedTrackPath.trim()
+            : null
+        }))
+        .filter((item: RecommendationImportItem) =>
+          Number.isFinite(item.rank) &&
+          item.rank > 0 &&
+          item.collaborationId &&
+          item.projectId &&
+          Number.isFinite(item.score)
+        )
+        .sort((a: RecommendationImportItem, b: RecommendationImportItem) => a.rank - b.rank);
+
+      sanitizedDocs.push({
+        userId,
+        recommendations: sanitizedItems
+      });
+    }
+
+    try {
+      for (const chunk of chunkArray(sanitizedDocs, 400)) {
+        const batch = db.batch();
+        for (const doc of chunk) {
+          const docRef = db.collection(RECOMMENDATIONS_COLLECTION).doc(doc.userId);
+          batch.set(docRef, {
+            userId: doc.userId,
+            generatedAt,
+            modelVersion,
+            importedAt,
+            recommendations: doc.recommendations
+          });
+        }
+        await batch.commit();
+      }
+
+      res.status(200).json({
+        ok: true,
+        usersWritten: sanitizedDocs.length,
+        modelVersion
+      });
+    } catch (err) {
+      console.error("[recommendationImport] failed", err);
+      res.status(500).json({ error: "internal" });
+    }
+  }
+);
 
 export const syncTagsOnProjectWrite = onDocumentWritten(
   "projects/{projectId}",

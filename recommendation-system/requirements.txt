@@ -1,0 +1,7 @@
+jupyter
+ipykernel
+pandas
+scipy
+implicit
+certifi
+numpy
