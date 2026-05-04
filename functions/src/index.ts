@@ -7,7 +7,7 @@ import {
 import { initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
 import { setGlobalOptions } from "firebase-functions";
-import { onObjectFinalized } from "firebase-functions/v2/storage";
+import { onObjectDeleted, onObjectFinalized } from "firebase-functions/v2/storage";
 import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { getStorage } from "firebase-admin/storage";
@@ -79,6 +79,7 @@ const SUBMISSION_TOKEN_COLLECTION = "submissionUploadTokens";
 const BACKING_TOKEN_COLLECTION = "backingUploadTokens";
 const WAVEFORM_VERSION = 1;
 const BACKING_WAVEFORM_BUCKET_COUNT = 768;
+const SUBMISSION_WAVEFORM_BUCKET_COUNT = 512;
 const ALLOWED_AUDIO_EXTS = new Set([
   "mp3",
   "wav",
@@ -378,6 +379,146 @@ const findSubmissionByPath = (detailData: any, filePath: string) => {
     (entry) => entry?.path === filePath || entry?.optimizedPath === filePath
   ) || null;
 };
+
+const findSubmissionIndex = (submissions: any[], submissionId: string, filePath?: string) =>
+  submissions.findIndex((entry) =>
+    entry?.submissionId === submissionId ||
+    (filePath ? entry?.path === filePath : false)
+  );
+
+async function updateSubmissionWaveformFields(params: {
+  collabId: string;
+  submissionId: string;
+  filePath?: string;
+  fields: Record<string, unknown>;
+}): Promise<boolean> {
+  const { collabId, submissionId, filePath, fields } = params;
+  const detailRef = db.collection("collaborationDetails").doc(collabId);
+  const collabRef = db.collection("collaborations").doc(collabId);
+
+  return db.runTransaction(async (tx) => {
+    const [detailSnap, collabSnap] = await Promise.all([tx.get(detailRef), tx.get(collabRef)]);
+    if (!detailSnap.exists) return false;
+
+    const detailData = detailSnap.data() as any;
+    const submissions: any[] = Array.isArray(detailData?.submissions) ? [...detailData.submissions] : [];
+    const index = findSubmissionIndex(submissions, submissionId, filePath);
+    if (index === -1) return false;
+
+    submissions[index] = {
+      ...submissions[index],
+      ...fields
+    };
+
+    const now = Timestamp.now();
+    tx.set(detailRef, {
+      collaborationId: collabId,
+      submissions,
+      submissionPaths: submissions.map((entry) => entry?.path).filter(Boolean),
+      updatedAt: now,
+      createdAt: detailData?.createdAt || now
+    }, { merge: true });
+
+    if (collabSnap.exists) {
+      tx.update(collabRef, { updatedAt: now });
+    }
+
+    return true;
+  });
+}
+
+async function generateSubmissionWaveformAsset(params: {
+  bucketName: string;
+  collabId: string;
+  submissionId: string;
+  submissionPath: string;
+  waveformPath: string;
+}): Promise<void> {
+  const { bucketName, collabId, submissionId, submissionPath, waveformPath } = params;
+  const bucket = storageAdmin.bucket(bucketName);
+  const tmpBase = `submission-waveform-${collabId}-${submissionId}-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+  const tmpInput = path.join(os.tmpdir(), `${tmpBase}${path.extname(submissionPath) || ".audio"}`);
+  const tmpWav = path.join(os.tmpdir(), `${tmpBase}.wav`);
+
+  try {
+    await updateSubmissionWaveformFields({
+      collabId,
+      submissionId,
+      filePath: submissionPath,
+      fields: {
+        waveformStatus: "processing",
+        waveformError: null,
+        waveformBucketCount: SUBMISSION_WAVEFORM_BUCKET_COUNT,
+        waveformVersion: WAVEFORM_VERSION
+      }
+    });
+
+    await bucket.file(submissionPath).download({ destination: tmpInput });
+    (ffmpeg as any).setFfmpegPath(ffmpegStatic as any);
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(tmpInput)
+        .outputOptions(["-ac 1", "-ar 22050", "-f wav", "-acodec pcm_s16le"])
+        .save(tmpWav)
+        .on("end", () => resolve())
+        .on("error", (error) => reject(error));
+    });
+
+    const wavBuffer = fs.readFileSync(tmpWav);
+    const parsed = parseMonoPcm16Wav(wavBuffer);
+    const payload = buildWaveformPayload(
+      parsed.samples,
+      parsed.sampleRate,
+      SUBMISSION_WAVEFORM_BUCKET_COUNT,
+      path.basename(submissionPath)
+    );
+
+    await bucket.file(waveformPath).save(JSON.stringify(payload), {
+      resumable: false,
+      contentType: "application/json; charset=utf-8",
+      metadata: {
+        cacheControl: "public, max-age=31536000, immutable",
+      },
+    });
+
+    const updated = await updateSubmissionWaveformFields({
+      collabId,
+      submissionId,
+      filePath: submissionPath,
+      fields: {
+        waveformPath,
+        waveformStatus: "ready",
+        waveformBucketCount: payload.bucketCount,
+        waveformVersion: payload.version,
+        waveformError: null
+      }
+    });
+
+    if (!updated) {
+      await bucket.file(waveformPath).delete({ ignoreNotFound: true });
+    }
+  } catch (err) {
+    const updated = await updateSubmissionWaveformFields({
+      collabId,
+      submissionId,
+      filePath: submissionPath,
+      fields: {
+        waveformStatus: "failed",
+        waveformError: err instanceof Error ? err.message.slice(0, 500) : String(err).slice(0, 500),
+        waveformBucketCount: SUBMISSION_WAVEFORM_BUCKET_COUNT,
+        waveformVersion: WAVEFORM_VERSION
+      }
+    });
+
+    if (!updated) {
+      await bucket.file(waveformPath).delete({ ignoreNotFound: true });
+    }
+
+    throw err;
+  } finally {
+    try { fs.unlinkSync(tmpInput); } catch { }
+    try { fs.unlinkSync(tmpWav); } catch { }
+  }
+}
 
 const normalizeStringArray = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];
@@ -1538,6 +1679,8 @@ export const finalizeSubmissionUpload = onObjectFinalized({ region: "europe-west
   const settings = await getSystemSettings();
   let shouldDeleteObject = false;
   let deleteReason = "";
+  let shouldGenerateWaveform = false;
+  const waveformPath = `collabs/${collabId}/waveforms/submission-${submissionId}.json`;
 
   await db.runTransaction(async (tx) => {
     const [tokenSnap, collabSnap, detailSnap, submissionUserSnap] = await Promise.all([
@@ -1623,7 +1766,12 @@ export const finalizeSubmissionUpload = onObjectFinalized({ region: "europe-west
       submissionId,
       settings: submissionSettings,
       createdAt,
-      moderationStatus: "pending"
+      moderationStatus: "pending",
+      waveformPath: null,
+      waveformStatus: "pending",
+      waveformBucketCount: SUBMISSION_WAVEFORM_BUCKET_COUNT,
+      waveformVersion: WAVEFORM_VERSION,
+      waveformError: null
     };
 
     const detailData = detailSnap.exists ? (detailSnap.data() as any) : null;
@@ -1632,6 +1780,17 @@ export const finalizeSubmissionUpload = onObjectFinalized({ region: "europe-west
     const isNewSubmission = existingIndex === -1;
     if (isNewSubmission) {
       submissions.push(entry);
+      shouldGenerateWaveform = true;
+    } else {
+      submissions[existingIndex] = {
+        ...submissions[existingIndex],
+        waveformPath: submissions[existingIndex]?.waveformPath ?? null,
+        waveformStatus: submissions[existingIndex]?.waveformStatus ?? "pending",
+        waveformBucketCount: submissions[existingIndex]?.waveformBucketCount ?? SUBMISSION_WAVEFORM_BUCKET_COUNT,
+        waveformVersion: submissions[existingIndex]?.waveformVersion ?? WAVEFORM_VERSION,
+        waveformError: submissions[existingIndex]?.waveformError ?? null
+      };
+      shouldGenerateWaveform = !submissions[existingIndex]?.waveformPath;
     }
 
     tx.set(submissionUserRef, {
@@ -1673,6 +1832,20 @@ export const finalizeSubmissionUpload = onObjectFinalized({ region: "europe-west
       console.log(`[finalizeSubmissionUpload] deleted invalid upload ${filePath} reason=${deleteReason}`);
     } catch (err) {
       console.error(`[finalizeSubmissionUpload] failed to delete invalid upload ${filePath}`, err);
+    }
+  }
+
+  if (shouldGenerateWaveform) {
+    try {
+      await generateSubmissionWaveformAsset({
+        bucketName: object.bucket,
+        collabId,
+        submissionId,
+        submissionPath: filePath,
+        waveformPath
+      });
+    } catch (err) {
+      console.error(`[finalizeSubmissionUpload] submission waveform generation failed for ${filePath}`, err);
     }
   }
 });
@@ -1723,6 +1896,82 @@ export const attachSubmissionMultitracks = onObjectFinalized({ region: "europe-w
       createdAt: detailData?.createdAt || Timestamp.now()
     }, { merge: true });
   });
+});
+
+export const cleanupSubmissionWaveformOnDelete = onObjectDeleted({ region: "europe-west1" }, async (event) => {
+  const object = event.data;
+  const filePath = object.name || "";
+  if (!filePath.startsWith("collabs/") || !filePath.includes("/submissions/")) return;
+  if (filePath.endsWith("-multitracks.zip")) return;
+
+  const parts = filePath.split("/");
+  if (parts.length < 4) return;
+  const collabId = parts[1];
+  const fileName = parts[3];
+  const submissionId = path.basename(fileName, path.extname(fileName));
+  const conventionalWaveformPath = `collabs/${collabId}/waveforms/submission-${submissionId}.json`;
+  const bucket = storageAdmin.bucket(object.bucket);
+  const detailRef = db.collection("collaborationDetails").doc(collabId);
+  const collabRef = db.collection("collaborations").doc(collabId);
+  const submissionUserRef = db.collection("submissionUsers").doc(submissionId);
+
+  let derivedPaths: string[] = [conventionalWaveformPath];
+
+  await db.runTransaction(async (tx) => {
+    const [detailSnap, collabSnap, submissionUserSnap] = await Promise.all([
+      tx.get(detailRef),
+      tx.get(collabRef),
+      tx.get(submissionUserRef)
+    ]);
+
+    const now = Timestamp.now();
+    const detailData = detailSnap.exists ? detailSnap.data() as any : null;
+    const submissions: any[] = Array.isArray(detailData?.submissions) ? [...detailData.submissions] : [];
+    const index = findSubmissionIndex(submissions, submissionId, filePath);
+    const removed = index >= 0 ? submissions[index] : null;
+
+    if (index >= 0) {
+      submissions.splice(index, 1);
+      tx.set(detailRef, {
+        collaborationId: collabId,
+        submissions,
+        submissionPaths: submissions.map((entry) => entry?.path).filter(Boolean),
+        updatedAt: now,
+        createdAt: detailData?.createdAt || now
+      }, { merge: true });
+    }
+
+    if (submissionUserSnap.exists) {
+      tx.delete(submissionUserRef);
+    }
+
+    if (collabSnap.exists && (index >= 0 || submissionUserSnap.exists)) {
+      const collabData = collabSnap.data() as any;
+      const nextSubmissionsCount = Math.max(0, toNumber(collabData?.submissionsCount, 0) - (index >= 0 ? 1 : 0));
+      tx.set(collabRef, {
+        submissionsCount: nextSubmissionsCount,
+        unmoderatedSubmissions: submissions.some((entry: any) => (entry?.moderationStatus || "pending") === "pending"),
+        updatedAt: now
+      }, { merge: true });
+    }
+
+    if (removed) {
+      derivedPaths = Array.from(new Set([
+        conventionalWaveformPath,
+        String(removed.waveformPath || "").trim(),
+        String(removed.optimizedPath || "").trim(),
+        String(removed.multitrackZipPath || "").trim()
+      ].filter((value) => value && value !== filePath)));
+    }
+  });
+
+  for (const derivedPath of derivedPaths) {
+    try {
+      await bucket.file(derivedPath).delete({ ignoreNotFound: true });
+    } catch (err) {
+      console.error(`[cleanupSubmissionWaveformOnDelete] failed to delete ${derivedPath}`, err);
+    }
+  }
 });
 
 const buildNameKey = (name: string) =>
@@ -3660,6 +3909,8 @@ export const cleanupProjectOnDelete = onDocumentDeleted(
             for (const submission of detailData.submissions) {
               recordPath((submission as any)?.path);
               recordPath((submission as any)?.optimizedPath);
+              recordPath((submission as any)?.waveformPath);
+              recordPath((submission as any)?.multitrackZipPath);
             }
           }
           if (Array.isArray(detailData?.submissionPaths)) {

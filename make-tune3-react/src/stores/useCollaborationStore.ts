@@ -143,6 +143,11 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
           return createTrackFromFilePath(s.path, 'submission', collab.id, {
             settings: s.settings,
             optimizedPath: s.optimizedPath,
+            waveformPath: s.waveformPath,
+            waveformStatus: s.waveformStatus,
+            waveformBucketCount: s.waveformBucketCount,
+            waveformVersion: s.waveformVersion,
+            waveformError: s.waveformError,
             submissionId: s.submissionId,
             multitrackZipPath: s.multitrackZipPath,
             moderationStatus
@@ -216,6 +221,11 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
           return createTrackFromFilePath(s.path, 'submission', collab.id, {
             settings: s.settings,
             optimizedPath: s.optimizedPath,
+            waveformPath: s.waveformPath,
+            waveformStatus: s.waveformStatus,
+            waveformBucketCount: s.waveformBucketCount,
+            waveformVersion: s.waveformVersion,
+            waveformError: s.waveformError,
             submissionId: s.submissionId,
             moderationStatus
           });
@@ -275,6 +285,11 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
           return createTrackFromFilePath(s.path, 'submission', collab.id, {
             settings: s.settings,
             optimizedPath: s.optimizedPath,
+            waveformPath: s.waveformPath,
+            waveformStatus: s.waveformStatus,
+            waveformBucketCount: s.waveformBucketCount,
+            waveformVersion: s.waveformVersion,
+            waveformError: s.waveformError,
             submissionId: s.submissionId,
             moderationStatus
           });

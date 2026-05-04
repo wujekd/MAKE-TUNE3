@@ -83,7 +83,7 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onToggl
         ref={scrollContainerRef}
       >
         {/* Final vote placeholder slot at the beginning */}
-        <div className="favorite-item favorite-placeholder" style={{ outline: '1px dashed rgba(255,255,255,0.2)' }}>
+        <div className={`favorite-item favorite-placeholder${hasFinal ? ' favorite-placeholder--filled' : ''}`}>
           {hasFinal ? (
             <SubmissionItem
               key={favorites[finalIndex].id}

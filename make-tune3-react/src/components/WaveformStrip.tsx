@@ -103,12 +103,14 @@ export function WaveformStrip({
       const topPadding = Math.round(8 * dpr);
       const drawableHeight = Math.max(1, baseline - topPadding);
       const playedWidth = width * clamp(progressRatio);
+      const playedColor = 'rgba(116, 214, 193, 0.98)';
+      const unplayedColor = 'rgba(255, 255, 255, 0.26)';
 
       ctx.clearRect(0, 0, width, height);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
       ctx.fillRect(0, 0, width, height);
 
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
       ctx.lineWidth = Math.max(1, dpr);
       ctx.beginPath();
       ctx.moveTo(0, baseline + 0.5);
@@ -124,12 +126,9 @@ export function WaveformStrip({
         const top = baseline - barHeight;
         const drawWidth = Math.max(dpr, barWidth - dpr);
 
-        ctx.fillStyle = x < playedWidth ? '#8fc9bb' : 'rgba(255, 255, 255, 0.72)';
+        ctx.fillStyle = x < playedWidth ? playedColor : unplayedColor;
         ctx.fillRect(x, top, drawWidth, barHeight);
       }
-
-      ctx.fillStyle = 'rgba(255, 182, 80, 0.42)';
-      ctx.fillRect(playedWidth, 0, Math.max(dpr, 2 * dpr), height);
     };
 
     const drawFrame = () => {

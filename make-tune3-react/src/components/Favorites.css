@@ -167,20 +167,33 @@
 }
 
 .favorite-placeholder {
-  /* Match the submission-container styling */
-  background: linear-gradient(135deg,
-      rgba(255, 255, 255, 0.03) 0%,
-      rgba(255, 255, 255, 0.01) 50%,
-      rgba(0, 0, 0, 0.03) 100%);
-  border-radius: 12px;
-  border: 1px dashed rgba(48, 112, 113, 0.4);
-  width: 100px;
-  height: 100px;
-  margin: 0.5rem;
+  width: 126px;
+  height: 120px;
+  margin: 0.4rem 0.7rem 0.4rem 0.4rem;
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+}
+
+.favorite-placeholder::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 22px;
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.favorite-placeholder--filled::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 20px;
+  border: 1px solid rgba(239, 123, 58, 0.42);
+  box-shadow: 0 0 0 1px rgba(239, 123, 58, 0.12);
+  pointer-events: none;
 }
 
 /* When placeholder has a submission item inside, remove duplicate sizing */

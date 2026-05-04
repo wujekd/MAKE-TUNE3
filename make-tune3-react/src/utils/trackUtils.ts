@@ -15,6 +15,11 @@ export class TrackUtils {
     options?: {
       settings?: SubmissionSettings;
       optimizedPath?: string;
+      waveformPath?: string;
+      waveformStatus?: Track['waveformStatus'];
+      waveformBucketCount?: number;
+      waveformVersion?: number;
+      waveformError?: string | null;
       submissionId?: string;
       multitrackZipPath?: string;
       moderationStatus?: SubmissionModerationStatus;
@@ -29,6 +34,11 @@ export class TrackUtils {
       title,
       filePath,
       optimizedPath: options?.optimizedPath,
+      waveformPath: options?.waveformPath,
+      waveformStatus: options?.waveformStatus,
+      waveformBucketCount: options?.waveformBucketCount,
+      waveformVersion: options?.waveformVersion,
+      waveformError: options?.waveformError,
       submissionId: options?.submissionId,
       multitrackZipPath: options?.multitrackZipPath,
       duration: 0,
