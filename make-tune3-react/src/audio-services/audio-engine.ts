@@ -1,6 +1,10 @@
 import type { AudioState, EqState } from '../types.ts';
 import { PlaybackTracker } from './playback-tracker.ts';
 
+type LevelListener = (level: { peak: number; rms: number }) => void;
+type SpectrumListener = (frame: Uint8Array) => void;
+type ScopeListener = (frame: Float32Array) => void;
+
 export class AudioEngine {
   private player1: HTMLAudioElement;
   private player2: HTMLAudioElement;
@@ -20,12 +24,16 @@ export class AudioEngine {
   // todo: add eq gains, solo, mute, mute master, stop playback tracker and emit state
   private masterGain: GainNode | null = null;
   private masterAnalyser: AnalyserNode | null = null;
+  private masterSpectrumAnalyser: AnalyserNode | null = null;
   private masterMeterHpf: BiquadFilterNode | null = null; // HPF for metering (removes bass dominance)
   private player1Analyser: AnalyserNode | null = null;
   private player2Analyser: AnalyserNode | null = null;
-  private levelListeners: Set<(level: { peak: number; rms: number }) => void> = new Set();
-  private player1LevelListeners: Set<(level: { peak: number; rms: number }) => void> = new Set();
-  private player2LevelListeners: Set<(level: { peak: number; rms: number }) => void> = new Set();
+  private levelListeners: Set<LevelListener> = new Set();
+  private player1LevelListeners: Set<LevelListener> = new Set();
+  private player2LevelListeners: Set<LevelListener> = new Set();
+  private masterSpectrumListeners: Set<SpectrumListener> = new Set();
+  private player1ScopeListeners: Set<ScopeListener> = new Set();
+  private player2ScopeListeners: Set<ScopeListener> = new Set();
   private rafId: number | null = null;
   private syncRafId: number | null = null;
   private state: AudioState;
@@ -66,7 +74,7 @@ export class AudioEngine {
       this.setupAudioRouting();
       this.connectPlayerToAudioContext(1);
       this.connectPlayerToAudioContext(2);
-      if (this.levelListeners.size > 0) {
+      if (this.hasAnalysisListeners()) {
         this.startLevelLoop();
       }
     }
@@ -112,13 +120,17 @@ export class AudioEngine {
     this.masterAnalyser.fftSize = 1024;
     this.masterAnalyser.smoothingTimeConstant = 0.8;
 
+    this.masterSpectrumAnalyser = this.audioContext.createAnalyser();
+    this.masterSpectrumAnalyser.fftSize = 2048;
+    this.masterSpectrumAnalyser.smoothingTimeConstant = 0.65;
+
     // Create individual channel analysers
     this.player1Analyser = this.audioContext.createAnalyser();
-    this.player1Analyser.fftSize = 512;
+    this.player1Analyser.fftSize = 1024;
     this.player1Analyser.smoothingTimeConstant = 0.8;
 
     this.player2Analyser = this.audioContext.createAnalyser();
-    this.player2Analyser.fftSize = 512;
+    this.player2Analyser.fftSize = 1024;
     this.player2Analyser.smoothingTimeConstant = 0.8;
 
     // player1 chain: gain -> highpass -> param1 -> param2 -> highshelf -> mute -> master
@@ -135,6 +147,7 @@ export class AudioEngine {
     this.player2Gain.connect(this.masterGain);
     // split: to destination and to HPF'd analyser for metering
     this.masterGain.connect(this.audioContext.destination);
+    this.masterGain.connect(this.masterSpectrumAnalyser);
     // Meter chain: masterGain -> HPF -> analyser (so bass doesn't dominate the VU meter)
     this.masterGain.connect(this.masterMeterHpf);
     this.masterMeterHpf.connect(this.masterAnalyser);
@@ -194,14 +207,22 @@ export class AudioEngine {
     this.eqEnabled = enabled;
   }
   private startLevelLoop() {
-    if (!this.audioContext || !this.masterAnalyser || !this.player1Analyser || !this.player2Analyser) return;
+    if (
+      !this.audioContext ||
+      !this.masterAnalyser ||
+      !this.masterSpectrumAnalyser ||
+      !this.player1Analyser ||
+      !this.player2Analyser
+    ) return;
     if (this.rafId !== null) return;
 
     const masterAnalyser = this.masterAnalyser;
+    const masterSpectrumAnalyser = this.masterSpectrumAnalyser;
     const player1Analyser = this.player1Analyser;
     const player2Analyser = this.player2Analyser;
 
     const masterBuffer = new Float32Array(masterAnalyser.fftSize);
+    const masterSpectrumBuffer = new Uint8Array(masterSpectrumAnalyser.frequencyBinCount);
     const player1Buffer = new Float32Array(player1Analyser.fftSize);
     const player2Buffer = new Float32Array(player2Analyser.fftSize);
 
@@ -219,6 +240,11 @@ export class AudioEngine {
       const rms = Math.sqrt(sum / masterBuffer.length);
       this.levelListeners.forEach(cb => cb({ peak, rms }));
 
+      if (this.masterSpectrumListeners.size > 0) {
+        masterSpectrumAnalyser.getByteFrequencyData(masterSpectrumBuffer);
+        this.masterSpectrumListeners.forEach(cb => cb(masterSpectrumBuffer));
+      }
+
       // Player1 level
       player1Analyser.getFloatTimeDomainData(player1Buffer);
       let peak1 = 0;
@@ -231,6 +257,9 @@ export class AudioEngine {
       }
       const rms1 = Math.sqrt(sum1 / player1Buffer.length);
       this.player1LevelListeners.forEach(cb => cb({ peak: peak1, rms: rms1 }));
+      if (this.player1ScopeListeners.size > 0) {
+        this.player1ScopeListeners.forEach(cb => cb(player1Buffer));
+      }
 
       // Player2 level
       player2Analyser.getFloatTimeDomainData(player2Buffer);
@@ -244,16 +273,26 @@ export class AudioEngine {
       }
       const rms2 = Math.sqrt(sum2 / player2Buffer.length);
       this.player2LevelListeners.forEach(cb => cb({ peak: peak2, rms: rms2 }));
+      if (this.player2ScopeListeners.size > 0) {
+        this.player2ScopeListeners.forEach(cb => cb(player2Buffer));
+      }
 
       this.rafId = window.requestAnimationFrame(notify);
     };
     this.rafId = window.requestAnimationFrame(notify);
   }
+  private hasAnalysisListeners(): boolean {
+    return (
+      this.levelListeners.size > 0 ||
+      this.player1LevelListeners.size > 0 ||
+      this.player2LevelListeners.size > 0 ||
+      this.masterSpectrumListeners.size > 0 ||
+      this.player1ScopeListeners.size > 0 ||
+      this.player2ScopeListeners.size > 0
+    );
+  }
   private stopLevelLoopIfIdle() {
-    if (this.levelListeners.size === 0 &&
-      this.player1LevelListeners.size === 0 &&
-      this.player2LevelListeners.size === 0 &&
-      this.rafId !== null) {
+    if (!this.hasAnalysisListeners() && this.rafId !== null) {
       window.cancelAnimationFrame(this.rafId);
       this.rafId = null;
     }
@@ -279,6 +318,30 @@ export class AudioEngine {
     this.startLevelLoop();
     return () => {
       this.player2LevelListeners.delete(callback);
+      this.stopLevelLoopIfIdle();
+    };
+  }
+  onMasterSpectrum(callback: SpectrumListener): () => void {
+    this.masterSpectrumListeners.add(callback);
+    this.startLevelLoop();
+    return () => {
+      this.masterSpectrumListeners.delete(callback);
+      this.stopLevelLoopIfIdle();
+    };
+  }
+  onPlayer1Scope(callback: ScopeListener): () => void {
+    this.player1ScopeListeners.add(callback);
+    this.startLevelLoop();
+    return () => {
+      this.player1ScopeListeners.delete(callback);
+      this.stopLevelLoopIfIdle();
+    };
+  }
+  onPlayer2Scope(callback: ScopeListener): () => void {
+    this.player2ScopeListeners.add(callback);
+    this.startLevelLoop();
+    return () => {
+      this.player2ScopeListeners.delete(callback);
       this.stopLevelLoopIfIdle();
     };
   }

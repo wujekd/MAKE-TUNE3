@@ -19,6 +19,7 @@ type BackingPreviewState = {
 interface PlaybackState {
   backingPreview: BackingPreviewState | null;
   handleSubmissionVolumeChange: (volume: number) => void;
+  handleBackingVolumeChange: (volume: number) => void;
   handleMasterVolumeChange: (volume: number) => void;
   handleTimeSliderChange: (value: number) => void;
   previousTrack: () => void;
@@ -51,6 +52,13 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => {
       const engine = useAudioStore.getState().engine;
       if (engine) {
         engine.setVolume(1, volume);
+      }
+    },
+
+    handleBackingVolumeChange: (volume) => {
+      const engine = useAudioStore.getState().engine;
+      if (engine) {
+        engine.setVolume(2, volume);
       }
     },
 

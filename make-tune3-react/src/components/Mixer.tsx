@@ -7,6 +7,8 @@ import { SmallLEDMeter } from './SmallLEDMeter';
 import { SubmissionEQ } from './SubmissionEQ';
 import { Potentiometer } from './Potentiometer';
 import { WeightedFader } from './WeightedFader';
+import { MasterSpectrogramCanvas } from './MasterSpectrogramCanvas';
+import { ChannelScopeCanvas } from './ChannelScopeCanvas';
 import type { SubmissionSettings } from '../types/collaboration';
 
 interface MixerProps {
@@ -108,6 +110,7 @@ export function Mixer({ state }: MixerProps) {
   }, [audioCtx?.engine]);
   const {
     handleSubmissionVolumeChange,
+    handleBackingVolumeChange,
     handleMasterVolumeChange,
     handleTimeSliderChange,
     previousTrack,
@@ -222,7 +225,18 @@ export function Mixer({ state }: MixerProps) {
             />
           </div>
 
-          <div style={{ flex: 1, minHeight: 0 }} />
+          <div style={{ width: '100%', flex: 1, minHeight: 0, display: 'flex', alignItems: 'flex-end' }}>
+            <ChannelScopeCanvas
+              engine={audioCtx?.engine}
+              source="submission"
+              ariaLabel="Submission waveform scope"
+              style={{
+                height: isSubmissionCompact ? 28 : 36,
+                minHeight: isSubmissionCompact ? 28 : 36,
+                marginBottom: 8
+              }}
+            />
+          </div>
 
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
             <div
@@ -277,61 +291,108 @@ export function Mixer({ state }: MixerProps) {
         </div>
 
         <div className="mixer1-channel" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'visible' }}>
-          <div className="mixer1-meter" style={{ flexShrink: 0 }}>
-            <AnalogVUMeter value={masterLevel} min={0} max={1} size={72} />
-          </div>
-
-          <div style={{ flex: 1, minHeight: 0 }} />
-
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, marginTop: 'auto' }}>
-            <div
-              style={{
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                width: '100%',
-                minHeight: isMasterCompact ? 96 : 184
-              }}
-            >
-              {isMasterCompact ? (
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              <div className="mixer1-meter" style={{ flexShrink: 0 }}>
+                <AnalogVUMeter value={masterLevel} min={0} max={1} size={72} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className="mixer1-channel-label">Master</span>
                 <Potentiometer
+                  ariaLabel="Master volume"
                   value={state.master.volume}
                   min={0}
                   max={1}
                   step={0.01}
-                  size={64}
+                  size={22}
                   onChange={handleMasterVolumeChange}
                   onInput={handleMasterVolumeChange}
                   showValue={false}
+                  showDragLabel={false}
                   exponent={2}
                 />
-              ) : (
-                <WeightedFader
-                  id="master-volume"
-                  value={state.master.volume}
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  exponent={2}
-                  onChange={handleMasterVolumeChange}
-                />
-              )}
+              </div>
+              <MasterSpectrogramCanvas
+                engine={audioCtx?.engine}
+                style={{
+                  height: isMasterCompact ? 56 : 72,
+                  minHeight: isMasterCompact ? 56 : 72
+                }}
+              />
+            </div>
+
+            <div
+              aria-hidden="true"
+              style={{
+                width: '100%',
+                height: 1,
+                margin: '8px 0 6px',
+                background: 'rgba(255, 255, 255, 0.14)',
+                flexShrink: 0
+              }}
+            />
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flex: 1, minHeight: 0, justifyContent: 'flex-end' }}>
+              <ChannelScopeCanvas
+                engine={audioCtx?.engine}
+                source="backing"
+                ariaLabel="Backing waveform scope"
+                style={{
+                  height: isMasterCompact ? 28 : 36,
+                  minHeight: isMasterCompact ? 28 : 36,
+                  marginBottom: 8
+                }}
+              />
               <div
                 style={{
-                  position: 'absolute',
-                  right: '8%',
-                  top: 0,
-                  bottom: 0,
+                  position: 'relative',
                   display: 'flex',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flex: 0,
+                  width: '100%',
+                  minHeight: isMasterCompact ? 96 : 184
                 }}
               >
-                <SmallLEDMeter value={player2Level} min={0} max={1} vertical={true} />
+                {isMasterCompact ? (
+                  <Potentiometer
+                    ariaLabel="Backing volume"
+                    value={state.player2.volume}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    size={64}
+                    onChange={handleBackingVolumeChange}
+                    onInput={handleBackingVolumeChange}
+                    showValue={false}
+                    exponent={2}
+                  />
+                ) : (
+                  <WeightedFader
+                    id="backing-volume"
+                    value={state.player2.volume}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    exponent={2}
+                    onChange={handleBackingVolumeChange}
+                  />
+                )}
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: '8%',
+                    top: 0,
+                    bottom: 0,
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <SmallLEDMeter value={player2Level} min={0} max={1} vertical={true} />
+                </div>
               </div>
+              <span className="mixer1-channel-label mixer1-channel-label--bottom">Backing</span>
             </div>
-            <span className="mixer1-channel-label mixer1-channel-label--bottom">Master</span>
           </div>
         </div>
       </div>

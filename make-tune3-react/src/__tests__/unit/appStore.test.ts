@@ -570,6 +570,21 @@ describe('AppStore - Playback Slice', () => {
         expect(mockEngine.setMasterVolume).toHaveBeenCalledWith(0.5);
     });
 
+    it('should handle backing volume change', () => {
+        const mockEngine = {
+            setVolume: vi.fn()
+        };
+
+        useAudioStore.setState({
+            engine: mockEngine as any
+        });
+
+        const { playback } = useAppStore.getState();
+        playback.handleBackingVolumeChange(0.4);
+
+        expect(mockEngine.setVolume).toHaveBeenCalledWith(2, 0.4);
+    });
+
     it('should toggle play/pause', () => {
         const mockEngine = {
             togglePlayback: vi.fn()
@@ -589,6 +604,7 @@ describe('AppStore - Playback Slice', () => {
         const { playback } = useAppStore.getState();
 
         expect(() => playback.handleSubmissionVolumeChange(0.5)).not.toThrow();
+        expect(() => playback.handleBackingVolumeChange(0.5)).not.toThrow();
         expect(() => playback.handleMasterVolumeChange(0.5)).not.toThrow();
         expect(() => playback.togglePlayPause()).not.toThrow();
     });

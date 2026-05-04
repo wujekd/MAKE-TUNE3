@@ -222,4 +222,50 @@ describe('AudioEngine', () => {
       );
     });
   });
+
+  describe('analysis subscriptions', () => {
+    it('should publish master spectrum frames from the shared analysis loop', async () => {
+      const rafCallbacks: FrameRequestCallback[] = [];
+      const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+        rafCallbacks.push(callback);
+        return rafCallbacks.length;
+      });
+      vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+
+      const mockSpectrumListener = vi.fn();
+      audioEngine.onMasterSpectrum(mockSpectrumListener);
+
+      await audioEngine.unlock();
+
+      expect(rafCallbacks).toHaveLength(1);
+      rafCallbacks[0](16);
+
+      expect(mockSpectrumListener).toHaveBeenCalledTimes(1);
+      expect(mockSpectrumListener).toHaveBeenCalledWith(expect.any(Uint8Array));
+
+      rafSpy.mockRestore();
+    });
+
+    it('should publish player scope frames from the shared analysis loop', async () => {
+      const rafCallbacks: FrameRequestCallback[] = [];
+      const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+        rafCallbacks.push(callback);
+        return rafCallbacks.length;
+      });
+      vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+
+      const mockScopeListener = vi.fn();
+      audioEngine.onPlayer1Scope(mockScopeListener);
+
+      await audioEngine.unlock();
+
+      expect(rafCallbacks).toHaveLength(1);
+      rafCallbacks[0](16);
+
+      expect(mockScopeListener).toHaveBeenCalledTimes(1);
+      expect(mockScopeListener).toHaveBeenCalledWith(expect.any(Float32Array));
+
+      rafSpy.mockRestore();
+    });
+  });
 });

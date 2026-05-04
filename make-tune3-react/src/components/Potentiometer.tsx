@@ -9,6 +9,7 @@ type Props = {
   step?: number;
   size?: number;
   label?: string;
+  ariaLabel?: string;
   disabled?: boolean;
   onChange: (v: number) => void;
   onInput?: (v: number) => void;
@@ -22,8 +23,9 @@ type Props = {
   exponent?: number;
 };
 
-export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, label, disabled = false, onChange, onInput, showValue = true, showDragLabel = true, color, middleText, startText, endText, exponent = 1 }: Props) {
+export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, label, ariaLabel, disabled = false, onChange, onInput, showValue = true, showDragLabel = true, color, middleText, startText, endText, exponent = 1 }: Props) {
   const clamped = Math.min(max, Math.max(min, value));
+  const compactCenterLabel = middleText === 'Hz' || middleText === 'dB';
 
   const [dragValue, setDragValue] = useState<number | null>(null);
   const [hovered, setHovered] = useState(false);
@@ -176,7 +178,7 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
             aria-valuemax={max}
             aria-valuenow={displayValue}
             role="slider"
-            aria-label={label}
+            aria-label={ariaLabel ?? label}
             onMouseDown={startDrag}
             ref={knobRef}
             onMouseEnter={() => setHovered(true)}
@@ -190,17 +192,25 @@ export function Potentiometer({ value, min = 0, max = 100, step = 1, size = 56, 
           {(startText || middleText || endText) && (
             <div style={{ position: 'relative', width: '100%', height: 12, marginTop: 2, color: 'var(--white)', opacity: 0.8 }}>
               {startText && (
-                <span style={{ position: 'absolute', left: -3, top: -9, transform: 'translateX(-6px)', fontSize: 9 }}>
+                <span style={{ position: 'absolute', left: 0, top: -9, transform: 'translateX(-5px)', fontSize: 9 }}>
                   {startText}
                 </span>
               )}
               {middleText && (
-                <span style={{ position: 'absolute', left: '60%', top: -1, transform: 'translateX(-10px)', fontSize: 10 }}>
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: compactCenterLabel ? 'calc(59% + 4px)' : '59%',
+                    top: compactCenterLabel ? -3 : -1,
+                    transform: 'translateX(-10px)',
+                    fontSize: compactCenterLabel ? 9 : 10
+                  }}
+                >
                   {middleText}
                 </span>
               )}
               {endText && (
-                <span style={{ position: 'absolute', right: -3, top: -9, transform: 'translateX(6px)', fontSize: 9 }}>
+                <span style={{ position: 'absolute', right: 0, top: -9, transform: 'translateX(5px)', fontSize: 9 }}>
                   {endText}
                 </span>
               )}

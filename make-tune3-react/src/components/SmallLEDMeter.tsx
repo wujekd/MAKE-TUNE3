@@ -10,6 +10,7 @@ interface SmallLEDMeterProps {
 export function SmallLEDMeter({ value, min = 0, max = 1, vertical = false }: SmallLEDMeterProps) {
   const clamped = Math.min(max, Math.max(min, value));
   const normalized = (clamped - min) / (max - min || 1);
+  const inactiveOpacity = 0.15;
 
   const ledCount = 6;
   const ledStep = 1 / ledCount;
@@ -36,6 +37,7 @@ export function SmallLEDMeter({ value, min = 0, max = 1, vertical = false }: Sma
   const led4Brightness = getLEDBrightness(3);
   const led5Brightness = getLEDBrightness(4);
   const led6Brightness = getLEDBrightness(5);
+  const getLEDOpacity = (brightness: number) => Math.max(inactiveOpacity, brightness);
 
   return (
     <div
@@ -49,7 +51,7 @@ export function SmallLEDMeter({ value, min = 0, max = 1, vertical = false }: Sma
       <div
         className="small-led-meter__led small-led-meter__led--green"
         style={{
-          opacity: led1Brightness > 0 ? 1 : 0.15,
+          opacity: getLEDOpacity(led1Brightness),
           width: vertical ? '8px' : '8px',
           height: vertical ? '14px' : '5px'
         }}
@@ -57,7 +59,7 @@ export function SmallLEDMeter({ value, min = 0, max = 1, vertical = false }: Sma
       <div
         className="small-led-meter__led small-led-meter__led--green"
         style={{
-          opacity: Math.max(0.15, led2Brightness),
+          opacity: getLEDOpacity(led2Brightness),
           width: vertical ? '8px' : '8px',
           height: vertical ? '14px' : '5px'
         }}
@@ -65,7 +67,7 @@ export function SmallLEDMeter({ value, min = 0, max = 1, vertical = false }: Sma
       <div
         className="small-led-meter__led small-led-meter__led--green"
         style={{
-          opacity: Math.max(0.15, led3Brightness),
+          opacity: getLEDOpacity(led3Brightness),
           width: vertical ? '8px' : '8px',
           height: vertical ? '14px' : '5px'
         }}
@@ -73,7 +75,7 @@ export function SmallLEDMeter({ value, min = 0, max = 1, vertical = false }: Sma
       <div
         className="small-led-meter__led small-led-meter__led--green"
         style={{
-          opacity: Math.max(0.15, led4Brightness),
+          opacity: getLEDOpacity(led4Brightness),
           width: vertical ? '8px' : '8px',
           height: vertical ? '14px' : '5px'
         }}
@@ -81,7 +83,7 @@ export function SmallLEDMeter({ value, min = 0, max = 1, vertical = false }: Sma
       <div
         className="small-led-meter__led small-led-meter__led--orange"
         style={{
-          opacity: Math.max(0.15, led5Brightness),
+          opacity: getLEDOpacity(led5Brightness),
           width: vertical ? '8px' : '8px',
           height: vertical ? '14px' : '5px'
         }}
@@ -89,7 +91,7 @@ export function SmallLEDMeter({ value, min = 0, max = 1, vertical = false }: Sma
       <div
         className="small-led-meter__led small-led-meter__led--red"
         style={{
-          opacity: Math.max(0.15, led6Brightness),
+          opacity: getLEDOpacity(led6Brightness),
           width: vertical ? '8px' : '8px',
           height: vertical ? '14px' : '5px'
         }}
@@ -97,4 +99,3 @@ export function SmallLEDMeter({ value, min = 0, max = 1, vertical = false }: Sma
     </div>
   );
 }
-

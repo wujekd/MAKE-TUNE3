@@ -52,14 +52,25 @@ Object.defineProperty(window, 'AudioContext', {
       gain: { value: 0 }
     });
     
-    createAnalyser = () => ({
-      connect: () => {},
-      disconnect: () => {},
-      fftSize: 2048,
-      smoothingTimeConstant: 0.8,
-      getByteFrequencyData: () => {},
-      getByteTimeDomainData: () => {}
-    });
+    createAnalyser = () => {
+      const analyser = {
+        connect: () => {},
+        disconnect: () => {},
+        fftSize: 2048,
+        smoothingTimeConstant: 0.8,
+        getByteFrequencyData: (array: Uint8Array) => array.fill(64),
+        getByteTimeDomainData: (array: Uint8Array) => array.fill(128),
+        getFloatTimeDomainData: (array: Float32Array) => array.fill(0)
+      };
+
+      Object.defineProperty(analyser, 'frequencyBinCount', {
+        get() {
+          return Math.floor(analyser.fftSize / 2);
+        }
+      });
+
+      return analyser;
+    };
     
     resume = () => Promise.resolve();
   }

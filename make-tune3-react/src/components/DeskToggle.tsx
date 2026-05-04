@@ -5,6 +5,7 @@ type Props = {
   onChange: (next: boolean) => void;
   label?: string;
   size?: number;
+  compact?: boolean;
   disabled?: boolean;
   colorOn?: string;
   colorOff?: string;
@@ -18,6 +19,7 @@ export function DeskToggle({
   onChange,
   label,
   size = 36,
+  compact = false,
   disabled = false,
   colorOn = '#22c55e',
   colorOff = '#3a4747',
@@ -29,28 +31,30 @@ export function DeskToggle({
     display: 'inline-flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 2,
+    gap: compact ? 1 : 2,
     cursor: disabled ? 'not-allowed' : 'pointer',
     userSelect: 'none'
   };
 
   // Calculate minWidth for consistent sizing when text changes
   const longestText = (onText?.length ?? 0) >= (offText?.length ?? 0) ? onText : offText;
-  const textMinWidth = longestText ? Math.max(longestText.length * 5, 24) : undefined;
+  const textMinWidth = longestText
+    ? Math.max(longestText.length * (compact ? 4.2 : 5), compact ? 18 : 24)
+    : undefined;
 
   const plateStyle: CSSProperties = {
-    padding: 3,
-    borderRadius: 8,
+    padding: compact ? 2 : 3,
+    borderRadius: compact ? 7 : 8,
     background: 'linear-gradient(180deg, #1e2f2f, #0f1a1a)',
     boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.6), 0 2px 6px rgba(0,0,0,0.4)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 2,
+    gap: compact ? 1 : 2,
     minWidth: textMinWidth
   };
 
-  const innerSize = Math.max(6, Math.floor(size * 0.66));
+  const innerSize = Math.max(compact ? 5 : 6, Math.floor(size * 0.66));
 
   const buttonStyle: CSSProperties = {
     width: innerSize,
@@ -71,11 +75,11 @@ export function DeskToggle({
 
   const indicatorStyle: CSSProperties = {
     position: 'absolute',
-    bottom: -6,
+    bottom: compact ? -4 : -6,
     left: '50%',
     transform: 'translateX(-50%)',
-    width: 8,
-    height: 8,
+    width: compact ? 6 : 8,
+    height: compact ? 6 : 8,
     borderRadius: '50%',
     background: checked ? colorOn : colorOff,
     boxShadow: checked ? '0 0 6px rgba(34,197,94,0.9)' : 'none',
@@ -83,9 +87,10 @@ export function DeskToggle({
   };
 
   const inlineTextStyle: CSSProperties = {
-    fontSize: 9,
+    fontSize: compact ? 8 : 9,
     color: 'var(--white)',
     opacity: 0.9,
+    lineHeight: 1
   };
 
   const toggle = () => {
@@ -136,4 +141,3 @@ function lighten(hex: string, amount: number) {
     return hex;
   }
 }
-

@@ -160,7 +160,7 @@ export function SubmissionEQ({ muted, onMuteChange, currentEq, trackKey, savedEq
     engine.setEq({ highpass: { ...eq.highpass, frequency } });
   };
 
-  const rowStyle = { display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center' } as const;
+  const rowStyle = { display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' } as const;
 
   const toggleLpf = (next: boolean) => {
     setLpfEnabled(next);
@@ -207,7 +207,7 @@ export function SubmissionEQ({ muted, onMuteChange, currentEq, trackKey, savedEq
   };
 
   return (
-    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 6, overflow: 'visible' }}>
+    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 4, overflow: 'visible' }}>
       <button
         type="button"
         aria-label="Reset EQ"
@@ -226,11 +226,12 @@ export function SubmissionEQ({ muted, onMuteChange, currentEq, trackKey, savedEq
       >
         ↺
       </button>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 6, alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 4, alignItems: 'center' }}>
         <DeskToggle
           checked={enabled}
           onChange={toggleEq}
           size={5}
+          compact={true}
           onText="eq on"
           offText="eq off"
           disabled={disabled}
@@ -240,13 +241,14 @@ export function SubmissionEQ({ muted, onMuteChange, currentEq, trackKey, savedEq
           onChange={onMuteChange}
           label={undefined}
           size={4}
+          compact={true}
           colorOn="#d33"
           onText="unmute"
           offText="mute"
         />
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={{ ...rowStyle, gap: 22 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ ...rowStyle, gap: 18 }}>
           <Potentiometer value={eq?.highshelf.gain ?? 0} min={-18} max={18} step={0.1} size={30} showValue={false}
             middleText="dB" startText="-18" endText="+18" onChange={setHighshelfGain} onInput={setHighshelfGain} />
           <Potentiometer value={eq?.highshelf.frequency ?? 8000} min={2000} max={16000} step={10} size={28} showValue={false}
@@ -259,8 +261,10 @@ export function SubmissionEQ({ muted, onMuteChange, currentEq, trackKey, savedEq
             <Potentiometer value={eq?.param2.frequency ?? 3000} min={500} max={8000} step={10} size={20} showValue={false}
               middleText="Hz" startText="500" endText="8k" onChange={setParam2Freq} onInput={setParam2Freq} />
           </div>
-          <Potentiometer value={eq?.param2.Q ?? 1} min={0.1} max={10} step={0.05} size={20} showValue={false}
-            middleText="Q" startText="0.1" endText="10" onChange={setParam2Q} onInput={setParam2Q} />
+          <div style={{ marginTop: -10 }}>
+            <Potentiometer value={eq?.param2.Q ?? 1} min={0.1} max={10} step={0.05} size={16} showValue={false} showDragLabel={false}
+              middleText="Q" onChange={setParam2Q} onInput={setParam2Q} />
+          </div>
         </div>
         <div style={rowStyle}>
           <Potentiometer value={eq?.param1.gain ?? 0} min={-18} max={18} step={0.1} size={26} showValue={false}
@@ -269,11 +273,13 @@ export function SubmissionEQ({ muted, onMuteChange, currentEq, trackKey, savedEq
             <Potentiometer value={eq?.param1.frequency ?? 250} min={40} max={1000} step={5} size={20} showValue={false}
               middleText="Hz" startText="40" endText="1k" onChange={setParam1Freq} onInput={setParam1Freq} />
           </div>
-          <Potentiometer value={eq?.param1.Q ?? 1} min={0.1} max={10} step={0.05} size={20} showValue={false}
-            middleText="Q" startText="0.1" endText="10" onChange={setParam1Q} onInput={setParam1Q} />
+          <div style={{ marginTop: -10 }}>
+            <Potentiometer value={eq?.param1.Q ?? 1} min={0.1} max={10} step={0.05} size={16} showValue={false} showDragLabel={false}
+              middleText="Q" onChange={setParam1Q} onInput={setParam1Q} />
+          </div>
         </div>
         <div style={rowStyle}>
-          <DeskToggle checked={lpfEnabled} onChange={toggleLpf} size={4} onText="on" offText="off" disabled={disabled} />
+          <DeskToggle checked={lpfEnabled} onChange={toggleLpf} size={4} compact={true} onText="on" offText="off" disabled={disabled} />
           <div style={{ opacity: lpfEnabled ? 1 : 0.35, pointerEvents: lpfEnabled ? 'auto' as const : 'none' as const }}>
             <Potentiometer value={eq?.highpass.frequency ?? 20} min={20} max={1000} step={5} size={28} showValue={false}
               middleText="Hz" startText="20" endText="1k" onChange={setHighpassFreq} onInput={setHighpassFreq} />
