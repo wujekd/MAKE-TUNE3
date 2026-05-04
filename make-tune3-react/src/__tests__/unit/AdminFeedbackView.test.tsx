@@ -5,14 +5,19 @@ import { AdminFeedbackView } from '../../views/AdminFeedbackView';
 import { useAppStore } from '../../stores/appStore';
 
 const hoisted = vi.hoisted(() => ({
-  getAllFeedback: vi.fn(),
+  listFeedback: vi.fn(),
   updateFeedbackStatus: vi.fn(),
   grantCreatorAccess: vi.fn()
 }));
 
+vi.mock('../../services', () => ({
+  AdminService: {
+    listFeedback: hoisted.listFeedback
+  }
+}));
+
 vi.mock('../../services/feedbackService', () => ({
   FeedbackService: {
-    getAllFeedback: hoisted.getAllFeedback,
     updateFeedbackStatus: hoisted.updateFeedbackStatus,
     grantCreatorAccess: hoisted.grantCreatorAccess
   }
@@ -26,10 +31,10 @@ const initialAppState = useAppStore.getState();
 
 describe('AdminFeedbackView', () => {
   beforeEach(() => {
-    hoisted.getAllFeedback.mockReset();
+    hoisted.listFeedback.mockReset();
     hoisted.updateFeedbackStatus.mockReset();
     hoisted.grantCreatorAccess.mockReset();
-    hoisted.getAllFeedback.mockResolvedValue([]);
+    hoisted.listFeedback.mockResolvedValue({ feedback: [], nextPageToken: null, hasMore: false });
 
     act(() => {
       useAppStore.setState(initialAppState, true);
@@ -54,19 +59,19 @@ describe('AdminFeedbackView', () => {
     render(<AdminFeedbackView />);
 
     await waitFor(() => {
-      expect(hoisted.getAllFeedback).toHaveBeenCalledWith(undefined);
+      expect(hoisted.listFeedback).toHaveBeenCalledWith(25, null, null, null);
     });
 
     const selects = screen.getAllByRole('combobox');
 
     fireEvent.change(selects[0], { target: { value: 'bug' } });
     await waitFor(() => {
-      expect(hoisted.getAllFeedback).toHaveBeenCalledWith({ category: 'bug' });
+      expect(hoisted.listFeedback).toHaveBeenCalledWith(25, null, 'bug', null);
     });
 
     fireEvent.change(selects[1], { target: { value: 'new' } });
     await waitFor(() => {
-      expect(hoisted.getAllFeedback).toHaveBeenCalledWith({ category: 'bug', status: 'new' });
+      expect(hoisted.listFeedback).toHaveBeenCalledWith(25, null, 'bug', 'new');
     });
   });
 });

@@ -2300,12 +2300,18 @@ export const getMySubmissionCollabs = onCall(async (request) => {
       collabId: s.collaborationId,
       collabName: String(collab.name || ""),
       status,
+      publishedAt: collab.publishedAt ? (collab.publishedAt as Timestamp).toMillis() : null,
       submissionCloseAt: collab.submissionCloseAt ? (collab.submissionCloseAt as Timestamp).toMillis() : null,
       votingCloseAt: collab.votingCloseAt ? (collab.votingCloseAt as Timestamp).toMillis() : null,
       backingPath: String(collab.backingTrackPath || ""),
       mySubmissionPath: s.path,
       winnerPath: status === "completed" ? String(collab.winnerPath || "") : null,
       submittedAt: s.createdAt ? s.createdAt.toMillis() : null,
+      submissionDurationSeconds:
+        typeof collab.submissionDuration === "number" ? collab.submissionDuration : null,
+      votingDurationSeconds:
+        typeof collab.votingDuration === "number" ? collab.votingDuration : null,
+      updatedAt: collab.updatedAt ? (collab.updatedAt as Timestamp).toMillis() : null,
       moderationStatus
     };
   });
@@ -3283,12 +3289,23 @@ export const getMyProjectsOverview = onCall(async (request) => {
         collabId: currentCollabId,
         name: String(currentCollabData.name || ""),
         status: String(currentCollabData.status || ""),
+        publishedAt: currentCollabData.publishedAt
+          ? (currentCollabData.publishedAt as Timestamp).toMillis()
+          : null,
         submissionCloseAt: currentCollabData.submissionCloseAt
           ? (currentCollabData.submissionCloseAt as Timestamp).toMillis()
           : null,
         votingCloseAt: currentCollabData.votingCloseAt
           ? (currentCollabData.votingCloseAt as Timestamp).toMillis()
           : null,
+        submissionDuration:
+          typeof currentCollabData.submissionDuration === "number"
+            ? currentCollabData.submissionDuration
+            : null,
+        votingDuration:
+          typeof currentCollabData.votingDuration === "number"
+            ? currentCollabData.votingDuration
+            : null,
         backingPath: String(currentCollabData.backingTrackPath || ""),
         updatedAt: currentCollabData.updatedAt
           ? (currentCollabData.updatedAt as Timestamp).toMillis()
@@ -3377,11 +3394,17 @@ export const getMyDownloadedCollabs = onCall(async (request) => {
       collabId,
       collabName: String(collab.name || ""),
       status: String(collab.status || ""),
+      publishedAt: collab.publishedAt ? (collab.publishedAt as Timestamp).toMillis() : null,
       submissionCloseAt: collab.submissionCloseAt ? (collab.submissionCloseAt as Timestamp).toMillis() : null,
       votingCloseAt: collab.votingCloseAt ? (collab.votingCloseAt as Timestamp).toMillis() : null,
+      submissionDuration:
+        typeof collab.submissionDuration === "number" ? collab.submissionDuration : null,
+      votingDuration:
+        typeof collab.votingDuration === "number" ? collab.votingDuration : null,
       backingPath: String(collab.backingTrackPath || ""),
       lastDownloadedAt: data.lastDownloadedAt ? (data.lastDownloadedAt as Timestamp).toMillis() : null,
       downloadCount: Number(data.downloadCount || 1),
+      updatedAt: collab.updatedAt ? (collab.updatedAt as Timestamp).toMillis() : null,
     };
   });
 
@@ -4297,13 +4320,33 @@ export const adminListUsers = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Admin access required");
   }
 
-  const usersSnap = await db.collection("users").orderBy("createdAt", "desc").get();
-  const users = usersSnap.docs.map(doc => ({
+  const pageSize = Math.max(1, Math.min(100, Number(request.data?.pageSize) || 25));
+  const pageToken = typeof request.data?.pageToken === "string" && request.data.pageToken ? request.data.pageToken : null;
+
+  let query = db.collection("users").orderBy("createdAt", "desc").limit(pageSize + 1) as any;
+
+  if (pageToken) {
+    const cursorSnap = await db.collection("users").doc(pageToken).get();
+    if (cursorSnap.exists) {
+      query = query.startAfter(cursorSnap);
+    }
+  }
+
+  const usersSnap = await query.get();
+  const docs = usersSnap.docs;
+  const hasMore = docs.length > pageSize;
+  const visibleDocs = hasMore ? docs.slice(0, pageSize) : docs;
+
+  const users = visibleDocs.map((doc: any) => ({
     uid: doc.id,
     ...doc.data()
   }));
 
-  return { users };
+  return {
+    users,
+    nextPageToken: hasMore && visibleDocs.length > 0 ? visibleDocs[visibleDocs.length - 1].id : null,
+    hasMore
+  };
 });
 
 export const adminSearchUsers = onCall(async (request) => {
@@ -4317,25 +4360,56 @@ export const adminSearchUsers = onCall(async (request) => {
     throw new HttpsError("permission-denied", "Admin access required");
   }
 
-  const { searchQuery } = request.data;
+  const { searchQuery, pageSize: rawPageSize } = request.data;
   if (!searchQuery || typeof searchQuery !== "string") {
     throw new HttpsError("invalid-argument", "Search query required");
   }
 
+  const pageSize = Math.max(1, Math.min(100, Number(rawPageSize) || 25));
   const query = searchQuery.toLowerCase().trim();
-  const usersSnap = await db.collection("users").get();
 
-  const users = usersSnap.docs
-    .map(doc => ({ uid: doc.id, ...doc.data() }))
-    .filter((user: any) => {
-      return (
-        user.uid.toLowerCase().includes(query) ||
-        user.email?.toLowerCase().includes(query) ||
-        user.username?.toLowerCase().includes(query)
-      );
-    });
+  // Use Firestore composite queries on email and username fields
+  // where available; fall back to scanning with limit.
+  let usersSnap: any;
 
-  return { users };
+  // Try email prefix search first (most selective)
+  usersSnap = await db.collection("users")
+    .where("email", ">=", query)
+    .where("email", "<=", query + "\uf8ff")
+    .limit(pageSize)
+    .get();
+
+  const results: any[] = [];
+  const seenUids = new Set<string>();
+
+  for (const doc of usersSnap.docs) {
+    if (seenUids.has(doc.id)) continue;
+    seenUids.add(doc.id);
+    results.push({ uid: doc.id, ...doc.data() });
+  }
+
+  // If not enough results, also try username prefix search
+  if (results.length < pageSize) {
+    const usernameSnap = await db.collection("users")
+      .where("username", ">=", query)
+      .where("username", "<=", query + "\uf8ff")
+      .limit(pageSize)
+      .get();
+    for (const doc of usernameSnap.docs) {
+      if (seenUids.has(doc.id)) continue;
+      seenUids.add(doc.id);
+      results.push({ uid: doc.id, ...doc.data() });
+      if (results.length >= pageSize) break;
+    }
+  }
+
+  const users = results.slice(0, pageSize);
+
+  return {
+    users,
+    nextPageToken: users.length >= pageSize ? query : null,
+    hasMore: users.length >= pageSize
+  };
 });
 
 export const adminUpdateUser = onCall(async (request) => {
@@ -4455,3 +4529,257 @@ export const adminRunHsdTest = onCall(
     };
   }
 );
+
+export const adminListProjects = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "unauthenticated");
+  }
+
+  const adminSnap = await db.collection("users").doc(uid).get();
+  if (!adminSnap.exists || !adminSnap.data()?.isAdmin) {
+    throw new HttpsError("permission-denied", "Admin access required");
+  }
+
+  const pageSize = Math.max(1, Math.min(50, Number(request.data?.pageSize) || 25));
+  const pageToken = typeof request.data?.pageToken === "string" && request.data.pageToken ? request.data.pageToken : null;
+
+  let query = db.collection("projects").orderBy("createdAt", "desc").limit(pageSize + 1);
+
+  if (pageToken) {
+    const cursorSnap = await db.collection("projects").doc(pageToken).get();
+    if (cursorSnap.exists) {
+      query = query.startAfter(cursorSnap);
+    }
+  }
+
+  const projectsSnap = await query.get();
+  const docs = projectsSnap.docs;
+  const hasMore = docs.length > pageSize;
+  const visibleDocs = hasMore ? docs.slice(0, pageSize) : docs;
+
+  const projects = visibleDocs.map((docSnap) => {
+    const data = docSnap.data() as any;
+    return {
+      id: docSnap.id,
+      name: String(data.name || ""),
+      description: String(data.description || ""),
+      ownerId: String(data.ownerId || ""),
+      tags: Array.isArray(data.tags) ? data.tags : [],
+      createdAt: data.createdAt ? (data.createdAt as Timestamp).toMillis() : null,
+      updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toMillis() : null
+    };
+  });
+
+  // Batch-fetch collaborations for these projects
+  const projectIds = projects.map((p) => p.id);
+  const collabMap = new Map<string, any[]>();
+
+  if (projectIds.length > 0) {
+    const collabPromises = projectIds.map((projectId) =>
+      db.collection("collaborations").where("projectId", "==", projectId).limit(100).get()
+    );
+    const collabResults = await Promise.all(collabPromises);
+    projectIds.forEach((projectId, i) => {
+      collabMap.set(
+        projectId,
+        collabResults[i].docs.map((d) => {
+          const cd = d.data() as any;
+          return {
+            id: d.id,
+            name: String(cd.name || ""),
+            description: String(cd.description || ""),
+            status: String(cd.status || ""),
+            submissionDuration: typeof cd.submissionDuration === "number" ? cd.submissionDuration : null,
+            votingDuration: typeof cd.votingDuration === "number" ? cd.votingDuration : null,
+            tags: Array.isArray(cd.tags) ? cd.tags : [],
+            createdAt: cd.createdAt ? (cd.createdAt as Timestamp).toMillis() : null,
+            updatedAt: cd.updatedAt ? (cd.updatedAt as Timestamp).toMillis() : null
+          };
+        })
+      );
+    });
+  }
+
+  const items = projects.map((project) => ({
+    project,
+    collaborations: collabMap.get(project.id) || []
+  }));
+
+  return {
+    items,
+    nextPageToken: hasMore && visibleDocs.length > 0 ? visibleDocs[visibleDocs.length - 1].id : null,
+    hasMore
+  };
+});
+
+export const adminListPendingReports = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "unauthenticated");
+  }
+
+  const adminSnap = await db.collection("users").doc(uid).get();
+  if (!adminSnap.exists || !adminSnap.data()?.isAdmin) {
+    throw new HttpsError("permission-denied", "Admin access required");
+  }
+
+  const pageSize = Math.max(1, Math.min(50, Number(request.data?.pageSize) || 25));
+  const pageToken = typeof request.data?.pageToken === "string" && request.data.pageToken ? request.data.pageToken : null;
+
+  let query = db.collection("reports")
+    .where("status", "==", "pending")
+    .orderBy("createdAt", "desc")
+    .limit(pageSize + 1);
+
+  if (pageToken) {
+    const cursorSnap = await db.collection("reports").doc(pageToken).get();
+    if (cursorSnap.exists) {
+      query = query.startAfter(cursorSnap);
+    }
+  }
+
+  const snap = await query.get();
+  const docs = snap.docs;
+  const hasMore = docs.length > pageSize;
+  const visibleDocs = hasMore ? docs.slice(0, pageSize) : docs;
+
+  const reports = visibleDocs.map((docSnap) => {
+    const data = docSnap.data() as any;
+    return {
+      id: docSnap.id,
+      submissionPath: String(data.submissionPath || ""),
+      collaborationId: String(data.collaborationId || ""),
+      reportedBy: String(data.reportedBy || ""),
+      reportedByUsername: String(data.reportedByUsername || ""),
+      reason: String(data.reason || ""),
+      status: String(data.status || "pending"),
+      createdAt: data.createdAt ? (data.createdAt as Timestamp).toMillis() : null,
+      resolvedAt: data.resolvedAt ? (data.resolvedAt as Timestamp).toMillis() : null,
+      resolvedBy: data.resolvedBy || null,
+      reportedUserId: data.reportedUserId || null
+    };
+  });
+
+  return {
+    reports,
+    nextPageToken: hasMore && visibleDocs.length > 0 ? visibleDocs[visibleDocs.length - 1].id : null,
+    hasMore
+  };
+});
+
+export const adminListResolvedReports = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "unauthenticated");
+  }
+
+  const adminSnap = await db.collection("users").doc(uid).get();
+  if (!adminSnap.exists || !adminSnap.data()?.isAdmin) {
+    throw new HttpsError("permission-denied", "Admin access required");
+  }
+
+  const pageSize = Math.max(1, Math.min(50, Number(request.data?.pageSize) || 25));
+  const pageToken = typeof request.data?.pageToken === "string" && request.data.pageToken ? request.data.pageToken : null;
+
+  let query = db.collection("resolvedReports")
+    .orderBy("resolvedAt", "desc")
+    .limit(pageSize + 1);
+
+  if (pageToken) {
+    const cursorSnap = await db.collection("resolvedReports").doc(pageToken).get();
+    if (cursorSnap.exists) {
+      query = query.startAfter(cursorSnap);
+    }
+  }
+
+  const snap = await query.get();
+  const docs = snap.docs;
+  const hasMore = docs.length > pageSize;
+  const visibleDocs = hasMore ? docs.slice(0, pageSize) : docs;
+
+  const reports = visibleDocs.map((docSnap) => {
+    const data = docSnap.data() as any;
+    return {
+      id: docSnap.id,
+      submissionPath: String(data.submissionPath || ""),
+      collaborationId: String(data.collaborationId || ""),
+      reportedBy: String(data.reportedBy || ""),
+      reportedByUsername: String(data.reportedByUsername || ""),
+      reason: String(data.reason || ""),
+      status: String(data.status || ""),
+      createdAt: data.createdAt ? (data.createdAt as Timestamp).toMillis() : null,
+      resolvedAt: data.resolvedAt ? (data.resolvedAt as Timestamp).toMillis() : null,
+      resolvedBy: data.resolvedBy || null,
+      reportedUserId: data.reportedUserId || null
+    };
+  });
+
+  return {
+    reports,
+    nextPageToken: hasMore && visibleDocs.length > 0 ? visibleDocs[visibleDocs.length - 1].id : null,
+    hasMore
+  };
+});
+
+export const adminListFeedback = onCall(async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "unauthenticated");
+  }
+
+  const adminSnap = await db.collection("users").doc(uid).get();
+  if (!adminSnap.exists || !adminSnap.data()?.isAdmin) {
+    throw new HttpsError("permission-denied", "Admin access required");
+  }
+
+  const pageSize = Math.max(1, Math.min(50, Number(request.data?.pageSize) || 25));
+  const pageToken = typeof request.data?.pageToken === "string" && request.data.pageToken ? request.data.pageToken : null;
+  const category = typeof request.data?.category === "string" && request.data.category ? request.data.category : null;
+  const status = typeof request.data?.status === "string" && request.data.status ? request.data.status : null;
+
+  let baseQuery: any = db.collection("feedback");
+
+  if (category && status) {
+    baseQuery = baseQuery.where("category", "==", category).where("status", "==", status);
+  } else if (category) {
+    baseQuery = baseQuery.where("category", "==", category);
+  } else if (status) {
+    baseQuery = baseQuery.where("status", "==", status);
+  }
+
+  let query = baseQuery.orderBy("createdAt", "desc").limit(pageSize + 1);
+
+  if (pageToken) {
+    const cursorSnap = await db.collection("feedback").doc(pageToken).get();
+    if (cursorSnap.exists) {
+      query = query.startAfter(cursorSnap);
+    }
+  }
+
+  const snap = await query.get();
+  const docs = snap.docs;
+  const hasMore = docs.length > pageSize;
+  const visibleDocs = hasMore ? docs.slice(0, pageSize) : docs;
+
+  const feedback = visibleDocs.map((docSnap: any) => {
+    const data = docSnap.data() as any;
+    return {
+      id: docSnap.id,
+      uid: String(data.uid || ""),
+      createdAt: data.createdAt ? (data.createdAt as Timestamp).toMillis() : null,
+      category: String(data.category || "other"),
+      message: String(data.message || ""),
+      answers: data.answers || null,
+      status: String(data.status || "new"),
+      adminNote: data.adminNote || null,
+      route: String(data.route || "")
+    };
+  });
+
+  return {
+    feedback,
+    nextPageToken: hasMore && visibleDocs.length > 0 ? visibleDocs[visibleDocs.length - 1].id : null,
+    hasMore
+  };
+});

@@ -1,58 +1,55 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Collaboration, Project } from '../types/collaboration';
-import { CollaborationService, ProjectService } from '../services';
+import { AdminService, CollaborationService, ProjectService } from '../services';
+import type { AdminProjectWithCollabs } from '../services/adminService';
 import { AdminLayout } from '../components/AdminLayout';
 import { useAppStore } from '../stores/appStore';
 
-type CollabMap = Record<string, Collaboration[]>;
-
 export function AdminProjectsView() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [collaborations, setCollaborations] = useState<CollabMap>({});
+  const [items, setItems] = useState<AdminProjectWithCollabs[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionTarget, setActionTarget] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const [pageTokens, setPageTokens] = useState<(string | null)[]>([null]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+
   const navigate = useNavigate();
   const { user } = useAppStore(state => state.auth);
 
   useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [allProjects, allCollaborations] = await Promise.all([
-          ProjectService.listAllProjects(),
-          CollaborationService.listAllCollaborations()
-        ]);
-
-        if (!isMounted) return;
-
-        const grouped = allCollaborations.reduce<CollabMap>((acc, collab) => {
-          const key = collab.projectId;
-          if (!acc[key]) acc[key] = [];
-          acc[key].push(collab);
-          return acc;
-        }, {});
-
-        setProjects(allProjects);
-        setCollaborations(grouped);
-      } catch (err: any) {
-        if (isMounted) setError(err?.message || 'Failed to load admin data');
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    })();
-    return () => {
-      isMounted = false;
-    };
+    loadProjects(0, [null]);
   }, []);
 
-  const totalCollaborations = useMemo(() => {
-    return Object.values(collaborations).reduce((sum, list) => sum + list.length, 0);
-  }, [collaborations]);
+  const loadProjects = async (page: number, tokens: (string | null)[]) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await AdminService.listProjects(25, tokens[page] ?? null);
+      setItems(result.items);
+      setHasMore(result.hasMore);
+
+      const newTokens = [...tokens];
+      if (result.nextPageToken) {
+        newTokens[page + 1] = result.nextPageToken;
+      }
+      setPageTokens(newTokens);
+      setCurrentPage(page);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load admin data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const goToPage = (page: number) => {
+    if (page < 0) return;
+    loadProjects(page, pageTokens);
+  };
+
+  const totalCollaborations = items.reduce((sum, item) => sum + item.collaborations.length, 0);
 
   const handleEditProject = (projectId: string) => {
     navigate(`/project/${projectId}`);
@@ -63,9 +60,9 @@ export function AdminProjectsView() {
   };
 
   const handleDeleteCollaboration = async (projectId: string, collaborationId: string) => {
-    const collabList = collaborations[projectId] || [];
-    const collaboration = collabList.find(c => c.id === collaborationId);
-    const label = collaboration?.name || collaborationId;
+    const item = items.find(i => i.project.id === projectId);
+    const collab = item?.collaborations.find(c => c.id === collaborationId);
+    const label = collab?.name || collaborationId;
     const confirmed = window.confirm(`Delete collaboration "${label}"? This cannot be undone.`);
     if (!confirmed) return;
 
@@ -73,11 +70,13 @@ export function AdminProjectsView() {
     setActionError(null);
     try {
       await CollaborationService.deleteCollaboration(collaborationId);
-      setCollaborations(prev => {
-        const existing = prev[projectId] || [];
-        const updated = existing.filter(c => c.id !== collaborationId);
-        return { ...prev, [projectId]: updated };
-      });
+      setItems(prev => prev.map(it => {
+        if (it.project.id !== projectId) return it;
+        return {
+          ...it,
+          collaborations: it.collaborations.filter(c => c.id !== collaborationId)
+        };
+      }));
     } catch (err: any) {
       setActionError(err?.message || 'Failed to delete collaboration');
     } finally {
@@ -86,9 +85,9 @@ export function AdminProjectsView() {
   };
 
   const handleDeleteProject = async (projectId: string) => {
-    const project = projects.find(p => p.id === projectId);
-    const label = project?.name || projectId;
-    const relatedCollabs = collaborations[projectId] || [];
+    const item = items.find(i => i.project.id === projectId);
+    const label = item?.project.name || projectId;
+    const relatedCollabs = item?.collaborations || [];
 
     const confirmed = window.confirm(
       relatedCollabs.length > 0
@@ -104,7 +103,7 @@ export function AdminProjectsView() {
         await CollaborationService.deleteCollaboration(collab.id);
       }
       await ProjectService.deleteProject(projectId);
-      if (user?.uid && project?.ownerId === user.uid) {
+      if (user?.uid && item?.project.ownerId === user.uid) {
         try {
           const ownerProjects = await ProjectService.listUserProjects(user.uid);
           useAppStore.setState(state => ({
@@ -120,12 +119,7 @@ export function AdminProjectsView() {
           console.warn('Failed to refresh project count after delete', err);
         }
       }
-      setProjects(prev => prev.filter(p => p.id !== projectId));
-      setCollaborations(prev => {
-        const clone = { ...prev };
-        delete clone[projectId];
-        return clone;
-      });
+      setItems(prev => prev.filter(it => it.project.id !== projectId));
     } catch (err: any) {
       setActionError(err?.message || 'Failed to delete project');
     } finally {
@@ -135,9 +129,34 @@ export function AdminProjectsView() {
 
   return (
     <AdminLayout title="Projects & Collaborations">
-      <div style={{ color: 'var(--white)', opacity: 0.8 }}>
-        {loading ? 'Loading data…' : `${projects.length} project(s), ${totalCollaborations} collaboration(s)`}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        color: 'var(--white)',
+        opacity: 0.8
+      }}>
+        <span>
+          {loading ? 'Loading data…' : `Page ${currentPage + 1} · ${items.length} project(s), ${totalCollaborations} collaboration(s)`}
+        </span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 0 || loading}
+            style={{ padding: '4px 12px', fontSize: 12 }}
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={!hasMore || loading}
+            style={{ padding: '4px 12px', fontSize: 12 }}
+          >
+            Next
+          </button>
+        </div>
       </div>
+
       {error && (
         <div style={{ color: '#ff6b6b', background: 'rgba(255,107,107,0.15)', padding: 12, borderRadius: 6 }}>
           {error}
@@ -160,8 +179,7 @@ export function AdminProjectsView() {
           paddingRight: 8
         }}
       >
-        {projects.map(project => {
-          const projectCollabs = collaborations[project.id] || [];
+        {items.map(({ project, collaborations }) => {
           const projectLoading = actionTarget === `project:${project.id}`;
 
           return (
@@ -184,10 +202,8 @@ export function AdminProjectsView() {
                     <span style={{ opacity: 0.85, fontSize: 14 }}>{project.description}</span>
                   )}
                   <span style={{ opacity: 0.7, fontSize: 12 }}>
-                    Owner: {(project as any).ownerId || '—'} · Created:{' '}
-                    {project.createdAt
-                      ? new Date((project as any).createdAt?.toMillis ? (project as any).createdAt.toMillis() : (project as any).createdAt).toLocaleString()
-                      : 'unknown'}
+                    Owner: {project.ownerId || '—'} · Created:{' '}
+                    {project.createdAt ? new Date(project.createdAt).toLocaleString() : 'unknown'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -222,12 +238,12 @@ export function AdminProjectsView() {
               )}
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ fontWeight: 600 }}>Collaborations ({projectCollabs.length})</div>
-                {projectCollabs.length === 0 ? (
+                <div style={{ fontWeight: 600 }}>Collaborations ({collaborations.length})</div>
+                {collaborations.length === 0 ? (
                   <div style={{ opacity: 0.7, fontSize: 13 }}>No collaborations linked</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {projectCollabs.map(collab => {
+                    {collaborations.map(collab => {
                       const collabTarget = `collab:${collab.id}`;
                       const collabLoading = actionTarget === collabTarget;
                       return (
@@ -294,7 +310,7 @@ export function AdminProjectsView() {
         })}
       </div>
 
-      {!loading && projects.length === 0 && !error && (
+      {!loading && items.length === 0 && !error && (
         <div style={{ color: 'var(--white)', opacity: 0.75 }}>No projects found.</div>
       )}
     </AdminLayout>

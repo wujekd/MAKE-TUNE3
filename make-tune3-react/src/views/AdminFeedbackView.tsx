@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { FeedbackService } from '../services/feedbackService';
-import type { Feedback, FeedbackCategory, FeedbackStatus } from '../services/feedbackService';
+import { AdminService } from '../services';
+import type { FeedbackCategory, FeedbackStatus } from '../services/feedbackService';
 import { useAppStore } from '../stores/appStore';
 import { AdminLayout } from '../components/AdminLayout';
 import './AdminFeedbackView.css';
@@ -19,6 +20,18 @@ const STATUS_LABELS: Record<FeedbackStatus, string> = {
   resolved: 'Resolved'
 };
 
+interface FeedbackDisplay {
+  id: string;
+  uid: string;
+  createdAt: number | null;
+  category: string;
+  message: string;
+  answers: any;
+  status: string;
+  adminNote: string | null;
+  route: string;
+}
+
 export function AdminFeedbackView() {
   const { user } = useAppStore(state => state.auth);
   const [copiedUid, setCopiedUid] = useState<string | null>(null);
@@ -32,7 +45,7 @@ export function AdminFeedbackView() {
       console.error('Failed to copy:', err);
     }
   };
-  const [feedback, setFeedback] = useState<Feedback[]>([]);
+  const [feedback, setFeedback] = useState<FeedbackDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -41,16 +54,38 @@ export function AdminFeedbackView() {
   const [filterCategory, setFilterCategory] = useState<FeedbackCategory | ''>('');
   const [filterStatus, setFilterStatus] = useState<FeedbackStatus | ''>('');
 
-  const loadFeedback = useCallback(async () => {
+  const [pageTokens, setPageTokens] = useState<(string | null)[]>([null]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+
+  const loadFeedback = useCallback(async (page: number, tokens: (string | null)[]) => {
     setLoading(true);
     try {
-      const filters: { category?: FeedbackCategory; status?: FeedbackStatus } = {};
-      if (filterCategory) filters.category = filterCategory;
-      if (filterStatus) filters.status = filterStatus;
-      const items = await FeedbackService.getAllFeedback(
-        Object.keys(filters).length > 0 ? filters : undefined
+      const result = await AdminService.listFeedback(
+        25,
+        tokens[page] ?? null,
+        filterCategory || null,
+        filterStatus || null
       );
-      setFeedback(items);
+      setFeedback(result.feedback.map(f => ({
+        id: f.id,
+        uid: f.uid,
+        createdAt: f.createdAt,
+        category: f.category,
+        message: f.message,
+        answers: f.answers,
+        status: f.status,
+        adminNote: f.adminNote,
+        route: f.route
+      })));
+      setHasMore(result.hasMore);
+
+      const newTokens = [...tokens];
+      if (result.nextPageToken) {
+        newTokens[page + 1] = result.nextPageToken;
+      }
+      setPageTokens(newTokens);
+      setCurrentPage(page);
     } catch (error) {
       console.error('Failed to load feedback:', error);
     } finally {
@@ -59,15 +94,22 @@ export function AdminFeedbackView() {
   }, [filterCategory, filterStatus]);
 
   useEffect(() => {
-    void loadFeedback();
+    setCurrentPage(0);
+    setPageTokens([null]);
+    loadFeedback(0, [null]);
   }, [loadFeedback]);
+
+  const goToPage = (page: number) => {
+    if (page < 0) return;
+    loadFeedback(page, pageTokens);
+  };
 
   const handleUpdateStatus = async (id: string, status: FeedbackStatus) => {
     setProcessing(id);
     try {
       const note = noteInputs[id];
       await FeedbackService.updateFeedbackStatus(id, status, note || undefined);
-      await loadFeedback();
+      await loadFeedback(currentPage, pageTokens);
     } catch (error) {
       console.error('Failed to update status:', error);
     } finally {
@@ -75,7 +117,7 @@ export function AdminFeedbackView() {
     }
   };
 
-  const handleGrantAccess = async (item: Feedback) => {
+  const handleGrantAccess = async (item: FeedbackDisplay) => {
     const confirmed = window.confirm(
       `Grant creator access to user ${item.uid}? This will add 1 bonus project allowance.`
     );
@@ -90,7 +132,7 @@ export function AdminFeedbackView() {
         'resolved',
         note ? `${note} [Access granted]` : 'Access granted'
       );
-      await loadFeedback();
+      await loadFeedback(currentPage, pageTokens);
     } catch (error) {
       console.error('Failed to grant access:', error);
       alert('Failed to grant access. Check console for details.');
@@ -99,10 +141,9 @@ export function AdminFeedbackView() {
     }
   };
 
-  const formatDate = (timestamp: any) => {
+  const formatDate = (timestamp: number | null) => {
     if (!timestamp) return 'N/A';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleString();
+    return new Date(timestamp).toLocaleString();
   };
 
   if (!user?.isAdmin) {
@@ -142,6 +183,36 @@ export function AdminFeedbackView() {
         </div>
       </div>
 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        color: 'var(--white)',
+        opacity: 0.7,
+        fontSize: 14,
+        marginBottom: 8
+      }}>
+        <span>
+          {loading ? 'Loading...' : `Page ${currentPage + 1}`}
+        </span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 0 || loading}
+            style={{ padding: '4px 12px', fontSize: 12, backgroundColor: 'var(--primary1-600)', border: '1px solid var(--primary1-500)', borderRadius: 4, color: 'var(--white)', cursor: 'pointer' }}
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={!hasMore || loading}
+            style={{ padding: '4px 12px', fontSize: 12, backgroundColor: 'var(--primary1-600)', border: '1px solid var(--primary1-500)', borderRadius: 4, color: 'var(--white)', cursor: 'pointer' }}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
       {loading ? (
         <p className="admin-feedback__loading">Loading feedback...</p>
       ) : feedback.length === 0 ? (
@@ -160,10 +231,10 @@ export function AdminFeedbackView() {
                 >
                   <div className="admin-feedback__card-meta">
                     <span className={`admin-feedback__badge admin-feedback__badge--${item.category}`}>
-                      {CATEGORY_LABELS[item.category]}
+                      {CATEGORY_LABELS[item.category as FeedbackCategory] || item.category}
                     </span>
                     <span className={`admin-feedback__status admin-feedback__status--${item.status}`}>
-                      {STATUS_LABELS[item.status]}
+                      {STATUS_LABELS[item.status as FeedbackStatus] || item.status}
                     </span>
                   </div>
                   <p className="admin-feedback__preview">

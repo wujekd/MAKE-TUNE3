@@ -1,29 +1,65 @@
 import { useEffect, useState } from 'react';
-import { ReportService } from '../services';
+import { AdminService, ReportService } from '../services';
 import { useAppStore } from '../stores/appStore';
-import type { Report } from '../types/collaboration';
 import { AdminLayout } from '../components/AdminLayout';
+
+interface ReportDisplay {
+  id: string;
+  submissionPath: string;
+  collaborationId: string;
+  reportedBy: string;
+  reportedByUsername: string;
+  reason: string;
+  status: string;
+  createdAt: number | null;
+}
 
 export function AdminReportedView() {
   const { user } = useAppStore(state => state.auth);
-  const [reports, setReports] = useState<Report[]>([]);
+  const [reports, setReports] = useState<ReportDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
 
+  const [pageTokens, setPageTokens] = useState<(string | null)[]>([null]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+
   useEffect(() => {
-    loadReports();
+    loadReports(0, [null]);
   }, []);
 
-  const loadReports = async () => {
+  const loadReports = async (page: number, tokens: (string | null)[]) => {
     setLoading(true);
     try {
-      const pendingReports = await ReportService.getPendingReports();
-      setReports(pendingReports);
+      const result = await AdminService.listPendingReports(25, tokens[page] ?? null);
+      setReports(result.reports.map(r => ({
+        id: r.id,
+        submissionPath: r.submissionPath,
+        collaborationId: r.collaborationId,
+        reportedBy: r.reportedBy,
+        reportedByUsername: r.reportedByUsername,
+        reason: r.reason,
+        status: r.status,
+        createdAt: r.createdAt
+      })));
+      setHasMore(result.hasMore);
+
+      const newTokens = [...tokens];
+      if (result.nextPageToken) {
+        newTokens[page + 1] = result.nextPageToken;
+      }
+      setPageTokens(newTokens);
+      setCurrentPage(page);
     } catch {
       alert('Failed to load reports');
     } finally {
       setLoading(false);
     }
+  };
+
+  const goToPage = (page: number) => {
+    if (page < 0) return;
+    loadReports(page, pageTokens);
   };
 
   const handleDismiss = async (reportId: string) => {
@@ -35,7 +71,7 @@ export function AdminReportedView() {
     setProcessing(reportId);
     try {
       await ReportService.dismissReport(reportId, user.uid);
-      await loadReports();
+      await loadReports(currentPage, pageTokens);
     } catch {
       alert('Failed to dismiss report');
     } finally {
@@ -43,7 +79,7 @@ export function AdminReportedView() {
     }
   };
 
-  const handleBanUser = async (report: Report) => {
+  const handleBanUser = async (report: ReportDisplay) => {
     if (!user) {
       alert('You must be logged in to ban users');
       return;
@@ -61,7 +97,7 @@ export function AdminReportedView() {
         report.submissionPath,
         report.collaborationId
       );
-      await loadReports();
+      await loadReports(currentPage, pageTokens);
       alert('User has been banned and report resolved.');
     } catch (error) {
       alert('Failed to ban user. Please check console for details.');
@@ -69,6 +105,11 @@ export function AdminReportedView() {
     } finally {
       setProcessing(null);
     }
+  };
+
+  const formatDate = (value: number | null): string => {
+    if (!value) return 'N/A';
+    return new Date(value).toLocaleString();
   };
 
   if (!user?.isAdmin) {
@@ -81,6 +122,36 @@ export function AdminReportedView() {
 
   return (
     <AdminLayout title="Reported Submissions">
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        color: 'var(--white)',
+        opacity: 0.7,
+        fontSize: 14,
+        marginBottom: 8
+      }}>
+        <span>
+          {loading ? 'Loading...' : `Page ${currentPage + 1}`}
+        </span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 0 || loading}
+            style={{ padding: '4px 12px', fontSize: 12 }}
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={!hasMore || loading}
+            style={{ padding: '4px 12px', fontSize: 12 }}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
       {loading ? (
         <p style={{ color: 'var(--white)' }}>Loading reports...</p>
       ) : reports.length === 0 ? (
@@ -152,7 +223,7 @@ export function AdminReportedView() {
                   <strong>Collaboration ID:</strong> {report.collaborationId}
                 </div>
                 <div>
-                  <strong>Reported At:</strong> {report.createdAt?.toDate?.()?.toLocaleString() || 'N/A'}
+                  <strong>Reported At:</strong> {formatDate(report.createdAt)}
                 </div>
               </div>
 

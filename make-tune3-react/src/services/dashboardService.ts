@@ -1,17 +1,5 @@
 import { auth } from './firebaseAuth';
-import { db } from './firebaseDb';
 import { callFirebaseFunction } from './firebaseFunctions';
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  orderBy,
-  limit,
-  doc,
-  getDoc,
-} from 'firebase/firestore';
-import { COLLECTIONS } from '../types/collaboration';
 
 type ProjectOverviewItem = {
   projectId: string;
@@ -39,11 +27,15 @@ type DownloadSummaryItem = {
   collabId: string;
   collabName: string;
   status: string;
+  publishedAt: number | null;
   submissionCloseAt: number | null;
   votingCloseAt: number | null;
+  submissionDuration: number | null;
+  votingDuration: number | null;
   backingPath: string;
   lastDownloadedAt: number | null;
   downloadCount: number;
+  updatedAt: number | null;
 };
 
 type MyAccountStats = {
@@ -58,199 +50,73 @@ export class DashboardService {
     const uid = auth.currentUser?.uid;
     if (!uid) return [];
 
-    const projectsQuery = query(
-      collection(db, COLLECTIONS.PROJECTS),
-      where('ownerId', '==', uid),
-      orderBy('createdAt', 'desc'),
-      limit(25)
-    );
+    try {
+      const data = await callFirebaseFunction<
+        Record<string, never>,
+        { items?: any[]; unauthenticated?: boolean }
+      >('getMyProjectsOverview', {});
 
-    const snapshot = await getDocs(projectsQuery).catch(async (err) => {
-      if (err?.code === 'failed-precondition') {
-        // missing index, fall back to unordered fetch
-        const fallbackQuery = query(
-          collection(db, COLLECTIONS.PROJECTS),
-          where('ownerId', '==', uid),
-          limit(25)
-        );
-        return getDocs(fallbackQuery);
-      }
-      throw err;
-    });
+      if (data?.unauthenticated) return [];
 
-    const raw = snapshot.docs.map((docSnap) => ({
-      id: docSnap.id,
-      data: docSnap.data() as any,
-    }));
-
-    raw.sort((a, b) => {
-      const aTime = a.data?.createdAt?.toMillis ? a.data.createdAt.toMillis() : 0;
-      const bTime = b.data?.createdAt?.toMillis ? b.data.createdAt.toMillis() : 0;
-      return bTime - aTime;
-    });
-
-    const collabIds = Array.from(
-      new Set(
-        raw
-          .map(({ data }) => String(data.currentCollaborationId || ''))
-          .filter(Boolean)
-      )
-    );
-
-    const collabMap = new Map<string, any>();
-    await Promise.all(
-      collabIds.map(async (id) => {
-        try {
-          const snap = await getDoc(doc(db, COLLECTIONS.COLLABORATIONS, id));
-          if (snap.exists()) {
-            collabMap.set(id, snap.data());
-          }
-        } catch {
-          /* ignore */
-        }
-      })
-    );
-
-    return raw.map(({ id, data }) => {
-      const createdAt = data?.createdAt?.toMillis ? data.createdAt.toMillis() : null;
-      const updatedAt = data?.updatedAt?.toMillis ? data.updatedAt.toMillis() : null;
-      const currentCollabId = String(data.currentCollaborationId || '');
-      const current = currentCollabId ? collabMap.get(currentCollabId) || null : null;
-      return {
-        projectId: id,
-        projectName: String(data.name || ''),
-        description: String(data.description || ''),
-        createdAt,
-        updatedAt,
-        currentCollaboration: current
+      const items: any[] = Array.isArray(data.items) ? data.items : [];
+      return items.map((item) => ({
+        projectId: typeof item?.projectId === 'string' ? item.projectId : '',
+        projectName: typeof item?.projectName === 'string' ? item.projectName : '',
+        description: typeof item?.description === 'string' ? item.description : '',
+        createdAt: typeof item?.createdAt === 'number' ? item.createdAt : null,
+        updatedAt: typeof item?.updatedAt === 'number' ? item.updatedAt : null,
+        currentCollaboration: item?.currentCollaboration
           ? {
-              collabId: currentCollabId,
-              name: String(current.name || ''),
-              status: String(current.status || ''),
-              publishedAt: current.publishedAt?.toMillis
-                ? current.publishedAt.toMillis()
-                : null,
-              submissionCloseAt: current.submissionCloseAt?.toMillis
-                ? current.submissionCloseAt.toMillis()
-                : null,
-              votingCloseAt: current.votingCloseAt?.toMillis
-                ? current.votingCloseAt.toMillis()
-                : null,
-              submissionDuration:
-                typeof current.submissionDuration === 'number'
-                  ? current.submissionDuration
-                  : null,
-              votingDuration:
-                typeof current.votingDuration === 'number' ? current.votingDuration : null,
-              backingPath: String(current.backingTrackPath || ''),
-              updatedAt: current.updatedAt?.toMillis ? current.updatedAt.toMillis() : null,
+              collabId: typeof item.currentCollaboration.collabId === 'string' ? item.currentCollaboration.collabId : '',
+              name: typeof item.currentCollaboration.name === 'string' ? item.currentCollaboration.name : '',
+              status: typeof item.currentCollaboration.status === 'string' ? item.currentCollaboration.status : '',
+              publishedAt: typeof item.currentCollaboration.publishedAt === 'number' ? item.currentCollaboration.publishedAt : null,
+              submissionCloseAt: typeof item.currentCollaboration.submissionCloseAt === 'number' ? item.currentCollaboration.submissionCloseAt : null,
+              votingCloseAt: typeof item.currentCollaboration.votingCloseAt === 'number' ? item.currentCollaboration.votingCloseAt : null,
+              submissionDuration: typeof item.currentCollaboration.submissionDuration === 'number' ? item.currentCollaboration.submissionDuration : null,
+              votingDuration: typeof item.currentCollaboration.votingDuration === 'number' ? item.currentCollaboration.votingDuration : null,
+              backingPath: typeof item.currentCollaboration.backingPath === 'string' ? item.currentCollaboration.backingPath : '',
+              updatedAt: typeof item.currentCollaboration.updatedAt === 'number' ? item.currentCollaboration.updatedAt : null,
             }
           : null,
-      };
-    });
+      }));
+    } catch {
+      return [];
+    }
   }
 
   static async listMyDownloadedCollabs(): Promise<DownloadSummaryItem[]> {
     const uid = auth.currentUser?.uid;
     if (!uid) return [];
 
-    let snapshot;
     try {
-      const downloadsQuery = query(
-        collection(db, COLLECTIONS.USER_DOWNLOADS),
-        where('userId', '==', uid),
-        orderBy('lastDownloadedAt', 'desc'),
-        limit(20)
-      );
-      snapshot = await getDocs(downloadsQuery);
-    } catch (err) {
-      if ((err as any)?.code === 'permission-denied') {
-        const fallbackQuery = query(
-          collection(db, COLLECTIONS.USER_DOWNLOADS),
-          where('userId', '==', uid),
-          limit(20)
-        );
-        snapshot = await getDocs(fallbackQuery);
-      } else if ((err as any)?.code === 'failed-precondition') {
-        const fallbackQuery = query(
-          collection(db, COLLECTIONS.USER_DOWNLOADS),
-          where('userId', '==', uid),
-          limit(20)
-        );
-        snapshot = await getDocs(fallbackQuery);
-      } else {
-        throw err;
-      }
+      const data = await callFirebaseFunction<
+        Record<string, never>,
+        { items?: any[]; unauthenticated?: boolean }
+      >('getMyDownloadedCollabs', {});
+
+      if (data?.unauthenticated) return [];
+
+      const items: any[] = Array.isArray(data.items) ? data.items : [];
+      return items.map((item) => ({
+        projectId: typeof item?.projectId === 'string' ? item.projectId : '',
+        projectName: typeof item?.projectName === 'string' ? item.projectName : '',
+        collabId: typeof item?.collabId === 'string' ? item.collabId : '',
+        collabName: typeof item?.collabName === 'string' ? item.collabName : '',
+        status: typeof item?.status === 'string' ? item.status : '',
+        publishedAt: typeof item?.publishedAt === 'number' ? item.publishedAt : null,
+        submissionCloseAt: typeof item?.submissionCloseAt === 'number' ? item.submissionCloseAt : null,
+        votingCloseAt: typeof item?.votingCloseAt === 'number' ? item.votingCloseAt : null,
+        submissionDuration: typeof item?.submissionDuration === 'number' ? item.submissionDuration : null,
+        votingDuration: typeof item?.votingDuration === 'number' ? item.votingDuration : null,
+        backingPath: typeof item?.backingPath === 'string' ? item.backingPath : '',
+        lastDownloadedAt: typeof item?.lastDownloadedAt === 'number' ? item.lastDownloadedAt : null,
+        downloadCount: Number(item?.downloadCount || 1),
+        updatedAt: typeof item?.updatedAt === 'number' ? item.updatedAt : null,
+      }));
+    } catch {
+      return [];
     }
-
-    const downloads = snapshot.docs.map((docSnap) => docSnap.data() as any);
-
-    downloads.sort((a, b) => {
-      const aTime = a?.lastDownloadedAt?.toMillis ? a.lastDownloadedAt.toMillis() : 0;
-      const bTime = b?.lastDownloadedAt?.toMillis ? b.lastDownloadedAt.toMillis() : 0;
-      return bTime - aTime;
-    });
-    const collabIds = Array.from(
-      new Set(downloads.map((d) => String(d.collaborationId || '')).filter(Boolean))
-    );
-
-    const collabMap = new Map<string, any>();
-    await Promise.all(
-      collabIds.map(async (id) => {
-        try {
-          const snap = await getDoc(doc(db, COLLECTIONS.COLLABORATIONS, id));
-          if (snap.exists()) {
-            collabMap.set(id, snap.data());
-          }
-        } catch {
-          /* ignore */
-        }
-      })
-    );
-
-    const projectIds = Array.from(
-      new Set(
-        Array.from(collabMap.values())
-          .map((collab: any) => String(collab.projectId || ''))
-          .filter(Boolean)
-      )
-    );
-    const projectMap = new Map<string, any>();
-    await Promise.all(
-      projectIds.map(async (id) => {
-        try {
-          const snap = await getDoc(doc(db, COLLECTIONS.PROJECTS, id));
-          if (snap.exists()) {
-            projectMap.set(id, snap.data());
-          }
-        } catch {
-          /* ignore */
-        }
-      })
-    );
-
-    return downloads.map((data) => {
-      const collabId = String(data.collaborationId || '');
-      const collab = collabMap.get(collabId) || {};
-      const projectId = String(collab.projectId || '');
-      const project = projectMap.get(projectId) || {};
-      return {
-        projectId,
-        projectName: String(project.name || ''),
-        collabId,
-        collabName: String(collab.name || ''),
-        status: String(collab.status || ''),
-        submissionCloseAt: collab.submissionCloseAt?.toMillis
-          ? collab.submissionCloseAt.toMillis()
-          : null,
-        votingCloseAt: collab.votingCloseAt?.toMillis
-          ? collab.votingCloseAt.toMillis()
-          : null,
-        backingPath: String(collab.backingTrackPath || ''),
-        lastDownloadedAt: data.lastDownloadedAt?.toMillis ? data.lastDownloadedAt.toMillis() : null,
-        downloadCount: Number(data.downloadCount || 1),
-      };
-    });
   }
 
   static async getMyAccountStats(): Promise<MyAccountStats> {

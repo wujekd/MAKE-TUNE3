@@ -10,6 +10,6 @@ export { ReportService } from './reportService';
 export { FeedbackService } from './feedbackService';
 export type { FeedbackCategory, FeedbackStatus, Feedback, CreateFeedbackData, FeedbackFilters } from './feedbackService';
 export { AdminService } from './adminService';
-export type { UserSearchResult, UserUpdateData } from './adminService';
+export type { UserSearchResult, UserUpdateData, AdminProjectWithCollabs, PaginatedUsersResult, PaginatedProjectsResult, PaginatedReportsResult, PaginatedFeedbackResult } from './adminService';
 export { SettingsService } from './settingsService';
 export { WaveformService } from './waveformService';

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { DownloadSummaryItem } from '../services/dashboardService';
 import type { SubmissionCollabSummary } from '../services/submissionService';
@@ -38,20 +38,6 @@ export function UserActivityPanel() {
   const [downloadsLoaded, setDownloadsLoaded] = useState(false);
   const [downloadsError, setDownloadsError] = useState<string | null>(null);
   const [projectsTabRequested, setProjectsTabRequested] = useState(false);
-
-  const [collabMeta, setCollabMeta] = useState<Record<string, {
-    submissionDurationMs: number | null;
-    votingDurationMs: number | null;
-    publishedAtMs: number | null;
-    submissionCloseAtMs: number | null;
-    votingCloseAtMs: number | null;
-    updatedAtMs: number | null;
-  }>>({});
-  const collabMetaRef = useRef(collabMeta);
-
-  useEffect(() => {
-    collabMetaRef.current = collabMeta;
-  }, [collabMeta]);
 
 
 
@@ -113,100 +99,6 @@ export function UserActivityPanel() {
     }
   }, [activeTab]);
 
-  useEffect(() => {
-    if (!user) {
-      setCollabMeta({});
-      return;
-    }
-
-    const submissionActiveIds = submissionSummaries
-      .filter(item => {
-        if (!item || !item.collabId) return false;
-        if (item.collaborationDeleted) return false;
-        const key = (item.status || '').toLowerCase();
-        return key === 'submission' || key === 'voting';
-      })
-      .map(item => item.collabId);
-
-    const downloadActiveIds = downloadSummaries
-      .filter(item => {
-        if (!item || !item.collabId) return false;
-        const key = (item.status || '').toLowerCase();
-        return key === 'submission' || key === 'voting';
-      })
-      .map(item => item.collabId);
-
-    const activeIds = Array.from(new Set([...submissionActiveIds, ...downloadActiveIds]));
-
-    const missing = activeIds.filter(id => !collabMetaRef.current[id]);
-    if (!missing.length) return;
-
-    let cancelled = false;
-    (async () => {
-      const { DashboardCollaborationMetaService } = await import('../services/dashboardCollaborationMetaService');
-      const results = await Promise.all(
-        missing.map(async collabId => {
-          try {
-            const collab = await DashboardCollaborationMetaService.getCollaborationMeta(collabId);
-            if (!collab) return null;
-            const submissionDurationMs =
-              typeof collab.submissionDuration === 'number' && collab.submissionDuration > 0
-                ? collab.submissionDuration * 1000
-                : null;
-            const votingDurationMs =
-              typeof collab.votingDuration === 'number' && collab.votingDuration > 0
-                ? collab.votingDuration * 1000
-                : null;
-            const publishedAtMs = (collab.publishedAt as any)?.toMillis
-              ? (collab.publishedAt as any).toMillis()
-              : null;
-            const submissionCloseAtMs = (collab.submissionCloseAt as any)?.toMillis
-              ? (collab.submissionCloseAt as any).toMillis()
-              : null;
-            const votingCloseAtMs = (collab.votingCloseAt as any)?.toMillis
-              ? (collab.votingCloseAt as any).toMillis()
-              : null;
-            const updatedAtMs = (collab.updatedAt as any)?.toMillis
-              ? (collab.updatedAt as any).toMillis()
-              : null;
-            return {
-              collabId,
-              submissionDurationMs,
-              votingDurationMs,
-              publishedAtMs,
-              submissionCloseAtMs,
-              votingCloseAtMs,
-              updatedAtMs
-            };
-          } catch {
-            return null;
-          }
-        })
-      );
-
-      if (cancelled) return;
-
-      setCollabMeta(prev => {
-        const next = { ...prev };
-        results.forEach(entry => {
-          if (!entry) return;
-          next[entry.collabId] = {
-            submissionDurationMs: entry.submissionDurationMs,
-            votingDurationMs: entry.votingDurationMs,
-            publishedAtMs: entry.publishedAtMs,
-            submissionCloseAtMs: entry.submissionCloseAtMs,
-            votingCloseAtMs: entry.votingCloseAtMs,
-            updatedAtMs: entry.updatedAtMs
-          };
-        });
-        return next;
-      });
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user, submissionSummaries, downloadSummaries]);
 
   const activityList = useMemo(() => {
     if (!downloadSummaries.length) return [];
@@ -220,16 +112,9 @@ export function UserActivityPanel() {
     return downloadSummaries.map(item => {
       const submission = submissionMap.get(item.collabId);
       const status = (item.status || '').toLowerCase();
-      const meta = collabMeta[item.collabId] || null;
 
-      const submissionCloseAt =
-        item.submissionCloseAt ??
-        meta?.submissionCloseAtMs ??
-        null;
-      const votingCloseAt =
-        item.votingCloseAt ??
-        meta?.votingCloseAtMs ??
-        null;
+      const submissionCloseAt = item.submissionCloseAt ?? null;
+      const votingCloseAt = item.votingCloseAt ?? null;
 
       const rawStageInfo =
         status === 'submission' || status === 'voting' || status === 'completed'
@@ -237,10 +122,16 @@ export function UserActivityPanel() {
             status,
             submissionCloseAt,
             votingCloseAt,
-            submissionDurationMs: meta?.submissionDurationMs ?? null,
-            votingDurationMs: meta?.votingDurationMs ?? null,
-            publishedAt: meta?.publishedAtMs ?? null,
-            updatedAt: meta?.updatedAtMs ?? null
+            submissionDurationMs:
+              typeof item.submissionDuration === 'number' && item.submissionDuration > 0
+                ? item.submissionDuration * 1000
+                : null,
+            votingDurationMs:
+              typeof item.votingDuration === 'number' && item.votingDuration > 0
+                ? item.votingDuration * 1000
+                : null,
+            publishedAt: item.publishedAt ?? null,
+            updatedAt: item.updatedAt ?? null
           })
           : null;
 
@@ -318,7 +209,7 @@ export function UserActivityPanel() {
         isSubmitted: !!submission && !submission.collaborationDeleted
       };
     });
-  }, [downloadSummaries, submissionSummaries, collabMeta]);
+  }, [downloadSummaries, submissionSummaries]);
 
 
   return (

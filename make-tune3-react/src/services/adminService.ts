@@ -57,25 +57,107 @@ export interface AdminHsdTestResult {
   suggestedDecision: 'allow' | 'review' | 'reject';
 }
 
+export interface PaginatedUsersResult {
+  users: UserSearchResult[];
+  nextPageToken: string | null;
+  hasMore: boolean;
+}
+
+export interface PaginatedSearchResult {
+  users: UserSearchResult[];
+  nextPageToken: string | null;
+  hasMore: boolean;
+}
+
+export interface AdminProjectItem {
+  id: string;
+  name: string;
+  description: string;
+  ownerId: string;
+  tags: string[];
+  createdAt: number | null;
+  updatedAt: number | null;
+}
+
+export interface AdminCollaborationSummary {
+  id: string;
+  name: string;
+  description: string;
+  status: string;
+  submissionDuration: number | null;
+  votingDuration: number | null;
+  tags: string[];
+  createdAt: number | null;
+  updatedAt: number | null;
+}
+
+export interface AdminProjectWithCollabs {
+  project: AdminProjectItem;
+  collaborations: AdminCollaborationSummary[];
+}
+
+export interface PaginatedProjectsResult {
+  items: AdminProjectWithCollabs[];
+  nextPageToken: string | null;
+  hasMore: boolean;
+}
+
+export interface PaginatedReportsResult {
+  reports: Array<{
+    id: string;
+    submissionPath: string;
+    collaborationId: string;
+    reportedBy: string;
+    reportedByUsername: string;
+    reason: string;
+    status: string;
+    createdAt: number | null;
+    resolvedAt: number | null;
+    resolvedBy: string | null;
+    reportedUserId: string | null;
+  }>;
+  nextPageToken: string | null;
+  hasMore: boolean;
+}
+
+export interface PaginatedFeedbackResult {
+  feedback: Array<{
+    id: string;
+    uid: string;
+    createdAt: number | null;
+    category: string;
+    message: string;
+    answers: any;
+    status: string;
+    adminNote: string | null;
+    route: string;
+  }>;
+  nextPageToken: string | null;
+  hasMore: boolean;
+}
+
 export class AdminService {
-  static async listAllUsers(): Promise<UserSearchResult[]> {
-    const result = await callFirebaseFunction<void, { users: UserSearchResult[] }>('adminListUsers');
-    return result.users;
+  static async listUsers(pageSize?: number, pageToken?: string | null): Promise<PaginatedUsersResult> {
+    const result = await callFirebaseFunction<
+      { pageSize?: number; pageToken?: string | null },
+      PaginatedUsersResult
+    >('adminListUsers', { pageSize, pageToken });
+    return result;
   }
 
-  static async searchUsers(searchQuery: string): Promise<UserSearchResult[]> {
+  static async searchUsers(searchQuery: string, pageSize?: number): Promise<PaginatedSearchResult> {
     const trimmed = searchQuery.trim();
-    if (!trimmed) return [];
+    if (!trimmed) return { users: [], nextPageToken: null, hasMore: false };
 
-    const result = await callFirebaseFunction<{ searchQuery: string }, { users: UserSearchResult[] }>(
-      'adminSearchUsers',
-      { searchQuery: trimmed }
-    );
-    return result.users;
+    const result = await callFirebaseFunction<
+      { searchQuery: string; pageSize?: number },
+      PaginatedSearchResult
+    >('adminSearchUsers', { searchQuery: trimmed, pageSize });
+    return result;
   }
 
   static async updateUserPermissions(
-    userId: string, 
+    userId: string,
     updates: UserUpdateData
   ): Promise<void> {
     await callFirebaseFunction('adminUpdateUser', { targetUserId: userId, updates });
@@ -87,6 +169,43 @@ export class AdminService {
 
   static async unsuspendUser(userId: string): Promise<void> {
     await this.updateUserPermissions(userId, { suspended: false });
+  }
+
+  static async listProjects(pageSize?: number, pageToken?: string | null): Promise<PaginatedProjectsResult> {
+    const result = await callFirebaseFunction<
+      { pageSize?: number; pageToken?: string | null },
+      PaginatedProjectsResult
+    >('adminListProjects', { pageSize, pageToken });
+    return result;
+  }
+
+  static async listPendingReports(pageSize?: number, pageToken?: string | null): Promise<PaginatedReportsResult> {
+    const result = await callFirebaseFunction<
+      { pageSize?: number; pageToken?: string | null },
+      PaginatedReportsResult
+    >('adminListPendingReports', { pageSize, pageToken });
+    return result;
+  }
+
+  static async listResolvedReports(pageSize?: number, pageToken?: string | null): Promise<PaginatedReportsResult> {
+    const result = await callFirebaseFunction<
+      { pageSize?: number; pageToken?: string | null },
+      PaginatedReportsResult
+    >('adminListResolvedReports', { pageSize, pageToken });
+    return result;
+  }
+
+  static async listFeedback(
+    pageSize?: number,
+    pageToken?: string | null,
+    category?: string | null,
+    status?: string | null
+  ): Promise<PaginatedFeedbackResult> {
+    const result = await callFirebaseFunction<
+      { pageSize?: number; pageToken?: string | null; category?: string | null; status?: string | null },
+      PaginatedFeedbackResult
+    >('adminListFeedback', { pageSize, pageToken, category, status });
+    return result;
   }
 
   static async listInteractionEvents(

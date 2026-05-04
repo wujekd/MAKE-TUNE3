@@ -5,21 +5,44 @@ import { AdminLayout } from '../components/AdminLayout';
 
 export function AdminUsersView() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [allUsers, setAllUsers] = useState<UserSearchResult[]>([]);
+  const [users, setUsers] = useState<UserSearchResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionTarget, setActionTarget] = useState<string | null>(null);
 
+  const [pageTokens, setPageTokens] = useState<(string | null)[]>([null]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const isSearching = searchQuery.trim().length > 0;
+
   useEffect(() => {
-    loadUsers();
+    setCurrentPage(0);
+    setPageTokens([null]);
+    loadUsers(0, [null]);
   }, []);
 
-  const loadUsers = async () => {
+  const loadUsers = async (page: number, tokens: (string | null)[], search?: string) => {
     setLoading(true);
     setError(null);
     try {
-      const users = await AdminService.listAllUsers();
-      setAllUsers(users);
+      const trimmed = (search ?? searchQuery).trim();
+      let result;
+
+      if (trimmed) {
+        result = await AdminService.searchUsers(trimmed, 25);
+      } else {
+        result = await AdminService.listUsers(25, tokens[page] ?? null);
+      }
+
+      setUsers(result.users);
+      setHasMore(result.hasMore);
+
+      const newTokens = [...tokens];
+      if (result.nextPageToken) {
+        newTokens[page + 1] = result.nextPageToken;
+      }
+      setPageTokens(newTokens);
+      setCurrentPage(page);
     } catch (err: any) {
       setError(err?.message || 'Failed to load users');
     } finally {
@@ -27,18 +50,26 @@ export function AdminUsersView() {
     }
   };
 
-  const filteredUsers = useMemo(() => {
-    if (!searchQuery.trim()) return allUsers;
-    const query = searchQuery.toLowerCase().trim();
-    return allUsers.filter(user =>
-      user.email?.toLowerCase().includes(query) ||
-      user.username?.toLowerCase().includes(query) ||
-      user.uid.toLowerCase().includes(query)
-    );
-  }, [allUsers, searchQuery]);
+  const handleRefresh = () => {
+    setSearchQuery('');
+    setCurrentPage(0);
+    setPageTokens([null]);
+    loadUsers(0, [null], '');
+  };
+
+  const handleSearch = () => {
+    setCurrentPage(0);
+    setPageTokens([null]);
+    loadUsers(0, [null]);
+  };
+
+  const goToPage = (page: number) => {
+    if (page < 0) return;
+    loadUsers(page, pageTokens);
+  };
 
   const handleBonusChange = async (userId: string, delta: number) => {
-    const user = allUsers.find(u => u.uid === userId);
+    const user = users.find(u => u.uid === userId);
     if (!user) return;
 
     const currentBonus = user.bonusProjects ?? 0;
@@ -48,7 +79,7 @@ export function AdminUsersView() {
     setError(null);
     try {
       await AdminService.updateUserPermissions(userId, { bonusProjects: newBonus });
-      setAllUsers(prev => prev.map(u =>
+      setUsers(prev => prev.map(u =>
         u.uid === userId ? { ...u, bonusProjects: newBonus } : u
       ));
     } catch (err: any) {
@@ -59,7 +90,7 @@ export function AdminUsersView() {
   };
 
   const handleToggleSuspend = async (userId: string) => {
-    const user = allUsers.find(u => u.uid === userId);
+    const user = users.find(u => u.uid === userId);
     if (!user) return;
 
     const isSuspended = user.suspended ?? false;
@@ -72,7 +103,7 @@ export function AdminUsersView() {
       } else {
         await AdminService.suspendUser(userId);
       }
-      setAllUsers(prev => prev.map(u =>
+      setUsers(prev => prev.map(u =>
         u.uid === userId ? { ...u, suspended: !isSuspended } : u
       ));
     } catch (err: any) {
@@ -101,7 +132,8 @@ export function AdminUsersView() {
           type="text"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Filter by email, username, or UID..."
+          onKeyDown={e => e.key === 'Enter' && handleSearch()}
+          placeholder="Search by email or username..."
           style={{
             flex: 1,
             padding: 10,
@@ -113,16 +145,47 @@ export function AdminUsersView() {
           }}
         />
         <button
-          onClick={loadUsers}
+          onClick={handleSearch}
+          style={{ padding: '10px 16px' }}
+        >
+          Search
+        </button>
+        <button
+          onClick={handleRefresh}
           disabled={loading}
           style={{ padding: '10px 20px' }}
         >
-          {loading ? 'Loading...' : 'Refresh'}
+          {loading ? 'Loading...' : 'All Users'}
         </button>
       </div>
 
-      <div style={{ color: 'var(--white)', opacity: 0.7, fontSize: 14 }}>
-        {loading ? 'Loading users...' : `Showing ${filteredUsers.length} of ${allUsers.length} users`}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        color: 'var(--white)',
+        opacity: 0.7,
+        fontSize: 14
+      }}>
+        <span>
+          {loading ? 'Loading...' : `Page ${currentPage + 1}${isSearching ? ' · search results' : ''}`}
+        </span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 0 || loading}
+            style={{ padding: '4px 12px', fontSize: 12 }}
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={!hasMore || loading}
+            style={{ padding: '4px 12px', fontSize: 12 }}
+          >
+            Next
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -145,7 +208,7 @@ export function AdminUsersView() {
         overflowY: 'auto',
         paddingRight: 8
       }}>
-        {filteredUsers.map(user => {
+        {users.map(user => {
           const isUpdating = actionTarget === user.uid;
           const isSuspended = user.suspended ?? false;
 
@@ -272,15 +335,9 @@ export function AdminUsersView() {
         })}
       </div>
 
-      {!loading && filteredUsers.length === 0 && allUsers.length > 0 && (
+      {!loading && users.length === 0 && !error && (
         <div style={{ color: 'var(--white)', opacity: 0.75, textAlign: 'center', padding: 40 }}>
-          No users match the filter
-        </div>
-      )}
-
-      {!loading && allUsers.length === 0 && !error && (
-        <div style={{ color: 'var(--white)', opacity: 0.75, textAlign: 'center', padding: 40 }}>
-          No users found
+          {isSearching ? 'No users match the search' : 'No users found'}
         </div>
       )}
     </AdminLayout>

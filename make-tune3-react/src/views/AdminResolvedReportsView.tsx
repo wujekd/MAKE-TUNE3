@@ -1,28 +1,75 @@
 import { useEffect, useState } from 'react';
-import { ReportService } from '../services';
+import { AdminService } from '../services';
 import { useAppStore } from '../stores/appStore';
-import type { Report } from '../types/collaboration';
 import { AdminLayout } from '../components/AdminLayout';
+
+interface ReportDisplay {
+  id: string;
+  submissionPath: string;
+  collaborationId: string;
+  reportedBy: string;
+  reportedByUsername: string;
+  reason: string;
+  status: string;
+  createdAt: number | null;
+  resolvedAt: number | null;
+  resolvedBy: string | null;
+  reportedUserId: string | null;
+}
 
 export function AdminResolvedReportsView() {
   const { user } = useAppStore(state => state.auth);
-  const [reports, setReports] = useState<Report[]>([]);
+  const [reports, setReports] = useState<ReportDisplay[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [pageTokens, setPageTokens] = useState<(string | null)[]>([null]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+
   useEffect(() => {
-    loadReports();
+    loadReports(0, [null]);
   }, []);
 
-  const loadReports = async () => {
+  const loadReports = async (page: number, tokens: (string | null)[]) => {
     setLoading(true);
     try {
-      const resolvedReports = await ReportService.getResolvedReports();
-      setReports(resolvedReports);
+      const result = await AdminService.listResolvedReports(25, tokens[page] ?? null);
+      setReports(result.reports.map(r => ({
+        id: r.id,
+        submissionPath: r.submissionPath,
+        collaborationId: r.collaborationId,
+        reportedBy: r.reportedBy,
+        reportedByUsername: r.reportedByUsername,
+        reason: r.reason,
+        status: r.status,
+        createdAt: r.createdAt,
+        resolvedAt: r.resolvedAt,
+        resolvedBy: r.resolvedBy,
+        reportedUserId: r.reportedUserId
+      })));
+      setHasMore(result.hasMore);
+
+      const newTokens = [...tokens];
+      if (result.nextPageToken) {
+        newTokens[page + 1] = result.nextPageToken;
+      }
+      setPageTokens(newTokens);
+      setCurrentPage(page);
     } catch {
       alert('Failed to load resolved reports');
     } finally {
       setLoading(false);
     }
+  };
+
+  const goToPage = (page: number) => {
+    if (page < 0) return;
+    loadReports(page, pageTokens);
+  };
+
+  const formatDate = (value: number | null): string => {
+    if (!value) return 'N/A';
+    return new Date(value).toLocaleString();
   };
 
   if (!user?.isAdmin) {
@@ -35,6 +82,36 @@ export function AdminResolvedReportsView() {
 
   return (
     <AdminLayout title="Resolved Reports History">
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        color: 'var(--white)',
+        opacity: 0.7,
+        fontSize: 14,
+        marginBottom: 8
+      }}>
+        <span>
+          {loading ? 'Loading...' : `Page ${currentPage + 1}`}
+        </span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 0 || loading}
+            style={{ padding: '4px 12px', fontSize: 12 }}
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={!hasMore || loading}
+            style={{ padding: '4px 12px', fontSize: 12 }}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
       {loading ? (
         <p style={{ color: 'var(--white)' }}>Loading reports...</p>
       ) : reports.length === 0 ? (
@@ -72,7 +149,7 @@ export function AdminResolvedReportsView() {
                       : '1px solid rgba(150, 150, 150, 0.5)'
                   }}
                 >
-                  {report.status === 'user-banned' ? '🚫 User Banned' : '✓ Dismissed'}
+                  {report.status === 'user-banned' ? 'User Banned' : 'Dismissed'}
                 </div>
                 {report.reportedUserId && (
                   <div
@@ -142,10 +219,10 @@ export function AdminResolvedReportsView() {
                   <strong>Collaboration ID:</strong> {report.collaborationId}
                 </div>
                 <div>
-                  <strong>Reported At:</strong> {report.createdAt?.toDate?.()?.toLocaleString() || 'N/A'}
+                  <strong>Reported At:</strong> {formatDate(report.createdAt)}
                 </div>
                 <div>
-                  <strong>Resolved At:</strong> {report.resolvedAt?.toDate?.()?.toLocaleString() || 'N/A'}
+                  <strong>Resolved At:</strong> {formatDate(report.resolvedAt)}
                 </div>
                 <div>
                   <strong>Resolved By:</strong> {report.resolvedBy || 'N/A'}

@@ -14,6 +14,7 @@ export interface SubmissionCollabSummary {
   collabId: string;
   collabName: string;
   status: string;
+  publishedAt: number | null;
   submissionCloseAt: number | null;
   votingCloseAt: number | null;
   backingPath: string;
@@ -22,6 +23,7 @@ export interface SubmissionCollabSummary {
   submittedAt: number | null;
   submissionDurationSeconds: number | null;
   votingDurationSeconds: number | null;
+  updatedAt: number | null;
   collaborationDeleted: boolean;
   collaborationDeletedAt: number | null;
   storageDeletionPending: boolean;
@@ -167,6 +169,7 @@ export class SubmissionService {
       collabId: typeof item?.collabId === 'string' ? item.collabId : '',
       collabName: typeof item?.collabName === 'string' ? item.collabName : '',
       status: typeof item?.status === 'string' ? item.status : '',
+      publishedAt: typeof item?.publishedAt === 'number' ? item.publishedAt : null,
       submissionCloseAt: typeof item?.submissionCloseAt === 'number' ? item.submissionCloseAt : null,
       votingCloseAt: typeof item?.votingCloseAt === 'number' ? item.votingCloseAt : null,
       backingPath: typeof item?.backingPath === 'string' ? item.backingPath : '',
@@ -175,6 +178,7 @@ export class SubmissionService {
       submittedAt: typeof item?.submittedAt === 'number' ? item.submittedAt : null,
       submissionDurationSeconds: typeof item?.submissionDurationSeconds === 'number' ? item.submissionDurationSeconds : null,
       votingDurationSeconds: typeof item?.votingDurationSeconds === 'number' ? item.votingDurationSeconds : null,
+      updatedAt: typeof item?.updatedAt === 'number' ? item.updatedAt : null,
       collaborationDeleted: item?.collaborationDeleted === true,
       collaborationDeletedAt: typeof item?.collaborationDeletedAt === 'number' ? item.collaborationDeletedAt : null,
       storageDeletionPending: item?.storageDeletionPending === true,
