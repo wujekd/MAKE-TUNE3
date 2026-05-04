@@ -251,8 +251,7 @@
 
 .historyColumn,
 .mainSplit :global(.project-history) {
-  /* Ensure 50% width in split */
-  width: 50%;
+  /* flex: 1 distributes space evenly among visible children */
 }
 
 .historyColumn :global(.project-history-title) {
@@ -460,6 +459,38 @@
   border: none !important;
   box-shadow: none !important;
   padding: 0 !important;
+}
+
+.recommendationsMeta {
+  color: var(--dashboard-text-muted);
+  font-size: 11px;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.recommendationsList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.recommendationsList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.recommendationsList::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.recommendationsList::-webkit-scrollbar-thumb {
+  background: rgba(48, 112, 113, 0.5);
+  border-radius: 3px;
+}
+
+.recommendationItem {
+  margin-bottom: 2px;
 }
 
 /* Tag filter override */

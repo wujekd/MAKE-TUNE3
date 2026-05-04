@@ -8,6 +8,7 @@ from .config import (
     HYBRID_V1_STRATEGY,
     HybridWeights,
     WarmFallbackWeights,
+    SEEN_PENALTY,
 )
 
 
@@ -63,7 +64,8 @@ def _build_candidate_frame(
         .drop(columns="_k")
     )
     candidates = candidates.merge(seen, on=["userId", "collaborationId"], how="left")
-    candidates = candidates[candidates["seen"].isna()].drop(columns="seen")
+    candidates["seenPenalty"] = candidates["seen"].notna().map({True: SEEN_PENALTY, False: 1.0})
+    candidates = candidates.drop(columns="seen", errors="ignore")
     if candidates.empty:
         return candidates
 
@@ -145,6 +147,8 @@ def _build_candidate_frame(
         candidates["strategyUsed"] == HYBRID_V1_STRATEGY,
         "finalScore",
     ] = candidates["hybridScore"]
+
+    candidates["finalScore"] = candidates["finalScore"] * candidates["seenPenalty"]
 
     candidates["catalogTier"] = catalog_tier
     candidates["isBackfill"] = is_backfill

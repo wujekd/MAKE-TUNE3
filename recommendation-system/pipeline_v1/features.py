@@ -137,9 +137,10 @@ def build_user_project_affinity(history: pd.DataFrame) -> pd.DataFrame:
 def build_user_tag_affinity(history: pd.DataFrame) -> dict[str, dict[str, float]]:
     rows: list[dict[str, object]] = []
     for row in history[["userId", "tagsKey", "totalEventWeight"]].itertuples(index=False):
-        tags = row.tagsKey or []
-        if not tags:
+        raw_tags = row.tagsKey
+        if not isinstance(raw_tags, list) or not raw_tags:
             continue
+        tags = raw_tags
         per_tag = row.totalEventWeight / len(tags)
         for tag in tags:
             rows.append({"userId": row.userId, "tag": tag, "weight": per_tag})

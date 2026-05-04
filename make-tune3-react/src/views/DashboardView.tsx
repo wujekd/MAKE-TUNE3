@@ -4,6 +4,7 @@ import { DashboardCollaborationService } from '../services/dashboardCollaboratio
 import { TagUtils } from '../utils/tagUtils';
 import { UserActivityPanel } from '../components/UserActivityPanel';
 import { DashboardHeader } from '../components/DashboardHeader';
+import { DashboardRecommendationsPanel } from '../components/DashboardRecommendationsPanel';
 import { CollaborationsPanel } from '../components/CollaborationsPanel';
 import { AudioRouteBoundary } from '../components/AudioRouteBoundary';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -202,6 +203,7 @@ export function DashboardView() {
       <div className={styles.content}>
         <div className={styles.mainSplit}>
           <UserActivityPanel />
+          <DashboardRecommendationsPanel />
           <CollaborationsPanel
             filteredCollabs={filteredCollabs}
             hasLoaded={hasLoaded}

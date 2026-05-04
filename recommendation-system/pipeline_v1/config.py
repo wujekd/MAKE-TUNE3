@@ -35,3 +35,5 @@ COMPLETED_STATUSES = ("completed",)
 FALLBACK_POPULARITY_STRATEGY = "fallback_popularity"
 FALLBACK_WARM_STRATEGY = "fallback_warm"
 HYBRID_V1_STRATEGY = "hybrid_v1"
+
+SEEN_PENALTY = 0.3
