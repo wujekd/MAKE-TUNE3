@@ -1,4 +1,5 @@
 import type { Timestamp } from 'firebase/firestore';
+import type { WaveformStatus } from './waveform';
 
 // core data models
 export interface Track {
@@ -6,6 +7,11 @@ export interface Track {
   title: string;
   filePath: string;
   optimizedPath?: string;
+  waveformPath?: string;
+  waveformStatus?: WaveformStatus;
+  waveformBucketCount?: number;
+  waveformVersion?: number;
+  waveformError?: string | null;
   backingTrackPath?: string;
   submissionId?: string;
   multitrackZipPath?: string;
@@ -61,6 +67,11 @@ export interface Collaboration {
   backingTrackPath: string;
   pdfPath?: string;
   resourcesZipPath?: string;
+  backingWaveformPath?: string;
+  backingWaveformStatus?: WaveformStatus;
+  backingWaveformBucketCount?: number;
+  backingWaveformVersion?: number;
+  backingWaveformError?: string | null;
   submissions?: SubmissionEntry[];
   participantIds?: string[];
   // Real-time engagement counters
@@ -107,6 +118,11 @@ export interface SubmissionSettings {
 export interface SubmissionEntry {
   path: string;
   optimizedPath?: string;
+  waveformPath?: string;
+  waveformStatus?: WaveformStatus;
+  waveformBucketCount?: number;
+  waveformVersion?: number;
+  waveformError?: string | null;
   multitrackZipPath?: string;
   settings: SubmissionSettings;
   submissionId?: string;

@@ -17,6 +17,7 @@ type CollabListItemProps = {
   title: ReactNode;
   subtitle?: ReactNode;
   children?: ReactNode;
+  footerSlot?: ReactNode;
   statusIndicator?: ReactNode;
   rightSlot?: ReactNode;
   isSelected?: boolean;
@@ -35,6 +36,7 @@ export function CollabListItem({
   title,
   subtitle,
   children,
+  footerSlot,
   statusIndicator: _statusIndicator,
   rightSlot,
   isSelected,
@@ -65,6 +67,13 @@ export function CollabListItem({
         <div className="collab-progress-overlay" style={progressStyle} />
       ) : null}
       <div className="collab-list-item__main">
+        {stageInfo && (stageInfo.status === 'submission' || stageInfo.status === 'voting') && (
+          <ItemStageProgressBar
+            status={stageInfo.status}
+            startAt={stageInfo.startAt}
+            endAt={stageInfo.endAt}
+          />
+        )}
         <div className="collab-list-item__header">
           <div className="collab-list-item__title-block">
             <span className="collab-list-item__title">{title}</span>
@@ -80,13 +89,7 @@ export function CollabListItem({
             <span className="collab-list-item__stage-label">{stageInfo.label}</span>
           )}
         </div>
-        {stageInfo && (stageInfo.status === 'submission' || stageInfo.status === 'voting') && (
-          <ItemStageProgressBar
-            status={stageInfo.status}
-            startAt={stageInfo.startAt}
-            endAt={stageInfo.endAt}
-          />
-        )}
+        {footerSlot && <div className="collab-list-item__footer">{footerSlot}</div>}
       </div>
     </>
   );

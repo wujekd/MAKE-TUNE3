@@ -11,6 +11,7 @@ import { onObjectFinalized } from "firebase-functions/v2/storage";
 import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { getStorage } from "firebase-admin/storage";
+import { GoogleAuth } from "google-auth-library";
 import * as path from "path";
 import * as os from "os";
 import * as fs from "fs";
@@ -41,6 +42,11 @@ const COLLAB_REACTION_STATUSES = new Set(["published", "submission", "voting", "
 const PROJECT_DELETION_HISTORY_COLLECTION = "projectDeletionHistory";
 const RECOMMENDATIONS_COLLECTION = "recommendations";
 const RECOMMENDATION_API_TOKEN = defineSecret("RECOMMENDATION_API_TOKEN");
+const HSD_API_TOKEN = defineSecret("HSD_API_TOKEN");
+const HSD_SERVICE_URL = defineSecret("HSD_SERVICE_URL");
+const HSD_EVENTS_COLLECTION = "hsdEvents";
+const HSD_BACKEND_ID = "make-tune3-prod";
+const googleAuth = new GoogleAuth();
 
 const BAD = ["foo", "bar"];
 const TIER_LIMITS: Record<string, number> = {
@@ -55,6 +61,7 @@ interface SystemSettings {
   votingEnabled: boolean;
   defaultProjectAllowance: number;
   maxSubmissionsPerCollab: number;
+  hsdEnabled: boolean;
 }
 
 const DEFAULT_SETTINGS: SystemSettings = {
@@ -62,13 +69,16 @@ const DEFAULT_SETTINGS: SystemSettings = {
   submissionsEnabled: true,
   votingEnabled: true,
   defaultProjectAllowance: 0,
-  maxSubmissionsPerCollab: 100
+  maxSubmissionsPerCollab: 100,
+  hsdEnabled: false
 };
 
 const SUBMISSION_RESERVATION_MINUTES = 20;
 const BACKING_UPLOAD_RESERVATION_MINUTES = 20;
 const SUBMISSION_TOKEN_COLLECTION = "submissionUploadTokens";
 const BACKING_TOKEN_COLLECTION = "backingUploadTokens";
+const WAVEFORM_VERSION = 1;
+const BACKING_WAVEFORM_BUCKET_COUNT = 768;
 const ALLOWED_AUDIO_EXTS = new Set([
   "mp3",
   "wav",
@@ -132,6 +142,227 @@ const toMillis = (value: any): number | null => {
   return null;
 };
 
+const roundWaveformNumber = (value: number, digits = 6) =>
+  Number(value.toFixed(digits));
+
+type ParsedMonoWav = {
+  sampleRate: number;
+  samples: Int16Array;
+};
+
+type WaveformPayload = {
+  version: number;
+  generator: string;
+  fileName: string;
+  duration: number;
+  sampleRate: number;
+  channels: number;
+  channelMode: string;
+  normalize: boolean;
+  bucketCount: number;
+  framesPerBucket: number;
+  peaks: {
+    min: number[];
+    max: number[];
+  };
+};
+
+function parseMonoPcm16Wav(buffer: Buffer): ParsedMonoWav {
+  if (buffer.toString("ascii", 0, 4) !== "RIFF" || buffer.toString("ascii", 8, 12) !== "WAVE") {
+    throw new Error("invalid wav container");
+  }
+
+  let offset = 12;
+  let audioFormat = 0;
+  let numChannels = 0;
+  let sampleRate = 0;
+  let bitsPerSample = 0;
+  let dataOffset = -1;
+  let dataSize = 0;
+
+  while (offset + 8 <= buffer.length) {
+    const chunkId = buffer.toString("ascii", offset, offset + 4);
+    const chunkSize = buffer.readUInt32LE(offset + 4);
+    const chunkDataOffset = offset + 8;
+
+    if (chunkId === "fmt ") {
+      audioFormat = buffer.readUInt16LE(chunkDataOffset);
+      numChannels = buffer.readUInt16LE(chunkDataOffset + 2);
+      sampleRate = buffer.readUInt32LE(chunkDataOffset + 4);
+      bitsPerSample = buffer.readUInt16LE(chunkDataOffset + 14);
+    } else if (chunkId === "data") {
+      dataOffset = chunkDataOffset;
+      dataSize = chunkSize;
+    }
+
+    offset = chunkDataOffset + chunkSize + (chunkSize % 2);
+  }
+
+  if (audioFormat !== 1) {
+    throw new Error(`unsupported wav audio format: ${audioFormat}`);
+  }
+  if (numChannels !== 1) {
+    throw new Error(`expected mono wav, got ${numChannels} channels`);
+  }
+  if (bitsPerSample !== 16) {
+    throw new Error(`expected 16-bit wav, got ${bitsPerSample}-bit`);
+  }
+  if (dataOffset < 0 || dataSize <= 0) {
+    throw new Error("wav data chunk missing");
+  }
+
+  const sampleCount = Math.floor(dataSize / 2);
+  const samples = new Int16Array(sampleCount);
+  for (let i = 0; i < sampleCount; i += 1) {
+    samples[i] = buffer.readInt16LE(dataOffset + i * 2);
+  }
+
+  return { sampleRate, samples };
+}
+
+function buildWaveformPayload(
+  samples: Int16Array,
+  sampleRate: number,
+  bucketCount: number,
+  fileName: string
+): WaveformPayload {
+  const framesPerBucket = Math.max(1, Math.floor(samples.length / bucketCount));
+  const minPeaks = new Array<number>(bucketCount);
+  const maxPeaks = new Array<number>(bucketCount);
+  let globalPeak = 0;
+
+  for (let i = 0; i < bucketCount; i += 1) {
+    const start = i * framesPerBucket;
+    const end = i === bucketCount - 1 ? samples.length : Math.min(samples.length, start + framesPerBucket);
+    let min = 1;
+    let max = -1;
+
+    for (let j = start; j < end; j += 1) {
+      const sample = samples[j] / 32768;
+      if (sample < min) min = sample;
+      if (sample > max) max = sample;
+    }
+
+    if (end <= start) {
+      min = 0;
+      max = 0;
+    }
+
+    minPeaks[i] = min;
+    maxPeaks[i] = max;
+    globalPeak = Math.max(globalPeak, Math.abs(min), Math.abs(max));
+  }
+
+  if (globalPeak > 0) {
+    for (let i = 0; i < bucketCount; i += 1) {
+      minPeaks[i] /= globalPeak;
+      maxPeaks[i] /= globalPeak;
+    }
+  }
+
+  return {
+    version: WAVEFORM_VERSION,
+    generator: "make-tune3-ffmpeg-minmax",
+    fileName,
+    duration: roundWaveformNumber(sampleRate > 0 ? samples.length / sampleRate : 0, 4),
+    sampleRate,
+    channels: 1,
+    channelMode: "merged",
+    normalize: true,
+    bucketCount,
+    framesPerBucket,
+    peaks: {
+      min: minPeaks.map((value) => roundWaveformNumber(value)),
+      max: maxPeaks.map((value) => roundWaveformNumber(value)),
+    },
+  };
+}
+
+async function generateBackingWaveformAsset(params: {
+  bucketName: string;
+  collabId: string;
+  backingPath: string;
+  waveformPath: string;
+}) {
+  const { bucketName, collabId, backingPath, waveformPath } = params;
+  const collabRef = db.collection("collaborations").doc(collabId);
+  const bucket = storageAdmin.bucket(bucketName);
+  const tmpBase = `backing-waveform-${collabId}-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+  const inputExt = path.extname(backingPath) || ".audio";
+  const tmpInput = path.join(os.tmpdir(), `${tmpBase}${inputExt}`);
+  const tmpWav = path.join(os.tmpdir(), `${tmpBase}.wav`);
+
+  await collabRef.set({
+    backingWaveformStatus: "processing",
+    backingWaveformError: null,
+    updatedAt: Timestamp.now(),
+  }, { merge: true });
+
+  try {
+    await bucket.file(backingPath).download({ destination: tmpInput });
+    (ffmpeg as any).setFfmpegPath(ffmpegStatic as any);
+
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(tmpInput)
+        .noVideo()
+        .audioCodec("pcm_s16le")
+        .audioChannels(1)
+        .audioFrequency(22050)
+        .format("wav")
+        .on("end", () => resolve())
+        .on("error", reject)
+        .save(tmpWav);
+    });
+
+    const wavBuffer = fs.readFileSync(tmpWav);
+    const parsed = parseMonoPcm16Wav(wavBuffer);
+    const payload = buildWaveformPayload(
+      parsed.samples,
+      parsed.sampleRate,
+      BACKING_WAVEFORM_BUCKET_COUNT,
+      path.basename(backingPath)
+    );
+
+    await bucket.file(waveformPath).save(JSON.stringify(payload), {
+      resumable: false,
+      metadata: {
+        contentType: "application/json; charset=utf-8",
+        cacheControl: "public, max-age=31536000, immutable",
+      },
+    });
+
+    const collabSnap = await collabRef.get();
+    const collabData = collabSnap.exists ? collabSnap.data() as any : null;
+    if (!collabData || String(collabData.backingTrackPath || "") !== backingPath) {
+      await bucket.file(waveformPath).delete({ ignoreNotFound: true });
+      return;
+    }
+
+    await collabRef.set({
+      backingWaveformPath: waveformPath,
+      backingWaveformStatus: "ready",
+      backingWaveformBucketCount: payload.bucketCount,
+      backingWaveformVersion: payload.version,
+      backingWaveformError: null,
+      updatedAt: Timestamp.now(),
+    }, { merge: true });
+  } catch (err) {
+    const collabSnap = await collabRef.get();
+    const collabData = collabSnap.exists ? collabSnap.data() as any : null;
+    if (collabData && String(collabData.backingTrackPath || "") === backingPath) {
+      await collabRef.set({
+        backingWaveformStatus: "failed",
+        backingWaveformError: err instanceof Error ? err.message.slice(0, 500) : String(err).slice(0, 500),
+        updatedAt: Timestamp.now(),
+      }, { merge: true });
+    }
+    throw err;
+  } finally {
+    try { fs.unlinkSync(tmpInput); } catch { }
+    try { fs.unlinkSync(tmpWav); } catch { }
+  }
+}
+
 const chunkArray = <T>(items: T[], size: number): T[][] => {
   if (size <= 0) return [items];
   const chunks: T[][] = [];
@@ -178,6 +409,203 @@ const requireRecommendationApiToken = (authHeader: unknown) => {
   if (!tokensMatch(provided, expected)) {
     throw new HttpsError("unauthenticated", "invalid recommendation api token");
   }
+};
+
+type HsdEntityType =
+  | "project_name"
+  | "project_description"
+  | "collaboration_name"
+  | "collaboration_description";
+
+type HsdSuggestedDecision = "allow" | "review" | "reject";
+
+interface HsdServiceRequest {
+  backendId: string;
+  requestId: string;
+  entityType: HsdEntityType;
+  entityId?: string;
+  text: string;
+}
+
+interface HsdServiceResponse {
+  modelVersion: string;
+  label: string;
+  score: number;
+  suggestedDecision: HsdSuggestedDecision;
+}
+
+interface HsdCheckResult extends HsdServiceResponse {
+  entityType: HsdEntityType;
+  entityId: string | null;
+}
+
+interface HsdInput {
+  entityType: HsdEntityType;
+  entityId?: string | null;
+  text: string;
+}
+
+interface HsdBatchResult {
+  requestId: string;
+  finalDecision: HsdSuggestedDecision;
+  checks: HsdCheckResult[];
+}
+
+const getRequiredHsdConfig = () => {
+  const serviceUrl = HSD_SERVICE_URL.value().trim().replace(/\/+$/, "");
+  const token = HSD_API_TOKEN.value().trim();
+  if (!serviceUrl || !token) {
+    throw new HttpsError("failed-precondition", "HSD service not configured");
+  }
+  return { serviceUrl, token };
+};
+
+const parseHsdServiceResponse = (value: any): HsdServiceResponse => {
+  const modelVersion = typeof value?.modelVersion === "string" ? value.modelVersion.trim() : "";
+  const label = typeof value?.label === "string" ? value.label.trim() : "";
+  const score = Number(value?.score);
+  const suggestedDecision = typeof value?.suggestedDecision === "string"
+    ? value.suggestedDecision.trim()
+    : "";
+
+  if (
+    !modelVersion ||
+    !label ||
+    !Number.isFinite(score) ||
+    !["allow", "review", "reject"].includes(suggestedDecision)
+  ) {
+    throw new HttpsError("internal", "invalid HSD service response");
+  }
+
+  return {
+    modelVersion,
+    label,
+    score,
+    suggestedDecision: suggestedDecision as HsdSuggestedDecision
+  };
+};
+
+const callHsdService = async (
+  payload: HsdServiceRequest
+): Promise<HsdServiceResponse> => {
+  const { serviceUrl, token } = getRequiredHsdConfig();
+  let idToken: string;
+
+  try {
+    const client = await googleAuth.getIdTokenClient(serviceUrl);
+    idToken = await client.idTokenProvider.fetchIdToken(serviceUrl);
+  } catch (err) {
+    console.error("[hsd] failed to mint cloud run id token", err);
+    throw new HttpsError("unavailable", "HSD auth unavailable");
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${serviceUrl}/predict`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-serverless-authorization": `Bearer ${idToken}`,
+        authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.error("[hsd] request failed", err);
+    throw new HttpsError("unavailable", "HSD service unavailable");
+  }
+
+  const rawBody = await response.text();
+  let parsedBody: any = null;
+  if (rawBody) {
+    try {
+      parsedBody = JSON.parse(rawBody);
+    } catch {
+      parsedBody = null;
+    }
+  }
+
+  if (!response.ok) {
+    console.error("[hsd] non-ok response", {
+      status: response.status,
+      body: parsedBody ?? rawBody
+    });
+    const detail = typeof parsedBody?.detail === "string" && parsedBody.detail.trim()
+      ? parsedBody.detail.trim()
+      : "HSD service error";
+    throw new HttpsError("unavailable", detail);
+  }
+
+  return parseHsdServiceResponse(parsedBody);
+};
+
+const summarizeHsdDecision = (
+  checks: HsdCheckResult[]
+): HsdSuggestedDecision => {
+  if (checks.some((entry) => entry.suggestedDecision === "reject")) return "reject";
+  if (checks.some((entry) => entry.suggestedDecision === "review")) return "review";
+  return "allow";
+};
+
+const runHsdChecks = async (
+  inputs: HsdInput[]
+): Promise<HsdBatchResult> => {
+  const requestId = crypto.randomUUID();
+  const checks: HsdCheckResult[] = [];
+
+  for (const input of inputs) {
+    const text = String(input.text || "").trim();
+    if (!text) continue;
+
+    const response = await callHsdService({
+      backendId: HSD_BACKEND_ID,
+      requestId,
+      entityType: input.entityType,
+      entityId: input.entityId ?? undefined,
+      text
+    });
+
+    checks.push({
+      ...response,
+      entityType: input.entityType,
+      entityId: input.entityId ?? null
+    });
+  }
+
+  return {
+    requestId,
+    finalDecision: summarizeHsdDecision(checks),
+    checks
+  };
+};
+
+const writeHsdEvent = async (params: {
+  uid: string;
+  requestId: string;
+  entityKind: "project" | "collaboration";
+  entityId: string;
+  finalDecision: HsdSuggestedDecision;
+  checks: HsdCheckResult[];
+  status: "created" | "rejected";
+}): Promise<void> => {
+  await db.collection(HSD_EVENTS_COLLECTION).add({
+    uid: params.uid,
+    backendId: HSD_BACKEND_ID,
+    requestId: params.requestId,
+    entityKind: params.entityKind,
+    entityId: params.entityId,
+    decision: params.finalDecision,
+    status: params.status,
+    checks: params.checks.map((entry) => ({
+      entityType: entry.entityType,
+      entityId: entry.entityId,
+      label: entry.label,
+      score: entry.score,
+      suggestedDecision: entry.suggestedDecision,
+      modelVersion: entry.modelVersion
+    })),
+    createdAt: Timestamp.now()
+  });
 };
 
 const toIsoString = (value: any): string | null => {
@@ -903,11 +1331,14 @@ export const cleanupSubmissionReservations = onSchedule("every 5 minutes", async
 
 export const finalizeBackingUpload = onObjectFinalized({ region: "europe-west1" }, async (event) => {
   const object = event.data;
+  const bucketName = object.bucket;
   const filePath = object.name || "";
   const match = filePath.match(/^collabs\/([^/]+)\/backing\.([^/]+)$/i);
   if (!match) return;
   const collabId = match[1];
   const ext = match[2].toLowerCase();
+  const waveformRevision = String(object.generation || Date.now());
+  const waveformPath = `collabs/${collabId}/waveforms/backing-${waveformRevision}.json`;
 
   const metadata = object.metadata || {};
   const uploadTokenId = String((metadata as any).backingUploadTokenId || "").trim();
@@ -921,6 +1352,7 @@ export const finalizeBackingUpload = onObjectFinalized({ region: "europe-west1" 
 
   let shouldDeleteObject = false;
   let deleteReason = "";
+  let previousWaveformPath = "";
 
   await db.runTransaction(async (tx) => {
     const [tokenSnap, collabSnap] = await Promise.all([
@@ -958,8 +1390,18 @@ export const finalizeBackingUpload = onObjectFinalized({ region: "europe-west1" 
       return;
     }
 
+    const collabData = collabSnap.data() as any;
+    previousWaveformPath = String(collabData?.backingWaveformPath || "").trim();
     tx.update(tokenRef, { used: true, usedAt: now });
-    tx.update(collabRef, { backingTrackPath: filePath, updatedAt: now });
+    tx.update(collabRef, {
+      backingTrackPath: filePath,
+      backingWaveformPath: null,
+      backingWaveformStatus: "pending",
+      backingWaveformBucketCount: BACKING_WAVEFORM_BUCKET_COUNT,
+      backingWaveformVersion: WAVEFORM_VERSION,
+      backingWaveformError: null,
+      updatedAt: now
+    });
   });
 
   if (shouldDeleteObject) {
@@ -970,6 +1412,27 @@ export const finalizeBackingUpload = onObjectFinalized({ region: "europe-west1" 
     } catch (err) {
       console.error(`[finalizeBackingUpload] failed to delete invalid upload ${filePath}`, err);
     }
+    return;
+  }
+
+  if (previousWaveformPath && previousWaveformPath !== waveformPath) {
+    try {
+      const bucket = storageAdmin.bucket(bucketName);
+      await bucket.file(previousWaveformPath).delete({ ignoreNotFound: true });
+    } catch (err) {
+      console.error(`[finalizeBackingUpload] failed to delete previous waveform ${previousWaveformPath}`, err);
+    }
+  }
+
+  try {
+    await generateBackingWaveformAsset({
+      bucketName,
+      collabId,
+      backingPath: filePath,
+      waveformPath
+    });
+  } catch (err) {
+    console.error(`[finalizeBackingUpload] backing waveform generation failed for ${filePath}`, err);
   }
 });
 
@@ -1272,80 +1735,240 @@ const buildNameKey = (name: string) =>
     .replace(/[^a-z0-9 ]/g, "")
     .replace(/\s/g, "-");
 
-export const createProjectWithUniqueName = onCall(async (request) => {
-  const uid = request.auth?.uid || null;
-  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+export const createProjectWithUniqueName = onCall(
+  { secrets: [HSD_API_TOKEN, HSD_SERVICE_URL] },
+  async (request) => {
+    const uid = request.auth?.uid || null;
+    if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
-  await checkUserNotSuspended(uid);
+    await checkUserNotSuspended(uid);
 
-  const settings = await getSystemSettings();
-  if (!settings.projectCreationEnabled) {
-    throw new HttpsError("failed-precondition", "Project creation is currently disabled");
-  }
+    const settings = await getSystemSettings();
+    if (!settings.projectCreationEnabled) {
+      throw new HttpsError("failed-precondition", "Project creation is currently disabled");
+    }
 
-  const nameRaw = String(request.data?.name ?? "").trim();
-  const descriptionRaw = String(request.data?.description ?? "");
-  // Project tags are deprecated for beta; projects inherit tags from collaborations.
-  const tags: string[] = [];
-  const tagsKey: string[] = [];
-  if (!nameRaw) throw new HttpsError("invalid-argument", "name required");
-  const nameKey = buildNameKey(nameRaw);
-  const result = await db.runTransaction(async (tx) => {
-    const userRef = db.collection("users").doc(uid);
-    const idxRef = db.collection("projectNameIndex").doc(nameKey);
+    const nameRaw = String(request.data?.name ?? "").trim();
+    const descriptionRaw = String(request.data?.description ?? "");
+    // Project tags are deprecated for beta; projects inherit tags from collaborations.
+    const tags: string[] = [];
+    const tagsKey: string[] = [];
+    if (!nameRaw) throw new HttpsError("invalid-argument", "name required");
+    const nameKey = buildNameKey(nameRaw);
+    const projectRef = db.collection("projects").doc();
 
-    const [userSnap, idxSnap] = await Promise.all([
-      tx.get(userRef),
-      tx.get(idxRef)
-    ]);
+    let hsdResult: HsdBatchResult | null = null;
+    if (settings.hsdEnabled) {
+      hsdResult = await runHsdChecks([
+        { entityType: "project_name", entityId: projectRef.id, text: nameRaw },
+        { entityType: "project_description", entityId: projectRef.id, text: descriptionRaw }
+      ]);
 
-    if (!userSnap.exists) throw new HttpsError("permission-denied", "user profile not found");
-    if (idxSnap.exists) throw new HttpsError("already-exists", "name taken");
-
-    const userData = userSnap.data() as any;
-    if (!userData.isAdmin) {
-      const tier = userData.tier || "free";
-      const bonus = Number(userData.bonusProjects || 0);
-      const projectCount = Number(userData.projectCount || 0);
-      const baseLimit = TIER_LIMITS[tier] ?? 0;
-      const globalDefault = settings.defaultProjectAllowance || 0;
-      const totalLimit = baseLimit + bonus + globalDefault;
-
-      if (projectCount >= totalLimit) {
-        throw new HttpsError("resource-exhausted", `Project limit reached. You have ${projectCount} of ${totalLimit} allowed projects.`);
+      if (hsdResult.finalDecision === "reject") {
+        await writeHsdEvent({
+          uid,
+          requestId: hsdResult.requestId,
+          entityKind: "project",
+          entityId: projectRef.id,
+          finalDecision: hsdResult.finalDecision,
+          checks: hsdResult.checks,
+          status: "rejected"
+        });
+        throw new HttpsError("failed-precondition", "Project text rejected by HSD policy");
       }
     }
 
-    const now = Timestamp.now();
-    const projRef = db.collection("projects").doc();
-    const projectData = {
-      name: nameRaw,
-      description: descriptionRaw,
-      createdAt: now,
-      updatedAt: now,
-      ownerId: uid,
-      isActive: true,
-      pastCollaborations: [],
-      nameKey,
-      tags,
-      tagsKey,
-      currentCollaborationId: null,
-      currentCollaborationStatus: null,
-      currentCollaborationStageEndsAt: null,
-    } as any;
+    const result = await db.runTransaction(async (tx) => {
+      const userRef = db.collection("users").doc(uid);
+      const idxRef = db.collection("projectNameIndex").doc(nameKey);
 
-    tx.set(projRef, projectData);
-    tx.set(idxRef, { projectId: projRef.id, ownerId: uid, createdAt: now });
+      const [userSnap, idxSnap] = await Promise.all([
+        tx.get(userRef),
+        tx.get(idxRef)
+      ]);
 
-    // Increment project count for user
-    tx.update(userRef, {
-      projectCount: (Number(userData.projectCount || 0)) + 1
+      if (!userSnap.exists) throw new HttpsError("permission-denied", "user profile not found");
+      if (idxSnap.exists) throw new HttpsError("already-exists", "name taken");
+
+      const userData = userSnap.data() as any;
+      if (!userData.isAdmin) {
+        const tier = userData.tier || "free";
+        const bonus = Number(userData.bonusProjects || 0);
+        const projectCount = Number(userData.projectCount || 0);
+        const baseLimit = TIER_LIMITS[tier] ?? 0;
+        const globalDefault = settings.defaultProjectAllowance || 0;
+        const totalLimit = baseLimit + bonus + globalDefault;
+
+        if (projectCount >= totalLimit) {
+          throw new HttpsError("resource-exhausted", `Project limit reached. You have ${projectCount} of ${totalLimit} allowed projects.`);
+        }
+      }
+
+      const now = Timestamp.now();
+      const projectData = {
+        name: nameRaw,
+        description: descriptionRaw,
+        createdAt: now,
+        updatedAt: now,
+        ownerId: uid,
+        isActive: true,
+        pastCollaborations: [],
+        nameKey,
+        tags,
+        tagsKey,
+        currentCollaborationId: null,
+        currentCollaborationStatus: null,
+        currentCollaborationStageEndsAt: null,
+      } as any;
+
+      tx.set(projectRef, projectData);
+      tx.set(idxRef, { projectId: projectRef.id, ownerId: uid, createdAt: now });
+
+      // Increment project count for user
+      tx.update(userRef, {
+        projectCount: (Number(userData.projectCount || 0)) + 1
+      });
+
+      return { id: projectRef.id, ...(projectData as any) };
     });
 
-    return { id: projRef.id, ...(projectData as any) };
-  });
-  return result;
-});
+    if (hsdResult) {
+      await writeHsdEvent({
+        uid,
+        requestId: hsdResult.requestId,
+        entityKind: "project",
+        entityId: result.id,
+        finalDecision: hsdResult.finalDecision,
+        checks: hsdResult.checks,
+        status: "created"
+      });
+    }
+    return result;
+  }
+);
+
+export const createCollaborationWithHSD = onCall(
+  { secrets: [HSD_API_TOKEN, HSD_SERVICE_URL] },
+  async (request) => {
+    const uid = request.auth?.uid || null;
+    if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+
+    await checkUserNotSuspended(uid);
+
+    const projectId = String(request.data?.projectId ?? "").trim();
+    const nameRaw = String(request.data?.name ?? "").trim();
+    const descriptionRaw = String(request.data?.description ?? "");
+    const tags = normalizeStringArray(request.data?.tags);
+    const tagsKey = normalizeStringArray(request.data?.tagsKey);
+    const submissionDuration = toNumber(request.data?.submissionDuration, 604800);
+    const votingDuration = toNumber(request.data?.votingDuration, 259200);
+    const statusRaw = String(request.data?.status ?? "unpublished").trim() || "unpublished";
+    const backingTrackPath = String(request.data?.backingTrackPath ?? "").trim();
+
+    if (!projectId) throw new HttpsError("invalid-argument", "projectId required");
+    if (!nameRaw) throw new HttpsError("invalid-argument", "name required");
+    if (tags.length === 0 || tagsKey.length === 0) {
+      throw new HttpsError("invalid-argument", "at least one tag required");
+    }
+    if (!Number.isFinite(submissionDuration) || submissionDuration <= 0) {
+      throw new HttpsError("invalid-argument", "invalid submissionDuration");
+    }
+    if (!Number.isFinite(votingDuration) || votingDuration <= 0) {
+      throw new HttpsError("invalid-argument", "invalid votingDuration");
+    }
+    if (!["unpublished", "submission", "voting", "completed", "published"].includes(statusRaw)) {
+      throw new HttpsError("invalid-argument", "invalid status");
+    }
+
+    const settings = await getSystemSettings();
+    const collabRef = db.collection("collaborations").doc();
+    const detailRef = db.collection("collaborationDetails").doc(collabRef.id);
+
+    let hsdResult: HsdBatchResult | null = null;
+    if (settings.hsdEnabled) {
+      hsdResult = await runHsdChecks([
+        { entityType: "collaboration_name", entityId: collabRef.id, text: nameRaw },
+        { entityType: "collaboration_description", entityId: collabRef.id, text: descriptionRaw }
+      ]);
+
+      if (hsdResult.finalDecision === "reject") {
+        await writeHsdEvent({
+          uid,
+          requestId: hsdResult.requestId,
+          entityKind: "collaboration",
+          entityId: collabRef.id,
+          finalDecision: hsdResult.finalDecision,
+          checks: hsdResult.checks,
+          status: "rejected"
+        });
+        throw new HttpsError("failed-precondition", "Collaboration text rejected by HSD policy");
+      }
+    }
+
+    const result = await db.runTransaction(async (tx) => {
+      const projectRef = db.collection("projects").doc(projectId);
+      const projectSnap = await tx.get(projectRef);
+      if (!projectSnap.exists) {
+        throw new HttpsError("not-found", "project not found");
+      }
+      const projectData = projectSnap.data() as any;
+      if (String(projectData.ownerId || "") !== uid) {
+        throw new HttpsError("permission-denied", "only the project owner can create collaborations");
+      }
+
+      const now = Timestamp.now();
+      const collaborationData = {
+        projectId,
+        name: nameRaw,
+        description: descriptionRaw,
+        tags,
+        tagsKey,
+        backingTrackPath,
+        participantIds: [],
+        submissionsCount: 0,
+        reservedSubmissionsCount: 0,
+        favoritesCount: 0,
+        votesCount: 0,
+        submissionDuration,
+        votingDuration,
+        status: statusRaw,
+        publishedAt: null,
+        createdAt: now,
+        updatedAt: now
+      } as any;
+
+      tx.set(collabRef, collaborationData);
+      tx.set(detailRef, {
+        collaborationId: collabRef.id,
+        submissions: [],
+        submissionPaths: [],
+        createdAt: now,
+        updatedAt: now
+      });
+
+      return {
+        id: collabRef.id,
+        ...collaborationData,
+        submissions: [],
+        submissionPaths: []
+      };
+    });
+
+    if (hsdResult) {
+      await writeHsdEvent({
+        uid,
+        requestId: hsdResult.requestId,
+        entityKind: "collaboration",
+        entityId: result.id,
+        finalDecision: hsdResult.finalDecision,
+        checks: hsdResult.checks,
+        status: "created"
+      });
+    }
+
+    return result;
+  }
+);
 
 export const recountMyProjectCount = onCall(async (request) => {
   const uid = request.auth?.uid || null;
@@ -3021,6 +3644,7 @@ export const cleanupProjectOnDelete = onDocumentDeleted(
         };
 
         recordPath(collabData?.backingTrackPath);
+        recordPath(collabData?.backingWaveformPath);
         recordPath(collabData?.winnerPath);
         if (Array.isArray(collabData?.submissionPaths)) {
           for (const p of collabData.submissionPaths) {
@@ -3529,3 +4153,54 @@ export const adminUpdateUser = onCall(async (request) => {
 
   return { success: true };
 });
+
+export const adminRunHsdTest = onCall(
+  { secrets: [HSD_API_TOKEN, HSD_SERVICE_URL] },
+  async (request) => {
+    const uid = request.auth?.uid || null;
+    if (!uid) {
+      throw new HttpsError("unauthenticated", "unauthenticated");
+    }
+
+    const adminSnap = await db.collection("users").doc(uid).get();
+    if (!adminSnap.exists || !adminSnap.data()?.isAdmin) {
+      throw new HttpsError("permission-denied", "Admin access required");
+    }
+
+    const text = String(request.data?.text ?? "").trim();
+    const entityType = String(request.data?.entityType ?? "").trim() as HsdEntityType;
+    const entityIdRaw = String(request.data?.entityId ?? "").trim();
+
+    if (!text) {
+      throw new HttpsError("invalid-argument", "text required");
+    }
+
+    if (![
+      "project_name",
+      "project_description",
+      "collaboration_name",
+      "collaboration_description"
+    ].includes(entityType)) {
+      throw new HttpsError("invalid-argument", "invalid entityType");
+    }
+
+    const requestId = crypto.randomUUID();
+    const startedAt = Date.now();
+    const result = await callHsdService({
+      backendId: HSD_BACKEND_ID,
+      requestId,
+      entityType,
+      entityId: entityIdRaw || undefined,
+      text
+    });
+
+    return {
+      requestId,
+      entityType,
+      entityId: entityIdRaw || null,
+      text,
+      elapsedMs: Date.now() - startedAt,
+      ...result
+    };
+  }
+);

@@ -1,44 +1,45 @@
-import { doc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, limit as firestoreLimit, Timestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, limit as firestoreLimit, Timestamp } from 'firebase/firestore';
 import { db } from './firebaseDb';
 import { callFirebaseFunction } from './firebaseFunctions';
-import type { Collaboration, CollaborationId, ProjectId, CollaborationDetail } from '../types/collaboration';
+import type { Collaboration, CollaborationId, ProjectId } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 
 const DEBUG_LOGS = import.meta.env.DEV;
 
 export class CollaborationService {
   static async createCollaboration(collaboration: Omit<Collaboration, 'id' | 'createdAt' | 'updatedAt'>): Promise<Collaboration> {
-    const now = Timestamp.now();
-    const collaborationData = {
-      ...collaboration,
-      tags: collaboration.tags || [],
-      tagsKey: collaboration.tagsKey || [],
-      backingTrackPath: collaboration.backingTrackPath || '',
-      participantIds: [],
-      // Initialize counters
-      submissionsCount: 0,
-      reservedSubmissionsCount: 0,
-      favoritesCount: 0,
-      votesCount: 0,
-      createdAt: now,
-      publishedAt: (collaboration as any).publishedAt || null,
-      updatedAt: now
-    } as Omit<Collaboration, 'id'>;
+    const data = await callFirebaseFunction<any, any>(
+      'createCollaborationWithHSD',
+      {
+        projectId: collaboration.projectId,
+        name: collaboration.name,
+        description: collaboration.description,
+        tags: collaboration.tags || [],
+        tagsKey: collaboration.tagsKey || [],
+        backingTrackPath: collaboration.backingTrackPath || '',
+        submissionDuration: collaboration.submissionDuration,
+        votingDuration: collaboration.votingDuration,
+        status: collaboration.status || 'unpublished'
+      }
+    );
 
-    const { submissions, submissionPaths, ...lightData } = collaborationData as any;
+    const restoreTimestamp = (val: any) => {
+      if (val && typeof val._seconds === 'number') {
+        return new Timestamp(val._seconds, val._nanoseconds);
+      }
+      return val;
+    };
 
-    const docRef = await addDoc(collection(db, COLLECTIONS.COLLABORATIONS), lightData);
-
-    // create heavy detail doc with defaults
-    await setDoc(doc(db, COLLECTIONS.COLLABORATION_DETAILS, docRef.id), {
-      collaborationId: docRef.id,
-      submissions: Array.isArray(submissions) ? submissions : [],
-      submissionPaths: Array.isArray(submissionPaths) ? submissionPaths : [],
-      createdAt: now,
-      updatedAt: now
-    } satisfies Omit<CollaborationDetail, 'id'>).catch(() => { });
-
-    return { ...(lightData as any), id: docRef.id, submissions: Array.isArray(submissions) ? submissions : [], submissionPaths: Array.isArray(submissionPaths) ? submissionPaths : [] } as Collaboration;
+    return {
+      ...data,
+      id: data.id,
+      createdAt: restoreTimestamp(data.createdAt),
+      updatedAt: restoreTimestamp(data.updatedAt),
+      publishedAt: restoreTimestamp(data.publishedAt),
+      submissionCloseAt: restoreTimestamp(data.submissionCloseAt),
+      votingCloseAt: restoreTimestamp(data.votingCloseAt),
+      completedAt: restoreTimestamp(data.completedAt)
+    } as Collaboration;
   }
 
   static async getCollaboration(collaborationId: CollaborationId): Promise<Collaboration | null> {

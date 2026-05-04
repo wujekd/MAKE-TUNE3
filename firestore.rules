@@ -94,17 +94,7 @@ service cloud.firestore {
         || isOwnerOfCollab()
         || isAdmin();
 
-      allow create: if isSignedIn()
-        && exists(/databases/$(database)/documents/projects/$(request.resource.data.projectId))
-        && get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)).data.ownerId == request.auth.uid
-        && validateCollaborationData(request.resource.data)
-        && request.resource.data.tags is list
-        && request.resource.data.tags.size() >= 1
-        && request.resource.data.tagsKey is list
-        && request.resource.data.tagsKey.size() >= 1
-        && (!('submissionLimitOverride' in request.resource.data))
-        && (!('reservedSubmissionsCount' in request.resource.data) || request.resource.data.reservedSubmissionsCount == 0)
-        && (!('submissionsCount' in request.resource.data) || request.resource.data.submissionsCount == 0);
+      allow create: if false;
 
       allow update: if get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.ownerId == request.auth.uid
         && validateCollaborationData(request.resource.data)
@@ -121,16 +111,7 @@ service cloud.firestore {
 
     match /collaborationDetails/{collabId} {
       allow read: if isAdmin() || isCollabOwner(collabId);
-      allow create: if isSignedIn()
-        && validateCollaborationDetailData(request.resource.data)
-        && request.resource.data.collaborationId == collabId
-        && request.resource.data.submissions is list
-        && request.resource.data.submissions.size() == 0
-        && (!('submissionPaths' in request.resource.data) || request.resource.data.submissionPaths.size() == 0)
-        && exists(/databases/$(database)/documents/collaborations/$(collabId))
-        && (
-          get(/databases/$(database)/documents/projects/$(get(/databases/$(database)/documents/collaborations/$(collabId)).data.projectId)).data.ownerId == request.auth.uid
-        );
+      allow create: if false;
       allow update: if false;
     }
 

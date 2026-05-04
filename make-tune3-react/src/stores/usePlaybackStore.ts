@@ -29,6 +29,7 @@ interface PlaybackState {
   playBackingTrack: (filePath: string, label?: string) => void;
   previewBackingFile: (file: File) => void;
   stopBackingPlayback: () => void;
+  seekBackingPreviewByRatio: (ratio: number) => void;
   getCurrentTime: (state: AudioState) => string;
   getTotalTime: (state: AudioState) => string;
   getTimeSliderValue: (state: AudioState) => number;
@@ -316,6 +317,18 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => {
       }
       cleanupBackingPreview();
       set({ backingPreview: null });
+    },
+
+    seekBackingPreviewByRatio: (ratio) => {
+      const engine = useAudioStore.getState().engine;
+      const state = useAudioStore.getState().state;
+      if (!engine || !state) return;
+
+      const duration = state.player2.duration || 0;
+      if (duration <= 0) return;
+
+      const clampedRatio = Math.max(0, Math.min(1, ratio));
+      engine.seekBacking(duration * clampedRatio);
     },
 
     getCurrentTime: (state) => {

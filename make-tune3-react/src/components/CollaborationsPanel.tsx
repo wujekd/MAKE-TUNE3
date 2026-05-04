@@ -3,6 +3,7 @@ import { TagFilter } from './TagFilter';
 import { ListPlayButton } from './ListPlayButton';
 import { CollabListItem } from './CollabListItem';
 import { DashboardPlaceholderItem } from './DashboardPlaceholderItem';
+import { BackingWaveformPreview } from './BackingWaveformPreview';
 import { useAudioStore } from '../stores';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { useAppStore } from '../stores/appStore';
@@ -69,6 +70,9 @@ export function CollaborationsPanel({
             const displayProgress = isCurrentBacking && audioState?.player2.duration && audioState.player2.duration > 0
               ? ((audioState?.player2.currentTime ?? 0) / audioState.player2.duration) * 100
               : 0;
+            const backingCurrentTime = isCurrentBacking ? (audioState?.player2.currentTime ?? 0) : 0;
+            const backingDuration = isCurrentBacking ? (audioState?.player2.duration ?? 0) : 0;
+            const isBackingPlaying = isCurrentBacking ? Boolean(audioState?.player2.isPlaying) : false;
 
             const rawStageInfo = computeStageInfo({
               status: c.status,
@@ -98,6 +102,16 @@ export function CollaborationsPanel({
                 progressPercent={isCurrentBacking ? displayProgress : undefined}
                 listVariant
                 stageInfo={stageInfo}
+                footerSlot={hasBacking ? (
+                  <BackingWaveformPreview
+                    collaboration={c}
+                    isActive={isCurrentBacking}
+                    progress={displayProgress / 100}
+                    currentTime={backingCurrentTime}
+                    duration={backingDuration}
+                    isPlaying={isBackingPlaying}
+                  />
+                ) : undefined}
                 rightSlot={
                   <ListPlayButton
                     isPlaying={audioState?.player2.isPlaying || false}

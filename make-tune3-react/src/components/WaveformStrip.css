@@ -1,0 +1,44 @@
+.waveform-strip {
+  position: relative;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.waveform-strip--interactive {
+  cursor: pointer;
+}
+
+.waveform-strip__canvas {
+  display: block;
+  width: 100%;
+  height: 48px;
+}
+
+.waveform-strip__status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  width: 100%;
+}
+
+.waveform-strip__placeholder {
+  position: relative;
+  width: 100%;
+  height: 48px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+}
+
+.waveform-strip__placeholder::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}

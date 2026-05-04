@@ -124,6 +124,11 @@ service firebase.storage {
         );
     }
 
+    match /collabs/{collabId}/waveforms/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     match /collabs/{collabId}/docs/{fileName} {
       allow read: if isCollabOwner(collabId) || isCollabParticipant(collabId) || isAdmin();
       allow write: if isSignedIn()

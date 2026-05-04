@@ -91,14 +91,14 @@ export function CollaborationTimeline({
       return { days: 0, hours: 0, minutes: 0, seconds: 0, completed: true };
     }
     return TimeUtils.formatCountdown(new Date(submissionEndMs));
-  }, [submissionEndMs]);
+  }, [submissionEndMs, now]);
 
   const votingCountdown = useMemo(() => {
     if (!votingEndMs) {
       return { days: 0, hours: 0, minutes: 0, seconds: 0, completed: true };
     }
     return TimeUtils.formatCountdown(new Date(votingEndMs));
-  }, [votingEndMs]);
+  }, [votingEndMs, now]);
 
   const submissionTimer = (() => {
     if (!submissionEndMs) {

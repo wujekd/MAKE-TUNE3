@@ -12,3 +12,4 @@ export type { FeedbackCategory, FeedbackStatus, Feedback, CreateFeedbackData, Fe
 export { AdminService } from './adminService';
 export type { UserSearchResult, UserUpdateData } from './adminService';
 export { SettingsService } from './settingsService';
+export { WaveformService } from './waveformService';

@@ -33,6 +33,30 @@ export interface ListInteractionEventsOptions {
   cursor?: QueryDocumentSnapshot<DocumentData> | null;
 }
 
+export type HsdTestEntityType =
+  | 'project_name'
+  | 'project_description'
+  | 'collaboration_name'
+  | 'collaboration_description';
+
+export interface AdminHsdTestRequest {
+  text: string;
+  entityType: HsdTestEntityType;
+  entityId?: string;
+}
+
+export interface AdminHsdTestResult {
+  requestId: string;
+  entityType: HsdTestEntityType;
+  entityId: string | null;
+  text: string;
+  elapsedMs: number;
+  modelVersion: string;
+  label: string;
+  score: number;
+  suggestedDecision: 'allow' | 'review' | 'reject';
+}
+
 export class AdminService {
   static async listAllUsers(): Promise<UserSearchResult[]> {
     const result = await callFirebaseFunction<void, { users: UserSearchResult[] }>('adminListUsers');
@@ -87,5 +111,9 @@ export class AdminService {
       nextCursor: visibleDocs.length > 0 ? visibleDocs[visibleDocs.length - 1] : null,
       hasMore: docs.length > pageSize
     };
+  }
+
+  static async runHsdTest(input: AdminHsdTestRequest): Promise<AdminHsdTestResult> {
+    return callFirebaseFunction<AdminHsdTestRequest, AdminHsdTestResult>('adminRunHsdTest', input);
   }
 }

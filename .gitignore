@@ -13,3 +13,9 @@ docs/react-app-design-patterns.md
 /recommendation-system/venv
 /recommendation-system/data
 recommendation-system/recommender.env
+/hate-text-detector/hate-speech-detection-pipeline-design
+/hate-text-detector/service/.deps
+/hate-text-detector
+/recommendation-system/pipeline_v1/__pycache__
+/recommendation-system/remote_v1/__pycache__
+/waveform-lab
