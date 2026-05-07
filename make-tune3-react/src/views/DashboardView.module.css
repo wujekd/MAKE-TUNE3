@@ -461,36 +461,98 @@
   padding: 0 !important;
 }
 
-.recommendationsMeta {
+.feedHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.feedIntro {
+  margin: 0;
+  color: var(--dashboard-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.feedMeta {
   color: var(--dashboard-text-muted);
   font-size: 11px;
   font-style: italic;
-  margin-top: 2px;
+  margin: 0 0 10px;
 }
 
-.recommendationsList {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding-right: 4px;
+.feedOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 12px;
 }
 
-.recommendationsList::-webkit-scrollbar {
-  width: 6px;
+.feedOption {
+  border: 1px solid rgba(48, 112, 113, 0.35);
+  background: rgba(18, 24, 28, 0.72);
+  color: rgba(220, 230, 230, 0.72);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
-.recommendationsList::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
+.feedOption:hover {
+  color: var(--white);
+  border-color: rgba(239, 123, 58, 0.42);
 }
 
-.recommendationsList::-webkit-scrollbar-thumb {
-  background: rgba(48, 112, 113, 0.5);
-  border-radius: 3px;
+.feedOptionActive {
+  color: var(--white);
+  background: rgba(239, 123, 58, 0.16);
+  border-color: rgba(239, 123, 58, 0.52);
+  box-shadow: 0 0 10px rgba(239, 123, 58, 0.18);
 }
 
-.recommendationItem {
-  margin-bottom: 2px;
+.feedItemMetaBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.feedProjectName {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(235, 249, 246, 0.72);
+}
+
+.feedMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.feedPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(48, 112, 113, 0.44);
+  background: rgba(48, 112, 113, 0.14);
+  color: rgba(235, 249, 246, 0.92);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+}
+
+.feedDescription {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--dashboard-text-muted);
 }
 
 /* Tag filter override */
@@ -518,4 +580,14 @@
   border-color: var(--dashboard-accent);
   color: var(--white);
   box-shadow: 0 0 10px rgba(213, 95, 33, 0.2);
+}
+
+@media (max-width: 900px) {
+  .feedOptions {
+    gap: 6px;
+  }
+
+  .feedOption {
+    padding: 7px 10px;
+  }
 }

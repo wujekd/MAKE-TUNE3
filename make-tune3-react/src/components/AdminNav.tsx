@@ -8,6 +8,7 @@ const ADMIN_LINKS = [
   { path: '/admin/resolved', label: 'Resolved' },
   { path: '/admin/projects', label: 'Projects' },
   { path: '/admin/tags', label: 'Tags' },
+  { path: '/admin/hsd', label: 'HSD' },
   { path: '/admin/settings', label: 'Settings' },
 ];
 

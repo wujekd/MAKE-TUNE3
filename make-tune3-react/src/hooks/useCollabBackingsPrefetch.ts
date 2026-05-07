@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import type { Collaboration } from '../types/collaboration';
 import { AudioUrlUtils } from '../utils';
 
-export function useCollabBackingsPrefetch(collabs: Collaboration[], limit = 10, enabled = true) {
+export function useCollabBackingsPrefetch(
+  collabs: Array<{ backingTrackPath?: string | null }>,
+  limit = 10,
+  enabled = true
+) {
   const [urls, setUrls] = useState<string[]>([]);
 
   useEffect(() => {

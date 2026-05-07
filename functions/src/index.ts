@@ -1114,7 +1114,7 @@ export const advanceCollaborationStages = onSchedule(
   }
 );
 
-export const publishCollaboration = onCall(async (request) => {
+export const publishCollaboration = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
@@ -1213,7 +1213,7 @@ export const publishCollaboration = onCall(async (request) => {
   });
 });
 
-export const reserveBackingUpload = onCall(async (request) => {
+export const reserveBackingUpload = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
@@ -1287,7 +1287,7 @@ export const reserveBackingUpload = onCall(async (request) => {
   });
 });
 
-export const reserveSubmissionSlot = onCall(async (request) => {
+export const reserveSubmissionSlot = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
@@ -1985,7 +1985,7 @@ const buildNameKey = (name: string) =>
     .replace(/\s/g, "-");
 
 export const createProjectWithUniqueName = onCall(
-  { secrets: [HSD_API_TOKEN, HSD_SERVICE_URL] },
+  { secrets: [HSD_API_TOKEN, HSD_SERVICE_URL], cors: true },
   async (request) => {
     const uid = request.auth?.uid || null;
     if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
@@ -2097,7 +2097,7 @@ export const createProjectWithUniqueName = onCall(
 );
 
 export const createCollaborationWithHSD = onCall(
-  { secrets: [HSD_API_TOKEN, HSD_SERVICE_URL] },
+  { secrets: [HSD_API_TOKEN, HSD_SERVICE_URL], cors: true },
   async (request) => {
     const uid = request.auth?.uid || null;
     if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
@@ -2219,7 +2219,7 @@ export const createCollaborationWithHSD = onCall(
   }
 );
 
-export const recountMyProjectCount = onCall(async (request) => {
+export const recountMyProjectCount = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
@@ -2237,7 +2237,7 @@ export const recountMyProjectCount = onCall(async (request) => {
   return { projectCount };
 });
 
-export const getMySubmissionCollabs = onCall(async (request) => {
+export const getMySubmissionCollabs = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) {
     return { items: [], unauthenticated: true };
@@ -2322,7 +2322,7 @@ export const getMySubmissionCollabs = onCall(async (request) => {
  * Get collaboration data with submissions filtered by moderation status.
  * Only approved submissions are returned to regular users.
  */
-export const getCollaborationData = onCall(async (request) => {
+export const getCollaborationData = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   const collaborationIdRaw = String(request.data?.collaborationId || "").trim();
   if (!collaborationIdRaw) {
@@ -2409,7 +2409,7 @@ export const getCollaborationData = onCall(async (request) => {
  * Get moderation data for a collaboration.
  * Returns only pending submissions for the project owner to moderate.
  */
-export const getModerationData = onCall(async (request) => {
+export const getModerationData = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
@@ -2482,7 +2482,7 @@ export const getModerationData = onCall(async (request) => {
   return { collaboration };
 });
 
-export const setSubmissionModeration = onCall(async (request) => {
+export const setSubmissionModeration = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
@@ -2570,7 +2570,7 @@ export const setSubmissionModeration = onCall(async (request) => {
   return { status: statusRaw };
 });
 
-export const addFavoriteTrack = onCall(async (request) => {
+export const addFavoriteTrack = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
@@ -2652,7 +2652,7 @@ export const addFavoriteTrack = onCall(async (request) => {
   });
 });
 
-export const removeFavoriteTrack = onCall(async (request) => {
+export const removeFavoriteTrack = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
@@ -2740,7 +2740,7 @@ export const removeFavoriteTrack = onCall(async (request) => {
   });
 });
 
-export const likeTrack = onCall(async (request) => {
+export const likeTrack = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
@@ -2818,7 +2818,7 @@ export const likeTrack = onCall(async (request) => {
   });
 });
 
-export const unlikeTrack = onCall(async (request) => {
+export const unlikeTrack = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
@@ -2900,7 +2900,7 @@ export const unlikeTrack = onCall(async (request) => {
   });
 });
 
-export const voteForTrack = onCall(async (request) => {
+export const voteForTrack = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
@@ -2989,7 +2989,7 @@ export const voteForTrack = onCall(async (request) => {
   });
 });
 
-export const likeCollaboration = onCall(async (request) => {
+export const likeCollaboration = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
@@ -3042,7 +3042,7 @@ export const likeCollaboration = onCall(async (request) => {
   });
 });
 
-export const unlikeCollaboration = onCall(async (request) => {
+export const unlikeCollaboration = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
@@ -3099,7 +3099,7 @@ export const unlikeCollaboration = onCall(async (request) => {
   });
 });
 
-export const favoriteCollaboration = onCall(async (request) => {
+export const favoriteCollaboration = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
@@ -3152,7 +3152,7 @@ export const favoriteCollaboration = onCall(async (request) => {
   });
 });
 
-export const unfavoriteCollaboration = onCall(async (request) => {
+export const unfavoriteCollaboration = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
@@ -3209,7 +3209,7 @@ export const unfavoriteCollaboration = onCall(async (request) => {
   });
 });
 
-export const getMyModerationQueue = onCall(async (request) => {
+export const getMyModerationQueue = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
@@ -3242,7 +3242,7 @@ export const getMyModerationQueue = onCall(async (request) => {
   return { items };
 });
 
-export const getMyProjectsOverview = onCall(async (request) => {
+export const getMyProjectsOverview = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) {
     return { items: [], unauthenticated: true };
@@ -3326,7 +3326,7 @@ export const getMyProjectsOverview = onCall(async (request) => {
   return { items };
 });
 
-export const getMyDownloadedCollabs = onCall(async (request) => {
+export const getMyDownloadedCollabs = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) {
     return { items: [], unauthenticated: true };
@@ -3411,7 +3411,7 @@ export const getMyDownloadedCollabs = onCall(async (request) => {
   return { items };
 });
 
-export const getMyAccountStats = onCall(async (request) => {
+export const getMyAccountStats = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) {
     return {
@@ -3478,6 +3478,119 @@ export const getMyAccountStats = onCall(async (request) => {
     active,
     submissions: submissionUsersSnap.size,
     votes
+  };
+});
+
+export const getMyRecommendations = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) {
+    return { items: [], unauthenticated: true };
+  }
+
+  const recDoc = await db.collection(RECOMMENDATIONS_COLLECTION).doc(uid).get();
+  if (!recDoc.exists) {
+    return { items: [] };
+  }
+
+  const recData = recDoc.data() as any;
+  const entries: Array<{
+    rank: number;
+    collaborationId: string;
+    projectId: string;
+    score: number;
+    highlightedTrackPath: string | null;
+  }> = Array.isArray(recData.recommendations) ? recData.recommendations : [];
+  const generatedAt = typeof recData.generatedAt === "string" ? recData.generatedAt : "";
+  const modelVersion = typeof recData.modelVersion === "string" ? recData.modelVersion : "";
+
+  const collabIds = entries.map((e) => e.collaborationId).filter((id) => id);
+  const projectIdsFromRecs = entries.map((e) => e.projectId).filter((id) => id);
+  const allProjectIds = new Set<string>(projectIdsFromRecs);
+
+  const collabRefs = collabIds.map((id) => db.collection("collaborations").doc(id));
+  const collabSnaps = collabRefs.length ? await db.getAll(...collabRefs) : [];
+  const collabMap = new Map<string, any>();
+  for (const snap of collabSnaps) {
+    if (snap.exists) {
+      const cdata = snap.data() as any;
+      collabMap.set(snap.id, cdata);
+      if (cdata.projectId) {
+        allProjectIds.add(String(cdata.projectId));
+      }
+    }
+  }
+
+  const projectRefs = Array.from(allProjectIds).map((id) => db.collection("projects").doc(id));
+  const projectSnaps = projectRefs.length ? await db.getAll(...projectRefs) : [];
+  const projectMap = new Map<string, any>();
+  projectSnaps.forEach((snap) => {
+    if (snap.exists) {
+      projectMap.set(snap.id, snap.data());
+    }
+  });
+
+  const items = entries
+    .filter((entry) => entry.collaborationId)
+    .map((entry) => {
+      const collab = collabMap.get(entry.collaborationId) || {};
+      const projectId = String(collab.projectId || entry.projectId || "");
+      const project = projectId ? projectMap.get(projectId) || {} : {};
+
+      return {
+        collaborationId: entry.collaborationId,
+        collaborationName: String(collab.name || ""),
+        collaborationStatus: String(collab.status || ""),
+        collaborationDescription: String(collab.description || ""),
+        collaborationTags: Array.isArray(collab.tags) ? collab.tags : [],
+        projectId,
+        projectName: String(project.name || ""),
+        rank: Number(entry.rank) || 0,
+        score: Number(entry.score) || 0,
+        highlightedTrackPath:
+          typeof entry.highlightedTrackPath === "string" && entry.highlightedTrackPath
+            ? entry.highlightedTrackPath
+            : null,
+        backingTrackPath: String(collab.backingTrackPath || ""),
+        publishedAt: collab.publishedAt ? (collab.publishedAt as Timestamp).toMillis() : null,
+        submissionCloseAt: collab.submissionCloseAt ? (collab.submissionCloseAt as Timestamp).toMillis() : null,
+        votingCloseAt: collab.votingCloseAt ? (collab.votingCloseAt as Timestamp).toMillis() : null,
+        updatedAt: collab.updatedAt ? (collab.updatedAt as Timestamp).toMillis() : null,
+        submissionDurationSeconds:
+          typeof collab.submissionDuration === "number" ? collab.submissionDuration : null,
+        votingDurationSeconds:
+          typeof collab.votingDuration === "number" ? collab.votingDuration : null,
+        generatedAt,
+        modelVersion
+      };
+    });
+
+  return { items };
+});
+
+export const getDashboardStats = onCall({ cors: true }, async () => {
+  const snap = await db.collection("collaborations")
+    .where("status", "in", ["published", "submission", "voting", "completed"])
+    .get();
+
+  let totalSubmissions = 0;
+  let totalVotes = 0;
+  let activeCollabs = 0;
+
+  for (const docSnap of snap.docs) {
+    const data = docSnap.data() as any;
+    const status = String(data.status || "");
+    if (status === "published" || status === "submission" || status === "voting") {
+      activeCollabs += 1;
+    }
+    totalSubmissions += Number(data.submissionsCount || 0);
+    totalVotes += Number(data.votesCount || 0);
+  }
+
+  return {
+    totalCollabs: snap.size,
+    totalSubmissions,
+    totalVotes,
+    activeCollabs
   };
 });
 
@@ -4217,7 +4330,7 @@ export const ensureCollaborationDetail = onDocumentCreated(
   }
 );
 
-export const banUserBySubmission = onCall(async (request) => {
+export const banUserBySubmission = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
 
@@ -4309,7 +4422,7 @@ export const banUserBySubmission = onCall(async (request) => {
   });
 });
 
-export const adminListUsers = onCall(async (request) => {
+export const adminListUsers = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) {
     throw new HttpsError("unauthenticated", "unauthenticated");
@@ -4349,7 +4462,7 @@ export const adminListUsers = onCall(async (request) => {
   };
 });
 
-export const adminSearchUsers = onCall(async (request) => {
+export const adminSearchUsers = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) {
     throw new HttpsError("unauthenticated", "unauthenticated");
@@ -4365,54 +4478,93 @@ export const adminSearchUsers = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "Search query required");
   }
 
+  const pageToken = typeof request.data?.pageToken === "string" && request.data.pageToken ? request.data.pageToken : null;
   const pageSize = Math.max(1, Math.min(100, Number(rawPageSize) || 25));
-  const query = searchQuery.toLowerCase().trim();
+  const normalizedQuery = searchQuery.toLowerCase().trim();
+  const batchSize = Math.min(200, Math.max(pageSize * 3, 50));
+  const maxBatches = 10;
 
-  // Use Firestore composite queries on email and username fields
-  // where available; fall back to scanning with limit.
-  let usersSnap: any;
+  const matchesSearch = (docId: string, data: any) => {
+    const haystacks = [
+      docId,
+      typeof data?.email === "string" ? data.email : "",
+      typeof data?.username === "string" ? data.username : ""
+    ].map((value) => value.toLowerCase());
+    return haystacks.some((value) => value.includes(normalizedQuery));
+  };
 
-  // Try email prefix search first (most selective)
-  usersSnap = await db.collection("users")
-    .where("email", ">=", query)
-    .where("email", "<=", query + "\uf8ff")
-    .limit(pageSize)
-    .get();
-
-  const results: any[] = [];
-  const seenUids = new Set<string>();
-
-  for (const doc of usersSnap.docs) {
-    if (seenUids.has(doc.id)) continue;
-    seenUids.add(doc.id);
-    results.push({ uid: doc.id, ...doc.data() });
-  }
-
-  // If not enough results, also try username prefix search
-  if (results.length < pageSize) {
-    const usernameSnap = await db.collection("users")
-      .where("username", ">=", query)
-      .where("username", "<=", query + "\uf8ff")
-      .limit(pageSize)
-      .get();
-    for (const doc of usernameSnap.docs) {
-      if (seenUids.has(doc.id)) continue;
-      seenUids.add(doc.id);
-      results.push({ uid: doc.id, ...doc.data() });
-      if (results.length >= pageSize) break;
+  let cursorSnap: FirebaseFirestore.DocumentSnapshot | null = null;
+  if (pageToken) {
+    const snap = await db.collection("users").doc(pageToken).get();
+    if (snap.exists) {
+      cursorSnap = snap;
     }
   }
 
-  const users = results.slice(0, pageSize);
+  const users: any[] = [];
+  let nextPageToken: string | null = null;
+  let hasMore = false;
+
+  for (let batchIndex = 0; batchIndex < maxBatches && users.length < pageSize; batchIndex += 1) {
+    let searchPageQuery = db.collection("users").orderBy("createdAt", "desc").limit(batchSize) as any;
+    if (cursorSnap) {
+      searchPageQuery = searchPageQuery.startAfter(cursorSnap);
+    }
+
+    const usersSnap = await searchPageQuery.get();
+    if (usersSnap.empty) {
+      break;
+    }
+
+    const docs = usersSnap.docs;
+    let consumedIndex = docs.length - 1;
+
+    for (let i = 0; i < docs.length; i += 1) {
+      const docSnap = docs[i];
+      consumedIndex = i;
+      const data = docSnap.data();
+      if (!matchesSearch(docSnap.id, data)) {
+        continue;
+      }
+
+      users.push({
+        uid: docSnap.id,
+        ...data
+      });
+
+      if (users.length >= pageSize) {
+        break;
+      }
+    }
+
+    const consumedDoc = docs[consumedIndex];
+    const moreDocsInBatch = consumedIndex < docs.length - 1;
+    const moreDocsAfterBatch = docs.length === batchSize;
+
+    if (users.length >= pageSize) {
+      hasMore = moreDocsInBatch || moreDocsAfterBatch;
+      nextPageToken = hasMore && consumedDoc ? consumedDoc.id : null;
+      break;
+    }
+
+    if (!moreDocsAfterBatch) {
+      break;
+    }
+
+    const lastDoc = docs[docs.length - 1];
+    cursorSnap = lastDoc;
+    nextPageToken = lastDoc.id;
+    hasMore = true;
+  }
 
   return {
     users,
-    nextPageToken: users.length >= pageSize ? query : null,
-    hasMore: users.length >= pageSize
+    nextPageToken,
+    hasMore
   };
 });
 
-export const adminUpdateUser = onCall(async (request) => {
+export const adminUpdateUser = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) {
     throw new HttpsError("unauthenticated", "unauthenticated");
@@ -4480,7 +4632,7 @@ export const adminUpdateUser = onCall(async (request) => {
 });
 
 export const adminRunHsdTest = onCall(
-  { secrets: [HSD_API_TOKEN, HSD_SERVICE_URL] },
+  { secrets: [HSD_API_TOKEN, HSD_SERVICE_URL], cors: true },
   async (request) => {
     const uid = request.auth?.uid || null;
     if (!uid) {
@@ -4530,7 +4682,7 @@ export const adminRunHsdTest = onCall(
   }
 );
 
-export const adminListProjects = onCall(async (request) => {
+export const adminListProjects = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) {
     throw new HttpsError("unauthenticated", "unauthenticated");
@@ -4613,7 +4765,7 @@ export const adminListProjects = onCall(async (request) => {
   };
 });
 
-export const adminListPendingReports = onCall(async (request) => {
+export const adminListPendingReports = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) {
     throw new HttpsError("unauthenticated", "unauthenticated");
@@ -4668,7 +4820,7 @@ export const adminListPendingReports = onCall(async (request) => {
   };
 });
 
-export const adminListResolvedReports = onCall(async (request) => {
+export const adminListResolvedReports = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) {
     throw new HttpsError("unauthenticated", "unauthenticated");
@@ -4722,7 +4874,7 @@ export const adminListResolvedReports = onCall(async (request) => {
   };
 });
 
-export const adminListFeedback = onCall(async (request) => {
+export const adminListFeedback = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) {
     throw new HttpsError("unauthenticated", "unauthenticated");

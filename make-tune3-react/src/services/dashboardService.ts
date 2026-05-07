@@ -45,6 +45,13 @@ type MyAccountStats = {
   votes: number;
 };
 
+type DashboardStats = {
+  totalCollabs: number;
+  totalSubmissions: number;
+  totalVotes: number;
+  activeCollabs: number;
+};
+
 export class DashboardService {
   static async listMyProjectsOverview(): Promise<ProjectOverviewItem[]> {
     const uid = auth.currentUser?.uid;
@@ -152,6 +159,29 @@ export class DashboardService {
     }
   }
 
+  static async getDashboardStats(): Promise<DashboardStats> {
+    try {
+      const data = await callFirebaseFunction<
+        Record<string, never>,
+        Partial<DashboardStats>
+      >('getDashboardStats', {});
+
+      return {
+        totalCollabs: Number(data.totalCollabs || 0),
+        totalSubmissions: Number(data.totalSubmissions || 0),
+        totalVotes: Number(data.totalVotes || 0),
+        activeCollabs: Number(data.activeCollabs || 0)
+      };
+    } catch {
+      return {
+        totalCollabs: 0,
+        totalSubmissions: 0,
+        totalVotes: 0,
+        activeCollabs: 0
+      };
+    }
+  }
+
 }
 
-export type { ProjectOverviewItem, DownloadSummaryItem, MyAccountStats };
+export type { ProjectOverviewItem, DownloadSummaryItem, MyAccountStats, DashboardStats };

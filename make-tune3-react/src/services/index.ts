@@ -8,7 +8,7 @@ export { TagService } from './tagService';
 export { DashboardService } from './dashboardService';
 export { ReportService } from './reportService';
 export { FeedbackService } from './feedbackService';
-export type { FeedbackCategory, FeedbackStatus, Feedback, CreateFeedbackData, FeedbackFilters } from './feedbackService';
+export type { FeedbackCategory, FeedbackStatus, Feedback, CreateFeedbackData } from './feedbackService';
 export { AdminService } from './adminService';
 export type { UserSearchResult, UserUpdateData, AdminProjectWithCollabs, PaginatedUsersResult, PaginatedProjectsResult, PaginatedReportsResult, PaginatedFeedbackResult } from './adminService';
 export { SettingsService } from './settingsService';

@@ -57,22 +57,4 @@ export class SettingsService {
     
     await setDoc(settingsRef, newSettings);
   }
-
-  static async initializeSettings(adminUid: string): Promise<SystemSettings> {
-    const existing = await this.getSystemSettings();
-    if (existing) {
-      return existing;
-    }
-
-    const initialSettings: SystemSettings = {
-      ...DEFAULT_SETTINGS,
-      updatedAt: Timestamp.now(),
-      updatedBy: adminUid
-    };
-
-    const settingsRef = doc(db, COLLECTIONS.SYSTEM_SETTINGS, SYSTEM_SETTINGS_DOC);
-    await setDoc(settingsRef, initialSettings);
-    
-    return initialSettings;
-  }
 }

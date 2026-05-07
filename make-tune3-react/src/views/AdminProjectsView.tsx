@@ -49,7 +49,7 @@ export function AdminProjectsView() {
     loadProjects(page, pageTokens);
   };
 
-  const totalCollaborations = items.reduce((sum, item) => sum + item.collaborations.length, 0);
+  const totalCollaborations = (items || []).reduce((sum, item) => sum + (item.collaborations || []).length, 0);
 
   const handleEditProject = (projectId: string) => {
     navigate(`/project/${projectId}`);
@@ -60,7 +60,7 @@ export function AdminProjectsView() {
   };
 
   const handleDeleteCollaboration = async (projectId: string, collaborationId: string) => {
-    const item = items.find(i => i.project.id === projectId);
+    const item = (items || []).find(i => i.project.id === projectId);
     const collab = item?.collaborations.find(c => c.id === collaborationId);
     const label = collab?.name || collaborationId;
     const confirmed = window.confirm(`Delete collaboration "${label}"? This cannot be undone.`);
@@ -85,7 +85,7 @@ export function AdminProjectsView() {
   };
 
   const handleDeleteProject = async (projectId: string) => {
-    const item = items.find(i => i.project.id === projectId);
+    const item = (items || []).find(i => i.project.id === projectId);
     const label = item?.project.name || projectId;
     const relatedCollabs = item?.collaborations || [];
 
@@ -137,7 +137,7 @@ export function AdminProjectsView() {
         opacity: 0.8
       }}>
         <span>
-          {loading ? 'Loading data…' : `Page ${currentPage + 1} · ${items.length} project(s), ${totalCollaborations} collaboration(s)`}
+          {loading ? 'Loading data…' : `Page ${currentPage + 1} · ${(items || []).length} project(s), ${totalCollaborations} collaboration(s)`}
         </span>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
@@ -179,7 +179,7 @@ export function AdminProjectsView() {
           paddingRight: 8
         }}
       >
-        {items.map(({ project, collaborations }) => {
+        {(items || []).map(({ project, collaborations }) => {
           const projectLoading = actionTarget === `project:${project.id}`;
 
           return (
@@ -310,7 +310,7 @@ export function AdminProjectsView() {
         })}
       </div>
 
-      {!loading && items.length === 0 && !error && (
+      {!loading && (items || []).length === 0 && !error && (
         <div style={{ color: 'var(--white)', opacity: 0.75 }}>No projects found.</div>
       )}
     </AdminLayout>

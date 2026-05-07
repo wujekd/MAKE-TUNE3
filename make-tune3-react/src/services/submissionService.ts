@@ -3,7 +3,6 @@ import { db } from './firebaseDb';
 import { callFirebaseFunction } from './firebaseFunctions';
 import { FileService } from './fileService';
 import { uploadFileToStorage } from './storageService';
-import { setSubmissionModeration as setSubmissionModerationRequest } from './submissionModerationService';
 import { DEBUG_ALLOW_MULTIPLE_SUBMISSIONS } from '../config';
 import type { Collaboration, CollaborationId, UserId, SubmissionSettings, SubmissionModerationStatus } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
@@ -188,19 +187,5 @@ export class SubmissionService {
       lastKnownCollaborationName: typeof item?.lastKnownCollaborationName === 'string' ? item.lastKnownCollaborationName : '',
       moderationStatus: ['pending', 'approved', 'rejected'].includes(item?.moderationStatus) ? item.moderationStatus : 'pending'
     }));
-  }
-
-  static async setSubmissionModeration(
-    collaborationId: CollaborationId,
-    submissionIdentifier: string,
-    status: SubmissionModerationStatus,
-    moderatorId: UserId
-  ): Promise<SubmissionModerationStatus> {
-    return setSubmissionModerationRequest(
-      collaborationId,
-      submissionIdentifier,
-      status,
-      moderatorId
-    );
   }
 }

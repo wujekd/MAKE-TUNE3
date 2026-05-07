@@ -1,10 +1,38 @@
-import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, limit as firestoreLimit, Timestamp } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  limit as firestoreLimit,
+  orderBy,
+  Timestamp
+} from 'firebase/firestore';
 import { db } from './firebaseDb';
 import { callFirebaseFunction } from './firebaseFunctions';
 import type { Collaboration, CollaborationId, ProjectId } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
 
 const DEBUG_LOGS = import.meta.env.DEV;
+
+export type DashboardCollaborationFeedMode = 'newest' | 'popular' | 'ending_soon';
+
+const mapDocsToCollaborations = (docs: Array<{ id: string; data: () => unknown }>) =>
+  docs.map(d => ({ ...(d.data() as any), id: d.id } as Collaboration));
+
+const getNextDeadline = (collab: Collaboration): number => {
+  const status = String(collab.status || '').toLowerCase().trim();
+  if (status === 'submission' && collab.submissionCloseAt && typeof collab.submissionCloseAt.toMillis === 'function') {
+    return collab.submissionCloseAt.toMillis();
+  }
+  if (status === 'voting' && collab.votingCloseAt && typeof collab.votingCloseAt.toMillis === 'function') {
+    return collab.votingCloseAt.toMillis();
+  }
+  return Number.MAX_SAFE_INTEGER;
+};
 
 export class CollaborationService {
   static async createCollaboration(collaboration: Omit<Collaboration, 'id' | 'createdAt' | 'updatedAt'>): Promise<Collaboration> {
@@ -150,10 +178,55 @@ export class CollaborationService {
     return snap.docs.map(d => ({ ...(d.data() as any), id: d.id } as Collaboration));
   }
 
-  static async listAllCollaborations(): Promise<Collaboration[]> {
-    const q = query(collection(db, COLLECTIONS.COLLABORATIONS));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ ...(d.data() as any), id: d.id } as Collaboration));
+  static async listDashboardCollaborations(options: {
+    mode: DashboardCollaborationFeedMode;
+    limit?: number;
+  }): Promise<Collaboration[]> {
+    const pageSize = Math.max(1, Math.min(100, Number(options.limit) || 24));
+
+    if (options.mode === 'popular') {
+      const snap = await getDocs(query(
+        collection(db, COLLECTIONS.COLLABORATIONS),
+        where('status', 'in', ['published', 'submission', 'voting']),
+        orderBy('publishedAt', 'desc'),
+        firestoreLimit(pageSize * 3)
+      ));
+      const collabs = mapDocsToCollaborations(snap.docs);
+      return collabs
+        .sort((a, b) => ((b.submissionsCount || 0) + (b.votesCount || 0)) - ((a.submissionsCount || 0) + (a.votesCount || 0)))
+        .slice(0, pageSize);
+    }
+
+    if (options.mode === 'ending_soon') {
+      const [submissionSnap, votingSnap] = await Promise.all([
+        getDocs(query(
+          collection(db, COLLECTIONS.COLLABORATIONS),
+          where('status', '==', 'submission'),
+          orderBy('submissionCloseAt', 'asc'),
+          firestoreLimit(pageSize)
+        )),
+        getDocs(query(
+          collection(db, COLLECTIONS.COLLABORATIONS),
+          where('status', '==', 'voting'),
+          orderBy('votingCloseAt', 'asc'),
+          firestoreLimit(pageSize)
+        ))
+      ]);
+
+      const merged = [...mapDocsToCollaborations(submissionSnap.docs), ...mapDocsToCollaborations(votingSnap.docs)];
+      const deduped = Array.from(new Map(merged.map(collab => [collab.id, collab])).values());
+      return deduped
+        .sort((a, b) => getNextDeadline(a) - getNextDeadline(b))
+        .slice(0, pageSize);
+    }
+
+    const snap = await getDocs(query(
+      collection(db, COLLECTIONS.COLLABORATIONS),
+      where('status', 'in', ['published', 'submission', 'voting']),
+      orderBy('publishedAt', 'desc'),
+      firestoreLimit(pageSize)
+    ));
+    return mapDocsToCollaborations(snap.docs);
   }
 
   static async getUserCollaborations(userId: string): Promise<Collaboration[]> {
@@ -177,13 +250,6 @@ export class CollaborationService {
       submissionCloseAt: typeof data.submissionCloseAt === 'number' ? data.submissionCloseAt : null,
       votingCloseAt: typeof data.votingCloseAt === 'number' ? data.votingCloseAt : null
     };
-  }
-
-  static filterCollaborationsByTags(collaborations: Collaboration[], tagKeys: string[]): Collaboration[] {
-    if (tagKeys.length === 0) return collaborations;
-    return collaborations.filter(collab =>
-      tagKeys.every(key => collab.tagsKey?.includes(key))
-    );
   }
 
   static async listMyModerationQueue(): Promise<Array<{ id: string; name: string; projectId: string | null }>> {

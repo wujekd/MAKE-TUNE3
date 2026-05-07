@@ -19,3 +19,5 @@ recommendation-system/recommender.env
 /recommendation-system/pipeline_v1/__pycache__
 /recommendation-system/remote_v1/__pycache__
 /waveform-lab
+/hate-speech-hsd-service
+.DS_Store

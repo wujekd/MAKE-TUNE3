@@ -11,7 +11,6 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebaseDb';
 import { callFirebaseFunction } from './firebaseFunctions';
-import type { Report, ReportStatus } from '../types/collaboration';
 
 export class ReportService {
   static async createReport(
@@ -27,52 +26,12 @@ export class ReportService {
       reportedBy,
       reportedByUsername,
       reason,
-      status: 'pending' as ReportStatus,
+      status: 'pending',
       createdAt: new Date()
     };
 
     const docRef = await addDoc(collection(db, 'reports'), reportData);
     return docRef.id;
-  }
-
-  static async getPendingReports(): Promise<Report[]> {
-    try {
-      const q = query(
-        collection(db, 'reports'),
-        where('status', '==', 'pending')
-      );
-      
-      const snapshot = await getDocs(q);
-      const reports: Report[] = [];
-      
-      for (const docSnap of snapshot.docs) {
-        const data = docSnap.data();
-
-        reports.push({
-          id: docSnap.id,
-          submissionPath: data.submissionPath,
-          collaborationId: data.collaborationId,
-          reportedBy: data.reportedBy,
-          reportedByUsername: data.reportedByUsername,
-          reason: data.reason,
-          status: data.status,
-          createdAt: data.createdAt,
-          resolvedAt: data.resolvedAt,
-          resolvedBy: data.resolvedBy
-        });
-      }
-      
-      reports.sort((a, b) => {
-        const aTime = a.createdAt?.toMillis?.() || 0;
-        const bTime = b.createdAt?.toMillis?.() || 0;
-        return bTime - aTime;
-      });
-      
-      return reports;
-    } catch (error) {
-      console.error('Error loading reports:', error);
-      throw error;
-    }
   }
 
   static async dismissReport(reportId: string, adminUserId: string): Promise<void> {
@@ -145,46 +104,6 @@ export class ReportService {
       return !snapshot.empty;
     } catch {
       return false;
-    }
-  }
-
-  static async getResolvedReports(): Promise<Report[]> {
-    try {
-      const q = query(
-        collection(db, 'resolvedReports')
-      );
-      
-      const snapshot = await getDocs(q);
-      const reports: Report[] = [];
-      
-      for (const docSnap of snapshot.docs) {
-        const data = docSnap.data();
-
-        reports.push({
-          id: docSnap.id,
-          submissionPath: data.submissionPath,
-          collaborationId: data.collaborationId,
-          reportedBy: data.reportedBy,
-          reportedByUsername: data.reportedByUsername,
-          reason: data.reason,
-          status: data.status,
-          createdAt: data.createdAt,
-          resolvedAt: data.resolvedAt,
-          resolvedBy: data.resolvedBy,
-          reportedUserId: data.reportedUserId
-        });
-      }
-      
-      reports.sort((a, b) => {
-        const aTime = a.resolvedAt?.toMillis?.() || 0;
-        const bTime = b.resolvedAt?.toMillis?.() || 0;
-        return bTime - aTime;
-      });
-      
-      return reports;
-    } catch (error) {
-      console.error('Error loading resolved reports:', error);
-      throw error;
     }
   }
 }

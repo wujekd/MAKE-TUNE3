@@ -42,11 +42,6 @@ export interface CreateFeedbackData {
   route: string;
 }
 
-export interface FeedbackFilters {
-  category?: FeedbackCategory;
-  status?: FeedbackStatus;
-}
-
 export class FeedbackService {
   static async createFeedback(data: CreateFeedbackData): Promise<string> {
     const feedbackData: Record<string, unknown> = {
@@ -64,41 +59,6 @@ export class FeedbackService {
 
     const docRef = await addDoc(collection(db, 'feedback'), feedbackData);
     return docRef.id;
-  }
-
-  static async getAllFeedback(filters?: FeedbackFilters): Promise<Feedback[]> {
-    let q = query(collection(db, 'feedback'), orderBy('createdAt', 'desc'));
-
-    if (filters?.category) {
-      q = query(
-        collection(db, 'feedback'),
-        where('category', '==', filters.category),
-        orderBy('createdAt', 'desc')
-      );
-    }
-
-    if (filters?.status) {
-      q = query(
-        collection(db, 'feedback'),
-        where('status', '==', filters.status),
-        orderBy('createdAt', 'desc')
-      );
-    }
-
-    if (filters?.category && filters?.status) {
-      q = query(
-        collection(db, 'feedback'),
-        where('category', '==', filters.category),
-        where('status', '==', filters.status),
-        orderBy('createdAt', 'desc')
-      );
-    }
-
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(docSnap => ({
-      id: docSnap.id,
-      ...docSnap.data()
-    } as Feedback));
   }
 
   static async getUserFeedback(uid: string): Promise<Feedback[]> {

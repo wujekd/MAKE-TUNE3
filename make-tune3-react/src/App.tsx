@@ -63,6 +63,9 @@ const AdminUsersView = lazy(() =>
 const AdminSettingsView = lazy(() =>
   import('./views/AdminSettingsView').then(module => ({ default: module.AdminSettingsView }))
 );
+const AdminHsdTestView = lazy(() =>
+  import('./views/AdminHsdTestView').then(module => ({ default: module.AdminHsdTestView }))
+);
 
 function RouteLoadingFallback() {
   return (
@@ -321,6 +324,15 @@ function App() {
           handle: {
             title: 'User Management',
             breadcrumb: 'Users',
+            actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
+          }
+        },
+        {
+          path: 'admin/hsd',
+          element: <LazyAdminRoute><AdminHsdTestView /></LazyAdminRoute>,
+          handle: {
+            title: 'HSD Tester',
+            breadcrumb: 'HSD',
             actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
           }
         },

@@ -4,16 +4,7 @@ import type { UserId, CollaborationId } from '../types/collaboration';
 
 export class InteractionService {
   static async markTrackAsListened(userId: UserId, collaborationId: CollaborationId, filePath: string): Promise<void> {
-    const userCollab = await UserService.getUserCollaboration(userId, collaborationId);
-    if (!userCollab) {
-      await UserService.createUserCollaboration({ userId, collaborationId, listenedTracks: [filePath] });
-    } else {
-      const listenedTracks = [...(userCollab.listenedTracks || [])];
-      if (!listenedTracks.includes(filePath)) {
-        listenedTracks.push(filePath);
-        await UserService.updateUserCollaboration(userId, collaborationId, { listenedTracks });
-      }
-    }
+    await UserService.addListenedTrack(userId, collaborationId, filePath);
   }
 
   static async addTrackToFavorites(userId: UserId, collaborationId: CollaborationId, filePath: string): Promise<void> {
@@ -53,11 +44,6 @@ export class InteractionService {
   }
 
   static async setListenedRatio(userId: UserId, collaborationId: CollaborationId, ratio: number): Promise<void> {
-    const userCollab = await UserService.getUserCollaboration(userId, collaborationId);
-    if (!userCollab) {
-      await UserService.createUserCollaboration({ userId, collaborationId, listenedRatio: ratio });
-    } else {
-      await UserService.updateUserCollaboration(userId, collaborationId, { listenedRatio: ratio });
-    }
+    await UserService.upsertUserCollaboration(userId, collaborationId, { listenedRatio: ratio });
   }
 }

@@ -1,11 +1,11 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
-import type { Collaboration } from '../types/collaboration';
-import { DashboardCollaborationService } from '../services/dashboardCollaborationService';
-import { TagUtils } from '../utils/tagUtils';
+import { Suspense, lazy, useEffect, useState } from 'react';
+import { DashboardService } from '../services/dashboardService';
+import { DashboardFeedService } from '../services/dashboardFeedService';
+import type { DashboardFeedItem, DashboardFeedMode } from '../services/dashboardFeedService';
+import { TagService } from '../services/tagService';
 import { UserActivityPanel } from '../components/UserActivityPanel';
 import { DashboardHeader } from '../components/DashboardHeader';
-import { DashboardRecommendationsPanel } from '../components/DashboardRecommendationsPanel';
-import { CollaborationsPanel } from '../components/CollaborationsPanel';
+import { DashboardCollabsPanel } from '../components/DashboardCollabsPanel';
 import { AudioRouteBoundary } from '../components/AudioRouteBoundary';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useAudioStore } from '../stores';
@@ -28,15 +28,22 @@ function MixerPlaceholder() {
 }
 
 export function DashboardView() {
-  const [allCollabs, setAllCollabs] = useState<Collaboration[]>([]);
-  const [filteredCollabs, setFilteredCollabs] = useState<Collaboration[]>([]);
-
+  const [items, setItems] = useState<DashboardFeedItem[]>([]);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [availableTags, setAvailableTags] = useState<Array<{ key: string; name: string; count: number }>>([]);
+  const [feedMode, setFeedMode] = useState<DashboardFeedMode>('recommended');
+  const [feedMetaLabel, setFeedMetaLabel] = useState('');
+  const [stats, setStats] = useState({
+    totalCollabs: 0,
+    totalSubmissions: 0,
+    totalVotes: 0,
+    activeCollabs: 0
+  });
   const audioState = useAudioStore(s => s.state);
   const isAudioReady = useAudioStore(s => Boolean(s.engine && s.state));
-  const authLoading = useAppStore(state => state.auth.loading);
+  const { loading: authLoading, user } = useAppStore(state => state.auth);
   const stopBackingPlayback = usePlaybackStore(s => s.stopBackingPlayback);
 
   const [prefetchEnabled, setPrefetchEnabled] = useState(false);
@@ -71,7 +78,7 @@ export function DashboardView() {
     };
   }, [authLoading, effectiveType, hasLoaded, isAudioReady, prefetchLimit]);
 
-  const prefetchedUrls = useCollabBackingsPrefetch(filteredCollabs, prefetchLimit, prefetchEnabled);
+  const prefetchedUrls = useCollabBackingsPrefetch(items, prefetchLimit, prefetchEnabled);
   usePrefetchAudio(prefetchedUrls[0], { enabled: prefetchEnabled });
   usePrefetchAudio(prefetchedUrls[1], { enabled: prefetchEnabled });
   usePrefetchAudio(prefetchedUrls[2], { enabled: prefetchEnabled });
@@ -91,20 +98,22 @@ export function DashboardView() {
     let mounted = true;
     (async () => {
       try {
-        console.log('DashboardView: fetching published collaborations...');
-        const list = await DashboardCollaborationService.listPublishedCollaborations();
-        console.log('DashboardView: received', list.length, 'published collaborations:', list);
+        const [tagRows, dashboardStats] = await Promise.all([
+          TagService.getActiveCollaborationTags(),
+          DashboardService.getDashboardStats()
+        ]);
         if (mounted) {
-          setAllCollabs(list);
-          setFilteredCollabs(list);
+          setAvailableTags(tagRows.map(tag => ({
+            key: tag.key,
+            name: tag.name,
+            count: tag.collaborationCount || 0
+          })));
+          setStats(dashboardStats);
         }
       } catch (e: any) {
-        console.error('DashboardView: error loading collaborations:', e);
-        console.error('DashboardView: error code:', e?.code);
-        console.error('DashboardView: error message:', e?.message);
-        if (mounted) setError(e?.message || 'failed to load');
-      } finally {
-        if (mounted) setHasLoaded(true);
+        if (mounted) {
+          console.error('DashboardView: failed loading dashboard metadata', e);
+        }
       }
     })();
     return () => {
@@ -113,66 +122,40 @@ export function DashboardView() {
   }, []);
 
   useEffect(() => {
-    if (selectedTags.length === 0) {
-      setFilteredCollabs(allCollabs);
+    if (authLoading) {
       return;
     }
-    const normalizedSelected = selectedTags.map(tag => TagUtils.normalizeTag(tag)).filter(Boolean);
-    const filtered = allCollabs.filter(collab => {
-      const rawKeys =
-        Array.isArray(collab.tagsKey) && collab.tagsKey.length > 0
-          ? collab.tagsKey
-          : (collab.tags || []);
-      const keys = rawKeys.map(tag => TagUtils.normalizeTag(tag)).filter(Boolean);
-      if (keys.length === 0) return false;
-      return normalizedSelected.every(tag => keys.includes(tag));
-    });
-    setFilteredCollabs(filtered);
-  }, [selectedTags, allCollabs]);
 
-  const availableTags = useMemo(() => {
-    const map = new Map<string, { key: string; name: string; count: number }>();
-    for (const collab of allCollabs) {
-      const hasKeys = Array.isArray(collab.tagsKey) && collab.tagsKey.length > 0;
-      const rawTags = Array.isArray(collab.tags) ? collab.tags : [];
-      if (hasKeys) {
-        for (let i = 0; i < collab.tagsKey.length; i += 1) {
-          const rawKey = collab.tagsKey[i];
-          const key = typeof rawKey === 'string' ? TagUtils.normalizeTag(rawKey) : '';
-          if (!key) continue;
-          const name = rawTags[i] || rawKey || key;
-          const existing = map.get(key);
-          if (existing) {
-            existing.count += 1;
-            if (!existing.name && name) existing.name = name;
-          } else {
-            map.set(key, { key, name, count: 1 });
-          }
-        }
-      } else {
-        for (const tag of rawTags) {
-          const key = TagUtils.normalizeTag(tag);
-          if (!key) continue;
-          const name = tag || key;
-          const existing = map.get(key);
-          if (existing) {
-            existing.count += 1;
-            if (!existing.name && name) existing.name = name;
-          } else {
-            map.set(key, { key, name, count: 1 });
-          }
+    let mounted = true;
+    setHasLoaded(false);
+    setError(null);
+
+    (async () => {
+      try {
+        const feed = await DashboardFeedService.loadFeed({
+          mode: feedMode,
+          selectedTags
+        });
+        if (!mounted) return;
+        setItems(feed.items);
+        setFeedMetaLabel(feed.metaLabel);
+      } catch (e: any) {
+        if (!mounted) return;
+        console.error('DashboardView: failed loading feed', e);
+        setItems([]);
+        setFeedMetaLabel('');
+        setError(e?.message || 'failed to load feed');
+      } finally {
+        if (mounted) {
+          setHasLoaded(true);
         }
       }
-    }
-    return Array.from(map.values()).sort((a, b) => {
-      if (b.count !== a.count) return b.count - a.count;
-      return a.name.localeCompare(b.name);
-    });
-  }, [allCollabs]);
+    })();
 
-  const handleTagsChange = (tagKeys: string[]) => {
-    setSelectedTags(tagKeys);
-  };
+    return () => {
+      mounted = false;
+    };
+  }, [authLoading, feedMode, selectedTags, user?.uid]);
 
   useEffect(() => {
     return () => {
@@ -184,33 +167,28 @@ export function DashboardView() {
 
   // always render view; hydrate when data arrives
 
-  const totalCollabs = allCollabs.length;
-
-  // Compute additional counters
-  const totalSubmissions = allCollabs.reduce((sum, c) => sum + (c.submissionsCount || 0), 0);
-  const totalVotes = allCollabs.reduce((sum, c) => sum + (c.votesCount || 0), 0);
-  const activeCollabs = allCollabs.filter(c => c.status === 'submission' || c.status === 'voting').length;
-
   return (
     <div className={`view-container ${styles.container}`}>
       <DashboardHeader
-        totalCollabs={totalCollabs}
-        totalSubmissions={totalSubmissions}
-        totalVotes={totalVotes}
-        activeCollabs={activeCollabs}
+        totalCollabs={stats.totalCollabs}
+        totalSubmissions={stats.totalSubmissions}
+        totalVotes={stats.totalVotes}
+        activeCollabs={stats.activeCollabs}
       />
 
       <div className={styles.content}>
         <div className={styles.mainSplit}>
           <UserActivityPanel />
-          <DashboardRecommendationsPanel />
-          <CollaborationsPanel
-            filteredCollabs={filteredCollabs}
+          <DashboardCollabsPanel
+            items={items}
             hasLoaded={hasLoaded}
             error={error}
             selectedTags={selectedTags}
-            onTagsChange={handleTagsChange}
+            onTagsChange={setSelectedTags}
             availableTags={availableTags}
+            feedMode={feedMode}
+            onFeedModeChange={setFeedMode}
+            metaLabel={feedMetaLabel}
           />
         </div>
         <div className={`mixer-theme ${styles.mixerColumn}`}>

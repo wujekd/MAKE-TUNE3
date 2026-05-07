@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { AdminService } from '../services';
 import type { UserSearchResult } from '../services';
 import { AdminLayout } from '../components/AdminLayout';
@@ -29,7 +29,7 @@ export function AdminUsersView() {
       let result;
 
       if (trimmed) {
-        result = await AdminService.searchUsers(trimmed, 25);
+        result = await AdminService.searchUsers(trimmed, 25, tokens[page] ?? null);
       } else {
         result = await AdminService.listUsers(25, tokens[page] ?? null);
       }
@@ -69,7 +69,7 @@ export function AdminUsersView() {
   };
 
   const handleBonusChange = async (userId: string, delta: number) => {
-    const user = users.find(u => u.uid === userId);
+    const user = (users || []).find(u => u.uid === userId);
     if (!user) return;
 
     const currentBonus = user.bonusProjects ?? 0;
@@ -90,7 +90,7 @@ export function AdminUsersView() {
   };
 
   const handleToggleSuspend = async (userId: string) => {
-    const user = users.find(u => u.uid === userId);
+    const user = (users || []).find(u => u.uid === userId);
     if (!user) return;
 
     const isSuspended = user.suspended ?? false;
@@ -208,7 +208,7 @@ export function AdminUsersView() {
         overflowY: 'auto',
         paddingRight: 8
       }}>
-        {users.map(user => {
+        {(users || []).map(user => {
           const isUpdating = actionTarget === user.uid;
           const isSuspended = user.suspended ?? false;
 
@@ -335,7 +335,7 @@ export function AdminUsersView() {
         })}
       </div>
 
-      {!loading && users.length === 0 && !error && (
+      {!loading && (users || []).length === 0 && !error && (
         <div style={{ color: 'var(--white)', opacity: 0.75, textAlign: 'center', padding: 40 }}>
           {isSearching ? 'No users match the search' : 'No users found'}
         </div>

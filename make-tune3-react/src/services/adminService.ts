@@ -145,14 +145,18 @@ export class AdminService {
     return result;
   }
 
-  static async searchUsers(searchQuery: string, pageSize?: number): Promise<PaginatedSearchResult> {
+  static async searchUsers(
+    searchQuery: string,
+    pageSize?: number,
+    pageToken?: string | null
+  ): Promise<PaginatedSearchResult> {
     const trimmed = searchQuery.trim();
     if (!trimmed) return { users: [], nextPageToken: null, hasMore: false };
 
     const result = await callFirebaseFunction<
-      { searchQuery: string; pageSize?: number },
+      { searchQuery: string; pageSize?: number; pageToken?: string | null },
       PaginatedSearchResult
-    >('adminSearchUsers', { searchQuery: trimmed, pageSize });
+    >('adminSearchUsers', { searchQuery: trimmed, pageSize, pageToken });
     return result;
   }
 
