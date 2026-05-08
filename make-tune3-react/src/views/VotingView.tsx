@@ -1,5 +1,5 @@
-import { useContext, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useContext, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { useAppStore } from '../stores/appStore';
 import './MainView.css';
@@ -21,8 +21,8 @@ import styles from './VotingView.module.css';
 export function VotingView() {
   const audioContext = useContext(AudioEngineContext);
   const navigate = useNavigate();
+  const { collabId } = useParams();
   const stageCheckInFlightRef = useRef(false);
-  const location = useLocation();
 
   // get data from different slices
   const { user } = useAppStore(state => state.auth);
@@ -58,11 +58,6 @@ export function VotingView() {
   const engine = audioContext?.engine;
   const state = audioContext?.state;
 
-  // read collabId from url
-  const collabId = useMemo(() => {
-    const match = location.pathname.match(/\/collab\/(.+)$/);
-    return match ? decodeURIComponent(match[1]) : null;
-  }, [location.pathname]);
   const loader = useCollaborationLoader(collabId);
   const requestedCollaboration = currentCollaboration?.id === collabId ? currentCollaboration : null;
   const requestedProject =

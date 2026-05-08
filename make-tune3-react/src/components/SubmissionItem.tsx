@@ -103,9 +103,7 @@ export default function SubmissionItem({
   const statusLabel = isVotePending ? 'Voting...' : null;
   const waveformState = waveformUiState === 'ready'
     ? 'ready'
-    : waveformUiState === 'loading'
-      ? 'loading'
-      : 'placeholder';
+    : 'placeholder';
   const currentTime = isCurrentTrack ? (state?.player1.currentTime ?? 0) : 0;
   const duration = isCurrentTrack ? (state?.player1.duration ?? 0) : 0;
 

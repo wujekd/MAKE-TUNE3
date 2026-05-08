@@ -7,7 +7,7 @@ import {
   signInWithPopup,
   deleteUser
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, runTransaction } from 'firebase/firestore';
+import { doc, setDoc, getDoc, runTransaction, deleteDoc } from 'firebase/firestore';
 import { auth } from './firebaseAuth';
 import { db } from './firebaseDb';
 import type { User, AuthError } from '../types/auth';
@@ -17,25 +17,27 @@ export class AuthService {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      
-      // If username provided, claim it first to avoid leaving orphaned user docs on failure
-      if (username) {
-        try {
-          await this.claimUsername(user.uid, username);
-        } catch (e) {
-          try { await deleteUser(user); } catch { /* best-effort rollback */ }
-          throw e;
-        }
-      }
+      const normalizedUsername = username?.trim().toLowerCase() || undefined;
 
       const userProfile: User = {
         uid: user.uid,
         email: user.email!,
         createdAt: new Date() as any,
         collaborationIds: [],
-        username: username || undefined
+        username: normalizedUsername
       };
       await setDoc(doc(db, 'users', user.uid), userProfile);
+
+      if (normalizedUsername) {
+        try {
+          await this.claimUsername(user.uid, normalizedUsername);
+        } catch (e) {
+          try { await deleteDoc(doc(db, 'users', user.uid)); } catch { /* best-effort rollback */ }
+          try { await deleteUser(user); } catch { /* best-effort rollback */ }
+          throw e;
+        }
+      }
+
       return userProfile;
     } catch (error: any) {
       throw this.formatError(error);

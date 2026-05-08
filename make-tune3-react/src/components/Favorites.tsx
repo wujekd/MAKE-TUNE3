@@ -26,14 +26,8 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onToggl
   // const isSubmittingVote = false;
 
   const handleRemoveFromFavorites = (track: Track) => {
-    console.log('Remove from favorites:', track);
     onRemoveFromFavorites(track.filePath);
   };
-
-  // const onVote = (track: Track) => {
-  //   console.log('Vote for favorite:', track.filePath);
-  //   voteFor(track.filePath);
-  // };
 
   const audioContext = useContext(AudioEngineContext);
   // reference to favorites container

@@ -18,6 +18,7 @@
     "emulators": "cd .. && firebase emulators:start --only firestore,storage",
     "emulators:stop": "lsof -ti:8080,9199,4000,4400,4500 | xargs kill -9 2>/dev/null || true",
     "emulators:restart": "npm run emulators:stop && sleep 2 && npm run emulators",
+    "dev:reset-onboarding": "cd .. && node scripts/reset-onboarding.mjs",
     "setup-firebase": "node setup-firebase.js"
   },
   "dependencies": {

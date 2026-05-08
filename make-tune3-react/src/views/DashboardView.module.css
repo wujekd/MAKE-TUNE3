@@ -308,11 +308,35 @@
 
 .emptyState {
   color: var(--dashboard-text-muted);
-  font-style: italic;
-  padding: 20px;
+  padding: 24px 18px;
   text-align: center;
   border: 1px dashed var(--dashboard-panel-border);
   border-radius: 8px;
+  background: rgba(8, 14, 15, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.errorState {
+  border-style: solid;
+  border-color: rgba(239, 123, 58, 0.42);
+  background: rgba(79, 31, 13, 0.18);
+}
+
+.emptyStateTitle {
+  color: var(--white);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.emptyStateBody {
+  color: var(--dashboard-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .tagRow {

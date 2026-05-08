@@ -19,7 +19,8 @@ import { CollaborationPreferenceBar } from '../components/CollaborationPreferenc
 import styles from './CompletedView.module.css';
 
 export function CompletedView() {
-  const { collaborationId } = useParams();
+  const { collabId } = useParams();
+  const collaborationId = collabId;
   const { user } = useAppStore(s => s.auth);
   const {
     currentCollaboration,

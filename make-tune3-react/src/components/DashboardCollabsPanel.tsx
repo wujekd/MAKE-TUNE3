@@ -22,8 +22,6 @@ interface DashboardCollabsPanelProps {
   metaLabel: string;
 }
 
-const formatScore = (value: number): string => value.toFixed(3);
-
 const getTrackLabel = (path: string | null): string | null => {
   if (!path) return null;
   const fileName = path.split('/').filter(Boolean).pop() || path;
@@ -106,10 +104,24 @@ export function DashboardCollabsPanel({
               ))}
             </div>
           )}
-          {error && <div className={styles.emptyState}>{error}</div>}
+          {hasLoaded && error && (
+            <div className={`${styles.emptyState} ${styles.errorState}`} role="status">
+              <div className={styles.emptyStateTitle}>Could not load collaborations</div>
+              <div className={styles.emptyStateBody}>
+                {error || 'Please try again in a moment.'}
+              </div>
+            </div>
+          )}
           {hasLoaded && !error && items.length === 0 && (
             <div className={styles.emptyState}>
-              {selectedTags.length > 0 ? 'no collaborations match the current tags' : 'no collaborations in this feed'}
+              <div className={styles.emptyStateTitle}>
+                {selectedTags.length > 0 ? 'No matches for these tags' : 'No collaborations yet'}
+              </div>
+              <div className={styles.emptyStateBody}>
+                {selectedTags.length > 0
+                  ? 'Try removing a tag or switching feed order.'
+                  : 'New collaborations will appear here when they are published.'}
+              </div>
             </div>
           )}
           {items.map(item => {
@@ -194,9 +206,6 @@ export function DashboardCollabsPanel({
                       <div className={styles.feedProjectName}>{item.projectName}</div>
                     )}
                     <div className={styles.feedMetaRow}>
-                      {typeof item.rank === 'number' && typeof item.score === 'number' && (
-                        <span className={styles.feedPill}>rank #{item.rank} · score {formatScore(item.score)}</span>
-                      )}
                       {trackLabel && (
                         <span className={styles.feedPill}>{trackLabel}</span>
                       )}

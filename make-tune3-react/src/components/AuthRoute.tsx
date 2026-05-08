@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthView } from '../views/auth/AuthView';
 import { useAppStore } from '../stores/appStore';
 import { useUIStore } from '../stores/useUIStore';
+import { needsUsernameOnboarding } from '../utils/onboarding';
 
 export function AuthRoute() {
   const navigate = useNavigate();
@@ -13,10 +14,9 @@ export function AuthRoute() {
 
   useEffect(() => {
     if (user) {
-      if (!user.username) navigate('/onboarding/username', { replace: true });
+      if (needsUsernameOnboarding(user)) navigate('/onboarding/username', { replace: true });
       else navigate('/collabs', { replace: true });
     }
   }, [user, navigate]);
   return <AuthView initialMode={initialMode as any} onBackToMain={() => { setShowAuth(false); navigate('/collabs'); }} />
 }
-

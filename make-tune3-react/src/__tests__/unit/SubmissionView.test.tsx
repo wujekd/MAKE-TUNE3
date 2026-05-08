@@ -17,7 +17,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>();
   return {
     ...actual,
-    useParams: () => ({ collaborationId: 'collab-1' }),
+    useParams: () => ({ collabId: 'collab-1' }),
     useNavigate: () => mockNavigate
   };
 });

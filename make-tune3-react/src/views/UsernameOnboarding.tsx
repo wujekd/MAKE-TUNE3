@@ -1,18 +1,32 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
 import { AuthService } from '../services/authService';
+import { hasValidUsername } from '../utils/onboarding';
 import '../components/auth/Auth.css';
 
 export function UsernameOnboarding() {
   const navigate = useNavigate();
-  const user = useAppStore(s => s.auth.user);
+  const [searchParams] = useSearchParams();
+  const { user, loading: authLoading } = useAppStore(s => s.auth);
   const [username, setUsername] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const returnTo = searchParams.get('returnTo') || '/collabs';
+  const safeReturnTo = returnTo.startsWith('/') && !returnTo.startsWith('//')
+    ? returnTo
+    : '/collabs';
+
+  if (authLoading) {
+    return null;
+  }
 
   if (!user) {
-    return null;
+    return <Navigate to="/auth?mode=login" replace />;
+  }
+
+  if (hasValidUsername(user)) {
+    return <Navigate to={safeReturnTo} replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,7 +37,7 @@ export function UsernameOnboarding() {
       await AuthService.claimUsername(user.uid, username);
       const refreshed = await AuthService.getUserProfile(user.uid);
       useAppStore.setState(state => ({ auth: { ...state.auth, user: refreshed } }));
-      navigate('/collabs', { replace: true });
+      navigate(safeReturnTo, { replace: true });
     } catch (e: any) {
       setError(e?.message || 'Failed to set username');
     } finally {
@@ -60,5 +74,4 @@ export function UsernameOnboarding() {
     </div>
   );
 }
-
 

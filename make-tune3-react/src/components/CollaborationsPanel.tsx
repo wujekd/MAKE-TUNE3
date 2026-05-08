@@ -52,10 +52,24 @@ export function CollaborationsPanel({
               ))}
             </div>
           )}
-          {error && <div className={styles.emptyState}>{error}</div>}
+          {hasLoaded && error && (
+            <div className={`${styles.emptyState} ${styles.errorState}`} role="status">
+              <div className={styles.emptyStateTitle}>Could not load collaborations</div>
+              <div className={styles.emptyStateBody}>
+                {error || 'Please try again in a moment.'}
+              </div>
+            </div>
+          )}
           {hasLoaded && !error && filteredCollabs.length === 0 && (
             <div className={styles.emptyState}>
-              {selectedTags.length > 0 ? 'no collaborations with selected tags' : 'no collaborations'}
+              <div className={styles.emptyStateTitle}>
+                {selectedTags.length > 0 ? 'No matches for these tags' : 'No collaborations yet'}
+              </div>
+              <div className={styles.emptyStateBody}>
+                {selectedTags.length > 0
+                  ? 'Try removing a tag to widen the list.'
+                  : 'Published collaborations will appear here.'}
+              </div>
             </div>
           )}
           {filteredCollabs.map(c => {

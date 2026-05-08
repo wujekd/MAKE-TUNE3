@@ -38,7 +38,8 @@ export function SubmissionView() {
     isUpdatingCollaborationLike,
     isUpdatingCollaborationFavorite
   } = useAppStore(s => s.collaboration);
-  const { collaborationId } = useParams();
+  const { collabId } = useParams();
+  const collaborationId = collabId;
   const loader = useCollaborationLoader(collaborationId);
   const requestedCollaboration = currentCollaboration?.id === collaborationId ? currentCollaboration : null;
 

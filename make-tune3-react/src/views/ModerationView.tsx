@@ -26,7 +26,7 @@ export function ModerationView() {
   const { playSubmission } = useAppStore(state => state.playback);
   const { currentProject } = useAppStore(state => state.collaboration);
 
-  const collabId = useParams().collaborationId as string;
+  const collabId = useParams().collabId as string;
   const navigate = useNavigate();
 
   useEffect(() => {

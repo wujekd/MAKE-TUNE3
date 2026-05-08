@@ -6,6 +6,7 @@ import { useUIStore } from './stores'
 import { AppShell } from './components/AppShell';
 import { AudioRouteBoundary } from './components/AudioRouteBoundary';
 import { AdminRoute } from './components/AdminRoute';
+import { OnboardingGate } from './components/OnboardingGate';
 import { UsernameOnboarding } from './views/UsernameOnboarding';
 import { AccessDeniedView } from './views/AccessDeniedView';
 import { ProjectService } from './services';
@@ -138,132 +139,135 @@ function App() {
       element: <AppShell />,
       errorElement: <RootErrorView />,
       children: [
-        { index: true, element: <Navigate to="collabs" replace /> },
         { path: 'onboarding/username', element: <UsernameOnboarding />, handle: { title: 'Choose Username', breadcrumb: 'Username' } },
         {
-          path: 'collabs',
-          element: <DashboardView />,
-          handle: {
-            title: '',
-            breadcrumb: 'home page',
-            actions: ({ navigate }: any) => ([{ key: 'to-auth', label: 'Login', onClick: () => navigate('auth') }])
-          }
-        },
-        {
-          path: 'project/:projectId',
-          element: (
-            <AudioRouteBoundary defer>
-              <LazyRoute>
-                <ProjectEditView />
-              </LazyRoute>
-            </AudioRouteBoundary>
-          ),
-          handle: {
-            title: 'Project',
-            breadcrumb: 'Project',
-            actions: ({ navigate: nav, project }: any) => ([
-              { key: 'back', label: 'Back', onClick: () => nav('/collabs') },
-              project ? {
-                key: 'delete',
-                label: 'Delete Project',
-                onClick: async () => {
-                  const ok = window.confirm('Delete this project? This cannot be undone.');
-                  if (!ok) return;
-                  try {
-                    await ProjectService.deleteProject(project.id);
-                    if (user?.uid && project?.ownerId === user.uid) {
+          element: <OnboardingGate />,
+          children: [
+            { index: true, element: <Navigate to="collabs" replace /> },
+            {
+              path: 'collabs',
+              element: <DashboardView />,
+              handle: {
+                title: '',
+                breadcrumb: 'home page',
+                actions: ({ navigate }: any) => ([{ key: 'to-auth', label: 'Login', onClick: () => navigate('auth') }])
+              }
+            },
+            {
+              path: 'project/:projectId',
+              element: (
+                <AudioRouteBoundary defer>
+                  <LazyRoute>
+                    <ProjectEditView />
+                  </LazyRoute>
+                </AudioRouteBoundary>
+              ),
+              handle: {
+                title: 'Project',
+                breadcrumb: 'Project',
+                actions: ({ navigate: nav, project }: any) => ([
+                  { key: 'back', label: 'Back', onClick: () => nav('/collabs') },
+                  project ? {
+                    key: 'delete',
+                    label: 'Delete Project',
+                    onClick: async () => {
+                      const ok = window.confirm('Delete this project? This cannot be undone.');
+                      if (!ok) return;
                       try {
-                        const projects = await ProjectService.listUserProjects(user.uid);
-                        useAppStore.setState(state => ({
-                          auth: {
-                            ...state.auth,
-                            user: state.auth.user ? {
-                              ...state.auth.user,
-                              projectCount: projects.length
-                            } : null
+                        await ProjectService.deleteProject(project.id);
+                        if (user?.uid && project?.ownerId === user.uid) {
+                          try {
+                            const projects = await ProjectService.listUserProjects(user.uid);
+                            useAppStore.setState(state => ({
+                              auth: {
+                                ...state.auth,
+                                user: state.auth.user ? {
+                                  ...state.auth.user,
+                                  projectCount: projects.length
+                                } : null
+                              }
+                            }));
+                          } catch (err) {
+                            console.warn('Failed to refresh project count after delete', err);
                           }
-                        }));
-                      } catch (err) {
-                        console.warn('Failed to refresh project count after delete', err);
+                        }
+                        nav('/collabs');
+                      } catch {
+                        alert('Failed to delete project');
                       }
                     }
-                    nav('/collabs');
-                  } catch {
-                    alert('Failed to delete project');
-                  }
-                }
-              } : null
-            ].filter(Boolean))
-          }
-        },
-        {
-          path: 'collab/:collaborationId',
-          element: (
-            <AudioRouteBoundary fallback={<RouteLoadingFallback />}>
-              <LazyRoute>
-                <VotingView key={user?.uid || 'anonymous'} />
-              </LazyRoute>
-            </AudioRouteBoundary>
-          ),
-          handle: {
-            title: 'Voting',
-            breadcrumb: 'Voting',
-            actions: ({ navigate, params, collab }: any) => ([
-              { key: 'back', label: 'Back', onClick: () => navigate('/collabs') },
-              collab?.status === 'submission' ? { key: 'to-submit', label: 'Submit', onClick: () => navigate(`/collab/${params.collaborationId}/submit`) } : null
-            ].filter(Boolean))
-          }
-        },
-        {
-          path: 'collab/:collaborationId/moderate',
-          element: (
-            <AudioRouteBoundary fallback={<RouteLoadingFallback />}>
-              <Suspense fallback={<RouteLoadingFallback />}>
-                <ModerationView />
-              </Suspense>
-            </AudioRouteBoundary>
-          ),
-          handle: {
-            title: 'Moderation',
-            breadcrumb: 'Moderation',
-            actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
-          }
-        },
-        {
-          path: 'collab/:collaborationId/completed',
-          element: (
-            <AudioRouteBoundary fallback={<RouteLoadingFallback />}>
-              <LazyRoute>
-                <CompletedView />
-              </LazyRoute>
-            </AudioRouteBoundary>
-          ),
-          handle: {
-            title: 'Completed',
-            breadcrumb: 'Completed',
-            actions: ({ navigate, params }: any) => ([
-              { key: 'back', label: 'Back', onClick: () => navigate('/collabs') },
-              { key: 'to-collab', label: 'Open collab', onClick: () => navigate(`/collab/${params.collaborationId}`) }
-            ])
-          }
-        },
-        {
-          path: 'collab/:collaborationId/submit',
-          element: (
-            <AudioRouteBoundary fallback={<RouteLoadingFallback />}>
-              <LazyRoute>
-                <SubmissionView />
-              </LazyRoute>
-            </AudioRouteBoundary>
-          ),
-          handle: {
-            title: 'Submit',
-            breadcrumb: 'Submit',
-            actions: ({ navigate }: any) => ([
-              { key: 'back', label: 'Back', onClick: () => navigate('/collabs') }
-            ])
-          }
-        },
+                  } : null
+                ].filter(Boolean))
+              }
+            },
+            {
+              path: 'collab/:collabId',
+              element: (
+                <AudioRouteBoundary fallback={<RouteLoadingFallback />}>
+                  <LazyRoute>
+                    <VotingView key={user?.uid || 'anonymous'} />
+                  </LazyRoute>
+                </AudioRouteBoundary>
+              ),
+              handle: {
+                title: 'Voting',
+                breadcrumb: 'Voting',
+                actions: ({ navigate, params, collab }: any) => ([
+                  { key: 'back', label: 'Back', onClick: () => navigate('/collabs') },
+                  collab?.status === 'submission' ? { key: 'to-submit', label: 'Submit', onClick: () => navigate(`/collab/${params.collabId}/submit`) } : null
+                ].filter(Boolean))
+              }
+            },
+            {
+              path: 'collab/:collabId/moderate',
+              element: (
+                <AudioRouteBoundary fallback={<RouteLoadingFallback />}>
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <ModerationView />
+                  </Suspense>
+                </AudioRouteBoundary>
+              ),
+              handle: {
+                title: 'Moderation',
+                breadcrumb: 'Moderation',
+                actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
+              }
+            },
+            {
+              path: 'collab/:collabId/completed',
+              element: (
+                <AudioRouteBoundary fallback={<RouteLoadingFallback />}>
+                  <LazyRoute>
+                    <CompletedView />
+                  </LazyRoute>
+                </AudioRouteBoundary>
+              ),
+              handle: {
+                title: 'Completed',
+                breadcrumb: 'Completed',
+                actions: ({ navigate, params }: any) => ([
+                  { key: 'back', label: 'Back', onClick: () => navigate('/collabs') },
+                  { key: 'to-collab', label: 'Open collab', onClick: () => navigate(`/collab/${params.collabId}`) }
+                ])
+              }
+            },
+            {
+              path: 'collab/:collabId/submit',
+              element: (
+                <AudioRouteBoundary fallback={<RouteLoadingFallback />}>
+                  <LazyRoute>
+                    <SubmissionView />
+                  </LazyRoute>
+                </AudioRouteBoundary>
+              ),
+              handle: {
+                title: 'Submit',
+                breadcrumb: 'Submit',
+                actions: ({ navigate }: any) => ([
+                  { key: 'back', label: 'Back', onClick: () => navigate('/collabs') }
+                ])
+              }
+            },
         {
           path: 'admin/tags',
           element: <LazyAdminRoute><AdminTagsView /></LazyAdminRoute>,
@@ -368,7 +372,9 @@ function App() {
             ])
           }
         },
-        { path: '*', element: <Navigate to="/collabs" replace /> }
+            { path: '*', element: <Navigate to="/collabs" replace /> }
+          ]
+        }
       ]
     },
     {

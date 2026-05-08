@@ -110,9 +110,9 @@ export function DashboardView() {
           })));
           setStats(dashboardStats);
         }
-      } catch (e: any) {
+      } catch {
         if (mounted) {
-          console.error('DashboardView: failed loading dashboard metadata', e);
+          setAvailableTags([]);
         }
       }
     })();
@@ -141,10 +141,9 @@ export function DashboardView() {
         setFeedMetaLabel(feed.metaLabel);
       } catch (e: any) {
         if (!mounted) return;
-        console.error('DashboardView: failed loading feed', e);
         setItems([]);
         setFeedMetaLabel('');
-        setError(e?.message || 'failed to load feed');
+        setError(e?.message || 'Unable to load collaborations right now.');
       } finally {
         if (mounted) {
           setHasLoaded(true);

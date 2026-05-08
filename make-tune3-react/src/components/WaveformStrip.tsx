@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import type { WaveformData } from '../types/waveform';
-import { LoadingSpinner } from './LoadingSpinner';
 import './WaveformStrip.css';
 
 type WaveformStripState = 'loading' | 'ready' | 'placeholder';
@@ -180,12 +179,7 @@ export function WaveformStrip({
         isInteractive ? 'waveform-strip--interactive' : ''
       ].filter(Boolean).join(' ')}
     >
-      {state === 'loading' && (
-        <div className="waveform-strip__status">
-          <LoadingSpinner size={18} />
-        </div>
-      )}
-      {state === 'placeholder' && <div className="waveform-strip__placeholder" aria-hidden="true" />}
+      {(state === 'loading' || state === 'placeholder') && <div className="waveform-strip__placeholder" aria-hidden="true" />}
       {state === 'ready' && data && (
         <canvas
           ref={canvasRef}
