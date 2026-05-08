@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
-import type { WaveformData } from '../types/waveform';
+import type { WaveformRenderData } from '../types/waveform';
 import './WaveformStrip.css';
 
 type WaveformStripState = 'loading' | 'ready' | 'placeholder';
 
 interface WaveformStripProps {
-  data: WaveformData | null;
+  data: WaveformRenderData | null;
   state: WaveformStripState;
   progress?: number;
   currentTime?: number;
@@ -19,6 +19,20 @@ interface WaveformStripProps {
 function clamp(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(1, value));
+}
+
+function getWaveformSignature(data: WaveformRenderData): string {
+  return [
+    data.version ?? 'preview',
+    data.bucketCount,
+    data.peaks.min.length,
+    data.peaks.max.length
+  ].join(':');
+}
+
+function easeOutCubic(value: number): number {
+  const nextValue = clamp(value);
+  return 1 - Math.pow(1 - nextValue, 3);
 }
 
 export function WaveformStrip({
@@ -42,6 +56,10 @@ export function WaveformStrip({
   const durationRef = useRef(Math.max(0, duration));
   const isPlayingRef = useRef(Boolean(isPlaying));
   const propTimestampRef = useRef(typeof performance !== 'undefined' ? performance.now() : 0);
+  const renderedDataRef = useRef<WaveformRenderData | null>(null);
+  const underlayDataRef = useRef<WaveformRenderData | null>(null);
+  const renderedSignatureRef = useRef<string | null>(null);
+  const cascadeStartedAtRef = useRef(0);
 
   const baseProgress = useMemo(() => clamp(progress), [progress]);
 
@@ -92,10 +110,22 @@ export function WaveformStrip({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const minPeaks = data.peaks.min;
-    const maxPeaks = data.peaks.max;
+    const nextSignature = getWaveformSignature(data);
+    if (renderedSignatureRef.current !== nextSignature) {
+      underlayDataRef.current = renderedDataRef.current;
+      renderedDataRef.current = data;
+      renderedSignatureRef.current = nextSignature;
+      cascadeStartedAtRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
+    } else {
+      renderedDataRef.current = data;
+    }
 
-    const draw = (progressRatio: number) => {
+    const drawWaveformLayer = (
+      waveformData: WaveformRenderData,
+      progressRatio: number,
+      cascadeProgress: number,
+      options: { alpha: number; minHeight?: boolean }
+    ) => {
       const width = canvas.width;
       const height = canvas.height;
       const baseline = height - Math.round(10 * dpr);
@@ -104,10 +134,43 @@ export function WaveformStrip({
       const playedWidth = width * clamp(progressRatio);
       const playedColor = 'rgba(116, 214, 193, 0.98)';
       const unplayedColor = 'rgba(255, 255, 255, 0.26)';
+      const minPeaks = waveformData.peaks.min;
+      const maxPeaks = waveformData.peaks.max;
+      const barWidth = width / Math.max(1, minPeaks.length);
+      const previousAlpha = ctx.globalAlpha;
+      ctx.globalAlpha = options.alpha;
+
+      for (let i = 0; i < minPeaks.length; i += 1) {
+        const barRevealStart = i / Math.max(1, minPeaks.length);
+        const barReveal = easeOutCubic((cascadeProgress - barRevealStart * 0.72) / 0.28);
+        if (barReveal <= 0) continue;
+
+        const x = i * barWidth;
+        const amplitude = Math.max(Math.abs(minPeaks[i]), Math.abs(maxPeaks[i]));
+        const naturalHeight = amplitude * drawableHeight * 0.98;
+        const barHeight = options.minHeight
+          ? Math.max(dpr, naturalHeight * barReveal)
+          : naturalHeight * barReveal;
+        if (barHeight <= 0) continue;
+
+        const top = baseline - barHeight;
+        const drawWidth = Math.max(dpr, barWidth - dpr);
+
+        ctx.fillStyle = x < playedWidth ? playedColor : unplayedColor;
+        ctx.fillRect(x, top, drawWidth, barHeight);
+      }
+
+      ctx.globalAlpha = previousAlpha;
+    };
+
+    const draw = (progressRatio: number, now: number) => {
+      const width = canvas.width;
+      const height = canvas.height;
+      const baseline = height - Math.round(10 * dpr);
+      const cascadeElapsed = Math.max(0, now - cascadeStartedAtRef.current);
+      const cascadeProgress = clamp(cascadeElapsed / 950);
 
       ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
-      ctx.fillRect(0, 0, width, height);
 
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
       ctx.lineWidth = Math.max(1, dpr);
@@ -116,18 +179,21 @@ export function WaveformStrip({
       ctx.lineTo(width, baseline + 0.5);
       ctx.stroke();
 
-      const barWidth = width / Math.max(1, minPeaks.length);
-
-      for (let i = 0; i < minPeaks.length; i += 1) {
-        const x = i * barWidth;
-        const amplitude = Math.max(Math.abs(minPeaks[i]), Math.abs(maxPeaks[i]));
-        const barHeight = Math.max(dpr, amplitude * drawableHeight * 0.98);
-        const top = baseline - barHeight;
-        const drawWidth = Math.max(dpr, barWidth - dpr);
-
-        ctx.fillStyle = x < playedWidth ? playedColor : unplayedColor;
-        ctx.fillRect(x, top, drawWidth, barHeight);
+      if (underlayDataRef.current) {
+        drawWaveformLayer(underlayDataRef.current, progressRatio, 1, {
+          alpha: 1,
+          minHeight: true
+        });
       }
+
+      if (renderedDataRef.current) {
+        drawWaveformLayer(renderedDataRef.current, progressRatio, cascadeProgress, {
+          alpha: 1,
+          minHeight: true
+        });
+      }
+
+      return cascadeProgress;
     };
 
     const drawFrame = () => {
@@ -139,18 +205,19 @@ export function WaveformStrip({
         nextProgress = clamp((currentTimeRef.current + elapsedSeconds) / durationRef.current);
       }
 
-      draw(nextProgress);
+      const cascadeProgress = draw(nextProgress, now);
 
-      if (isPlayingRef.current) {
+      if (isPlayingRef.current || cascadeProgress < 1) {
         animationFrameRef.current = window.requestAnimationFrame(drawFrame);
       } else {
         animationFrameRef.current = null;
       }
     };
 
-    draw(baseProgress);
+    const now = typeof performance !== 'undefined' ? performance.now() : 0;
+    const cascadeProgress = draw(baseProgress, now);
 
-    if (isPlaying) {
+    if (isPlaying || cascadeProgress < 1) {
       animationFrameRef.current = window.requestAnimationFrame(drawFrame);
     }
 

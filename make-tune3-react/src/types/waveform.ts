@@ -8,7 +8,25 @@ export interface WaveformAssetMeta {
   error?: string | null;
 }
 
-export interface WaveformData {
+export interface WaveformPreview {
+  bucketCount: 128;
+  version?: number;
+  peaks: {
+    min: number[];
+    max: number[];
+  };
+}
+
+export interface WaveformRenderData {
+  version?: number;
+  bucketCount: number;
+  peaks: {
+    min: number[];
+    max: number[];
+  };
+}
+
+export interface WaveformData extends WaveformRenderData {
   version: number;
   generator: string;
   fileName?: string;
@@ -17,10 +35,5 @@ export interface WaveformData {
   channels: number;
   channelMode?: string;
   normalize?: boolean;
-  bucketCount: number;
   framesPerBucket: number;
-  peaks: {
-    min: number[];
-    max: number[];
-  };
 }

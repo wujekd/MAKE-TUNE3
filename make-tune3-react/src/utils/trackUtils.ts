@@ -20,6 +20,7 @@ export class TrackUtils {
       waveformBucketCount?: number;
       waveformVersion?: number;
       waveformError?: string | null;
+      waveformPreview?: Track['waveformPreview'];
       submissionId?: string;
       multitrackZipPath?: string;
       moderationStatus?: SubmissionModerationStatus;
@@ -39,6 +40,7 @@ export class TrackUtils {
       waveformBucketCount: options?.waveformBucketCount,
       waveformVersion: options?.waveformVersion,
       waveformError: options?.waveformError,
+      waveformPreview: options?.waveformPreview,
       submissionId: options?.submissionId,
       multitrackZipPath: options?.multitrackZipPath,
       duration: 0,

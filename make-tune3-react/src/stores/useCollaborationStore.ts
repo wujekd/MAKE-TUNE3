@@ -148,6 +148,7 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
             waveformBucketCount: s.waveformBucketCount,
             waveformVersion: s.waveformVersion,
             waveformError: s.waveformError,
+            waveformPreview: s.waveformPreview,
             submissionId: s.submissionId,
             multitrackZipPath: s.multitrackZipPath,
             moderationStatus
@@ -226,6 +227,7 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
             waveformBucketCount: s.waveformBucketCount,
             waveformVersion: s.waveformVersion,
             waveformError: s.waveformError,
+            waveformPreview: s.waveformPreview,
             submissionId: s.submissionId,
             moderationStatus
           });
@@ -290,6 +292,7 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
             waveformBucketCount: s.waveformBucketCount,
             waveformVersion: s.waveformVersion,
             waveformError: s.waveformError,
+            waveformPreview: s.waveformPreview,
             submissionId: s.submissionId,
             moderationStatus
           });

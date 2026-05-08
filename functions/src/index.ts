@@ -80,6 +80,7 @@ const BACKING_TOKEN_COLLECTION = "backingUploadTokens";
 const WAVEFORM_VERSION = 1;
 const BACKING_WAVEFORM_BUCKET_COUNT = 768;
 const SUBMISSION_WAVEFORM_BUCKET_COUNT = 512;
+const WAVEFORM_PREVIEW_BUCKET_COUNT = 128;
 const ALLOWED_AUDIO_EXTS = new Set([
   "mp3",
   "wav",
@@ -279,6 +280,54 @@ function buildWaveformPayload(
   };
 }
 
+function buildWaveformPreview(payload: {
+  version?: number;
+  bucketCount?: number;
+  peaks?: {
+    min?: number[];
+    max?: number[];
+  };
+}) {
+  const sourceMin = Array.isArray(payload.peaks?.min) ? payload.peaks.min : [];
+  const sourceMax = Array.isArray(payload.peaks?.max) ? payload.peaks.max : [];
+  const sourceCount = Math.min(sourceMin.length, sourceMax.length);
+  const bucketCount = WAVEFORM_PREVIEW_BUCKET_COUNT;
+  const minPeaks = new Array(bucketCount).fill(0);
+  const maxPeaks = new Array(bucketCount).fill(0);
+
+  if (sourceCount <= 0) {
+    return {
+      bucketCount,
+      version: payload.version ?? WAVEFORM_VERSION,
+      peaks: { min: minPeaks, max: maxPeaks },
+    };
+  }
+
+  for (let i = 0; i < bucketCount; i += 1) {
+    const start = Math.floor((i * sourceCount) / bucketCount);
+    const end = Math.max(start + 1, Math.floor(((i + 1) * sourceCount) / bucketCount));
+    let min = 1;
+    let max = -1;
+
+    for (let j = start; j < Math.min(end, sourceCount); j += 1) {
+      min = Math.min(min, sourceMin[j]);
+      max = Math.max(max, sourceMax[j]);
+    }
+
+    minPeaks[i] = roundWaveformNumber(min === 1 ? 0 : min);
+    maxPeaks[i] = roundWaveformNumber(max === -1 ? 0 : max);
+  }
+
+  return {
+    bucketCount,
+    version: payload.version ?? WAVEFORM_VERSION,
+    peaks: {
+      min: minPeaks,
+      max: maxPeaks,
+    },
+  };
+}
+
 async function generateBackingWaveformAsset(params: {
   bucketName: string;
   collabId: string;
@@ -344,6 +393,7 @@ async function generateBackingWaveformAsset(params: {
       backingWaveformStatus: "ready",
       backingWaveformBucketCount: payload.bucketCount,
       backingWaveformVersion: payload.version,
+      backingWaveformPreview: buildWaveformPreview(payload),
       backingWaveformError: null,
       updatedAt: Timestamp.now(),
     }, { merge: true });
@@ -354,6 +404,7 @@ async function generateBackingWaveformAsset(params: {
       await collabRef.set({
         backingWaveformStatus: "failed",
         backingWaveformError: err instanceof Error ? err.message.slice(0, 500) : String(err).slice(0, 500),
+        backingWaveformPreview: null,
         updatedAt: Timestamp.now(),
       }, { merge: true });
     }
@@ -489,7 +540,8 @@ async function generateSubmissionWaveformAsset(params: {
         waveformStatus: "ready",
         waveformBucketCount: payload.bucketCount,
         waveformVersion: payload.version,
-        waveformError: null
+        waveformError: null,
+        waveformPreview: buildWaveformPreview(payload)
       }
     });
 
@@ -505,7 +557,8 @@ async function generateSubmissionWaveformAsset(params: {
         waveformStatus: "failed",
         waveformError: err instanceof Error ? err.message.slice(0, 500) : String(err).slice(0, 500),
         waveformBucketCount: SUBMISSION_WAVEFORM_BUCKET_COUNT,
-        waveformVersion: WAVEFORM_VERSION
+        waveformVersion: WAVEFORM_VERSION,
+        waveformPreview: null
       }
     });
 
@@ -1541,6 +1594,7 @@ export const finalizeBackingUpload = onObjectFinalized({ region: "europe-west1" 
       backingWaveformBucketCount: BACKING_WAVEFORM_BUCKET_COUNT,
       backingWaveformVersion: WAVEFORM_VERSION,
       backingWaveformError: null,
+      backingWaveformPreview: null,
       updatedAt: now
     });
   });
@@ -1771,7 +1825,8 @@ export const finalizeSubmissionUpload = onObjectFinalized({ region: "europe-west
       waveformStatus: "pending",
       waveformBucketCount: SUBMISSION_WAVEFORM_BUCKET_COUNT,
       waveformVersion: WAVEFORM_VERSION,
-      waveformError: null
+      waveformError: null,
+      waveformPreview: null
     };
 
     const detailData = detailSnap.exists ? (detailSnap.data() as any) : null;
@@ -1788,7 +1843,8 @@ export const finalizeSubmissionUpload = onObjectFinalized({ region: "europe-west
         waveformStatus: submissions[existingIndex]?.waveformStatus ?? "pending",
         waveformBucketCount: submissions[existingIndex]?.waveformBucketCount ?? SUBMISSION_WAVEFORM_BUCKET_COUNT,
         waveformVersion: submissions[existingIndex]?.waveformVersion ?? WAVEFORM_VERSION,
-        waveformError: submissions[existingIndex]?.waveformError ?? null
+        waveformError: submissions[existingIndex]?.waveformError ?? null,
+        waveformPreview: submissions[existingIndex]?.waveformPreview ?? null
       };
       shouldGenerateWaveform = !submissions[existingIndex]?.waveformPath;
     }
@@ -3551,6 +3607,13 @@ export const getMyRecommendations = onCall({ cors: true }, async (request) => {
             ? entry.highlightedTrackPath
             : null,
         backingTrackPath: String(collab.backingTrackPath || ""),
+        backingWaveformPath: String(collab.backingWaveformPath || ""),
+        backingWaveformStatus: String(collab.backingWaveformStatus || ""),
+        backingWaveformBucketCount:
+          typeof collab.backingWaveformBucketCount === "number" ? collab.backingWaveformBucketCount : null,
+        backingWaveformVersion:
+          typeof collab.backingWaveformVersion === "number" ? collab.backingWaveformVersion : null,
+        backingWaveformPreview: collab.backingWaveformPreview || null,
         publishedAt: collab.publishedAt ? (collab.publishedAt as Timestamp).toMillis() : null,
         submissionCloseAt: collab.submissionCloseAt ? (collab.submissionCloseAt as Timestamp).toMillis() : null,
         votingCloseAt: collab.votingCloseAt ? (collab.votingCloseAt as Timestamp).toMillis() : null,

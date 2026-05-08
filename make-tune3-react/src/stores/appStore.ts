@@ -404,6 +404,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               waveformBucketCount: s.waveformBucketCount,
               waveformVersion: s.waveformVersion,
               waveformError: s.waveformError,
+              waveformPreview: s.waveformPreview,
               submissionId: s.submissionId,
               multitrackZipPath: s.multitrackZipPath,
               moderationStatus
@@ -505,6 +506,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               waveformBucketCount: s.waveformBucketCount,
               waveformVersion: s.waveformVersion,
               waveformError: s.waveformError,
+              waveformPreview: s.waveformPreview,
               submissionId: s.submissionId,
               multitrackZipPath: s.multitrackZipPath,
               moderationStatus
@@ -571,6 +573,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               waveformBucketCount: s.waveformBucketCount,
               waveformVersion: s.waveformVersion,
               waveformError: s.waveformError,
+              waveformPreview: s.waveformPreview,
               submissionId: s.submissionId,
               multitrackZipPath: s.multitrackZipPath,
               moderationStatus
@@ -630,6 +633,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               waveformBucketCount: s.waveformBucketCount,
               waveformVersion: s.waveformVersion,
               waveformError: s.waveformError,
+              waveformPreview: s.waveformPreview,
               submissionId: s.submissionId,
               multitrackZipPath: s.multitrackZipPath,
               moderationStatus: 'pending'  // All are pending from this endpoint

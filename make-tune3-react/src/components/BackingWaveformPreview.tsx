@@ -46,7 +46,9 @@ export function BackingWaveformPreview({
 
   const { data, uiState } = useWaveformData({
     initialMeta,
+    initialData: collaboration.backingWaveformPreview ?? null,
     enabled: Boolean(collaboration.backingTrackPath),
+    deferLoad: Boolean(collaboration.backingWaveformPreview),
     pollMeta: async () => {
       const nextCollab = await CollaborationService.getCollaboration(collaboration.id);
       if (!nextCollab) return null;

@@ -1,5 +1,6 @@
 import { auth } from './firebaseAuth';
 import { callFirebaseFunction } from './firebaseFunctions';
+import type { WaveformPreview, WaveformStatus } from '../types/waveform';
 
 export interface DashboardRecommendationItem {
   collaborationId: string;
@@ -13,6 +14,11 @@ export interface DashboardRecommendationItem {
   score: number;
   highlightedTrackPath: string | null;
   backingTrackPath: string;
+  backingWaveformPath: string | null;
+  backingWaveformStatus: WaveformStatus | null;
+  backingWaveformBucketCount: number | null;
+  backingWaveformVersion: number | null;
+  backingWaveformPreview: WaveformPreview | null;
   publishedAt: number | null;
   submissionCloseAt: number | null;
   votingCloseAt: number | null;
@@ -35,6 +41,25 @@ const toNumberOrNull = (value: unknown): number | null => (
 const toStringArray = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];
   return value.filter((entry): entry is string => typeof entry === 'string');
+};
+
+const toWaveformStatus = (value: unknown): WaveformStatus | null => {
+  if (value === 'pending' || value === 'processing' || value === 'ready' || value === 'failed') {
+    return value;
+  }
+  return null;
+};
+
+const toWaveformPreview = (value: unknown): WaveformPreview | null => {
+  const preview = value as WaveformPreview | null;
+  if (
+    preview?.bucketCount === 128 &&
+    Array.isArray(preview.peaks?.min) &&
+    Array.isArray(preview.peaks?.max)
+  ) {
+    return preview;
+  }
+  return null;
 };
 
 export class RecommendationService {
@@ -72,6 +97,11 @@ export class RecommendationService {
         highlightedTrackPath:
           typeof row.highlightedTrackPath === 'string' ? row.highlightedTrackPath : null,
         backingTrackPath: typeof row.backingTrackPath === 'string' ? row.backingTrackPath : '',
+        backingWaveformPath: typeof row.backingWaveformPath === 'string' && row.backingWaveformPath ? row.backingWaveformPath : null,
+        backingWaveformStatus: toWaveformStatus(row.backingWaveformStatus),
+        backingWaveformBucketCount: toNumberOrNull(row.backingWaveformBucketCount),
+        backingWaveformVersion: toNumberOrNull(row.backingWaveformVersion),
+        backingWaveformPreview: toWaveformPreview(row.backingWaveformPreview),
         publishedAt: toNumberOrNull(row.publishedAt),
         submissionCloseAt: toNumberOrNull(row.submissionCloseAt),
         votingCloseAt: toNumberOrNull(row.votingCloseAt),

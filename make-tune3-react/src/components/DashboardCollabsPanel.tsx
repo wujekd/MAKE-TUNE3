@@ -175,7 +175,12 @@ export function DashboardCollabsPanel({
                     collaboration={{
                       id: item.collaborationId,
                       name: item.collaborationName,
-                      backingTrackPath: item.backingTrackPath
+                      backingTrackPath: item.backingTrackPath,
+                      backingWaveformPath: item.backingWaveformPath,
+                      backingWaveformStatus: item.backingWaveformStatus,
+                      backingWaveformBucketCount: item.backingWaveformBucketCount,
+                      backingWaveformVersion: item.backingWaveformVersion,
+                      backingWaveformPreview: item.backingWaveformPreview
                     } as any}
                     isActive={isCurrentBacking}
                     progress={displayProgress / 100}

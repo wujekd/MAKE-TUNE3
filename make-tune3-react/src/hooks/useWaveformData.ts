@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { WaveformService } from '../services/waveformService';
-import type { WaveformAssetMeta, WaveformData, WaveformStatus } from '../types/waveform';
+import type { WaveformAssetMeta, WaveformRenderData, WaveformStatus } from '../types/waveform';
 
 type PollMetaFn = () => Promise<WaveformAssetMeta | null>;
 
 interface UseWaveformDataOptions {
   initialMeta: WaveformAssetMeta;
+  initialData?: WaveformRenderData | null;
   enabled?: boolean;
+  deferLoad?: boolean;
   pollMeta?: PollMetaFn;
   pollIntervalMs?: number;
   maxPollMs?: number;
@@ -15,7 +17,7 @@ interface UseWaveformDataOptions {
 type UiState = 'idle' | 'loading' | 'ready' | 'failed' | 'timed_out';
 
 interface UseWaveformDataResult {
-  data: WaveformData | null;
+  data: WaveformRenderData | null;
   meta: WaveformAssetMeta;
   uiState: UiState;
   isLoading: boolean;
@@ -36,18 +38,68 @@ function isPendingStatus(status?: WaveformStatus | null): boolean {
   return status === 'pending' || status === 'processing';
 }
 
+function scheduleSettledLoad(callback: () => void): () => void {
+  let cancelled = false;
+  let timer: number | null = null;
+  let idleHandle: number | null = null;
+
+  const requestIdle = () => {
+    if (cancelled) return;
+    const win = window as Window & {
+      requestIdleCallback?: (handler: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    if (typeof win.requestIdleCallback === 'function') {
+      idleHandle = win.requestIdleCallback(() => {
+        if (!cancelled) callback();
+      }, { timeout: 3000 });
+      return;
+    }
+
+    timer = window.setTimeout(() => {
+      if (!cancelled) callback();
+    }, 800);
+  };
+
+  const afterLoad = () => {
+    timer = window.setTimeout(requestIdle, 800);
+  };
+
+  if (document.readyState === 'complete') {
+    afterLoad();
+  } else {
+    window.addEventListener('load', afterLoad, { once: true });
+  }
+
+  return () => {
+    cancelled = true;
+    window.removeEventListener('load', afterLoad);
+    if (timer !== null) window.clearTimeout(timer);
+    if (idleHandle !== null) {
+      const win = window as Window & { cancelIdleCallback?: (handle: number) => void };
+      win.cancelIdleCallback?.(idleHandle);
+    }
+  };
+}
+
 export function useWaveformData({
   initialMeta,
+  initialData = null,
   enabled = true,
+  deferLoad = false,
   pollMeta,
   pollIntervalMs = 5000,
   maxPollMs = 60000
 }: UseWaveformDataOptions): UseWaveformDataResult {
   const normalizedInitialMeta = useMemo(() => normalizeMeta(initialMeta), [initialMeta]);
   const [meta, setMeta] = useState<WaveformAssetMeta>(normalizedInitialMeta);
-  const [data, setData] = useState<WaveformData | null>(null);
+  const [data, setData] = useState<WaveformRenderData | null>(initialData);
+  const dataIdentityRef = useRef<string | null>(normalizedInitialMeta.path ?? null);
+  const hasRenderableData = Boolean(data);
   const [uiState, setUiState] = useState<UiState>(() => {
     if (!enabled) return 'idle';
+    if (initialData) return 'ready';
     if (normalizedInitialMeta.status === 'ready' && normalizedInitialMeta.path) return 'loading';
     if (normalizedInitialMeta.status === 'failed') return 'failed';
     if (isPendingStatus(normalizedInitialMeta.status)) return 'loading';
@@ -55,11 +107,26 @@ export function useWaveformData({
   });
 
   useEffect(() => {
+    const previousIdentity = dataIdentityRef.current;
+    const nextIdentity = normalizedInitialMeta.path ?? null;
+    const sameWaveform = previousIdentity === nextIdentity;
+
     setMeta(normalizedInitialMeta);
-    setData(null);
+    setData(currentData => {
+      if (sameWaveform && currentData) {
+        return currentData;
+      }
+      dataIdentityRef.current = nextIdentity;
+      return initialData;
+    });
 
     if (!enabled) {
       setUiState('idle');
+      return;
+    }
+
+    if ((sameWaveform && data) || initialData) {
+      setUiState('ready');
       return;
     }
 
@@ -79,7 +146,7 @@ export function useWaveformData({
     }
 
     setUiState('idle');
-  }, [enabled, normalizedInitialMeta]);
+  }, [enabled, initialData, normalizedInitialMeta]);
 
   useEffect(() => {
     if (!enabled || meta.status !== 'ready' || !meta.path) {
@@ -87,23 +154,32 @@ export function useWaveformData({
     }
 
     let cancelled = false;
-    setUiState('loading');
+    const waveformPath = meta.path;
+    const load = () => {
+      if (cancelled) return;
+      setUiState(current => (hasRenderableData ? 'ready' : current === 'ready' ? current : 'loading'));
 
-    WaveformService.loadWaveform(meta.path)
-      .then(nextData => {
-        if (cancelled) return;
-        setData(nextData);
-        setUiState('ready');
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setUiState('failed');
-      });
+      WaveformService.loadWaveform(waveformPath)
+        .then(nextData => {
+          if (cancelled) return;
+          dataIdentityRef.current = waveformPath;
+          setData(nextData);
+          setUiState('ready');
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setUiState(hasRenderableData ? 'ready' : 'failed');
+        });
+    };
+
+    const cleanupDeferredLoad = deferLoad ? scheduleSettledLoad(load) : null;
+    if (!deferLoad) load();
 
     return () => {
       cancelled = true;
+      cleanupDeferredLoad?.();
     };
-  }, [enabled, meta.path, meta.status]);
+  }, [deferLoad, enabled, hasRenderableData, meta.path, meta.status]);
 
   useEffect(() => {
     if (!enabled || !pollMeta || !isPendingStatus(meta.status)) {

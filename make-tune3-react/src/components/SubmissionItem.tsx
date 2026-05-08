@@ -69,7 +69,9 @@ export default function SubmissionItem({
   ]);
   const { data: waveformData, uiState: waveformUiState } = useWaveformData({
     initialMeta: waveformMeta,
-    enabled: Boolean(track.waveformPath)
+    initialData: track.waveformPreview ?? null,
+    enabled: Boolean(track.waveformPath || track.waveformPreview),
+    deferLoad: Boolean(track.waveformPreview)
   });
 
   const handlePlayClick = () => {

@@ -4,6 +4,7 @@ import { RecommendationService } from './recommendationService';
 import type { DashboardRecommendationItem } from './recommendationService';
 import type { DashboardCollaborationFeedMode } from './collaborationService';
 import type { Collaboration } from '../types/collaboration';
+import type { WaveformPreview, WaveformStatus } from '../types/waveform';
 
 export type DashboardFeedMode = 'recommended' | DashboardCollaborationFeedMode;
 
@@ -20,6 +21,11 @@ export interface DashboardFeedItem {
   score: number | null;
   highlightedTrackPath: string | null;
   backingTrackPath: string;
+  backingWaveformPath: string | null;
+  backingWaveformStatus: WaveformStatus | null;
+  backingWaveformBucketCount: number | null;
+  backingWaveformVersion: number | null;
+  backingWaveformPreview: WaveformPreview | null;
   publishedAt: number | null;
   submissionCloseAt: number | null;
   votingCloseAt: number | null;
@@ -92,24 +98,34 @@ const matchesTags = (item: Pick<DashboardFeedItem, 'collaborationTags' | 'collab
   return selectedTags.every(tag => keys.includes(tag));
 };
 
-const mapRecommendationItem = (item: DashboardRecommendationItem): DashboardFeedItem => ({
+const mapRecommendationItem = (
+  item: DashboardRecommendationItem,
+  collab?: Collaboration | null
+): DashboardFeedItem => ({
   collaborationId: item.collaborationId,
-  collaborationName: item.collaborationName,
-  collaborationStatus: item.collaborationStatus,
-  collaborationDescription: item.collaborationDescription,
-  collaborationTags: item.collaborationTags,
-  collaborationTagsKey: item.collaborationTags.map(tag => TagUtils.normalizeTag(tag)).filter(Boolean),
-  projectId: item.projectId,
+  collaborationName: collab?.name || item.collaborationName,
+  collaborationStatus: collab?.status || item.collaborationStatus,
+  collaborationDescription: collab?.description || item.collaborationDescription,
+  collaborationTags: Array.isArray(collab?.tags) ? collab.tags : item.collaborationTags,
+  collaborationTagsKey: Array.isArray(collab?.tagsKey)
+    ? collab.tagsKey
+    : item.collaborationTags.map(tag => TagUtils.normalizeTag(tag)).filter(Boolean),
+  projectId: collab?.projectId || item.projectId,
   projectName: item.projectName,
   rank: item.rank,
   score: item.score,
   highlightedTrackPath: item.highlightedTrackPath,
-  backingTrackPath: item.backingTrackPath,
-  publishedAt: item.publishedAt,
-  submissionCloseAt: item.submissionCloseAt,
-  votingCloseAt: item.votingCloseAt,
-  completedAt: null,
-  updatedAt: item.updatedAt,
+  backingTrackPath: collab?.backingTrackPath || item.backingTrackPath,
+  backingWaveformPath: collab?.backingWaveformPath || item.backingWaveformPath,
+  backingWaveformStatus: collab?.backingWaveformStatus || item.backingWaveformStatus,
+  backingWaveformBucketCount: collab?.backingWaveformBucketCount ?? item.backingWaveformBucketCount,
+  backingWaveformVersion: collab?.backingWaveformVersion ?? item.backingWaveformVersion,
+  backingWaveformPreview: collab?.backingWaveformPreview ?? item.backingWaveformPreview,
+  publishedAt: toMillisOrNull(collab?.publishedAt) ?? item.publishedAt,
+  submissionCloseAt: toMillisOrNull(collab?.submissionCloseAt) ?? item.submissionCloseAt,
+  votingCloseAt: toMillisOrNull(collab?.votingCloseAt) ?? item.votingCloseAt,
+  completedAt: toMillisOrNull(collab?.completedAt),
+  updatedAt: toMillisOrNull(collab?.updatedAt) ?? item.updatedAt,
   submissionDurationSeconds: item.submissionDurationSeconds,
   votingDurationSeconds: item.votingDurationSeconds,
   generatedAt: item.generatedAt,
@@ -133,6 +149,11 @@ const mapCollaborationItem = (
   score: null,
   highlightedTrackPath: null,
   backingTrackPath: collab.backingTrackPath || '',
+  backingWaveformPath: collab.backingWaveformPath || null,
+  backingWaveformStatus: collab.backingWaveformStatus || null,
+  backingWaveformBucketCount: collab.backingWaveformBucketCount ?? null,
+  backingWaveformVersion: collab.backingWaveformVersion ?? null,
+  backingWaveformPreview: collab.backingWaveformPreview ?? null,
   publishedAt: toMillisOrNull(collab.publishedAt),
   submissionCloseAt: toMillisOrNull(collab.submissionCloseAt),
   votingCloseAt: toMillisOrNull(collab.votingCloseAt),
@@ -164,8 +185,18 @@ export class DashboardFeedService {
 
     if (options.mode === 'recommended') {
       const recItems = await RecommendationService.listMyRecommendations();
+      const recCollabs = await Promise.all(
+        recItems.map(item =>
+          CollaborationService.getCollaboration(item.collaborationId).catch(() => null)
+        )
+      );
+      const recCollabMap = new Map(
+        recCollabs
+          .filter((collab): collab is Collaboration => Boolean(collab?.id))
+          .map(collab => [collab.id, collab])
+      );
       const mappedRecommendations = recItems
-        .map(mapRecommendationItem)
+        .map(item => mapRecommendationItem(item, recCollabMap.get(item.collaborationId)))
         .filter(item => matchesTags(item, normalizedTags))
         .slice(0, FEED_LIMIT);
 

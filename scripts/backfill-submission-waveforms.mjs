@@ -27,6 +27,7 @@ const ffmpegStatic = ffmpegStaticModule.default || ffmpegStaticModule;
 
 const WAVEFORM_VERSION = 1;
 const SUBMISSION_WAVEFORM_BUCKET_COUNT = 512;
+const WAVEFORM_PREVIEW_BUCKET_COUNT = 128;
 
 if (ffmpegStatic) {
   ffmpeg.setFfmpegPath(ffmpegStatic);
@@ -248,6 +249,47 @@ function buildWaveformPayload(samples, sampleRate, bucketCount, fileName) {
   };
 }
 
+function buildWaveformPreview(payload) {
+  const sourceMin = Array.isArray(payload?.peaks?.min) ? payload.peaks.min : [];
+  const sourceMax = Array.isArray(payload?.peaks?.max) ? payload.peaks.max : [];
+  const sourceCount = Math.min(sourceMin.length, sourceMax.length);
+  const bucketCount = WAVEFORM_PREVIEW_BUCKET_COUNT;
+  const minPeaks = new Array(bucketCount).fill(0);
+  const maxPeaks = new Array(bucketCount).fill(0);
+
+  if (sourceCount <= 0) {
+    return {
+      bucketCount,
+      version: payload?.version ?? WAVEFORM_VERSION,
+      peaks: { min: minPeaks, max: maxPeaks }
+    };
+  }
+
+  for (let i = 0; i < bucketCount; i += 1) {
+    const start = Math.floor((i * sourceCount) / bucketCount);
+    const end = Math.max(start + 1, Math.floor(((i + 1) * sourceCount) / bucketCount));
+    let min = 1;
+    let max = -1;
+
+    for (let j = start; j < Math.min(end, sourceCount); j += 1) {
+      min = Math.min(min, sourceMin[j]);
+      max = Math.max(max, sourceMax[j]);
+    }
+
+    minPeaks[i] = roundWaveformNumber(min === 1 ? 0 : min);
+    maxPeaks[i] = roundWaveformNumber(max === -1 ? 0 : max);
+  }
+
+  return {
+    bucketCount,
+    version: payload?.version ?? WAVEFORM_VERSION,
+    peaks: {
+      min: minPeaks,
+      max: maxPeaks
+    }
+  };
+}
+
 async function convertObjectToMonoWav({ sourcePath, wavPath }) {
   const sourceFile = bucket.file(sourcePath);
   await sourceFile.download({ destination: wavPath.replace(/\.wav$/, '.src') });
@@ -304,11 +346,41 @@ async function generateSubmissionWaveform({ collabId, submission }) {
       waveformBucketCount: payload.bucketCount,
       waveformVersion: payload.version,
       waveformError: null,
-      waveformStatus: 'ready'
+      waveformStatus: 'ready',
+      waveformPreview: buildWaveformPreview(payload)
     };
   } finally {
     await fs.rm(wavPath, { force: true });
   }
+}
+
+async function readWaveformPreviewFromPath(waveformPathRaw) {
+  const waveformPath = String(waveformPathRaw || '').trim();
+  if (!waveformPath) {
+    throw new Error('waveformPath required');
+  }
+
+  const [buffer] = await bucket.file(waveformPath).download();
+  const payload = JSON.parse(buffer.toString('utf8'));
+  return buildWaveformPreview(payload);
+}
+
+async function readExistingWaveformPreview(submission) {
+  return readWaveformPreviewFromPath(submission?.waveformPath);
+}
+
+function hasValidWaveformPreview(submission) {
+  return hasValidPreview(submission?.waveformPreview);
+}
+
+function hasValidPreview(preview) {
+  return (
+    preview?.bucketCount === WAVEFORM_PREVIEW_BUCKET_COUNT &&
+    Array.isArray(preview?.peaks?.min) &&
+    Array.isArray(preview?.peaks?.max) &&
+    preview.peaks.min.length === WAVEFORM_PREVIEW_BUCKET_COUNT &&
+    preview.peaks.max.length === WAVEFORM_PREVIEW_BUCKET_COUNT
+  );
 }
 
 async function run() {
@@ -325,6 +397,8 @@ async function run() {
 
   let processed = 0;
   let generated = 0;
+  let previewed = 0;
+  let backingPreviewed = 0;
   let skipped = 0;
   let failed = 0;
 
@@ -347,7 +421,26 @@ async function run() {
 
       const hasWaveform = Boolean(String(submission?.waveformPath || '').trim());
       if (hasWaveform && !options.force) {
-        skipped += 1;
+        if (hasValidWaveformPreview(submission)) {
+          skipped += 1;
+          continue;
+        }
+
+        try {
+          console.log(`[submission-waveforms] deriving preview ${collabId}/${submission?.submissionId || 'unknown'}`);
+          submissions[i] = {
+            ...submission,
+            waveformPreview: await readExistingWaveformPreview(submission)
+          };
+          changed = true;
+          previewed += 1;
+        } catch (error) {
+          failed += 1;
+          const message = error instanceof Error ? error.message : String(error);
+          console.error(
+            `[submission-waveforms] preview failed ${collabId}/${submission?.submissionId || 'unknown'}: ${message}`
+          );
+        }
         continue;
       }
 
@@ -392,8 +485,48 @@ async function run() {
     }
   }
 
+  const collabRefs = [];
+  if (options.collabId) {
+    collabRefs.push(db.collection('collaborations').doc(options.collabId));
+  } else {
+    const snap = await db.collection('collaborations').get();
+    for (const doc of snap.docs) {
+      collabRefs.push(doc.ref);
+    }
+  }
+
+  for (const collabRef of collabRefs) {
+    const snap = await collabRef.get();
+    if (!snap.exists) continue;
+
+    const collab = snap.data() || {};
+    const waveformPath = String(collab.backingWaveformPath || '').trim();
+    if (!waveformPath || hasValidPreview(collab.backingWaveformPreview)) {
+      continue;
+    }
+
+    try {
+      console.log(`[submission-waveforms] deriving backing preview ${snap.id}`);
+      const backingWaveformPreview = await readWaveformPreviewFromPath(waveformPath);
+      if (!options.dryRun) {
+        await collabRef.set(
+          {
+            backingWaveformPreview,
+            updatedAt: Timestamp.now()
+          },
+          { merge: true }
+        );
+      }
+      backingPreviewed += 1;
+    } catch (error) {
+      failed += 1;
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[submission-waveforms] backing preview failed ${snap.id}: ${message}`);
+    }
+  }
+
   console.log(
-    `[submission-waveforms] done processed=${processed} generated=${generated} skipped=${skipped} failed=${failed} dryRun=${options.dryRun}`
+    `[submission-waveforms] done processed=${processed} generated=${generated} previewed=${previewed} backingPreviewed=${backingPreviewed} skipped=${skipped} failed=${failed} dryRun=${options.dryRun}`
   );
 }
 
