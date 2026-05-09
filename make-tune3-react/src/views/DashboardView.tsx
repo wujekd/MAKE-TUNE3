@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { DashboardService } from '../services/dashboardService';
 import { DashboardFeedService } from '../services/dashboardFeedService';
 import type { DashboardFeedItem, DashboardFeedMode } from '../services/dashboardFeedService';
@@ -30,6 +30,7 @@ function MixerPlaceholder() {
 export function DashboardView() {
   const [items, setItems] = useState<DashboardFeedItem[]>([]);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const hasLoadedFeedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<Array<{ key: string; name: string; count: number }>>([]);
@@ -127,7 +128,9 @@ export function DashboardView() {
     }
 
     let mounted = true;
-    setHasLoaded(false);
+    if (!hasLoadedFeedRef.current) {
+      setHasLoaded(false);
+    }
     setError(null);
 
     (async () => {
@@ -146,6 +149,7 @@ export function DashboardView() {
         setError(e?.message || 'Unable to load collaborations right now.');
       } finally {
         if (mounted) {
+          hasLoadedFeedRef.current = true;
           setHasLoaded(true);
         }
       }

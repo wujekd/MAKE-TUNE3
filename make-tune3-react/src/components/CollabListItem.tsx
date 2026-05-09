@@ -18,6 +18,7 @@ type CollabListItemProps = {
   subtitle?: ReactNode;
   children?: ReactNode;
   footerSlot?: ReactNode;
+  footerMetaSlot?: ReactNode;
   statusIndicator?: ReactNode;
   rightSlot?: ReactNode;
   isSelected?: boolean;
@@ -37,11 +38,12 @@ export function CollabListItem({
   subtitle,
   children,
   footerSlot,
+  footerMetaSlot,
   statusIndicator: _statusIndicator,
   rightSlot,
   isSelected,
   isActive,
-  progressPercent,
+  progressPercent: _progressPercent,
   listVariant,
   className,
   stageInfo
@@ -54,18 +56,10 @@ export function CollabListItem({
     className
   );
 
-  const progressStyle =
-    typeof progressPercent === 'number'
-      ? { width: `${100 - Math.min(progressPercent, 100)}%` }
-      : undefined;
-
   const status = stageInfo?.status || (subtitle ? String(subtitle) : '');
 
   const content = (
     <>
-      {typeof progressPercent === 'number' && progressPercent > 0 ? (
-        <div className="collab-progress-overlay" style={progressStyle} />
-      ) : null}
       <div className="collab-list-item__main">
         {stageInfo && (stageInfo.status === 'submission' || stageInfo.status === 'voting') && (
           <ItemStageProgressBar
@@ -78,19 +72,18 @@ export function CollabListItem({
           <div className="collab-list-item__title-block">
             <span className="collab-list-item__title">{title}</span>
           </div>
-          {rightSlot && <div className="collab-list-item__right">{rightSlot}</div>}
+          {status && <CollabStatusLabel status={status} className="collab-list-item__status-chip" />}
         </div>
 
         {children}
-
-        <div className="collab-list-item__stage-row">
-          {status && <CollabStatusLabel status={status} />}
-          {stageInfo?.label && (
-            <span className="collab-list-item__stage-label">{stageInfo.label}</span>
-          )}
-        </div>
-        {footerSlot && <div className="collab-list-item__footer">{footerSlot}</div>}
       </div>
+      {(rightSlot || footerSlot || footerMetaSlot) && (
+        <div className="collab-list-item__audio-row">
+          {rightSlot && <div className="collab-list-item__right">{rightSlot}</div>}
+          {footerSlot && <div className="collab-list-item__footer">{footerSlot}</div>}
+          {footerMetaSlot && <div className="collab-list-item__footer-meta">{footerMetaSlot}</div>}
+        </div>
+      )}
     </>
   );
 

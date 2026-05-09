@@ -329,6 +329,9 @@ export class AudioEngine {
       this.stopLevelLoopIfIdle();
     };
   }
+  getSampleRate(): number {
+    return this.audioContext?.sampleRate ?? 44100;
+  }
   onPlayer1Scope(callback: ScopeListener): () => void {
     this.player1ScopeListeners.add(callback);
     this.startLevelLoop();

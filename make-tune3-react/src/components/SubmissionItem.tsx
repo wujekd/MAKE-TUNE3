@@ -24,6 +24,7 @@ interface SubmissionItemProps {
   pendingFavoriteAction?: 'adding' | 'removing' | null;
   pendingLikeAction?: 'adding' | 'removing' | null;
   isVoting?: boolean;
+  animationDelayMs?: number;
 }
 
 export default function SubmissionItem({
@@ -42,7 +43,8 @@ export default function SubmissionItem({
   isFinal,
   pendingFavoriteAction = null,
   pendingLikeAction = null,
-  isVoting = false
+  isVoting = false,
+  animationDelayMs
 }: SubmissionItemProps) {
 
   const { user } = useAppStore(state => state.auth);
@@ -83,6 +85,45 @@ export default function SubmissionItem({
       setPendingPlay(true);
       onPlay(track.filePath, index, favorite)
     }
+  };
+
+  const seekSubmissionWhenReady = (ratio: number) => {
+    if (!engine) return;
+    const clampedRatio = Math.max(0, Math.min(1, ratio));
+    let attempts = 0;
+
+    const trySeek = () => {
+      attempts += 1;
+      const nextState = engine.getState();
+      const nextDuration = nextState.player1.duration || 0;
+      const isExpectedTrack = nextState.playerController.currentTrackId === index;
+      const isExpectedList = nextState.playerController.playingFavourite === favorite;
+
+      if (nextDuration > 0 && isExpectedTrack && isExpectedList) {
+        engine.seek(nextDuration * clampedRatio);
+        return;
+      }
+
+      if (attempts < 20) {
+        window.setTimeout(trySeek, 80);
+      }
+    };
+
+    window.setTimeout(trySeek, 0);
+  };
+
+  const handleWaveformSeek = (ratio: number) => {
+    if (!engine) return;
+    const clampedRatio = Math.max(0, Math.min(1, ratio));
+
+    if (isCurrentTrack && duration > 0) {
+      engine.seek(duration * clampedRatio);
+      return;
+    }
+
+    setPendingPlay(true);
+    onPlay(track.filePath, index, favorite);
+    seekSubmissionWhenReady(clampedRatio);
   };
 
   useEffect(() => {
@@ -148,15 +189,13 @@ export default function SubmissionItem({
           <WaveformStrip
             data={waveformData}
             state={waveformState}
+            animationDelayMs={animationDelayMs ?? Math.min(index, 10) * 160}
             progress={displayProgress / 100}
             currentTime={currentTime}
             duration={duration}
             isPlaying={isCurrentTrack && isPlaying}
-            isInteractive={Boolean(engine && isCurrentTrack)}
-            onSeek={ratio => {
-              if (!engine || !isCurrentTrack || duration <= 0) return;
-              engine.seek(duration * Math.max(0, Math.min(1, ratio)));
-            }}
+            isInteractive={Boolean(engine && waveformUiState === 'ready')}
+            onSeek={handleWaveformSeek}
           />
         </div>
         <div className="submission-button-scrim" aria-hidden="true" />

@@ -27,7 +27,7 @@ interface PlaybackState {
   togglePlayPause: () => void;
   playSubmission: (filePath: string, index: number, favorite?: boolean) => void;
   playPastSubmission: (index: number) => void;
-  playBackingTrack: (filePath: string, label?: string) => void;
+  playBackingTrack: (filePath: string, label?: string, startRatio?: number) => void;
   previewBackingFile: (file: File) => void;
   stopBackingPlayback: () => void;
   seekBackingPreviewByRatio: (ratio: number) => void;
@@ -249,7 +249,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => {
       })();
     },
 
-    playBackingTrack: (filePath, label) => {
+    playBackingTrack: (filePath, label, startRatio) => {
       if (!filePath) return;
       const engine = useAudioStore.getState().engine;
       if (!engine) return;
@@ -267,6 +267,13 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => {
           // Measure play start time
           const playStart = performance.now();
           await engine.playBackingOnly(resolved);
+          if (typeof startRatio === 'number') {
+            const state = engine.getState();
+            const duration = state.player2.duration || 0;
+            if (duration > 0) {
+              engine.seekBacking(duration * Math.max(0, Math.min(1, startRatio)));
+            }
+          }
           const playTime = performance.now() - playStart;
 
           const totalTime = performance.now() - startTime;

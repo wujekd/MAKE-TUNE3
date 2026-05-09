@@ -39,6 +39,15 @@ const getCollaborationRoute = (item: DashboardFeedItem): string => {
   return `/collab/${encodedId}`;
 };
 
+const getStageDetail = (status: string, label?: string | null): string => {
+  const trimmedLabel = (label || '').trim();
+  if (!trimmedLabel) return '';
+  const normalizedStatus = status.trim().toLowerCase();
+  if (!normalizedStatus) return trimmedLabel;
+  const escapedStatus = normalizedStatus.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return trimmedLabel.replace(new RegExp(`^${escapedStatus}\\s+`, 'i'), '').trim();
+};
+
 const loadingPlaceholders = [0, 1, 2];
 const feedOptions: Array<{ mode: DashboardFeedMode; label: string }> = [
   { mode: 'recommended', label: 'recommended' },
@@ -124,7 +133,7 @@ export function DashboardCollabsPanel({
               </div>
             </div>
           )}
-          {items.map(item => {
+          {items.map((item, itemIndex) => {
             const hasBacking = Boolean(item.backingTrackPath);
             const backingPath = item.backingTrackPath || undefined;
             const isCurrentBacking = hasBacking && backingPreview?.path === backingPath;
@@ -159,12 +168,22 @@ export function DashboardCollabsPanel({
                 }
               : null;
             const trackLabel = getTrackLabel(item.highlightedTrackPath);
+            const stageDetail = getStageDetail(stageInfo?.status || item.collaborationStatus, stageInfo?.label);
 
             return (
               <CollabListItem
                 key={`${item.collaborationId}-${item.source}`}
                 to={getCollaborationRoute(item)}
-                title={item.collaborationName || 'untitled collaboration'}
+                title={(
+                  <span className={styles.feedTitleLine}>
+                    <span className={styles.feedCollabName}>
+                      {item.collaborationName || 'untitled collaboration'}
+                    </span>
+                    {item.projectName && (
+                      <span className={styles.feedProjectInline}>{item.projectName}</span>
+                    )}
+                  </span>
+                )}
                 subtitle={item.collaborationStatus}
                 isActive={isCurrentBacking}
                 progressPercent={isCurrentBacking ? displayProgress : undefined}
@@ -187,6 +206,7 @@ export function DashboardCollabsPanel({
                     currentTime={backingCurrentTime}
                     duration={backingDuration}
                     isPlaying={isBackingPlaying}
+                    animationDelayMs={Math.min(itemIndex, 12) * 160}
                   />
                 ) : undefined}
                 rightSlot={
@@ -204,24 +224,7 @@ export function DashboardCollabsPanel({
                     }}
                   />
                 }
-              >
-                {(item.projectName || item.rank || item.collaborationDescription || trackLabel) && (
-                  <div className={styles.feedItemMetaBlock}>
-                    {item.projectName && (
-                      <div className={styles.feedProjectName}>{item.projectName}</div>
-                    )}
-                    <div className={styles.feedMetaRow}>
-                      {trackLabel && (
-                        <span className={styles.feedPill}>{trackLabel}</span>
-                      )}
-                      {!trackLabel && item.collaborationDescription && (
-                        <span className={styles.feedDescription}>{item.collaborationDescription}</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {item.collaborationTags.length > 0 && (
+                footerMetaSlot={item.collaborationTags.length > 0 ? (
                   <div className={styles.tagRow}>
                     {item.collaborationTags.map((tag, index) => (
                       <span key={`${item.collaborationId}-${tag}-${index}`} className={styles.tagChip}>
@@ -229,7 +232,24 @@ export function DashboardCollabsPanel({
                       </span>
                     ))}
                   </div>
+                ) : undefined}
+              >
+                {(stageDetail || item.rank || item.collaborationDescription || trackLabel) && (
+                  <div className={styles.feedItemMetaBlock}>
+                    <div className={styles.feedMetaRow}>
+                      {trackLabel && (
+                        <span className={styles.feedPill}>{trackLabel}</span>
+                      )}
+                      {!trackLabel && item.collaborationDescription && (
+                        <span className={styles.feedDescription}>{item.collaborationDescription}</span>
+                      )}
+                      {stageDetail && (
+                        <span className={styles.feedStageDetail}>{stageDetail}</span>
+                      )}
+                    </div>
+                  </div>
                 )}
+
               </CollabListItem>
             );
           })}

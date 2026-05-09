@@ -8,6 +8,10 @@ type WaveformStripState = 'loading' | 'ready' | 'placeholder';
 interface WaveformStripProps {
   data: WaveformRenderData | null;
   state: WaveformStripState;
+  initialUnderlayData?: WaveformRenderData | null;
+  animationDelayMs?: number;
+  initialCascadeProgress?: number;
+  repeatCascadeProgress?: number;
   progress?: number;
   currentTime?: number;
   duration?: number;
@@ -38,6 +42,10 @@ function easeOutCubic(value: number): number {
 export function WaveformStrip({
   data,
   state,
+  initialUnderlayData = null,
+  animationDelayMs = 0,
+  initialCascadeProgress = 0,
+  repeatCascadeProgress = 0.5,
   progress = 0,
   currentTime = 0,
   duration = 0,
@@ -50,6 +58,10 @@ export function WaveformStrip({
   const animationFrameRef = useRef<number | null>(null);
   const [canvasWidth, setCanvasWidth] = useState(0);
   const [canvasHeight, setCanvasHeight] = useState(0);
+  const [hoverRatio, setHoverRatio] = useState<number | null>(null);
+  const lastHoverRatioRef = useRef<number | null>(null);
+  const hoverIntensityRef = useRef(0);
+  const hoverTargetIntensityRef = useRef(0);
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
   const progressRef = useRef(clamp(progress));
   const currentTimeRef = useRef(Math.max(0, currentTime));
@@ -112,10 +124,23 @@ export function WaveformStrip({
 
     const nextSignature = getWaveformSignature(data);
     if (renderedSignatureRef.current !== nextSignature) {
-      underlayDataRef.current = renderedDataRef.current;
+      const wasAlreadyRendered = renderedSignatureRef.current !== null;
+      const initialUnderlaySignature = initialUnderlayData ? getWaveformSignature(initialUnderlayData) : null;
+      const shouldUseInitialUnderlay = !wasAlreadyRendered
+        && initialUnderlayData
+        && initialUnderlaySignature !== nextSignature;
+      underlayDataRef.current = shouldUseInitialUnderlay ? initialUnderlayData : renderedDataRef.current;
       renderedDataRef.current = data;
       renderedSignatureRef.current = nextSignature;
-      cascadeStartedAtRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
+      const now = typeof performance !== 'undefined' ? performance.now() : 0;
+      const cascadeStartProgress = shouldUseInitialUnderlay
+        ? repeatCascadeProgress
+        : wasAlreadyRendered
+          ? repeatCascadeProgress
+          : initialCascadeProgress;
+      const cascadeOffsetMs = clamp(cascadeStartProgress) * 950;
+      const cascadeDelayMs = cascadeStartProgress >= 1 ? 0 : Math.max(0, animationDelayMs);
+      cascadeStartedAtRef.current = now + cascadeDelayMs - cascadeOffsetMs;
     } else {
       renderedDataRef.current = data;
     }
@@ -134,11 +159,18 @@ export function WaveformStrip({
       const playedWidth = width * clamp(progressRatio);
       const playedColor = 'rgba(116, 214, 193, 0.98)';
       const unplayedColor = 'rgba(255, 255, 255, 0.26)';
+      const hoveredAlpha = 0.38;
       const minPeaks = waveformData.peaks.min;
       const maxPeaks = waveformData.peaks.max;
       const barWidth = width / Math.max(1, minPeaks.length);
+      const hoveredIndex = (() => {
+        if (options.alpha < 1) return -1;
+        const ratio = hoverRatio ?? (hoverIntensityRef.current > 0 ? lastHoverRatioRef.current : null);
+        if (ratio === null) return -1;
+        return Math.max(0, Math.min(minPeaks.length - 1, Math.floor(ratio * minPeaks.length)));
+      })();
+      const baseAlpha = options.alpha * 0.16;
       const previousAlpha = ctx.globalAlpha;
-      ctx.globalAlpha = options.alpha;
 
       for (let i = 0; i < minPeaks.length; i += 1) {
         const barRevealStart = i / Math.max(1, minPeaks.length);
@@ -146,18 +178,45 @@ export function WaveformStrip({
         if (barReveal <= 0) continue;
 
         const x = i * barWidth;
+        const isHovered = i === hoveredIndex;
         const amplitude = Math.max(Math.abs(minPeaks[i]), Math.abs(maxPeaks[i]));
         const naturalHeight = amplitude * drawableHeight * 0.98;
-        const barHeight = options.minHeight
+        const barHeightBase = options.minHeight
           ? Math.max(dpr, naturalHeight * barReveal)
           : naturalHeight * barReveal;
+        const intensity = isHovered ? hoverIntensityRef.current : 0;
+        const enhancedHeight = Math.min(drawableHeight, barHeightBase * 1.3 + Math.round(2 * dpr));
+        const barHeight = intensity > 0
+          ? barHeightBase + (enhancedHeight - barHeightBase) * intensity
+          : barHeightBase;
         if (barHeight <= 0) continue;
 
         const top = baseline - barHeight;
         const drawWidth = Math.max(dpr, barWidth - dpr);
 
+        ctx.globalAlpha = baseAlpha;
         ctx.fillStyle = x < playedWidth ? playedColor : unplayedColor;
         ctx.fillRect(x, top, drawWidth, barHeight);
+
+        if (isHovered && intensity > 0) {
+          const glowWidth = drawWidth * 5;
+          const glowHeight = barHeight * 2;
+          const glowTop = baseline - glowHeight;
+          const glowX = x - (glowWidth - drawWidth) / 2;
+          ctx.fillStyle = `rgba(239, 123, 58, ${0.14 * intensity})`;
+          ctx.fillRect(glowX, glowTop, glowWidth, glowHeight);
+
+          const innerGlowWidth = drawWidth * 2;
+          const innerGlowHeight = barHeight * 1.6;
+          const innerGlowTop = baseline - innerGlowHeight;
+          const innerGlowX = x - (innerGlowWidth - drawWidth) / 2;
+          ctx.fillStyle = `rgba(255, 155, 60, ${0.28 * intensity})`;
+          ctx.fillRect(innerGlowX, innerGlowTop, innerGlowWidth, innerGlowHeight);
+
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = `rgba(239, 123, 58, ${hoveredAlpha * intensity})`;
+          ctx.fillRect(x, top, drawWidth, barHeight);
+        }
       }
 
       ctx.globalAlpha = previousAlpha;
@@ -172,12 +231,15 @@ export function WaveformStrip({
 
       ctx.clearRect(0, 0, width, height);
 
+      const prevDrawAlpha = ctx.globalAlpha;
+      ctx.globalAlpha = 0.16;
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
       ctx.lineWidth = Math.max(1, dpr);
       ctx.beginPath();
       ctx.moveTo(0, baseline + 0.5);
       ctx.lineTo(width, baseline + 0.5);
       ctx.stroke();
+      ctx.globalAlpha = prevDrawAlpha;
 
       if (underlayDataRef.current) {
         drawWaveformLayer(underlayDataRef.current, progressRatio, 1, {
@@ -198,6 +260,16 @@ export function WaveformStrip({
 
     const drawFrame = () => {
       const now = typeof performance !== 'undefined' ? performance.now() : 0;
+
+      const hoverTarget = hoverTargetIntensityRef.current;
+      const hoverCurrent = hoverIntensityRef.current;
+      const intensityDiff = hoverTarget - hoverCurrent;
+      if (Math.abs(intensityDiff) > 0.0005) {
+        hoverIntensityRef.current = hoverCurrent + intensityDiff * 0.22;
+      } else {
+        hoverIntensityRef.current = hoverTarget;
+      }
+
       const elapsedSeconds = Math.max(0, (now - propTimestampRef.current) / 1000);
       let nextProgress = progressRef.current;
 
@@ -207,7 +279,9 @@ export function WaveformStrip({
 
       const cascadeProgress = draw(nextProgress, now);
 
-      if (isPlayingRef.current || cascadeProgress < 1) {
+      const hoverStillAnimating = Math.abs(hoverTargetIntensityRef.current - hoverIntensityRef.current) > 0.0005;
+
+      if (isPlayingRef.current || cascadeProgress < 1 || hoverStillAnimating) {
         animationFrameRef.current = window.requestAnimationFrame(drawFrame);
       } else {
         animationFrameRef.current = null;
@@ -217,7 +291,7 @@ export function WaveformStrip({
     const now = typeof performance !== 'undefined' ? performance.now() : 0;
     const cascadeProgress = draw(baseProgress, now);
 
-    if (isPlaying || cascadeProgress < 1) {
+    if (isPlaying || cascadeProgress < 1 || Math.abs(hoverTargetIntensityRef.current - hoverIntensityRef.current) > 0.0005) {
       animationFrameRef.current = window.requestAnimationFrame(drawFrame);
     }
 
@@ -227,7 +301,30 @@ export function WaveformStrip({
         animationFrameRef.current = null;
       }
     };
-  }, [baseProgress, canvasHeight, canvasWidth, data, dpr, isPlaying, state]);
+  }, [
+    animationDelayMs,
+    baseProgress,
+    canvasHeight,
+    canvasWidth,
+    data,
+    dpr,
+    hoverRatio,
+    initialCascadeProgress,
+    initialUnderlayData,
+    isPlaying,
+    repeatCascadeProgress,
+    state
+  ]);
+
+  const updateHoverRatio = (event: MouseEvent<HTMLCanvasElement>) => {
+    if (!isInteractive) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = clamp((event.clientX - rect.left) / rect.width);
+    setHoverRatio(ratio);
+    lastHoverRatioRef.current = ratio;
+    hoverTargetIntensityRef.current = 1;
+    hoverIntensityRef.current = Math.min(hoverIntensityRef.current, 0.55);
+  };
 
   const handleSeek = (event: MouseEvent<HTMLCanvasElement>) => {
     if (!isInteractive || !onSeek) return;
@@ -251,6 +348,11 @@ export function WaveformStrip({
         <canvas
           ref={canvasRef}
           className="waveform-strip__canvas"
+          onMouseMove={updateHoverRatio}
+          onMouseLeave={() => {
+            setHoverRatio(null);
+            hoverTargetIntensityRef.current = 0;
+          }}
           onClick={handleSeek}
           aria-label="Waveform preview"
         />

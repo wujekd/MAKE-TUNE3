@@ -72,7 +72,7 @@ export function CollaborationsPanel({
               </div>
             </div>
           )}
-          {filteredCollabs.map(c => {
+          {filteredCollabs.map((c, collabIndex) => {
             const s = String(c.status || '').toLowerCase().trim();
             const id = encodeURIComponent(c.id);
             const to =
@@ -124,6 +124,7 @@ export function CollaborationsPanel({
                     currentTime={backingCurrentTime}
                     duration={backingDuration}
                     isPlaying={isBackingPlaying}
+                    animationDelayMs={Math.min(collabIndex, 12) * 160}
                   />
                 ) : undefined}
                 rightSlot={
@@ -141,8 +142,7 @@ export function CollaborationsPanel({
                     }}
                   />
                 }
-              >
-                {c.tags && c.tags.length > 0 && (
+                footerMetaSlot={c.tags && c.tags.length > 0 ? (
                   <div className={styles.tagRow}>
                     {c.tags.map((tag, i) => (
                       <span key={i} className={styles.tagChip}>
@@ -150,8 +150,8 @@ export function CollaborationsPanel({
                       </span>
                     ))}
                   </div>
-                )}
-              </CollabListItem>
+                ) : undefined}
+              />
             );
           })}
         </div>

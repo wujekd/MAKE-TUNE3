@@ -1,9 +1,9 @@
 .collab-status-label {
-  font-size: 0.65rem;
+  font-size: 0.58rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: 3px 7px;
+  border-radius: 5px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(8, 12, 14, 0.34);
   display: inline-block;

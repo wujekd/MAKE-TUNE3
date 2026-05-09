@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { Collaboration } from '../types/collaboration';
 import type { WaveformAssetMeta } from '../types/waveform';
 import { CollaborationService } from '../services';
@@ -13,7 +13,10 @@ interface BackingWaveformPreviewProps {
   currentTime: number;
   duration: number;
   isPlaying: boolean;
+  animationDelayMs?: number;
 }
+
+const displayedWaveformIds = new Set<string>();
 
 function getBackingWaveformMeta(collaboration: Collaboration): WaveformAssetMeta {
   const data = collaboration as Collaboration & {
@@ -39,22 +42,32 @@ export function BackingWaveformPreview({
   progress,
   currentTime,
   duration,
-  isPlaying
+  isPlaying,
+  animationDelayMs = 0
 }: BackingWaveformPreviewProps) {
   const seekBackingPreviewByRatio = usePlaybackStore(s => s.seekBackingPreviewByRatio);
+  const playBackingTrack = usePlaybackStore(s => s.playBackingTrack);
   const initialMeta = useMemo(() => getBackingWaveformMeta(collaboration), [collaboration]);
+  const waveformDisplayId = collaboration.id;
+  const hasDisplayedBeforeRef = useRef(displayedWaveformIds.has(waveformDisplayId));
 
   const { data, uiState } = useWaveformData({
     initialMeta,
     initialData: collaboration.backingWaveformPreview ?? null,
     enabled: Boolean(collaboration.backingTrackPath),
-    deferLoad: Boolean(collaboration.backingWaveformPreview),
+    deferLoad: Boolean(collaboration.backingWaveformPreview) && !hasDisplayedBeforeRef.current,
     pollMeta: async () => {
       const nextCollab = await CollaborationService.getCollaboration(collaboration.id);
       if (!nextCollab) return null;
       return getBackingWaveformMeta(nextCollab);
     }
   });
+
+  useEffect(() => {
+    if (uiState === 'ready' && data) {
+      displayedWaveformIds.add(waveformDisplayId);
+    }
+  }, [data, uiState, waveformDisplayId]);
 
   const visualState = uiState === 'ready'
     ? 'ready'
@@ -66,14 +79,23 @@ export function BackingWaveformPreview({
     <WaveformStrip
       data={data}
       state={visualState}
+      initialUnderlayData={hasDisplayedBeforeRef.current ? collaboration.backingWaveformPreview ?? null : null}
+      animationDelayMs={animationDelayMs}
+      initialCascadeProgress={hasDisplayedBeforeRef.current ? 1 : 0}
+      repeatCascadeProgress={0}
       progress={progress}
       currentTime={currentTime}
       duration={duration}
       isPlaying={isPlaying}
-      isInteractive={isActive && isPlaying && uiState === 'ready'}
+      isInteractive={uiState === 'ready'}
       onSeek={ratio => {
-        if (!isActive || !isPlaying) return;
-        seekBackingPreviewByRatio(ratio);
+        if (isActive) {
+          seekBackingPreviewByRatio(ratio);
+          return;
+        }
+        if (collaboration.backingTrackPath) {
+          playBackingTrack(collaboration.backingTrackPath, collaboration.name || 'backing', ratio);
+        }
       }}
     />
   );
