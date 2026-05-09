@@ -144,6 +144,20 @@ const toMillis = (value: any): number | null => {
   return null;
 };
 
+const getObjectMetadataValue = (
+  metadata: Record<string, unknown> | undefined,
+  ...keys: string[]
+): string => {
+  if (!metadata) return "";
+  for (const key of keys) {
+    const value = metadata[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
+};
+
 const roundWaveformNumber = (value: number, digits = 6) =>
   Number(value.toFixed(digits));
 
@@ -1535,8 +1549,8 @@ export const finalizeBackingUpload = onObjectFinalized({ region: "europe-west1" 
   const waveformPath = `collabs/${collabId}/waveforms/backing-${waveformRevision}.json`;
 
   const metadata = object.metadata || {};
-  const uploadTokenId = String((metadata as any).backingUploadTokenId || "").trim();
-  const ownerUid = String((metadata as any).ownerUid || "").trim();
+  const uploadTokenId = getObjectMetadataValue(metadata, "backingUploadTokenId", "backinguploadtokenid");
+  const ownerUid = getObjectMetadataValue(metadata, "ownerUid", "owneruid");
   if (!uploadTokenId || !ownerUid) {
     return;
   }
@@ -1719,8 +1733,8 @@ export const finalizeSubmissionUpload = onObjectFinalized({ region: "europe-west
   const submissionId = path.basename(fileName, path.extname(fileName));
 
   const metadata = object.metadata || {};
-  const uploadTokenId = String((metadata as any).uploadTokenId || "").trim();
-  const ownerUid = String((metadata as any).ownerUid || "").trim();
+  const uploadTokenId = getObjectMetadataValue(metadata, "uploadTokenId", "uploadtokenid");
+  const ownerUid = getObjectMetadataValue(metadata, "ownerUid", "owneruid");
   if (!uploadTokenId || !ownerUid) {
     return;
   }
@@ -1919,8 +1933,8 @@ export const attachSubmissionMultitracks = onObjectFinalized({ region: "europe-w
   const submissionId = fileName.replace(/-multitracks\.zip$/i, "");
 
   const metadata = object.metadata || {};
-  const ownerUid = String((metadata as any).ownerUid || "").trim();
-  const metaSubmissionId = String((metadata as any).submissionId || "").trim();
+  const ownerUid = getObjectMetadataValue(metadata, "ownerUid", "owneruid");
+  const metaSubmissionId = getObjectMetadataValue(metadata, "submissionId", "submissionid");
   if (!ownerUid || (metaSubmissionId && metaSubmissionId !== submissionId)) {
     return;
   }

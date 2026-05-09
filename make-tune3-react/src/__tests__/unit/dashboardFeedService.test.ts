@@ -3,7 +3,8 @@ import { DashboardFeedService } from '../../services/dashboardFeedService';
 
 const hoisted = vi.hoisted(() => ({
   listMyRecommendations: vi.fn(),
-  listDashboardCollaborations: vi.fn()
+  listDashboardCollaborations: vi.fn(),
+  getCollaboration: vi.fn()
 }));
 
 vi.mock('../../services/recommendationService', () => ({
@@ -14,7 +15,8 @@ vi.mock('../../services/recommendationService', () => ({
 
 vi.mock('../../services/collaborationService', () => ({
   CollaborationService: {
-    listDashboardCollaborations: hoisted.listDashboardCollaborations
+    listDashboardCollaborations: hoisted.listDashboardCollaborations,
+    getCollaboration: hoisted.getCollaboration
   }
 }));
 
@@ -22,6 +24,7 @@ describe('DashboardFeedService', () => {
   beforeEach(() => {
     hoisted.listMyRecommendations.mockReset();
     hoisted.listDashboardCollaborations.mockReset();
+    hoisted.getCollaboration.mockReset();
   });
 
   it('returns filtered recommendations when personalized items exist', async () => {
@@ -48,6 +51,7 @@ describe('DashboardFeedService', () => {
         modelVersion: 'hybrid-v1'
       }
     ]);
+    hoisted.getCollaboration.mockResolvedValue(null);
 
     const result = await DashboardFeedService.loadFeed({
       mode: 'recommended',
@@ -58,6 +62,7 @@ describe('DashboardFeedService', () => {
     expect(result.resolvedMode).toBe('recommended');
     expect(result.items).toHaveLength(1);
     expect(result.items[0].collaborationName).toBe('Night Shift');
+    expect(hoisted.getCollaboration).toHaveBeenCalledWith('collab-1');
   });
 
   it('falls back to the latest feed when recommendations are empty', async () => {

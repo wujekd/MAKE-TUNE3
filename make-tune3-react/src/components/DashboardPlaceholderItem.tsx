@@ -68,13 +68,11 @@ function ActivityPlaceholder({
 
 function CollaborationPlaceholder({
   metaLineCount,
-  tagCount,
   showProgress,
   showAction,
   className
 }: Omit<DashboardPlaceholderItemProps, 'variant'>) {
   const resolvedMetaLineCount = metaLineCount ?? 1;
-  const resolvedTagCount = tagCount ?? 3;
 
   return (
     <div
@@ -86,24 +84,16 @@ function CollaborationPlaceholder({
           <div className="collab-list-item__title-block">
             <span className="collab-list-item__title dashboard-placeholder-item__bar dashboard-placeholder-item__bar--collab-title" />
           </div>
-          {showAction && (
-            <div className="collab-list-item__right">
-              <span className="list-play-button disabled dashboard-placeholder-item__button-shell" />
-            </div>
-          )}
+          <div className="collab-status-label collab-list-item__status-progress collab-list-item__status-progress--default dashboard-placeholder-item__status-progress">
+            <span className="dashboard-placeholder-item__merged-progress-fill" />
+            <span className="dashboard-placeholder-item__bar dashboard-placeholder-item__bar--merged-status" />
+            {showProgress && (
+              <span className="dashboard-placeholder-item__bar dashboard-placeholder-item__bar--merged-percent" />
+            )}
+          </div>
         </div>
 
-        <div className="dashboard-placeholder-item__tag-row">
-          {Array.from({ length: resolvedTagCount }, (_, index) => (
-            <span
-              key={index}
-              className="dashboard-placeholder-item__bar dashboard-placeholder-item__bar--tag"
-            />
-          ))}
-        </div>
-
-        <div className="collab-list-item__stage-row">
-          <span className="collab-status-label dashboard-placeholder-item__chip" />
+        <div className="dashboard-placeholder-item__collab-meta-row">
           {resolvedMetaLineCount > 0 && (
             <div className="dashboard-placeholder-item__inline-meta">
               {Array.from({ length: resolvedMetaLineCount }, (_, index) => (
@@ -119,13 +109,18 @@ function CollaborationPlaceholder({
             </div>
           )}
         </div>
-
-        {showProgress && (
-          <span className="dashboard-placeholder-item__progress-track">
-            <span className="dashboard-placeholder-item__progress-fill dashboard-placeholder-item__progress-fill--collaboration" />
-          </span>
-        )}
       </div>
+
+      {showAction && (
+        <div className="collab-list-item__audio-row">
+          <div className="collab-list-item__right">
+            <span className="list-play-button disabled dashboard-placeholder-item__button-shell" />
+          </div>
+          <div className="collab-list-item__footer dashboard-placeholder-item__waveform-shell">
+            <span className="dashboard-placeholder-item__waveform-line" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -10,14 +10,21 @@ interface ItemStageProgressBarProps {
   className?: string;
 }
 
-const clamp = (value: number) => Math.max(0, Math.min(1, value));
+export const clampStageProgress = (value: number) => Math.max(0, Math.min(1, value));
+
+export const formatStageDisplay = (value: StageStatus) => {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return 'stage';
+  const parts = trimmed.replace(/[-_]+/g, ' ').split(/\s+/);
+  return parts.map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+};
 
 const normalizeMs = (value?: number | null): number | null => {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return null;
   return value;
 };
 
-const computeProgress = (status: StageStatus, startAt?: number | null, endAt?: number | null) => {
+export const computeStageProgress = (status: StageStatus, startAt?: number | null, endAt?: number | null) => {
   if (String(status).toLowerCase() === 'completed') {
     return 1;
   }
@@ -28,17 +35,17 @@ const computeProgress = (status: StageStatus, startAt?: number | null, endAt?: n
     return 0;
   }
   if (endMs <= startMs) {
-    return clamp(Date.now() >= endMs ? 1 : 0);
+    return clampStageProgress(Date.now() >= endMs ? 1 : 0);
   }
 
   const now = Date.now();
   if (now <= startMs) return 0;
   if (now >= endMs) return 1;
-  return clamp((now - startMs) / (endMs - startMs));
+  return clampStageProgress((now - startMs) / (endMs - startMs));
 };
 
 export function ItemStageProgressBar({ status, startAt, endAt, className }: ItemStageProgressBarProps) {
-  const targetProgress = useMemo(() => computeProgress(status, startAt, endAt), [status, startAt, endAt]);
+  const targetProgress = useMemo(() => computeStageProgress(status, startAt, endAt), [status, startAt, endAt]);
   const [progress, setProgress] = useState(targetProgress);
 
   useEffect(() => {
@@ -46,7 +53,7 @@ export function ItemStageProgressBar({ status, startAt, endAt, className }: Item
   }, [targetProgress]);
 
   useEffect(() => {
-    const next = computeProgress(status, startAt, endAt);
+    const next = computeStageProgress(status, startAt, endAt);
     setProgress(next);
 
     const isCompleted = String(status).toLowerCase() === 'completed';
@@ -61,7 +68,7 @@ export function ItemStageProgressBar({ status, startAt, endAt, className }: Item
     }
 
     const id = window.setInterval(() => {
-      setProgress(computeProgress(status, startAt, endAt));
+      setProgress(computeStageProgress(status, startAt, endAt));
     }, 1000);
     return () => window.clearInterval(id);
   }, [status, startAt, endAt]);
@@ -74,15 +81,16 @@ export function ItemStageProgressBar({ status, startAt, endAt, className }: Item
     return 'default';
   }, [status]);
 
-  const width = `${Math.round(clamp(progress) * 100)}%`;
+  const width = `${Math.round(clampStageProgress(progress) * 100)}%`;
 
   return (
     <div
       className={['item-progress', className].filter(Boolean).join(' ')}
       role="progressbar"
+      aria-label={`${formatStageDisplay(status)} progress`}
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-valuenow={Math.round(clamp(progress) * 100)}
+      aria-valuenow={Math.round(clampStageProgress(progress) * 100)}
     >
       <div className="item-progress__track">
         <div className={`item-progress__fill item-progress__fill--${variant}`} style={{ width }} />

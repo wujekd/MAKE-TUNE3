@@ -65,7 +65,7 @@ export function DashboardCollabsPanel({
   availableTags,
   feedMode,
   onFeedModeChange,
-  metaLabel
+  metaLabel: _metaLabel
 }: DashboardCollabsPanelProps) {
   const audioState = useAudioStore(s => s.state);
   const playBackingTrack = usePlaybackStore(s => s.playBackingTrack);
@@ -103,8 +103,6 @@ export function DashboardCollabsPanel({
       </div>
 
       <div className={styles.historyPanel}>
-        {metaLabel && <p className={styles.feedMeta}>{metaLabel}</p>}
-
         <div className={`collab-list ${styles.collabList}`} aria-busy={!hasLoaded}>
           {!hasLoaded && !error && (
             <div className={`${styles.placeholderList} dashboard-placeholder-stack`}>

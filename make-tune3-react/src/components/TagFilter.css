@@ -165,10 +165,32 @@
   position: relative;
   flex-wrap: nowrap;
   overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
   gap: 6px;
   padding: 6px;
+  min-height: 48px;
+  box-sizing: border-box;
   background: var(--primary1-700);
   border-radius: 6px;
+}
+
+.tag-filter--slim .tag-filter__tags::-webkit-scrollbar {
+  height: 8px;
+}
+
+.tag-filter--slim .tag-filter__tags::-webkit-scrollbar-track {
+  background: rgba(8, 15, 17, 0.28);
+  border-radius: 999px;
+}
+
+.tag-filter--slim .tag-filter__tags::-webkit-scrollbar-thumb {
+  background: rgba(48, 112, 113, 0.55);
+  border-radius: 999px;
+}
+
+.tag-filter--slim .tag-filter__tags--placeholder {
+  overflow-x: auto;
 }
 
 
