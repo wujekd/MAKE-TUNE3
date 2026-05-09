@@ -21,18 +21,16 @@ import styles from './CompletedView.module.css';
 export function CompletedView() {
   const { collabId } = useParams();
   const collaborationId = collabId;
-  const { user } = useAppStore(s => s.auth);
-  const {
-    currentCollaboration,
-    currentProject,
-    userCollaboration,
-    likeCollaboration,
-    unlikeCollaboration,
-    favoriteCollaboration,
-    unfavoriteCollaboration,
-    isUpdatingCollaborationLike,
-    isUpdatingCollaborationFavorite
-  } = useAppStore(s => s.collaboration);
+  const user = useAppStore(s => s.auth.user);
+  const currentCollaboration = useAppStore(s => s.collaboration.currentCollaboration);
+  const currentProject = useAppStore(s => s.collaboration.currentProject);
+  const userCollaboration = useAppStore(s => s.collaboration.userCollaboration);
+  const likeCollaboration = useAppStore(s => s.collaboration.likeCollaboration);
+  const unlikeCollaboration = useAppStore(s => s.collaboration.unlikeCollaboration);
+  const favoriteCollaboration = useAppStore(s => s.collaboration.favoriteCollaboration);
+  const unfavoriteCollaboration = useAppStore(s => s.collaboration.unfavoriteCollaboration);
+  const isUpdatingCollaborationLike = useAppStore(s => s.collaboration.isUpdatingCollaborationLike);
+  const isUpdatingCollaborationFavorite = useAppStore(s => s.collaboration.isUpdatingCollaborationFavorite);
   const audioCtx = useContext(AudioEngineContext);
   const engine = audioCtx?.engine;
   const navigate = useNavigate();

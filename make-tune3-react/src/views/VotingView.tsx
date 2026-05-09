@@ -25,35 +25,34 @@ export function VotingView() {
   const stageCheckInFlightRef = useRef(false);
 
   // get data from different slices
-  const { user } = useAppStore(state => state.auth);
-  const {
-    regularTracks,
-    favorites,
-    backingTrack,
-    loadCollaboration,
-    loadCollaborationAnonymousById,
-    addToFavorites,
-    removeFromFavorites,
-    likeTrack,
-    unlikeTrack,
-    voteFor,
-    isTrackListened,
-    isTrackLiked,
-    isTrackFavorite,
-    isLoadingCollaboration,
-    pendingFavoriteActions,
-    pendingTrackLikeActions,
-    pendingVotes,
-    userCollaboration,
-    likeCollaboration,
-    unlikeCollaboration,
-    favoriteCollaboration,
-    unfavoriteCollaboration,
-    isUpdatingCollaborationLike,
-    isUpdatingCollaborationFavorite
-  } = useAppStore(state => state.collaboration);
-  const { playSubmission } = useAppStore(state => state.playback);
-  const { currentProject, currentCollaboration } = useAppStore(state => state.collaboration);
+  const user = useAppStore(state => state.auth.user);
+  const regularTracks = useAppStore(state => state.collaboration.regularTracks);
+  const favorites = useAppStore(state => state.collaboration.favorites);
+  const backingTrack = useAppStore(state => state.collaboration.backingTrack);
+  const loadCollaboration = useAppStore(state => state.collaboration.loadCollaboration);
+  const loadCollaborationAnonymousById = useAppStore(state => state.collaboration.loadCollaborationAnonymousById);
+  const addToFavorites = useAppStore(state => state.collaboration.addToFavorites);
+  const removeFromFavorites = useAppStore(state => state.collaboration.removeFromFavorites);
+  const likeTrack = useAppStore(state => state.collaboration.likeTrack);
+  const unlikeTrack = useAppStore(state => state.collaboration.unlikeTrack);
+  const voteFor = useAppStore(state => state.collaboration.voteFor);
+  const isTrackListened = useAppStore(state => state.collaboration.isTrackListened);
+  const isTrackLiked = useAppStore(state => state.collaboration.isTrackLiked);
+  const isTrackFavorite = useAppStore(state => state.collaboration.isTrackFavorite);
+  const isLoadingCollaboration = useAppStore(state => state.collaboration.isLoadingCollaboration);
+  const pendingFavoriteActions = useAppStore(state => state.collaboration.pendingFavoriteActions);
+  const pendingTrackLikeActions = useAppStore(state => state.collaboration.pendingTrackLikeActions);
+  const pendingVotes = useAppStore(state => state.collaboration.pendingVotes);
+  const userCollaboration = useAppStore(state => state.collaboration.userCollaboration);
+  const likeCollaboration = useAppStore(state => state.collaboration.likeCollaboration);
+  const unlikeCollaboration = useAppStore(state => state.collaboration.unlikeCollaboration);
+  const favoriteCollaboration = useAppStore(state => state.collaboration.favoriteCollaboration);
+  const unfavoriteCollaboration = useAppStore(state => state.collaboration.unfavoriteCollaboration);
+  const isUpdatingCollaborationLike = useAppStore(state => state.collaboration.isUpdatingCollaborationLike);
+  const isUpdatingCollaborationFavorite = useAppStore(state => state.collaboration.isUpdatingCollaborationFavorite);
+  const playSubmission = useAppStore(state => state.playback.playSubmission);
+  const currentProject = useAppStore(state => state.collaboration.currentProject);
+  const currentCollaboration = useAppStore(state => state.collaboration.currentCollaboration);
 
   const engine = audioContext?.engine;
   const state = audioContext?.state;

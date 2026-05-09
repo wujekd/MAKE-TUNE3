@@ -33,7 +33,7 @@ interface FeedbackDisplay {
 }
 
 export function AdminFeedbackView() {
-  const { user } = useAppStore(state => state.auth);
+  const user = useAppStore(state => state.auth.user);
   const [copiedUid, setCopiedUid] = useState<string | null>(null);
 
   const handleCopyUid = async (uid: string) => {

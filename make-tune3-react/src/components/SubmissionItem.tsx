@@ -47,7 +47,7 @@ export default function SubmissionItem({
   animationDelayMs
 }: SubmissionItemProps) {
 
-  const { user } = useAppStore(state => state.auth);
+  const user = useAppStore(state => state.auth.user);
   const audioContext = useContext(AudioEngineContext);
   const [pendingPlay, setPendingPlay] = useState(false);
   const engine = audioContext?.engine;

@@ -15,7 +15,7 @@ type Props = {
 export function ModerationPanel({ tracks, onApprove, onReject }: Props) {
   const ctx = useContext(AudioEngineContext);
   const state = ctx?.state;
-  const { user } = useAppStore(state => state.auth);
+  const user = useAppStore(state => state.auth.user);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reporting, setReporting] = useState(false);

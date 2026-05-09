@@ -14,7 +14,9 @@ import styles from './ProjectEditView.module.css';
 export function ProjectEditView() {
   const { projectId } = useParams();
   const [searchParams] = useSearchParams();
-  const { user, loading: authLoading } = useAppStore(state => state.auth);
+  const userId = useAppStore(state => state.auth.user?.uid);
+  const isAdmin = useAppStore(state => state.auth.user?.isAdmin === true);
+  const authLoading = useAppStore(state => state.auth.loading);
   const setCurrentProject = useAppStore(s => s.collaboration.setCurrentProject);
   const [project, setProject] = useState<Project | null>(null);
   const [collabs, setCollabs] = useState<Collaboration[]>([]);
@@ -45,8 +47,7 @@ export function ProjectEditView() {
         const p = await ProjectService.getProject(projectId);
         if (!p) throw new Error('project not found');
 
-        const isOwner = user?.uid === p.ownerId;
-        const isAdmin = user?.isAdmin === true;
+        const isOwner = userId === p.ownerId;
 
         let c: Collaboration[];
         if (isOwner || isAdmin) {
@@ -67,7 +68,7 @@ export function ProjectEditView() {
       }
     })();
     return () => { mounted = false; };
-  }, [projectId, setCurrentProject, user?.uid, user?.isAdmin, authLoading]);
+  }, [projectId, setCurrentProject, userId, isAdmin, authLoading]);
 
   useEffect(() => {
     if (initialSelectionApplied) return;

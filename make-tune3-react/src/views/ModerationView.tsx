@@ -14,17 +14,15 @@ import styles from './ModerationView.module.css';
 export function ModerationView() {
   const audioContext = useContext(AudioEngineContext);
   const state = audioContext?.state;
-  const { user } = useAppStore(state => state.auth);
-  const {
-    regularTracks,
-    currentCollaboration,
-    loadCollaborationForModeration,
-    approveSubmission,
-    rejectSubmission,
-    isLoadingCollaboration
-  } = useAppStore(state => state.collaboration);
-  const { playSubmission } = useAppStore(state => state.playback);
-  const { currentProject } = useAppStore(state => state.collaboration);
+  const user = useAppStore(state => state.auth.user);
+  const regularTracks = useAppStore(state => state.collaboration.regularTracks);
+  const currentCollaboration = useAppStore(state => state.collaboration.currentCollaboration);
+  const loadCollaborationForModeration = useAppStore(state => state.collaboration.loadCollaborationForModeration);
+  const approveSubmission = useAppStore(state => state.collaboration.approveSubmission);
+  const rejectSubmission = useAppStore(state => state.collaboration.rejectSubmission);
+  const isLoadingCollaboration = useAppStore(state => state.collaboration.isLoadingCollaboration);
+  const playSubmission = useAppStore(state => state.playback.playSubmission);
+  const currentProject = useAppStore(state => state.collaboration.currentProject);
 
   const collabId = useParams().collabId as string;
   const navigate = useNavigate();

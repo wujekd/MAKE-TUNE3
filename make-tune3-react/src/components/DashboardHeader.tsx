@@ -46,8 +46,8 @@ export function DashboardHeader({
   activeCollabs
 }: DashboardHeaderProps) {
   const navigate = useNavigate();
-  const { user } = useAppStore(state => state.auth);
-  const { openFeedbackModal } = useUIStore();
+  const user = useAppStore(state => state.auth.user);
+  const openFeedbackModal = useUIStore(state => state.openFeedbackModal);
   return (
     <div className={styles.hero}>
       <div className={styles.heroHeader}>

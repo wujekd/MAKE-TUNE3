@@ -5,7 +5,8 @@ import { useAppStore } from '../stores/appStore';
 
 export function DebugInfo() {
   const audioContext = useContext(AudioEngineContext);
-  const { regularTracks, isTrackFavorite } = useAppStore(s => s.collaboration);
+  const regularTracks = useAppStore(s => s.collaboration.regularTracks);
+  const isTrackFavorite = useAppStore(s => s.collaboration.isTrackFavorite);
 
   if (!audioContext) {
     return <div>Loading audio engine...</div>;

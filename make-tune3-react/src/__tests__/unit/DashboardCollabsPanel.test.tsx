@@ -59,12 +59,11 @@ describe('DashboardCollabsPanel', () => {
 
     expect(screen.getByText('collaboration feed')).toBeInTheDocument();
     expect(screen.getByText('recommended')).toBeInTheDocument();
-    expect(screen.getByText('latest')).toBeInTheDocument();
+    expect(screen.getByText('newest')).toBeInTheDocument();
+    expect(screen.getByText('popular')).toBeInTheDocument();
     expect(screen.getByText('ending soon')).toBeInTheDocument();
-    expect(screen.getByText('completed')).toBeInTheDocument();
     expect(screen.getByText('Night Shift')).toBeInTheDocument();
     expect(screen.getByText('Moonlight Project')).toBeInTheDocument();
-    expect(screen.getByText('rank #1 · score 0.912')).toBeInTheDocument();
     expect(screen.getByText('highlight lead.wav')).toBeInTheDocument();
   });
 
@@ -80,8 +79,8 @@ describe('DashboardCollabsPanel', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByText('latest'));
-    expect(onFeedModeChange).toHaveBeenCalledWith('latest');
+    fireEvent.click(screen.getByText('newest'));
+    expect(onFeedModeChange).toHaveBeenCalledWith('newest');
   });
 
   it('shows a feed-specific empty state', () => {
@@ -95,6 +94,7 @@ describe('DashboardCollabsPanel', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('no collaborations match the current tags')).toBeInTheDocument();
+    expect(screen.getByText('No matches for these tags')).toBeInTheDocument();
+    expect(screen.getByText('Try removing a tag or switching feed order.')).toBeInTheDocument();
   });
 });

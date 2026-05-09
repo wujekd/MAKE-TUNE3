@@ -23,7 +23,8 @@ const formatDateTime = (value: number | null | undefined): string => {
 };
 
 export function UserActivityPanel() {
-  const { user, loading: authLoading } = useAppStore(state => state.auth);
+  const user = useAppStore(state => state.auth.user);
+  const authLoading = useAppStore(state => state.auth.loading);
   const loadingPlaceholders = [0, 1, 2];
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('activity');

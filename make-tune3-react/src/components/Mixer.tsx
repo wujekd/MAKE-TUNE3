@@ -108,20 +108,20 @@ export function Mixer({ state }: MixerProps) {
     });
     return unsubscribe;
   }, [audioCtx?.engine]);
-  const {
-    handleSubmissionVolumeChange,
-    handleBackingVolumeChange,
-    handleMasterVolumeChange,
-    handleTimeSliderChange,
-    previousTrack,
-    nextTrack,
-    togglePlayPause,
-    getCurrentTime,
-    getTotalTime,
-    getTimeSliderValue
-  } = useAppStore(state => state.playback);
+  const handleSubmissionVolumeChange = useAppStore(state => state.playback.handleSubmissionVolumeChange);
+  const handleBackingVolumeChange = useAppStore(state => state.playback.handleBackingVolumeChange);
+  const handleMasterVolumeChange = useAppStore(state => state.playback.handleMasterVolumeChange);
+  const handleTimeSliderChange = useAppStore(state => state.playback.handleTimeSliderChange);
+  const previousTrack = useAppStore(state => state.playback.previousTrack);
+  const nextTrack = useAppStore(state => state.playback.nextTrack);
+  const togglePlayPause = useAppStore(state => state.playback.togglePlayPause);
+  const getCurrentTime = useAppStore(state => state.playback.getCurrentTime);
+  const getTotalTime = useAppStore(state => state.playback.getTotalTime);
+  const getTimeSliderValue = useAppStore(state => state.playback.getTimeSliderValue);
 
-  const { regularTracks, favorites, pastStageTracks } = useAppStore(state => state.collaboration);
+  const regularTracks = useAppStore(state => state.collaboration.regularTracks);
+  const favorites = useAppStore(state => state.collaboration.favorites);
+  const pastStageTracks = useAppStore(state => state.collaboration.pastStageTracks);
 
   const handleTimeSliderChangeEvent = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value);

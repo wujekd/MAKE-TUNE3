@@ -13,7 +13,8 @@ export function LoginForm({ onSwitchToSignUp, onSwitchToForgotPassword }: LoginF
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { signIn, signInWithGoogle } = useAppStore(state => state.auth);
+  const signIn = useAppStore(state => state.auth.signIn);
+  const signInWithGoogle = useAppStore(state => state.auth.signInWithGoogle);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,4 +109,4 @@ export function LoginForm({ onSwitchToSignUp, onSwitchToForgotPassword }: LoginF
       </div>
     </div>
   );
-} 
+}

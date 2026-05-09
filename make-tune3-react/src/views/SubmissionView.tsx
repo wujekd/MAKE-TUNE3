@@ -25,19 +25,18 @@ import { CollaborationPreferenceBar } from '../components/CollaborationPreferenc
 
 export function SubmissionView() {
   const audioContext = useContext(AudioEngineContext);
-  const { user, loading: authLoading } = useAppStore(s => s.auth);
+  const user = useAppStore(s => s.auth.user);
+  const authLoading = useAppStore(s => s.auth.loading);
   const userId = user?.uid ?? null;
-  const {
-    currentCollaboration,
-    userCollaboration,
-    refreshCollaborationStatus,
-    likeCollaboration,
-    unlikeCollaboration,
-    favoriteCollaboration,
-    unfavoriteCollaboration,
-    isUpdatingCollaborationLike,
-    isUpdatingCollaborationFavorite
-  } = useAppStore(s => s.collaboration);
+  const currentCollaboration = useAppStore(s => s.collaboration.currentCollaboration);
+  const userCollaboration = useAppStore(s => s.collaboration.userCollaboration);
+  const refreshCollaborationStatus = useAppStore(s => s.collaboration.refreshCollaborationStatus);
+  const likeCollaboration = useAppStore(s => s.collaboration.likeCollaboration);
+  const unlikeCollaboration = useAppStore(s => s.collaboration.unlikeCollaboration);
+  const favoriteCollaboration = useAppStore(s => s.collaboration.favoriteCollaboration);
+  const unfavoriteCollaboration = useAppStore(s => s.collaboration.unfavoriteCollaboration);
+  const isUpdatingCollaborationLike = useAppStore(s => s.collaboration.isUpdatingCollaborationLike);
+  const isUpdatingCollaborationFavorite = useAppStore(s => s.collaboration.isUpdatingCollaborationFavorite);
   const { collabId } = useParams();
   const collaborationId = collabId;
   const loader = useCollaborationLoader(collaborationId);

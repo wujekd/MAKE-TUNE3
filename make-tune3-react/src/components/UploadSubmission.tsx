@@ -13,8 +13,8 @@ interface UploadSubmissionProps {
 
 export function UploadSubmission({ collaborationId, backingUrl, onSubmitSuccess }: UploadSubmissionProps) {
   const audioContext = useContext(AudioEngineContext);
-  const { user } = useAppStore(s => s.auth);
-  const { currentCollaboration } = useAppStore(s => s.collaboration);
+  const user = useAppStore(s => s.auth.user);
+  const currentCollaboration = useAppStore(s => s.collaboration.currentCollaboration);
   const playBackingTrack = usePlaybackStore(s => s.playBackingTrack);
   const backingPreview = usePlaybackStore(s => s.backingPreview);
   const togglePlayPause = useAppStore(s => s.playback.togglePlayPause);

@@ -3,21 +3,21 @@ import { useAppStore } from '../stores/appStore';
 import { useAudioStore, useUIStore } from '../stores';
 
 export function StoreTest() {
-  const { user } = useAppStore(state => state.auth);
-  const { 
-    regularTracks, 
-    allTracks, 
-    pastStageTracks, 
-    backingTrack,
-    currentCollaboration,
-    userCollaboration,
-    isLoadingCollaboration,
-    isLoadingProject,
-    isTrackFavorite,
-    isTrackListened
-  } = useAppStore(state => state.collaboration);
-  const { isLoading, setLoading } = useUIStore();
-  const { state: audioState, engine: audioEngine } = useAudioStore();
+  const user = useAppStore(state => state.auth.user);
+  const regularTracks = useAppStore(state => state.collaboration.regularTracks);
+  const allTracks = useAppStore(state => state.collaboration.allTracks);
+  const pastStageTracks = useAppStore(state => state.collaboration.pastStageTracks);
+  const backingTrack = useAppStore(state => state.collaboration.backingTrack);
+  const currentCollaboration = useAppStore(state => state.collaboration.currentCollaboration);
+  const userCollaboration = useAppStore(state => state.collaboration.userCollaboration);
+  const isLoadingCollaboration = useAppStore(state => state.collaboration.isLoadingCollaboration);
+  const isLoadingProject = useAppStore(state => state.collaboration.isLoadingProject);
+  const isTrackFavorite = useAppStore(state => state.collaboration.isTrackFavorite);
+  const isTrackListened = useAppStore(state => state.collaboration.isTrackListened);
+  const isLoading = useUIStore(state => state.isLoading);
+  const setLoading = useUIStore(state => state.setLoading);
+  const audioState = useAudioStore(state => state.state);
+  const audioEngine = useAudioStore(state => state.engine);
 
   const handleTestLoading = () => {
     setLoading(!isLoading);
@@ -127,4 +127,4 @@ export function StoreTest() {
       <button onClick={handleTestLoading}>Toggle Loading</button>
     </details>
   );
-} 
+}

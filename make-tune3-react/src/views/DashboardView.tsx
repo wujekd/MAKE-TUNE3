@@ -44,7 +44,8 @@ export function DashboardView() {
   });
   const audioState = useAudioStore(s => s.state);
   const isAudioReady = useAudioStore(s => Boolean(s.engine && s.state));
-  const { loading: authLoading, user } = useAppStore(state => state.auth);
+  const authLoading = useAppStore(state => state.auth.loading);
+  const userId = useAppStore(state => state.auth.user?.uid);
   const stopBackingPlayback = usePlaybackStore(s => s.stopBackingPlayback);
 
   const [prefetchEnabled, setPrefetchEnabled] = useState(false);
@@ -158,7 +159,7 @@ export function DashboardView() {
     return () => {
       mounted = false;
     };
-  }, [authLoading, feedMode, selectedTags, user?.uid]);
+  }, [authLoading, feedMode, selectedTags, userId]);
 
   useEffect(() => {
     return () => {

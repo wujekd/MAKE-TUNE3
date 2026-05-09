@@ -13,7 +13,8 @@ function GateLoadingFallback() {
 
 export function OnboardingGate() {
   const location = useLocation();
-  const { user, loading } = useAppStore(state => state.auth);
+  const user = useAppStore(state => state.auth.user);
+  const loading = useAppStore(state => state.auth.loading);
 
   if (loading) {
     return <GateLoadingFallback />;

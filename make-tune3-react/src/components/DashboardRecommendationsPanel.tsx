@@ -36,7 +36,8 @@ const getRecommendationRoute = (item: DashboardRecommendationItem): string => {
 };
 
 export function DashboardRecommendationsPanel() {
-  const { user, loading: authLoading } = useAppStore(state => state.auth);
+  const user = useAppStore(state => state.auth.user);
+  const authLoading = useAppStore(state => state.auth.loading);
   const [items, setItems] = useState<DashboardRecommendationItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);

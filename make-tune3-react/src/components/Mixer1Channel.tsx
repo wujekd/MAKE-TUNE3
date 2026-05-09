@@ -24,15 +24,13 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
   const masterLastTsRef = useRef<number | null>(null);
   const channelLastTsRef = useRef<number | null>(null);
 
-  const {
-    handleBackingVolumeChange,
-    handleMasterVolumeChange,
-    handleTimeSliderChange,
-    togglePlayPause,
-    getCurrentTime,
-    getTotalTime,
-    getTimeSliderValue
-  } = useAppStore(s => s.playback);
+  const handleBackingVolumeChange = useAppStore(s => s.playback.handleBackingVolumeChange);
+  const handleMasterVolumeChange = useAppStore(s => s.playback.handleMasterVolumeChange);
+  const handleTimeSliderChange = useAppStore(s => s.playback.handleTimeSliderChange);
+  const togglePlayPause = useAppStore(s => s.playback.togglePlayPause);
+  const getCurrentTime = useAppStore(s => s.playback.getCurrentTime);
+  const getTotalTime = useAppStore(s => s.playback.getTotalTime);
+  const getTimeSliderValue = useAppStore(s => s.playback.getTimeSliderValue);
   const stopBackingPlayback = usePlaybackStore(s => s.stopBackingPlayback);
 
   // Window height responsive behavior

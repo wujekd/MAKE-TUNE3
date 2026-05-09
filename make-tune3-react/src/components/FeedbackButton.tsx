@@ -3,8 +3,8 @@ import { useAppStore } from '../stores/appStore';
 import './FeedbackButton.css';
 
 export function FeedbackButton() {
-  const { user } = useAppStore(state => state.auth);
-  const { openFeedbackModal } = useUIStore();
+  const user = useAppStore(state => state.auth.user);
+  const openFeedbackModal = useUIStore(state => state.openFeedbackModal);
 
   if (!user) return null;
 

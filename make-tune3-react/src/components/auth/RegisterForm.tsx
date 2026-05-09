@@ -14,7 +14,8 @@ export function RegisterForm({ onSwitchToSignIn }: RegisterFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { signUp, signInWithGoogle } = useAppStore(state => state.auth);
+  const signUp = useAppStore(state => state.auth.signUp);
+  const signInWithGoogle = useAppStore(state => state.auth.signInWithGoogle);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,4 +136,4 @@ export function RegisterForm({ onSwitchToSignIn }: RegisterFormProps) {
       </div>
     </div>
   );
-} 
+}

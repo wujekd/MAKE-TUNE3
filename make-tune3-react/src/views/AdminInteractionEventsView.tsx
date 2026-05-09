@@ -17,7 +17,7 @@ const formatDateTime = (timestamp: InteractionEvent['createdAt']) => {
 const displayValue = (value: string | null | undefined) => value || '—';
 
 export function AdminInteractionEventsView() {
-  const { user } = useAppStore(state => state.auth);
+  const user = useAppStore(state => state.auth.user);
   const [page, setPage] = useState<InteractionEventsPage | null>(null);
   const [cursorStack, setCursorStack] = useState<(InteractionEventsPage['nextCursor'] | null)[]>([null]);
   const [pageIndex, setPageIndex] = useState(0);

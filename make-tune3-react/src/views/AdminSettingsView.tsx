@@ -5,7 +5,7 @@ import { useAppStore } from '../stores/appStore';
 import { AdminLayout } from '../components/AdminLayout';
 
 export function AdminSettingsView() {
-  const { user: adminUser } = useAppStore(state => state.auth);
+  const adminUser = useAppStore(state => state.auth.user);
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

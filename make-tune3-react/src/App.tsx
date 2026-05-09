@@ -89,8 +89,9 @@ function LazyRoute({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
-  const { user, loading } = useAppStore(state => state.auth);
-  const { setShowAuth } = useUIStore();
+  const user = useAppStore(state => state.auth.user);
+  const loading = useAppStore(state => state.auth.loading);
+  const setShowAuth = useUIStore(state => state.setShowAuth);
 
   useEffect(() => {
     // console.log('app render - user:', user?.email, 'loading:', loading);

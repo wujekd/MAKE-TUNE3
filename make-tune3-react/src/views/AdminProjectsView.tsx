@@ -17,7 +17,7 @@ export function AdminProjectsView() {
   const [hasMore, setHasMore] = useState(false);
 
   const navigate = useNavigate();
-  const { user } = useAppStore(state => state.auth);
+  const user = useAppStore(state => state.auth.user);
 
   useEffect(() => {
     loadProjects(0, [null]);

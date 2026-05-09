@@ -19,7 +19,7 @@ const DECISION_COLORS: Record<AdminHsdTestResult['suggestedDecision'], string> =
 };
 
 export function AdminHsdTestView() {
-  const { user } = useAppStore(state => state.auth);
+  const user = useAppStore(state => state.auth.user);
   const [entityType, setEntityType] = useState<HsdTestEntityType>('project_name');
   const [entityId, setEntityId] = useState('admin-test-001');
   const [text, setText] = useState('Warm electronic collaboration for ambient producers.');

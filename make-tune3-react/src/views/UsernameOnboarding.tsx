@@ -8,7 +8,8 @@ import '../components/auth/Auth.css';
 export function UsernameOnboarding() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, loading: authLoading } = useAppStore(s => s.auth);
+  const user = useAppStore(s => s.auth.user);
+  const authLoading = useAppStore(s => s.auth.loading);
   const [username, setUsername] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -74,4 +75,3 @@ export function UsernameOnboarding() {
     </div>
   );
 }
-

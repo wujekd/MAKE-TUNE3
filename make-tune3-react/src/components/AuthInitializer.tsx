@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useAppStore } from '../stores/appStore';
 
 export function AuthInitializer({ children }: { children: React.ReactNode }) {
-  const { initializeAuth } = useAppStore(state => state.auth);
+  const initializeAuth = useAppStore(state => state.auth.initializeAuth);
 
   useEffect(() => {
     const unsubscribe = initializeAuth();
@@ -16,4 +16,4 @@ export function AuthInitializer({ children }: { children: React.ReactNode }) {
   }, [initializeAuth]);
 
   return <>{children}</>;
-} 
+}

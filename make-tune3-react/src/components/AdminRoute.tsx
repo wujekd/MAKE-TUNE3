@@ -4,7 +4,8 @@ import { useAppStore } from '../stores/appStore';
 
 export function AdminRoute({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const { user, loading } = useAppStore(s => s.auth);
+  const user = useAppStore(s => s.auth.user);
+  const loading = useAppStore(s => s.auth.loading);
 
   useEffect(() => {
     if (loading) return;
@@ -40,4 +41,3 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>;
 }
-

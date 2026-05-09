@@ -15,7 +15,7 @@ interface ReportDisplay {
 }
 
 export function AdminReportedView() {
-  const { user } = useAppStore(state => state.auth);
+  const user = useAppStore(state => state.auth.user);
   const [reports, setReports] = useState<ReportDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);

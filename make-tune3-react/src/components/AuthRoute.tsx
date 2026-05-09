@@ -7,7 +7,7 @@ import { needsUsernameOnboarding } from '../utils/onboarding';
 
 export function AuthRoute() {
   const navigate = useNavigate();
-  const { setShowAuth } = useUIStore();
+  const setShowAuth = useUIStore(state => state.setShowAuth);
   const user = useAppStore(s => s.auth.user);
   const [sp] = useSearchParams();
   const initialMode = sp.get('mode') === 'register' ? 'register' : 'login';

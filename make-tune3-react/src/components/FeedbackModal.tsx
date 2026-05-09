@@ -22,8 +22,10 @@ const CREATOR_QUESTIONS = [
 
 export function FeedbackModal() {
   const location = useLocation();
-  const { feedbackModal, closeFeedbackModal, markFeedbackSubmitted } = useUIStore();
-  const { user } = useAppStore(state => state.auth);
+  const feedbackModal = useUIStore(state => state.feedbackModal);
+  const closeFeedbackModal = useUIStore(state => state.closeFeedbackModal);
+  const markFeedbackSubmitted = useUIStore(state => state.markFeedbackSubmitted);
+  const user = useAppStore(state => state.auth.user);
 
   const [category, setCategory] = useState<FeedbackCategory>('other');
   const [message, setMessage] = useState('');
