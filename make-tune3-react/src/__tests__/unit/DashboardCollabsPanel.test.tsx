@@ -145,8 +145,8 @@ describe('DashboardCollabsPanel', () => {
 
     expect(submissionProgress).toHaveClass('collab-list-item__status-progress');
     expect(votingProgress).toHaveClass('collab-list-item__status-progress');
-    expect(within(submissionProgress).getByText('Submission')).toHaveClass('collab-list-item__status-progress-text');
-    expect(within(votingProgress).getByText('Voting')).toHaveClass('collab-list-item__status-progress-text');
+    expect(within(submissionProgress).getByText('Submission')).toHaveClass('stage-status-progress__text');
+    expect(within(votingProgress).getByText('Voting')).toHaveClass('stage-status-progress__text');
     expect(submissionProgress).toHaveAttribute('aria-valuenow', '50');
     expect(votingProgress).toHaveAttribute('aria-valuenow', '50');
   });
@@ -173,7 +173,7 @@ describe('DashboardCollabsPanel', () => {
     const completedProgress = within(completedRow).getByRole('progressbar', { name: 'Completed progress' });
 
     expect(completedProgress).toHaveClass('collab-list-item__status-progress');
-    expect(within(completedProgress).getByText('Completed')).toHaveClass('collab-list-item__status-progress-text');
+    expect(within(completedProgress).getByText('Completed')).toHaveClass('stage-status-progress__text');
     expect(completedProgress).toHaveAttribute('aria-valuenow', '100');
   });
 
@@ -192,10 +192,25 @@ describe('DashboardCollabsPanel', () => {
     const placeholder = container.querySelector('.dashboard-placeholder-item');
 
     expect(placeholder?.querySelector('.collab-list-item__status-progress')).toBeInTheDocument();
+    expect(placeholder?.querySelector('.stage-status-progress__fill')).toBeInTheDocument();
+    expect(placeholder?.querySelector('.stage-status-progress__text')).toBeInTheDocument();
+    expect(placeholder?.querySelector('.stage-status-progress__percent')).toBeInTheDocument();
     expect(placeholder?.querySelector('.dashboard-placeholder-item__merged-progress-fill')).toBeInTheDocument();
     expect(placeholder?.querySelector('.dashboard-placeholder-item__bar--merged-status')).toBeInTheDocument();
     expect(placeholder?.querySelector('.dashboard-placeholder-item__bar--merged-percent')).toBeInTheDocument();
     expect(placeholder?.querySelector('.collab-list-item__audio-row')).toBeInTheDocument();
     expect(placeholder?.querySelector('.collab-list-item__footer')).toBeInTheDocument();
+  });
+
+  it('matches the shared status/progress structure for activity placeholders', () => {
+    const { container } = render(<DashboardPlaceholderItem variant="activity" />);
+    const placeholder = container.querySelector('.dashboard-placeholder-item');
+
+    expect(placeholder?.querySelector('.user-activity-list-item__timeline-progress')).toBeInTheDocument();
+    expect(placeholder?.querySelector('.user-activity-list-item__deadline-pill')).toBeInTheDocument();
+    expect(placeholder?.querySelector('.user-activity-list-item__submission-pill')).toBeInTheDocument();
+    expect(placeholder?.querySelector('.stage-status-progress__fill')).toBeInTheDocument();
+    expect(placeholder?.querySelector('.stage-status-progress__text')).toBeInTheDocument();
+    expect(placeholder?.querySelector('.stage-status-progress__percent')).toBeInTheDocument();
   });
 });

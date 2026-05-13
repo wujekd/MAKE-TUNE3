@@ -1,0 +1,90 @@
+.stage-status-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  line-height: normal;
+  text-align: left;
+  box-sizing: border-box;
+  background: rgba(156, 163, 175, 0.1);
+  border-color: rgba(156, 163, 175, 0.22);
+  color: rgba(209, 213, 219, 0.72);
+  box-shadow: none;
+}
+
+.stage-status-progress__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--stage-status-progress, 0%);
+  z-index: -1;
+  border-radius: inherit;
+  background: rgba(8, 12, 14, 0.34);
+  transition: width 0.5s ease-out;
+}
+
+.stage-status-progress__text,
+.stage-status-progress__percent {
+  position: relative;
+  z-index: 1;
+  line-height: normal;
+  text-shadow: inherit;
+  white-space: nowrap;
+}
+
+.stage-status-progress__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.stage-status-progress__percent {
+  flex-shrink: 0;
+  margin-left: 8px;
+  font-size: inherit;
+  font-weight: inherit;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.72;
+}
+
+.stage-status-progress--submission {
+  color: rgba(240, 253, 244, 0.7);
+}
+
+.stage-status-progress--submission .stage-status-progress__fill {
+  background: rgba(13, 96, 46, 0.62);
+}
+
+.stage-status-progress--submission .stage-status-progress__text {
+  color: #f0fdf4;
+}
+
+.stage-status-progress--voting {
+  color: rgba(186, 230, 253, 0.7);
+}
+
+.stage-status-progress--voting .stage-status-progress__fill {
+  background: rgba(125, 211, 252, 0.2);
+}
+
+.stage-status-progress--voting .stage-status-progress__text {
+  color: #bae6fd;
+}
+
+.stage-status-progress--completed {
+  color: rgba(243, 244, 246, 0.7);
+}
+
+.stage-status-progress--completed .stage-status-progress__fill {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.stage-status-progress--completed .stage-status-progress__text,
+.stage-status-progress--completed .stage-status-progress__percent {
+  color: #f3f4f6;
+}

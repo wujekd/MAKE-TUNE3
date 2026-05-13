@@ -29,10 +29,7 @@
 }
 
 .dashboard-placeholder-item__bar,
-.dashboard-placeholder-item__chip,
 .dashboard-placeholder-item__button-shell,
-.dashboard-placeholder-item__progress-track,
-.dashboard-placeholder-item__progress-fill,
 .dashboard-placeholder-item__waveform-line,
 .dashboard-placeholder-item__merged-progress-fill {
   position: relative;
@@ -40,7 +37,6 @@
 }
 
 .dashboard-placeholder-item__bar,
-.dashboard-placeholder-item__chip,
 .dashboard-placeholder-item__button-shell {
   display: block;
   border-radius: 999px;
@@ -74,11 +70,6 @@
   width: 6.4rem;
 }
 
-.dashboard-placeholder-item__bar--progress-label {
-  width: 7.25rem;
-  height: 0.72rem;
-}
-
 .dashboard-placeholder-item__bar--activity-action {
   width: 3rem;
   height: 1.85rem;
@@ -105,16 +96,20 @@
   width: 2.25rem;
   height: 0.5rem;
   margin-left: auto;
+  flex-shrink: 0;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1)),
     rgba(255, 255, 255, 0.06);
 }
 
-.dashboard-placeholder-item__chip {
-  width: 5.25rem;
-  height: 1.35rem;
-  border-radius: 6px;
-  flex-shrink: 0;
+.dashboard-placeholder-item__bar--deadline {
+  width: min(70%, 7.5rem);
+  height: 0.5rem;
+}
+
+.dashboard-placeholder-item__bar--submission {
+  width: min(46%, 9rem);
+  height: 0.55rem;
 }
 
 .dashboard-placeholder-item__button-shell {
@@ -126,13 +121,24 @@
 
 .dashboard-placeholder-item__status-progress {
   min-height: 0;
-  --collab-status-progress: 48%;
+  --stage-status-progress: 48%;
 }
 
-.dashboard-placeholder-item__status-progress::before,
-.dashboard-placeholder-item__status-progress .collab-list-item__status-progress-fill,
-.dashboard-placeholder-item__status-progress .collab-list-item__status-progress-gloss {
-  display: none;
+.dashboard-placeholder-item__deadline-pill,
+.dashboard-placeholder-item__submission-pill {
+  pointer-events: none;
+}
+
+.dashboard-placeholder-item__deadline-pill {
+  justify-content: center;
+}
+
+.dashboard-placeholder-item__submission-pill {
+  justify-content: flex-start;
+}
+
+.dashboard-placeholder-item__status-progress .stage-status-progress__fill {
+  display: block;
 }
 
 .dashboard-placeholder-item__merged-progress-fill {
@@ -158,28 +164,6 @@
   gap: 0.5rem;
   flex: 1;
   flex-wrap: wrap;
-}
-
-.dashboard-placeholder-item__progress-track {
-  display: block;
-  width: 100%;
-  height: 6px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(48, 112, 113, 0.3);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.28);
-}
-
-.dashboard-placeholder-item__progress-fill {
-  display: block;
-  width: 41%;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.4));
-}
-
-.dashboard-placeholder-item__progress-fill--collaboration {
-  width: 48%;
 }
 
 .dashboard-placeholder-item__waveform-shell {

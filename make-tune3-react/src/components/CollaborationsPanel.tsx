@@ -31,7 +31,7 @@ export function CollaborationsPanel({
   const playBackingTrack = usePlaybackStore(s => s.playBackingTrack);
   const backingPreview = usePlaybackStore(s => s.backingPreview);
   const togglePlayPause = useAppStore(s => s.playback.togglePlayPause);
-  const loadingPlaceholders = [0, 1, 2, 3];
+  const loadingPlaceholders = [0, 1, 2];
 
   return (
     <div className={`project-history ${styles.historyColumn}`}>
@@ -48,7 +48,7 @@ export function CollaborationsPanel({
           {!hasLoaded && !error && (
             <div className={`${styles.placeholderList} dashboard-placeholder-stack`}>
               {loadingPlaceholders.map(index => (
-                <DashboardPlaceholderItem key={index} variant="collaboration" />
+                <DashboardPlaceholderItem key={index} variant="collaboration" metaLineCount={0} />
               ))}
             </div>
           )}

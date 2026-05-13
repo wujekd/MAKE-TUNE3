@@ -22,6 +22,25 @@ const formatDateTime = (value: number | null | undefined): string => {
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
 };
 
+const formatTimeLeft = (endAt: number | null | undefined): string => {
+  if (!endAt) return 'deadline unavailable';
+  const remainingMs = endAt - Date.now();
+  if (remainingMs <= 0) return 'deadline passed';
+
+  const totalMinutes = Math.max(1, Math.ceil(remainingMs / 60000));
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) {
+    return hours > 0 ? `${days}d ${hours}h left` : `${days}d left`;
+  }
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h ${minutes}m left` : `${hours}h left`;
+  }
+  return `${minutes}m left`;
+};
+
 export function UserActivityPanel() {
   const user = useAppStore(state => state.auth.user);
   const authLoading = useAppStore(state => state.auth.loading);
@@ -161,9 +180,29 @@ export function UserActivityPanel() {
                 ? `completed ${formatDateTime(votingCloseAt)}`
                 : 'completed'
               : status || 'unpublished');
-      if (stageLabel) {
-        metaLines.push(stageLabel);
-      }
+      const deadlineTarget = rawStageInfo?.endAt ?? (
+        status === 'submission'
+          ? submissionCloseAt
+          : status === 'voting'
+            ? votingCloseAt
+            : status === 'completed'
+              ? votingCloseAt
+              : null
+      );
+      const deadlineLabel =
+        status === 'completed'
+          ? `completed ${formatDateTime(deadlineTarget)}`
+          : status === 'submission' || status === 'voting'
+            ? formatTimeLeft(deadlineTarget)
+            : stageLabel || 'deadline unavailable';
+      const deadlineDetail =
+        status === 'submission'
+          ? `submission deadline ${formatDateTime(deadlineTarget)}`
+          : status === 'voting'
+            ? `voting deadline ${formatDateTime(deadlineTarget)}`
+            : status === 'completed'
+              ? `completed ${formatDateTime(deadlineTarget)}`
+              : stageLabel || undefined;
 
       // Download info
       metaLines.push(
@@ -173,12 +212,15 @@ export function UserActivityPanel() {
       );
 
       // Submission status info
-      let submissionStatusText = 'not submitted';
+      let submissionStatusText = 'not submitted yet';
+      let submissionTone: 'submitted' | 'missing' | 'deleted' = 'missing';
       if (submission) {
         if (submission.collaborationDeleted) {
           submissionStatusText = 'submission deleted';
+          submissionTone = 'deleted';
         } else {
           submissionStatusText = 'submitted';
+          submissionTone = 'submitted';
           if (submission.submittedAt) {
             submissionStatusText += ` ${formatDateTime(submission.submittedAt)}`;
           }
@@ -186,9 +228,6 @@ export function UserActivityPanel() {
             submissionStatusText += ` (${submission.moderationStatus})`;
           }
         }
-        metaLines.push(submissionStatusText);
-      } else {
-        metaLines.push('not submitted');
       }
 
       return {
@@ -197,6 +236,10 @@ export function UserActivityPanel() {
         subtitle: item.projectName || 'unknown project',
         status: status || 'unknown',
         metaLines,
+        deadlineLabel,
+        deadlineDetail,
+        submissionLabel: submissionStatusText,
+        submissionTone,
         to: route,
         actionLabel: 'open',
         stageInfo: rawStageInfo
@@ -277,6 +320,10 @@ export function UserActivityPanel() {
                 subtitle={item.subtitle}
                 status={item.status}
                 metaLines={item.metaLines}
+                deadlineLabel={item.deadlineLabel}
+                deadlineDetail={item.deadlineDetail}
+                submissionLabel={item.submissionLabel}
+                submissionTone={item.submissionTone}
                 to={item.to}
                 actionLabel={item.actionLabel}
                 stageInfo={item.stageInfo}

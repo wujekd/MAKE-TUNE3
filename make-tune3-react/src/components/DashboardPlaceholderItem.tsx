@@ -1,4 +1,5 @@
 import './DashboardPlaceholderItem.css';
+import './StageStatusProgress.css';
 
 type DashboardPlaceholderVariant = 'activity' | 'collaboration';
 
@@ -30,10 +31,26 @@ function ActivityPlaceholder({
       <div className="user-activity-list-item__body">
         <div className="user-activity-list-item__header">
           <span className="user-activity-list-item__title dashboard-placeholder-item__bar dashboard-placeholder-item__bar--activity-title" />
-          <span className="collab-status-label dashboard-placeholder-item__chip" />
         </div>
 
         <span className="user-activity-list-item__subtitle dashboard-placeholder-item__bar dashboard-placeholder-item__bar--activity-subtitle" />
+
+        <div className="user-activity-list-item__timeline-row">
+          <span className="collab-status-label stage-status-progress user-activity-list-item__timeline-progress dashboard-placeholder-item__status-progress">
+            <span className="stage-status-progress__fill dashboard-placeholder-item__merged-progress-fill" />
+            <span className="stage-status-progress__text dashboard-placeholder-item__bar dashboard-placeholder-item__bar--merged-status" />
+            <span className="stage-status-progress__percent dashboard-placeholder-item__bar dashboard-placeholder-item__bar--merged-percent" />
+          </span>
+          <span className="user-activity-list-item__deadline-pill dashboard-placeholder-item__deadline-pill">
+            <span className="dashboard-placeholder-item__bar dashboard-placeholder-item__bar--deadline" />
+          </span>
+        </div>
+
+        <div className="user-activity-list-item__submission-row">
+          <span className="user-activity-list-item__submission-pill dashboard-placeholder-item__submission-pill">
+            <span className="dashboard-placeholder-item__bar dashboard-placeholder-item__bar--submission" />
+          </span>
+        </div>
 
         <div className="user-activity-list-item__meta-column">
           {Array.from({ length: resolvedMetaLineCount }, (_, index) => (
@@ -48,15 +65,6 @@ function ActivityPlaceholder({
             />
           ))}
         </div>
-
-        {showProgress && (
-          <div className="user-activity-list-item__progress">
-            <span className="dashboard-placeholder-item__progress-track">
-              <span className="dashboard-placeholder-item__progress-fill" />
-            </span>
-            <span className="user-activity-list-item__progress-label dashboard-placeholder-item__bar dashboard-placeholder-item__bar--progress-label" />
-          </div>
-        )}
       </div>
 
       {showAction && (
@@ -84,11 +92,11 @@ function CollaborationPlaceholder({
           <div className="collab-list-item__title-block">
             <span className="collab-list-item__title dashboard-placeholder-item__bar dashboard-placeholder-item__bar--collab-title" />
           </div>
-          <div className="collab-status-label collab-list-item__status-progress collab-list-item__status-progress--default dashboard-placeholder-item__status-progress">
-            <span className="dashboard-placeholder-item__merged-progress-fill" />
-            <span className="dashboard-placeholder-item__bar dashboard-placeholder-item__bar--merged-status" />
+          <div className="collab-status-label stage-status-progress collab-list-item__status-progress dashboard-placeholder-item__status-progress">
+            <span className="stage-status-progress__fill dashboard-placeholder-item__merged-progress-fill" />
+            <span className="stage-status-progress__text dashboard-placeholder-item__bar dashboard-placeholder-item__bar--merged-status" />
             {showProgress && (
-              <span className="dashboard-placeholder-item__bar dashboard-placeholder-item__bar--merged-percent" />
+              <span className="stage-status-progress__percent dashboard-placeholder-item__bar dashboard-placeholder-item__bar--merged-percent" />
             )}
           </div>
         </div>
