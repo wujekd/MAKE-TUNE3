@@ -72,7 +72,8 @@ describe('DashboardCollabsPanel', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('collaboration feed')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /explore feed/i })).toBeInTheDocument();
+    expect(screen.getByText('Filter by Tags')).toBeInTheDocument();
     expect(screen.getByText('recommended')).toBeInTheDocument();
     expect(screen.getByText('newest')).toBeInTheDocument();
     expect(screen.getByText('popular')).toBeInTheDocument();

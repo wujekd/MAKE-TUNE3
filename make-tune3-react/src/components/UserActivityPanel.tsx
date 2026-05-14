@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { DownloadSummaryItem } from '../services/dashboardService';
 import type { SubmissionCollabSummary } from '../services/submissionService';
@@ -15,6 +15,13 @@ type ActiveTab = 'projects' | 'activity';
 const ProjectsTab = lazy(() =>
   import('./ProjectsTab').then(module => ({ default: module.ProjectsTab }))
 );
+
+interface UserActivityPanelProps {
+  createProjectRequestKey?: number;
+  projectsPanelRequestKey?: number;
+  activeTabOverride?: ActiveTab;
+  hideTabs?: boolean;
+}
 
 const formatDateTime = (value: number | null | undefined): string => {
   if (!value) return '—';
@@ -41,12 +48,19 @@ const formatTimeLeft = (endAt: number | null | undefined): string => {
   return `${minutes}m left`;
 };
 
-export function UserActivityPanel() {
+export function UserActivityPanel({
+  createProjectRequestKey = 0,
+  projectsPanelRequestKey = 0,
+  activeTabOverride,
+  hideTabs = false
+}: UserActivityPanelProps) {
   const user = useAppStore(state => state.auth.user);
   const authLoading = useAppStore(state => state.auth.loading);
   const loadingPlaceholders = [0, 1, 2];
+  const lastHandledCreateRequestRef = useRef(0);
+  const lastHandledProjectsRequestRef = useRef(0);
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>('activity');
+  const [activeTab, setActiveTab] = useState<ActiveTab>(activeTabOverride ?? 'activity');
 
   const [submissionSummaries, setSubmissionSummaries] = useState<SubmissionCollabSummary[]>([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
@@ -96,6 +110,12 @@ export function UserActivityPanel() {
 
 
   useEffect(() => {
+    if (activeTabOverride) {
+      setActiveTab(activeTabOverride);
+    }
+  }, [activeTabOverride]);
+
+  useEffect(() => {
     if (!user) {
       setSubmissionSummaries([]);
       setDownloadSummaries([]);
@@ -118,6 +138,26 @@ export function UserActivityPanel() {
       setProjectsTabRequested(true);
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (!createProjectRequestKey || createProjectRequestKey === lastHandledCreateRequestRef.current) {
+      return;
+    }
+
+    lastHandledCreateRequestRef.current = createProjectRequestKey;
+    setProjectsTabRequested(true);
+    setActiveTab('projects');
+  }, [createProjectRequestKey]);
+
+  useEffect(() => {
+    if (!projectsPanelRequestKey || projectsPanelRequestKey === lastHandledProjectsRequestRef.current) {
+      return;
+    }
+
+    lastHandledProjectsRequestRef.current = projectsPanelRequestKey;
+    setProjectsTabRequested(true);
+    setActiveTab('projects');
+  }, [projectsPanelRequestKey]);
 
 
   const activityList = useMemo(() => {
@@ -258,29 +298,35 @@ export function UserActivityPanel() {
 
   return (
     <div className="project-history user-activity">
-      <div className="user-activity__tabs">
-        <span
-          aria-hidden="true"
-          className={`user-activity__tab-slider ${activeTab === 'projects' ? 'user-activity__tab-slider--projects' : ''}`}
-        />
-        <button
-          className={`user-activity__tab ${activeTab === 'activity' ? 'user-activity__tab--active' : ''}`}
-          onClick={() => setActiveTab('activity')}
-        >
-          my activity
-        </button>
-        <button
-          className={`user-activity__tab ${activeTab === 'projects' ? 'user-activity__tab--active' : ''}`}
-          onClick={() => setActiveTab('projects')}
-        >
-          my projects
-        </button>
-      </div>
+      {!hideTabs && (
+        <div className="user-activity__tabs">
+          <span
+            aria-hidden="true"
+            className={`user-activity__tab-slider ${activeTab === 'projects' ? 'user-activity__tab-slider--projects' : ''}`}
+          />
+          <button
+            className={`user-activity__tab ${activeTab === 'activity' ? 'user-activity__tab--active' : ''}`}
+            onClick={() => setActiveTab('activity')}
+          >
+            my activity
+          </button>
+          <button
+            className={`user-activity__tab ${activeTab === 'projects' ? 'user-activity__tab--active' : ''}`}
+            onClick={() => setActiveTab('projects')}
+          >
+            my projects
+          </button>
+        </div>
+      )}
 
       {/* TODO: maek smoler */}
       {activeTab === 'projects' && projectsTabRequested && (
         <Suspense fallback={<div className="user-activity__loading"><LoadingSpinner size={24} /></div>}>
-          <ProjectsTab user={user} authLoading={authLoading} />
+          <ProjectsTab
+            user={user}
+            authLoading={authLoading}
+            createProjectRequestKey={createProjectRequestKey}
+          />
         </Suspense>
       )}
 

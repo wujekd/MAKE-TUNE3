@@ -1,10 +1,12 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { DashboardService } from '../services/dashboardService';
 import { DashboardFeedService } from '../services/dashboardFeedService';
 import type { DashboardFeedItem, DashboardFeedMode } from '../services/dashboardFeedService';
 import { TagService } from '../services/tagService';
 import { UserActivityPanel } from '../components/UserActivityPanel';
 import { DashboardHeader } from '../components/DashboardHeader';
+import type { DashboardWorkbench } from '../components/DashboardHeader';
 import { DashboardCollabsPanel } from '../components/DashboardCollabsPanel';
 import { AudioRouteBoundary } from '../components/AudioRouteBoundary';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -31,6 +33,10 @@ export function DashboardView() {
   const [items, setItems] = useState<DashboardFeedItem[]>([]);
   const [hasLoaded, setHasLoaded] = useState(false);
   const hasLoadedFeedRef = useRef(false);
+  const [activeWorkbench, setActiveWorkbench] = useState<DashboardWorkbench>('explore');
+  const [projectWorkbenchMode, setProjectWorkbenchMode] = useState<'projects' | 'activity'>('projects');
+  const [createProjectRequestKey, setCreateProjectRequestKey] = useState(0);
+  const [projectsPanelRequestKey, setProjectsPanelRequestKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<Array<{ key: string; name: string; count: number }>>([]);
@@ -45,6 +51,7 @@ export function DashboardView() {
   const audioState = useAudioStore(s => s.state);
   const isAudioReady = useAudioStore(s => Boolean(s.engine && s.state));
   const authLoading = useAppStore(state => state.auth.loading);
+  const user = useAppStore(state => state.auth.user);
   const userId = useAppStore(state => state.auth.user?.uid);
   const stopBackingPlayback = usePlaybackStore(s => s.stopBackingPlayback);
 
@@ -170,6 +177,24 @@ export function DashboardView() {
   // removed direct navigate wrapper; using <Link to> below
 
   // always render view; hydrate when data arrives
+  const handleCreateProjectRequest = () => {
+    setActiveWorkbench('projects');
+    setProjectWorkbenchMode('projects');
+    setCreateProjectRequestKey(key => key + 1);
+  };
+
+  const handleOpenProjectsRequest = () => {
+    setActiveWorkbench('projects');
+    setProjectWorkbenchMode('projects');
+    setProjectsPanelRequestKey(key => key + 1);
+  };
+
+  const handleOpenActivityRequest = () => {
+    setActiveWorkbench('projects');
+    setProjectWorkbenchMode('activity');
+  };
+
+  const feedModeLabel = feedMode.replace('_', ' ');
 
   return (
     <div className={`view-container ${styles.container}`}>
@@ -178,22 +203,107 @@ export function DashboardView() {
         totalSubmissions={stats.totalSubmissions}
         totalVotes={stats.totalVotes}
         activeCollabs={stats.activeCollabs}
+        activeWorkbench={activeWorkbench}
+        selectedTagCount={selectedTags.length}
+        feedModeLabel={feedModeLabel}
+        onWorkbenchChange={setActiveWorkbench}
+        onCreateProjectRequest={handleCreateProjectRequest}
+        onOpenProjectsRequest={handleOpenProjectsRequest}
       />
 
       <div className={styles.content}>
         <div className={styles.mainSplit}>
-          <UserActivityPanel />
-          <DashboardCollabsPanel
-            items={items}
-            hasLoaded={hasLoaded}
-            error={error}
-            selectedTags={selectedTags}
-            onTagsChange={setSelectedTags}
-            availableTags={availableTags}
-            feedMode={feedMode}
-            onFeedModeChange={setFeedMode}
-            metaLabel={feedMetaLabel}
-          />
+          {activeWorkbench === 'explore' && (
+            <DashboardCollabsPanel
+              items={items}
+              hasLoaded={hasLoaded}
+              error={error}
+              selectedTags={selectedTags}
+              onTagsChange={setSelectedTags}
+              availableTags={availableTags}
+              feedMode={feedMode}
+              onFeedModeChange={setFeedMode}
+              metaLabel={feedMetaLabel}
+            />
+          )}
+
+          {activeWorkbench === 'projects' && (
+            <>
+              <aside className={styles.controlColumn} aria-label="Project controls">
+                <h4 className={styles.panelTitle}>Project controls</h4>
+                <div className={styles.controlStack}>
+                  <div className={styles.controlGroup}>
+                    <div className={styles.controlLabel}>Mode</div>
+                    <button
+                      type="button"
+                      className={`${styles.workbenchToggle} ${projectWorkbenchMode === 'projects' ? styles.workbenchToggleActive : ''}`}
+                      onClick={handleOpenProjectsRequest}
+                    >
+                      My projects
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.workbenchToggle} ${projectWorkbenchMode === 'activity' ? styles.workbenchToggleActive : ''}`}
+                      onClick={handleOpenActivityRequest}
+                    >
+                      My activity
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.workbenchToggle}
+                      onClick={() => setActiveWorkbench('account')}
+                    >
+                      Account
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.workbenchToggle}
+                      onClick={() => setActiveWorkbench('explore')}
+                    >
+                      Explore feed
+                    </button>
+                  </div>
+                  <div className={styles.controlGroup}>
+                    <div className={styles.controlLabel}>Quick action</div>
+                    <button
+                      type="button"
+                      className={styles.workbenchPrimary}
+                      onClick={handleCreateProjectRequest}
+                    >
+                      Create project
+                    </button>
+                  </div>
+                  <div className={styles.filterSummary}>
+                    <strong>{user ? 'Project workbench' : 'Login required'}</strong>
+                    <span>{user ? 'Your project list and creation form stay in the center bay.' : 'Sign in to create or manage projects.'}</span>
+                  </div>
+                </div>
+              </aside>
+              <div className={`project-history ${styles.historyColumn}`}>
+                <UserActivityPanel
+                  createProjectRequestKey={createProjectRequestKey}
+                  projectsPanelRequestKey={projectsPanelRequestKey}
+                  activeTabOverride={projectWorkbenchMode}
+                  hideTabs
+                />
+              </div>
+            </>
+          )}
+
+          {activeWorkbench === 'account' && (
+            <AccountWorkbench
+              userName={user?.username || user?.email || 'Guest'}
+              isSignedIn={Boolean(user)}
+              onCreateProject={handleCreateProjectRequest}
+              onOpenProjects={handleOpenProjectsRequest}
+              onOpenActivity={handleOpenActivityRequest}
+              onExplore={() => setActiveWorkbench('explore')}
+            />
+          )}
+
+          {activeWorkbench === 'groups' && (
+            <GroupsWorkbench onExplore={() => setActiveWorkbench('explore')} />
+          )}
         </div>
         <div className={`mixer-theme ${styles.mixerColumn}`}>
           <AudioRouteBoundary defer deferMs={200}>
@@ -209,5 +319,137 @@ export function DashboardView() {
         </div>
       </div>
     </div>
+  );
+}
+
+function AccountWorkbench({
+  userName,
+  isSignedIn,
+  onCreateProject,
+  onOpenProjects,
+  onOpenActivity,
+  onExplore
+}: {
+  userName: string;
+  isSignedIn: boolean;
+  onCreateProject: () => void;
+  onOpenProjects: () => void;
+  onOpenActivity: () => void;
+  onExplore: () => void;
+}) {
+  return (
+    <>
+      <aside className={styles.controlColumn} aria-label="Account controls">
+        <h4 className={styles.panelTitle}>Profile controls</h4>
+        <div className={styles.controlStack}>
+          <div className={styles.controlGroup}>
+            <div className={styles.controlLabel}>Mode</div>
+            <button type="button" className={`${styles.workbenchToggle} ${styles.workbenchToggleActive}`}>
+              Account
+            </button>
+            <button type="button" className={styles.workbenchToggle} onClick={onOpenProjects}>
+              My projects
+            </button>
+            <button type="button" className={styles.workbenchToggle} onClick={onOpenActivity}>
+              My activity
+            </button>
+            <button type="button" className={styles.workbenchToggle} onClick={onExplore}>
+              Explore feed
+            </button>
+          </div>
+          <div className={styles.controlGroup}>
+            <div className={styles.controlLabel}>Quick action</div>
+            <button type="button" className={styles.workbenchPrimary} onClick={onCreateProject}>
+              Create project
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <section className={styles.workbenchPanel} aria-labelledby="account-workbench-title">
+        <div className={styles.workbenchPanelHeader}>
+          <div>
+            <h4 id="account-workbench-title" className={styles.workbenchTitle}>Account</h4>
+            <p className={styles.workbenchIntro}>
+              Profile settings stay available without disturbing the dashboard console.
+            </p>
+          </div>
+          {isSignedIn ? (
+            <Link className={styles.workbenchSecondaryLink} to="/account">Open full account</Link>
+          ) : (
+            <Link className={styles.workbenchSecondaryLink} to="/auth?mode=login">Login</Link>
+          )}
+        </div>
+        <div className={styles.shellGrid}>
+          <div className={styles.shellCard}>
+            <span>profile</span>
+            <strong>{userName}</strong>
+            <p>{isSignedIn ? 'Account details, visibility, and support live in the full account view.' : 'Login to manage profile settings.'}</p>
+          </div>
+          <div className={styles.shellCard}>
+            <span>projects</span>
+            <strong>My projects</strong>
+            <p>Use the project workbench for creation, moderation, and project history.</p>
+            <button type="button" className={styles.inlineAction} onClick={onOpenProjects}>
+              Open projects
+            </button>
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function GroupsWorkbench({ onExplore }: { onExplore: () => void }) {
+  return (
+    <>
+      <aside className={styles.controlColumn} aria-label="Group controls">
+        <h4 className={styles.panelTitle}>Group controls</h4>
+        <div className={styles.controlStack}>
+          <div className={styles.controlGroup}>
+            <div className={styles.controlLabel}>Group</div>
+            <button type="button" className={`${styles.workbenchToggle} ${styles.workbenchToggleActive}`}>
+              All groups
+            </button>
+            <button type="button" className={styles.workbenchToggle}>
+              Active groups
+            </button>
+            <button type="button" className={styles.workbenchToggle}>
+              Group settings
+            </button>
+          </div>
+          <div className={styles.filterSummary}>
+            <strong>Placeholder</strong>
+            <span>Groups are not implemented yet.</span>
+          </div>
+        </div>
+      </aside>
+
+      <section className={styles.workbenchPanel} aria-labelledby="groups-workbench-title">
+        <div className={styles.workbenchPanelHeader}>
+          <div>
+            <h4 id="groups-workbench-title" className={styles.workbenchTitle}>Groups</h4>
+            <p className={styles.workbenchIntro}>
+              Groups will be lightweight contexts for external communities, not a replacement social platform.
+            </p>
+          </div>
+          <button type="button" className={styles.workbenchSecondaryLink} onClick={onExplore}>
+            Back to explore
+          </button>
+        </div>
+        <div className={styles.shellGrid}>
+          <div className={styles.shellCard}>
+            <span>context</span>
+            <strong>External communities</strong>
+            <p>Future group links can point project owners toward whichever real-world community fits the collaboration.</p>
+          </div>
+          <div className={styles.shellCard}>
+            <span>status</span>
+            <strong>Not implemented</strong>
+            <p>This bay is intentionally a placeholder until the groups backend and product rules exist.</p>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }

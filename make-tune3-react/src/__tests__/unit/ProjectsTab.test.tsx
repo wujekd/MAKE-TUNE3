@@ -77,4 +77,29 @@ describe('ProjectsTab', () => {
 
     expect(hoisted.listMyProjectsOverview).toHaveBeenCalledTimes(1);
   });
+
+  it('opens the create form when requested from the dashboard CTA', async () => {
+    hoisted.listMyProjectsOverview.mockResolvedValue([
+      {
+        projectId: 'project-1',
+        projectName: 'Existing Project',
+        description: '',
+        createdAt: 1700000000000,
+        updatedAt: 1700000000000,
+        currentCollaboration: null
+      }
+    ]);
+
+    render(
+      <MemoryRouter>
+        <ProjectsTab
+          user={{ uid: 'user-1', email: 'user@example.com', tier: 'beta', projectCount: 1, bonusProjects: 0 } as any}
+          authLoading={false}
+          createProjectRequestKey={1}
+        />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByPlaceholderText('project name')).toBeInTheDocument();
+  });
 });

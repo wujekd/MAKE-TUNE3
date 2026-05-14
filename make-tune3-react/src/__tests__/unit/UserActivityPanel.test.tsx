@@ -98,4 +98,48 @@ describe('UserActivityPanel', () => {
       expect(hoisted.listMyDownloadedCollabs).toHaveBeenCalledTimes(1);
     });
   });
+
+  it('opens the projects panel when project creation is requested from the dashboard CTA', async () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <UserActivityPanel createProjectRequestKey={0} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(hoisted.listMySubmissionCollabs).toHaveBeenCalledTimes(1);
+      expect(hoisted.listMyDownloadedCollabs).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(
+      <MemoryRouter>
+        <UserActivityPanel createProjectRequestKey={1} />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId('projects-tab')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /my projects/i })).toHaveClass('user-activity__tab--active');
+  });
+
+  it('opens the projects panel without opening creation when my projects is requested', async () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <UserActivityPanel projectsPanelRequestKey={0} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(hoisted.listMySubmissionCollabs).toHaveBeenCalledTimes(1);
+      expect(hoisted.listMyDownloadedCollabs).toHaveBeenCalledTimes(1);
+    });
+
+    rerender(
+      <MemoryRouter>
+        <UserActivityPanel projectsPanelRequestKey={1} />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId('projects-tab')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /my projects/i })).toHaveClass('user-activity__tab--active');
+  });
 });

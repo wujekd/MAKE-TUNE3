@@ -17,6 +17,7 @@ import './UserActivityStyles.css';
 interface ProjectsTabProps {
   user: User | null;
   authLoading: boolean;
+  createProjectRequestKey?: number;
 }
 
 const formatDateTime = (value: number | null | undefined): string => {
@@ -25,8 +26,9 @@ const formatDateTime = (value: number | null | undefined): string => {
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
 };
 
-export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
+export function ProjectsTab({ user, authLoading, createProjectRequestKey = 0 }: ProjectsTabProps) {
   const userId = user?.uid;
+  const lastHandledCreateRequestRef = useRef(0);
   const [projects, setProjects] = useState<ProjectOverviewItem[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [projectsLoaded, setProjectsLoaded] = useState(false);
@@ -121,6 +123,20 @@ export function ProjectsTab({ user, authLoading }: ProjectsTabProps) {
       setShowForm(true);
     }
   }, [user, projectsLoading, projectsLoaded, projects.length, showForm]);
+
+  useEffect(() => {
+    if (!createProjectRequestKey || createProjectRequestKey === lastHandledCreateRequestRef.current) {
+      return;
+    }
+
+    lastHandledCreateRequestRef.current = createProjectRequestKey;
+    setMode('list');
+
+    if (canCreateProject(user)) {
+      setShowForm(true);
+      setFormError(null);
+    }
+  }, [createProjectRequestKey, user]);
 
   const handleCreateProject = async () => {
     if (!user) return;
