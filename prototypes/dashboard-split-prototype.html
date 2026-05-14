@@ -1,0 +1,1054 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard Split Prototype</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #071011;
+      --panel: rgba(13, 22, 24, 0.86);
+      --panel-strong: rgba(18, 31, 33, 0.92);
+      --line: rgba(68, 138, 137, 0.36);
+      --line-soft: rgba(68, 138, 137, 0.18);
+      --text: #f3f7f3;
+      --muted: rgba(228, 236, 232, 0.68);
+      --dim: rgba(228, 236, 232, 0.46);
+      --accent: #ef7b3a;
+      --accent-soft: rgba(239, 123, 58, 0.18);
+      --green: #2da66d;
+      --radius: 12px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(rgba(68, 138, 137, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(68, 138, 137, 0.035) 1px, transparent 1px),
+        radial-gradient(circle at 18% 8%, rgba(68, 138, 137, 0.16), transparent 32%),
+        var(--bg);
+      background-size: 80px 80px, 80px 80px, auto, auto;
+      color: var(--text);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .topbar {
+      height: 28px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      padding: 0 10px;
+      border-bottom: 1px solid rgba(68, 138, 137, 0.22);
+      background: rgba(13, 28, 29, 0.86);
+    }
+
+    .brand {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .brand span {
+      color: var(--accent);
+    }
+
+    .top-actions {
+      justify-self: end;
+      display: flex;
+      gap: 8px;
+    }
+
+    .ghost-button {
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(0, 0, 0, 0.34);
+      color: var(--text);
+      padding: 3px 9px;
+      border-radius: 7px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .page {
+      display: flex;
+      flex-direction: column;
+      min-height: calc(100vh - 28px);
+      padding: 10px 18px 18px;
+      gap: 14px;
+    }
+
+    .hero {
+      border: 1px solid var(--line);
+      background: linear-gradient(135deg, rgba(16, 34, 34, 0.9), rgba(9, 17, 18, 0.92));
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: grid;
+      grid-template-columns: minmax(260px, 0.85fr) minmax(320px, 1fr) minmax(260px, 0.85fr);
+      gap: 10px;
+      align-items: stretch;
+      box-shadow: 0 18px 46px rgba(0, 0, 0, 0.28);
+    }
+
+    .console-zone {
+      min-width: 0;
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: rgba(5, 10, 11, 0.24);
+      padding: 9px;
+      display: grid;
+      gap: 8px;
+      align-content: start;
+    }
+
+    .console-zone--action {
+      border-color: rgba(239, 123, 58, 0.36);
+      background: rgba(239, 123, 58, 0.08);
+    }
+
+    .console-zone--profile {
+      border-color: rgba(239, 123, 58, 0.36);
+      background: rgba(5, 10, 11, 0.24);
+    }
+
+    .console-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .console-note {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+      margin: 0;
+    }
+
+    .console-status {
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      background: rgba(4, 9, 10, 0.28);
+      padding: 7px 9px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 750;
+      line-height: 1.3;
+    }
+
+    .console-status span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .console-body {
+      display: grid;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .console-control-stack {
+      display: grid;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .console-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .profile-actions {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 7px;
+    }
+
+    .profile-actions .primary-button,
+    .profile-actions .mini-button {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .console-meter-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .console-meter-row--stacked {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .console-meter {
+      min-width: 0;
+      border: 1px solid var(--line-soft);
+      border-radius: 7px;
+      padding: 6px 7px;
+      background: rgba(4, 9, 10, 0.26);
+    }
+
+    .console-meter-row--stacked .console-meter {
+      display: block;
+    }
+
+    .console-meter span {
+      display: block;
+      color: var(--dim);
+      font-size: 8px;
+      font-weight: 900;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+
+    .console-meter-row--stacked .console-meter span {
+      margin-bottom: 3px;
+    }
+
+    .console-meter strong {
+      display: block;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+    }
+
+    .eyebrow {
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .hero-copy {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      max-width: 320px;
+      margin: 0 0 8px;
+    }
+
+    .hero-actions {
+      display: grid;
+      gap: 8px;
+    }
+
+    .mini-button,
+    .primary-button,
+    .secondary-button {
+      min-height: 34px;
+      border-radius: 999px;
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .mini-button {
+      min-height: 29px;
+      border: 1px solid var(--line-soft);
+      background: rgba(11, 21, 23, 0.76);
+      padding: 0 11px;
+      font-size: 9px;
+    }
+
+    .mini-button.is-active {
+      color: var(--text);
+      border-color: rgba(239, 123, 58, 0.56);
+      background: var(--accent-soft);
+    }
+
+    .home-button {
+      min-height: 38px;
+      padding: 0 17px;
+      border-color: rgba(239, 123, 58, 0.76);
+      background: rgba(239, 123, 58, 0.24);
+      box-shadow: 0 0 14px rgba(239, 123, 58, 0.2);
+      font-size: 10px;
+    }
+
+    .home-button::before {
+      content: "←";
+      margin-right: 7px;
+    }
+
+    .primary-button {
+      border: 1px solid rgba(239, 123, 58, 0.76);
+      background: rgba(239, 123, 58, 0.28);
+      box-shadow: 0 0 16px rgba(239, 123, 58, 0.22);
+    }
+
+    .primary-button::before {
+      content: "+";
+      margin-right: 7px;
+    }
+
+    .secondary-button {
+      border: 1px solid var(--line);
+      background: rgba(11, 21, 23, 0.76);
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      justify-self: end;
+      width: 220px;
+      max-width: 100%;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(11, 25, 27, 0.72);
+    }
+
+    .stat {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      min-height: 25px;
+      padding: 0 8px;
+      border: 1px solid var(--line-soft);
+      border-radius: 7px;
+      background: rgba(4, 9, 10, 0.24);
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .workspace {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(374px, 447px) minmax(380px, 1fr) 148px;
+      gap: 20px;
+    }
+
+    .context,
+    .content,
+    .mixer {
+      min-height: 540px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+      overflow: hidden;
+    }
+
+    .context,
+    .content {
+      padding: 16px;
+    }
+
+    .panel-title {
+      margin: 0 0 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line-soft);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .context-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .control-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    .control-label {
+      color: var(--dim);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .chip,
+    .toggle {
+      border: 1px solid var(--line-soft);
+      background: rgba(13, 29, 31, 0.72);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .chip.is-active,
+    .toggle.is-active {
+      color: var(--text);
+      border-color: rgba(239, 123, 58, 0.56);
+      background: var(--accent-soft);
+    }
+
+    .chip:hover,
+    .toggle:hover {
+      color: var(--text);
+      border-color: rgba(68, 138, 137, 0.52);
+    }
+
+    .filter-summary {
+      min-height: 64px;
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      background: rgba(3, 7, 8, 0.28);
+      padding: 11px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .filter-summary strong {
+      color: var(--text);
+      display: block;
+      font-size: 13px;
+      margin-bottom: 3px;
+    }
+
+    .search {
+      width: 100%;
+      border: 1px solid var(--line-soft);
+      background: rgba(3, 7, 8, 0.42);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 10px 11px;
+      outline: none;
+    }
+
+    .content-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+
+    .content-title {
+      margin: 0 0 5px;
+      font-size: 18px;
+      letter-spacing: 0.02em;
+    }
+
+    .content-subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      min-height: 92px;
+      padding: 14px;
+      border: 1px solid rgba(68, 138, 137, 0.18);
+      border-radius: 8px;
+      background: var(--panel-strong);
+    }
+
+    .row.is-filtered-out {
+      display: none;
+    }
+
+    .row-title {
+      margin: 0 0 7px;
+      font-size: 14px;
+      font-weight: 850;
+    }
+
+    .row-meta {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .progress {
+      width: 210px;
+      align-self: start;
+      display: grid;
+      gap: 7px;
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .bar {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+    }
+
+    .fill {
+      height: 100%;
+      width: var(--value);
+      background: linear-gradient(90deg, var(--green), rgba(239, 123, 58, 0.9));
+    }
+
+    .mixer {
+      display: grid;
+      place-items: center;
+      padding: 14px;
+    }
+
+    .mixer-inner {
+      width: 100%;
+      height: 100%;
+      border: 1px solid var(--line-soft);
+      border-radius: 12px;
+      background:
+        linear-gradient(90deg, transparent 48%, rgba(68, 138, 137, 0.5) 49%, rgba(68, 138, 137, 0.5) 51%, transparent 52%),
+        linear-gradient(rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01));
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 16px;
+      color: var(--dim);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .knob {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: 6px solid rgba(255, 255, 255, 0.12);
+      border-top-color: var(--accent);
+      transform: rotate(-38deg);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 1020px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .summary-grid {
+        justify-self: stretch;
+        width: 100%;
+      }
+
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .context,
+      .content,
+      .mixer {
+        min-height: auto;
+      }
+
+      .mixer {
+        min-height: 180px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div>home page</div>
+    <div class="brand">Make <span>Tunes</span></div>
+    <div class="top-actions">
+      <button class="ghost-button">Account</button>
+      <button class="ghost-button">Admin</button>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="hero" aria-label="Dashboard console">
+      <div class="console-zone console-zone--profile">
+        <div class="console-title">
+          <span>profile</span>
+        </div>
+        <div class="console-status">
+          2 submissions need attention
+          <span>Moonlight Project has a moderation item waiting.</span>
+        </div>
+        <div class="console-body">
+          <div class="console-meter-row console-meter-row--stacked">
+            <div class="console-meter"><span>projects</span><strong>1</strong></div>
+            <div class="console-meter"><span>due</span><strong>2</strong></div>
+            <div class="console-meter"><span>mods</span><strong>1</strong></div>
+          </div>
+          <div class="console-control-stack">
+            <div class="profile-actions">
+              <button class="primary-button" type="button" data-workbench="create">Create project</button>
+              <button class="mini-button" type="button" data-workbench="account">Account</button>
+              <button class="mini-button" type="button" data-workbench="account">My projects</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="console-zone">
+        <div class="console-title">
+          <span>groups</span>
+        </div>
+        <div class="console-status">
+          Producer circle has 2 new tracks
+          <span>4 groups are linked to active collaborations.</span>
+        </div>
+        <div class="console-body">
+          <div class="console-meter-row console-meter-row--stacked">
+            <div class="console-meter"><span>groups</span><strong>4</strong></div>
+            <div class="console-meter"><span>updates</span><strong>6</strong></div>
+            <div class="console-meter"><span>shared</span><strong>9</strong></div>
+          </div>
+          <div class="console-control-stack">
+            <div class="console-buttons">
+              <button class="mini-button" type="button" data-workbench="groups">Group activity</button>
+              <button class="mini-button" type="button" data-workbench="groups">Groups</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="console-zone">
+        <div class="console-title">
+          <span>explore</span>
+        </div>
+        <div class="console-status">
+          7 active collabs · 2 ending soon
+          <span>Recommended feed is using all tags.</span>
+        </div>
+        <div class="console-body">
+          <div class="console-meter-row console-meter-row--stacked">
+            <div class="console-meter"><span>collabs</span><strong>24</strong></div>
+            <div class="console-meter"><span>active</span><strong>7</strong></div>
+            <div class="console-meter"><span>ending</span><strong>2</strong></div>
+          </div>
+          <div class="console-control-stack">
+            <div class="console-buttons">
+              <button class="mini-button home-button is-active" type="button" data-workbench="explore">Explore feed</button>
+              <button class="mini-button" type="button" data-workbench="explore">Recommended</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <aside class="context" id="explore-context" data-workbench-context="explore">
+        <h2 class="panel-title">Explore controls</h2>
+        <div class="context-stack">
+          <div class="control-group">
+            <div class="control-label">Find</div>
+            <input class="search" value="" placeholder="search collaborations" data-feed-search />
+          </div>
+          <div class="control-group">
+            <div class="control-label">Tags</div>
+            <div class="chip-row" data-filter-group="tag">
+              <button class="chip is-active" type="button" data-filter-value="all">All</button>
+              <button class="chip" type="button" data-filter-value="house">House</button>
+              <button class="chip" type="button" data-filter-value="vocal">Vocal</button>
+              <button class="chip" type="button" data-filter-value="guitar">Guitar</button>
+              <button class="chip" type="button" data-filter-value="experimental">Experimental</button>
+            </div>
+          </div>
+          <div class="control-group">
+            <div class="control-label">Sort</div>
+            <div class="control-group" data-filter-group="sort">
+              <button class="toggle is-active" type="button" data-filter-value="recommended">Recommended</button>
+              <button class="toggle" type="button" data-filter-value="newest">Newest</button>
+              <button class="toggle" type="button" data-filter-value="ending">Ending soon</button>
+            </div>
+          </div>
+          <div class="control-group">
+            <div class="control-label">Status</div>
+            <div class="control-group" data-filter-group="status">
+              <button class="toggle is-active" type="button" data-filter-value="all">All active</button>
+              <button class="toggle" type="button" data-filter-value="submission">Open for submissions</button>
+              <button class="toggle" type="button" data-filter-value="voting">Voting now</button>
+            </div>
+          </div>
+          <div class="control-group">
+            <div class="control-label">Current filter</div>
+            <div class="filter-summary" data-filter-summary>
+              <strong>Showing 3 collaborations</strong>
+              All tags · recommended · all active
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <aside class="context hidden" id="account-context" data-workbench-context="account">
+        <h2 class="panel-title">Profile controls</h2>
+        <div class="context-stack">
+          <div class="control-group">
+            <div class="control-label">Mode</div>
+            <button class="toggle is-active">My projects</button>
+            <button class="toggle">My submissions</button>
+            <button class="toggle">Downloads</button>
+            <button class="toggle">Account</button>
+          </div>
+          <div class="control-group">
+            <div class="control-label">Attention</div>
+            <button class="toggle is-active">Needs action</button>
+            <button class="toggle">Moderation queue</button>
+            <button class="toggle">Finished rounds</button>
+          </div>
+          <div class="control-group">
+            <div class="control-label">Quick action</div>
+            <button class="primary-button">Create project</button>
+          </div>
+        </div>
+      </aside>
+
+      <aside class="context hidden" id="create-context" data-workbench-context="create">
+        <h2 class="panel-title">Project setup</h2>
+        <div class="context-stack">
+          <div class="control-group">
+            <div class="control-label">Steps</div>
+            <button class="toggle is-active">Project identity</button>
+            <button class="toggle">First collaboration</button>
+            <button class="toggle">Sharing defaults</button>
+            <button class="toggle">Publish timing</button>
+          </div>
+          <div class="control-group">
+            <div class="control-label">Defaults</div>
+            <button class="toggle is-active">Public explore</button>
+            <button class="toggle">Group-linked</button>
+            <button class="toggle">Invite only</button>
+          </div>
+        </div>
+      </aside>
+
+      <aside class="context hidden" id="groups-context" data-workbench-context="groups">
+        <h2 class="panel-title">Group controls</h2>
+        <div class="context-stack">
+          <div class="control-group">
+            <div class="control-label">Group</div>
+            <button class="toggle is-active">All groups</button>
+            <button class="toggle">Active groups</button>
+            <button class="toggle">Group projects</button>
+            <button class="toggle">Group settings</button>
+          </div>
+          <div class="control-group">
+            <div class="control-label">Signal</div>
+            <button class="toggle is-active">New activity</button>
+            <button class="toggle">Shared collaborations</button>
+            <button class="toggle">Needs attention</button>
+          </div>
+        </div>
+      </aside>
+
+      <section class="content" id="explore-content" data-workbench-content="explore">
+        <div class="content-header">
+          <div>
+            <h1 class="content-title">Explore feed</h1>
+            <p class="content-subtitle">Default workbench. The left panel behaves like fixed hardware controls for this list.</p>
+          </div>
+          <button class="secondary-button">Refresh feed</button>
+        </div>
+        <div class="list">
+          <article class="row" data-feed-row data-tags="house vocal" data-status="submission" data-title="night circuit moonlight project house vocal backing preview available" data-recommended="1" data-newest="2" data-ending="2">
+            <div>
+              <h3 class="row-title">Night Circuit</h3>
+              <p class="row-meta">Moonlight Project · house, vocal · backing preview available</p>
+            </div>
+            <div class="progress">
+              <div class="progress-label"><span>submission</span><span>68%</span></div>
+              <div class="bar"><div class="fill" style="--value: 68%"></div></div>
+            </div>
+          </article>
+          <article class="row" data-feed-row data-tags="guitar" data-status="voting" data-title="low tide sketch small room drums voting closes tonight guitar" data-recommended="2" data-newest="3" data-ending="1">
+            <div>
+              <h3 class="row-title">Low Tide Sketch</h3>
+              <p class="row-meta">Small room drums · voting closes tonight</p>
+            </div>
+            <div class="progress">
+              <div class="progress-label"><span>voting</span><span>83%</span></div>
+              <div class="bar"><div class="fill" style="--value: 83%"></div></div>
+            </div>
+          </article>
+          <article class="row" data-feed-row data-tags="experimental" data-status="submission" data-title="glass harmonics ambient experimental 4 submissions so far" data-recommended="3" data-newest="1" data-ending="3">
+            <div>
+              <h3 class="row-title">Glass Harmonics</h3>
+              <p class="row-meta">Ambient, experimental · 4 submissions so far</p>
+            </div>
+            <div class="progress">
+              <div class="progress-label"><span>submission</span><span>34%</span></div>
+              <div class="bar"><div class="fill" style="--value: 34%"></div></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="content hidden" id="account-content" data-workbench-content="account">
+        <div class="content-header">
+          <div>
+            <h1 class="content-title">Profile and account</h1>
+            <p class="content-subtitle">Personal projects, submissions, moderation, downloads, and account tasks appear when summoned from the console.</p>
+          </div>
+          <button class="primary-button">Create project</button>
+        </div>
+        <div class="list">
+          <article class="row">
+            <div>
+              <h3 class="row-title">Moonlight Project</h3>
+              <p class="row-meta">Current collaboration: Night Circuit · submissions need moderation</p>
+            </div>
+            <div class="progress">
+              <div class="progress-label"><span>action</span><span>2</span></div>
+              <div class="bar"><div class="fill" style="--value: 55%"></div></div>
+            </div>
+          </article>
+          <article class="row">
+            <div>
+              <h3 class="row-title">Submitted to Low Tide Sketch</h3>
+              <p class="row-meta">Your track is in voting · check results after close</p>
+            </div>
+            <div class="progress">
+              <div class="progress-label"><span>voting</span><span>83%</span></div>
+              <div class="bar"><div class="fill" style="--value: 83%"></div></div>
+            </div>
+          </article>
+          <article class="row">
+            <div>
+              <h3 class="row-title">Account</h3>
+              <p class="row-meta">Creator allowance: 1 of 3 projects used · profile is complete</p>
+            </div>
+            <div class="progress">
+              <div class="progress-label"><span>setup</span><span>100%</span></div>
+              <div class="bar"><div class="fill" style="--value: 100%"></div></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="content hidden" id="create-content" data-workbench-content="create">
+        <div class="content-header">
+          <div>
+            <h1 class="content-title">Create project</h1>
+            <p class="content-subtitle">A focused creation workbench replaces the feed, while the dashboard console stays anchored above.</p>
+          </div>
+          <button class="secondary-button home-button" data-workbench="explore">Back to explore</button>
+        </div>
+        <div class="list">
+          <article class="row">
+            <div>
+              <h3 class="row-title">Project identity</h3>
+              <p class="row-meta">Name, short description, and the musical brief that defines the project.</p>
+            </div>
+            <button class="secondary-button">Edit</button>
+          </article>
+          <article class="row">
+            <div>
+              <h3 class="row-title">First collaboration</h3>
+              <p class="row-meta">Upload backing audio, set submission duration, and choose voting rules.</p>
+            </div>
+            <button class="primary-button">Start</button>
+          </article>
+          <article class="row">
+            <div>
+              <h3 class="row-title">Sharing</h3>
+              <p class="row-meta">Publish to Explore, link with a group, or keep invite-only.</p>
+            </div>
+            <button class="secondary-button">Choose</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="content hidden" id="groups-content" data-workbench-content="groups">
+        <div class="content-header">
+          <div>
+            <h1 class="content-title">Group activity</h1>
+            <p class="content-subtitle">Groups are lightweight collaboration contexts: each group can represent whatever real-world circle the project owner needs.</p>
+          </div>
+          <button class="secondary-button home-button" data-workbench="explore">Back to explore</button>
+        </div>
+        <div class="list">
+          <article class="row">
+            <div>
+              <h3 class="row-title">Producer circle</h3>
+              <p class="row-meta">3 linked collabs active · 2 new submissions since yesterday</p>
+            </div>
+            <button class="secondary-button">Open group</button>
+          </article>
+          <article class="row">
+            <div>
+              <h3 class="row-title">Remix pool</h3>
+              <p class="row-meta">1 linked project needs a new collaboration round</p>
+            </div>
+            <button class="primary-button">Review</button>
+          </article>
+          <article class="row">
+            <div>
+              <h3 class="row-title">Songwriter group</h3>
+              <p class="row-meta">4 people joined through project links</p>
+            </div>
+            <button class="secondary-button">Inspect</button>
+          </article>
+        </div>
+      </section>
+
+      <aside class="mixer" aria-label="Mixer">
+        <div class="mixer-inner">
+          <div class="knob"></div>
+          <div>master</div>
+          <div>backing</div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const buttons = document.querySelectorAll("[data-workbench]");
+    const workbenchContexts = document.querySelectorAll("[data-workbench-context]");
+    const workbenchContents = document.querySelectorAll("[data-workbench-content]");
+
+    function setWorkbench(next) {
+      workbenchContexts.forEach((context) => {
+        context.classList.toggle("hidden", context.dataset.workbenchContext !== next);
+      });
+      workbenchContents.forEach((content) => {
+        content.classList.toggle("hidden", content.dataset.workbenchContent !== next);
+      });
+      buttons.forEach((button) => {
+        button.classList.toggle("is-active", button.dataset.workbench === next);
+      });
+    }
+
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => {
+        setWorkbench(button.dataset.workbench);
+      });
+    });
+
+    const feedState = {
+      tag: "all",
+      sort: "recommended",
+      status: "all",
+      search: ""
+    };
+    const feedRows = Array.from(document.querySelectorAll("[data-feed-row]"));
+    const filterSummary = document.querySelector("[data-filter-summary]");
+    const feedSearch = document.querySelector("[data-feed-search]");
+
+    function setActiveButton(group, value) {
+      document.querySelectorAll(`[data-filter-group="${group}"] [data-filter-value]`).forEach((button) => {
+        button.classList.toggle("is-active", button.dataset.filterValue === value);
+      });
+    }
+
+    function formatFilterValue(value) {
+      if (value === "all") return "all";
+      if (value === "ending") return "ending soon";
+      return value;
+    }
+
+    function updateFeedFilters() {
+      const visibleRows = [];
+
+      feedRows
+        .sort((a, b) => Number(a.dataset[feedState.sort]) - Number(b.dataset[feedState.sort]))
+        .forEach((row) => row.parentElement.appendChild(row));
+
+      feedRows.forEach((row) => {
+        const tags = row.dataset.tags || "";
+        const title = row.dataset.title || "";
+        const matchesTag = feedState.tag === "all" || tags.includes(feedState.tag);
+        const matchesStatus = feedState.status === "all" || row.dataset.status === feedState.status;
+        const matchesSearch = !feedState.search || title.includes(feedState.search);
+        const visible = matchesTag && matchesStatus && matchesSearch;
+
+        row.classList.toggle("is-filtered-out", !visible);
+        if (visible) visibleRows.push(row);
+      });
+
+      if (filterSummary) {
+        const noun = visibleRows.length === 1 ? "collaboration" : "collaborations";
+        filterSummary.innerHTML = `
+          <strong>Showing ${visibleRows.length} ${noun}</strong>
+          ${formatFilterValue(feedState.tag)} tags · ${formatFilterValue(feedState.sort)} · ${formatFilterValue(feedState.status)}
+        `;
+      }
+    }
+
+    document.querySelectorAll("[data-filter-group]").forEach((groupElement) => {
+      groupElement.addEventListener("click", (event) => {
+        const target = event.target.closest("[data-filter-value]");
+        if (!target) return;
+
+        const group = groupElement.dataset.filterGroup;
+        feedState[group] = target.dataset.filterValue;
+        setActiveButton(group, feedState[group]);
+        updateFeedFilters();
+      });
+    });
+
+    if (feedSearch) {
+      feedSearch.addEventListener("input", () => {
+        feedState.search = feedSearch.value.trim().toLowerCase();
+        updateFeedFilters();
+      });
+    }
+
+    updateFeedFilters();
+  </script>
+</body>
+</html>

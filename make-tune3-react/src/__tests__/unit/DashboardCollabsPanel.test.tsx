@@ -133,7 +133,7 @@ describe('DashboardCollabsPanel', () => {
     );
 
     expect(screen.getByText('No matches for these tags')).toBeInTheDocument();
-    expect(screen.getByText('Try removing a tag or switching feed order.')).toBeInTheDocument();
+    expect(screen.getByText('No displayable collaborations are currently published for the selected tags.')).toBeInTheDocument();
   });
 
   it('renders merged status/progress slots for submission and voting collaboration rows', () => {

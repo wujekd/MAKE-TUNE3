@@ -21,6 +21,7 @@ interface UserActivityPanelProps {
   projectsPanelRequestKey?: number;
   activeTabOverride?: ActiveTab;
   hideTabs?: boolean;
+  onProjectCreateClosed?: () => void;
 }
 
 const formatDateTime = (value: number | null | undefined): string => {
@@ -52,7 +53,8 @@ export function UserActivityPanel({
   createProjectRequestKey = 0,
   projectsPanelRequestKey = 0,
   activeTabOverride,
-  hideTabs = false
+  hideTabs = false,
+  onProjectCreateClosed
 }: UserActivityPanelProps) {
   const user = useAppStore(state => state.auth.user);
   const authLoading = useAppStore(state => state.auth.loading);
@@ -326,6 +328,8 @@ export function UserActivityPanel({
             user={user}
             authLoading={authLoading}
             createProjectRequestKey={createProjectRequestKey}
+            projectsPanelRequestKey={projectsPanelRequestKey}
+            onCreateProjectClosed={onProjectCreateClosed}
           />
         </Suspense>
       )}

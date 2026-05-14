@@ -67,7 +67,7 @@ export function CollaborationsPanel({
               </div>
               <div className={styles.emptyStateBody}>
                 {selectedTags.length > 0
-                  ? 'Try removing a tag to widen the list.'
+                  ? 'No displayable collaborations are currently published for the selected tags.'
                   : 'Published collaborations will appear here.'}
               </div>
             </div>

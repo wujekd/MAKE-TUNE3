@@ -36,7 +36,7 @@ export function DashboardView() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const hasLoadedFeedRef = useRef(false);
   const [activeWorkbench, setActiveWorkbench] = useState<DashboardWorkbench>('explore');
-  const [projectWorkbenchMode, setProjectWorkbenchMode] = useState<'projects' | 'activity'>('projects');
+  const [projectWorkbenchMode, setProjectWorkbenchMode] = useState<'projects' | 'activity' | 'create'>('projects');
   const [createProjectRequestKey, setCreateProjectRequestKey] = useState(0);
   const [projectsPanelRequestKey, setProjectsPanelRequestKey] = useState(0);
   const [openGroupsRequestKey, setOpenGroupsRequestKey] = useState(0);
@@ -223,7 +223,7 @@ export function DashboardView() {
   // always render view; hydrate when data arrives
   const handleCreateProjectRequest = () => {
     setActiveWorkbench('projects');
-    setProjectWorkbenchMode('projects');
+    setProjectWorkbenchMode('create');
     setCreateProjectRequestKey(key => key + 1);
   };
 
@@ -310,8 +310,9 @@ export function DashboardView() {
                 <UserActivityPanel
                   createProjectRequestKey={createProjectRequestKey}
                   projectsPanelRequestKey={projectsPanelRequestKey}
-                  activeTabOverride={projectWorkbenchMode}
+                  activeTabOverride={projectWorkbenchMode === 'activity' ? 'activity' : 'projects'}
                   hideTabs
+                  onProjectCreateClosed={() => setProjectWorkbenchMode('projects')}
                 />
               </div>
             </>
@@ -393,9 +394,14 @@ function ProfileControls({
           title: isSignedIn ? 'Activity workbench' : 'Login required',
           text: isSignedIn ? 'Your recent activity stays in the center bay.' : 'Sign in to review your activity.'
         }
+      : activeMode === 'create'
+        ? {
+            title: isSignedIn ? 'Create project' : 'Login required',
+            text: isSignedIn ? 'Set up a project in the center bay.' : 'Sign in to create projects.'
+          }
       : {
           title: isSignedIn ? 'Project workbench' : 'Login required',
-          text: isSignedIn ? 'Your project list and creation form stay in the center bay.' : 'Sign in to create or manage projects.'
+          text: isSignedIn ? 'Your project list stays in the center bay.' : 'Sign in to create or manage projects.'
         };
 
   return (
@@ -434,7 +440,11 @@ function ProfileControls({
         </div>
         <div className={styles.controlGroup}>
           <div className={styles.controlLabel}>Quick action</div>
-          <button type="button" className={styles.workbenchPrimary} onClick={onCreateProject}>
+          <button
+            type="button"
+            className={`${styles.workbenchPrimary} ${activeMode === 'create' ? styles.workbenchPrimaryActive : ''}`}
+            onClick={onCreateProject}
+          >
             Create project
           </button>
         </div>

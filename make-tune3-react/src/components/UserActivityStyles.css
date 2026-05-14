@@ -262,21 +262,101 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
+.user-activity__create-panel {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid rgba(239, 123, 58, 0.42);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(239, 123, 58, 0.12), rgba(3, 7, 8, 0.28)),
+    rgba(255, 255, 255, 0.035);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 18px rgba(239, 123, 58, 0.08);
+}
+
+.user-activity__create-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-bottom: 0.25rem;
+}
+
+.user-activity__create-kicker,
+.user-activity__form-field > span {
+  margin: 0;
+  color: rgba(220, 230, 230, 0.58);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.user-activity__create-title {
+  margin: 0;
+  color: var(--white);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.user-activity__create-body {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.user-activity__form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
 .collab-history-item.user-activity__form-card,
 .user-activity__form-card.list__item {
   border-color: var(--contrast-600);
 }
 
 .user-activity__form-card input,
-.user-activity__form-card textarea {
-  width: calc(100% - 0.5rem);
-  margin: 0 0.25rem;
+.user-activity__form-card textarea,
+.user-activity__form-field input,
+.user-activity__form-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
   padding: 0.5rem;
   border-radius: 6px;
-  border: 1px solid var(--primary1-800);
-  background: var(--primary1-800);
+  border: 1px solid rgba(48, 112, 113, 0.42);
+  background: rgba(3, 7, 8, 0.48);
   color: var(--white);
   resize: vertical;
+}
+
+.user-activity__form-field input:focus,
+.user-activity__form-field textarea:focus {
+  outline: none;
+  border-color: rgba(239, 123, 58, 0.62);
+  box-shadow: 0 0 0 1px rgba(239, 123, 58, 0.18);
+}
+
+.user-activity__group-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.user-activity__group-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(48, 112, 113, 0.36);
+  border-radius: 999px;
+  background: rgba(11, 21, 23, 0.66);
+  padding: 0.42rem 0.7rem;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.78rem;
 }
 
 .user-activity__form-card .tag-input__input-wrapper {
@@ -294,6 +374,31 @@
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
+}
+
+.user-activity__form-actions button {
+  border-radius: 999px;
+  border: 1px solid rgba(48, 112, 113, 0.46);
+  background: rgba(11, 21, 23, 0.76);
+  color: var(--white);
+  min-height: 34px;
+  padding: 0 1rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.user-activity__form-actions button:last-child {
+  border-color: rgba(239, 123, 58, 0.72);
+  background: rgba(239, 123, 58, 0.26);
+  box-shadow: 0 0 12px rgba(239, 123, 58, 0.18);
+}
+
+.user-activity__form-actions button:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
 }
 
 .user-activity__list::-webkit-scrollbar {

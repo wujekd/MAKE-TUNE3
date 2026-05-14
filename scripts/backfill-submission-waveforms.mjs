@@ -26,6 +26,7 @@ const ffmpeg = ffmpegModule.default || ffmpegModule;
 const ffmpegStatic = ffmpegStaticModule.default || ffmpegStaticModule;
 
 const WAVEFORM_VERSION = 1;
+const BACKING_WAVEFORM_BUCKET_COUNT = 768;
 const SUBMISSION_WAVEFORM_BUCKET_COUNT = 512;
 const WAVEFORM_PREVIEW_BUCKET_COUNT = 128;
 
@@ -354,6 +355,51 @@ async function generateSubmissionWaveform({ collabId, submission }) {
   }
 }
 
+async function generateBackingWaveform({ collabId, backingPath }) {
+  const cleanBackingPath = String(backingPath || '').trim();
+  if (!cleanBackingPath) {
+    throw new Error('backingTrackPath required');
+  }
+
+  const tmpBase = `backing-waveform-${collabId}-${Date.now()}-${randomBytes(4).toString('hex')}`;
+  const wavPath = join(tmpdir(), `${tmpBase}.wav`);
+  const waveformPath = `collabs/${collabId}/waveforms/backing-backfill-${Date.now()}.json`;
+
+  try {
+    await convertObjectToMonoWav({ sourcePath: cleanBackingPath, wavPath });
+    const wavBuffer = await fs.readFile(wavPath);
+    const { sampleRate, samples } = parseMonoPcm16Wav(wavBuffer);
+    const payload = buildWaveformPayload(
+      samples,
+      sampleRate,
+      BACKING_WAVEFORM_BUCKET_COUNT,
+      basename(cleanBackingPath)
+    );
+
+    if (!options.dryRun) {
+      await bucket.file(waveformPath).save(JSON.stringify(payload), {
+        contentType: 'application/json; charset=utf-8',
+        resumable: false,
+        public: false,
+        metadata: {
+          cacheControl: 'public,max-age=31536000,immutable'
+        }
+      });
+    }
+
+    return {
+      backingWaveformPath: waveformPath,
+      backingWaveformBucketCount: payload.bucketCount,
+      backingWaveformVersion: payload.version,
+      backingWaveformError: null,
+      backingWaveformStatus: 'ready',
+      backingWaveformPreview: buildWaveformPreview(payload)
+    };
+  } finally {
+    await fs.rm(wavPath, { force: true });
+  }
+}
+
 async function readWaveformPreviewFromPath(waveformPathRaw) {
   const waveformPath = String(waveformPathRaw || '').trim();
   if (!waveformPath) {
@@ -397,6 +443,7 @@ async function run() {
 
   let processed = 0;
   let generated = 0;
+  let backingGenerated = 0;
   let previewed = 0;
   let backingPreviewed = 0;
   let skipped = 0;
@@ -500,8 +547,47 @@ async function run() {
     if (!snap.exists) continue;
 
     const collab = snap.data() || {};
+    const backingPath = String(collab.backingTrackPath || '').trim();
     const waveformPath = String(collab.backingWaveformPath || '').trim();
-    if (!waveformPath || hasValidPreview(collab.backingWaveformPreview)) {
+
+    if (!backingPath) {
+      continue;
+    }
+
+    if (!waveformPath || options.force) {
+      try {
+        console.log(`[submission-waveforms] generating backing ${snap.id}`);
+        const nextFields = await generateBackingWaveform({ collabId: snap.id, backingPath });
+        if (!options.dryRun) {
+          await collabRef.set(
+            {
+              ...nextFields,
+              updatedAt: Timestamp.now()
+            },
+            { merge: true }
+          );
+        }
+        backingGenerated += 1;
+      } catch (error) {
+        failed += 1;
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`[submission-waveforms] backing failed ${snap.id}: ${message}`);
+        if ((options.force || !waveformPath) && !options.dryRun) {
+          await collabRef.set(
+            {
+              backingWaveformStatus: 'failed',
+              backingWaveformError: message.slice(0, 500),
+              backingWaveformPreview: null,
+              updatedAt: Timestamp.now()
+            },
+            { merge: true }
+          );
+        }
+      }
+      continue;
+    }
+
+    if (hasValidPreview(collab.backingWaveformPreview)) {
       continue;
     }
 
@@ -526,7 +612,7 @@ async function run() {
   }
 
   console.log(
-    `[submission-waveforms] done processed=${processed} generated=${generated} previewed=${previewed} backingPreviewed=${backingPreviewed} skipped=${skipped} failed=${failed} dryRun=${options.dryRun}`
+    `[submission-waveforms] done processed=${processed} generated=${generated} backingGenerated=${backingGenerated} previewed=${previewed} backingPreviewed=${backingPreviewed} skipped=${skipped} failed=${failed} dryRun=${options.dryRun}`
   );
 }
 

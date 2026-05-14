@@ -15,6 +15,7 @@ import { db } from './firebaseDb';
 import { callFirebaseFunction } from './firebaseFunctions';
 import type { Collaboration, CollaborationId, ProjectId } from '../types/collaboration';
 import { COLLECTIONS } from '../types/collaboration';
+import { TagUtils } from '../utils/tagUtils';
 
 const DEBUG_LOGS = import.meta.env.DEV;
 
@@ -35,6 +36,36 @@ const getNextDeadline = (collab: Collaboration): number => {
     return collab.votingCloseAt.toMillis();
   }
   return Number.MAX_SAFE_INTEGER;
+};
+
+const getPublishedAtMillis = (collab: Collaboration): number => {
+  const publishedAt = collab.publishedAt;
+  return publishedAt && typeof publishedAt.toMillis === 'function' ? publishedAt.toMillis() : 0;
+};
+
+const sortDashboardCollaborations = (
+  collabs: Collaboration[],
+  mode: DashboardCollaborationFeedMode
+): Collaboration[] => {
+  if (mode === 'popular') {
+    return [...collabs].sort(
+      (a, b) => ((b.submissionsCount || 0) + (b.votesCount || 0)) - ((a.submissionsCount || 0) + (a.votesCount || 0))
+    );
+  }
+
+  if (mode === 'ending_soon') {
+    return [...collabs].sort((a, b) => getNextDeadline(a) - getNextDeadline(b));
+  }
+
+  return [...collabs].sort((a, b) => getPublishedAtMillis(b) - getPublishedAtMillis(a));
+};
+
+const collaborationHasTags = (collab: Collaboration, selectedTags: string[]): boolean => {
+  if (!selectedTags.length) return true;
+  const keys = (Array.isArray(collab.tagsKey) && collab.tagsKey.length > 0 ? collab.tagsKey : collab.tags || [])
+    .map(tag => TagUtils.normalizeTag(String(tag)))
+    .filter(Boolean);
+  return selectedTags.every(tag => keys.includes(tag));
 };
 
 export class CollaborationService {
@@ -188,8 +219,24 @@ export class CollaborationService {
   static async listDashboardCollaborations(options: {
     mode: DashboardCollaborationFeedMode;
     limit?: number;
+    selectedTags?: string[];
   }): Promise<Collaboration[]> {
     const pageSize = Math.max(1, Math.min(100, Number(options.limit) || 24));
+    const selectedTags = (options.selectedTags || [])
+      .map(tag => TagUtils.normalizeTag(tag))
+      .filter(Boolean);
+
+    if (selectedTags.length > 0) {
+      const snap = await getDocs(query(
+        collection(db, COLLECTIONS.COLLABORATIONS),
+        where('tagsKey', 'array-contains', selectedTags[0]),
+        where('status', 'in', DASHBOARD_VISIBLE_STATUSES),
+        firestoreLimit(100)
+      ));
+      const collabs = mapDocsToCollaborations(snap.docs)
+        .filter(collab => collaborationHasTags(collab, selectedTags));
+      return sortDashboardCollaborations(collabs, options.mode).slice(0, pageSize);
+    }
 
     if (options.mode === 'popular') {
       const snap = await getDocs(query(
@@ -199,9 +246,7 @@ export class CollaborationService {
         firestoreLimit(pageSize * 3)
       ));
       const collabs = mapDocsToCollaborations(snap.docs);
-      return collabs
-        .sort((a, b) => ((b.submissionsCount || 0) + (b.votesCount || 0)) - ((a.submissionsCount || 0) + (a.votesCount || 0)))
-        .slice(0, pageSize);
+      return sortDashboardCollaborations(collabs, options.mode).slice(0, pageSize);
     }
 
     if (options.mode === 'ending_soon') {

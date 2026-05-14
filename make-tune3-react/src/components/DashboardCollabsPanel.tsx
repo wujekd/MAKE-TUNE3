@@ -151,7 +151,7 @@ export function DashboardCollabsPanel({
                 </div>
                 <div className={styles.emptyStateBody}>
                   {selectedTags.length > 0
-                    ? 'Try removing a tag or switching feed order.'
+                    ? 'No displayable collaborations are currently published for the selected tags.'
                     : 'New collaborations will appear here when they are published.'}
                 </div>
               </div>

@@ -99,4 +99,39 @@ describe('DashboardFeedService', () => {
     expect(result.items[0].collaborationName).toBe('Fresh Take');
     expect(result.items[0].collaborationStatus).toBe('completed');
   });
+
+  it('loads tagged collaborations directly when recommendations have no selected-tag matches', async () => {
+    hoisted.listMyRecommendations.mockResolvedValue([]);
+    hoisted.listDashboardCollaborations.mockResolvedValue([
+      {
+        id: 'collab-rare',
+        name: 'Rare Groove',
+        status: 'submission',
+        description: 'tagged result',
+        tags: ['Rare Groove'],
+        tagsKey: ['rare-groove'],
+        backingTrackPath: 'backings/rare.wav',
+        projectId: 'project-rare',
+        submissionDuration: 3600,
+        votingDuration: 3600,
+        publishedAt: { toMillis: () => 1700000000000 },
+        updatedAt: { toMillis: () => 1700001800000 }
+      }
+    ]);
+
+    const result = await DashboardFeedService.loadFeed({
+      mode: 'recommended',
+      selectedTags: ['Rare Groove']
+    });
+
+    expect(hoisted.listDashboardCollaborations).toHaveBeenCalledWith({
+      mode: 'newest',
+      limit: 72,
+      selectedTags: ['rare-groove']
+    });
+    expect(hoisted.listLatestProjectCollaborations).not.toHaveBeenCalled();
+    expect(result.isFallback).toBe(true);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].collaborationName).toBe('Rare Groove');
+  });
 });

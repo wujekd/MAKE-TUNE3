@@ -6,7 +6,7 @@ import { canCreateProject } from '../utils/permissions';
 import styles from '../views/DashboardView.module.css';
 
 export type DashboardWorkbench = 'explore' | 'projects' | 'account' | 'groups';
-export type DashboardProfileMode = 'account' | 'projects' | 'activity' | null;
+export type DashboardProfileMode = 'account' | 'projects' | 'activity' | 'create' | null;
 
 interface DashboardHeaderProps {
   totalCollabs: number;
@@ -61,6 +61,7 @@ export function DashboardHeader({
   const tierLabel = user?.tier || 'free';
   const isAccountActive = activeWorkbench === 'account' && profileMode === 'account';
   const isProjectsActive = activeWorkbench === 'projects' && profileMode === 'projects';
+  const isCreateActive = activeWorkbench === 'projects' && profileMode === 'create';
 
   const handleCreateProjectClick = () => {
     if (!user) {
@@ -116,7 +117,7 @@ export function DashboardHeader({
         <div className={styles.profileActionGrid} aria-label="Profile actions">
           <button
             type="button"
-            className={`${styles.consolePrimaryButton} ${isProjectsActive ? styles.consoleButtonActive : ''}`}
+            className={`${styles.consolePrimaryButton} ${isCreateActive ? styles.consoleButtonActive : ''}`}
             onClick={handleCreateProjectClick}
           >
             Create project

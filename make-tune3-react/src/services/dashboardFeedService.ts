@@ -211,7 +211,9 @@ export class DashboardFeedService {
         };
       }
 
-      const fallbackItems = await this.loadLatestProjectFallback(normalizedTags);
+      const fallbackItems = normalizedTags.length > 0
+        ? await this.loadCollaborationFeed('newest', normalizedTags)
+        : await this.loadLatestProjectFallback(normalizedTags);
       return {
         ...fallbackItems,
         metaLabel: fallbackMeta(normalizedTags),
@@ -234,7 +236,8 @@ export class DashboardFeedService {
   ): Promise<Omit<DashboardFeedResult, 'requestedMode' | 'isFallback'>> {
     const collabs = await CollaborationService.listDashboardCollaborations({
       mode,
-      limit: FETCH_LIMIT
+      limit: FETCH_LIMIT,
+      selectedTags
     });
 
     return {

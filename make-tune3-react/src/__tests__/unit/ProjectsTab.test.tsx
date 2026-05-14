@@ -8,7 +8,8 @@ const hoisted = vi.hoisted(() => ({
   listUserProjects: vi.fn(),
   createProjectWithUniqueName: vi.fn(),
   recountMyProjectCount: vi.fn(),
-  listMyModerationQueue: vi.fn()
+  listMyModerationQueue: vi.fn(),
+  listMyGroups: vi.fn()
 }));
 
 vi.mock('../../services', () => ({
@@ -22,11 +23,14 @@ vi.mock('../../services', () => ({
   },
   CollaborationService: {
     listMyModerationQueue: hoisted.listMyModerationQueue
+  },
+  GroupService: {
+    listMyGroups: hoisted.listMyGroups
   }
 }));
 
 vi.mock('../../components/ProjectListItem', () => ({
-  ProjectListItem: ({ title }: { title: string }) => <div data-testid="project-item">{title}</div>
+  ProjectListItem: ({ projectName }: { projectName: string }) => <div data-testid="project-item">{projectName}</div>
 }));
 
 vi.mock('../../components/UserActivityListItem', () => ({
@@ -44,14 +48,27 @@ describe('ProjectsTab', () => {
     hoisted.createProjectWithUniqueName.mockReset();
     hoisted.recountMyProjectCount.mockReset();
     hoisted.listMyModerationQueue.mockReset();
+    hoisted.listMyGroups.mockReset();
 
     hoisted.listMyProjectsOverview.mockResolvedValue([]);
     hoisted.listUserProjects.mockResolvedValue([]);
     hoisted.recountMyProjectCount.mockResolvedValue(0);
     hoisted.listMyModerationQueue.mockResolvedValue([]);
+    hoisted.listMyGroups.mockResolvedValue([]);
   });
 
   it('loads projects and moderation queue once, then reloads moderation when opening queue', async () => {
+    hoisted.listMyProjectsOverview.mockResolvedValue([
+      {
+        projectId: 'project-1',
+        projectName: 'Existing Project',
+        description: '',
+        createdAt: 1700000000000,
+        updatedAt: 1700000000000,
+        currentCollaboration: null
+      }
+    ]);
+
     render(
       <MemoryRouter>
         <ProjectsTab
@@ -100,6 +117,8 @@ describe('ProjectsTab', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByPlaceholderText('project name')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /create project/i })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/project name/i)).toBeInTheDocument();
+    expect(screen.queryByText('Existing Project')).not.toBeInTheDocument();
   });
 });

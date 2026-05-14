@@ -18,6 +18,8 @@ interface ProjectsTabProps {
   user: User | null;
   authLoading: boolean;
   createProjectRequestKey?: number;
+  projectsPanelRequestKey?: number;
+  onCreateProjectClosed?: () => void;
 }
 
 const formatDateTime = (value: number | null | undefined): string => {
@@ -26,24 +28,31 @@ const formatDateTime = (value: number | null | undefined): string => {
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
 };
 
-export function ProjectsTab({ user, authLoading, createProjectRequestKey = 0 }: ProjectsTabProps) {
+export function ProjectsTab({
+  user,
+  authLoading,
+  createProjectRequestKey = 0,
+  projectsPanelRequestKey = 0,
+  onCreateProjectClosed
+}: ProjectsTabProps) {
   const userId = user?.uid;
   const lastHandledCreateRequestRef = useRef(0);
+  const lastHandledProjectsRequestRef = useRef(0);
   const [projects, setProjects] = useState<ProjectOverviewItem[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [projectsLoaded, setProjectsLoaded] = useState(false);
   const [projectsError, setProjectsError] = useState<string | null>(null);
 
-  const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [availableGroups, setAvailableGroups] = useState<Array<{ id: string; name: string }>>([]);
   const [groupIds, setGroupIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [autoCreateDismissed, setAutoCreateDismissed] = useState(false);
 
   // Moderation state
-  const [mode, setMode] = useState<'list' | 'moderate'>('list');
+  const [mode, setMode] = useState<'list' | 'moderate' | 'create'>('list');
   const [moderationCollabs, setModerationCollabs] = useState<Array<{ id: string; name: string }>>([]);
   const [moderationLoading, setModerationLoading] = useState(false);
   const [moderationLoaded, setModerationLoaded] = useState(false);
@@ -113,8 +122,9 @@ export function ProjectsTab({ user, authLoading, createProjectRequestKey = 0 }: 
     if (!userId) {
       setProjects([]);
       setProjectsLoaded(false);
-      setShowForm(false);
+      setMode('list');
       setAvailableGroups([]);
+      setAutoCreateDismissed(false);
       return;
     }
     void loadProjects(userId);
@@ -124,11 +134,11 @@ export function ProjectsTab({ user, authLoading, createProjectRequestKey = 0 }: 
   }, [userId, loadProjects]);
 
   useEffect(() => {
-    if (!user || projectsLoading || !projectsLoaded) return;
-    if (projects.length === 0 && !showForm && canCreateProject(user)) {
-      setShowForm(true);
+    if (!user || projectsLoading || !projectsLoaded || autoCreateDismissed) return;
+    if (projects.length === 0 && mode === 'list' && canCreateProject(user)) {
+      setMode('create');
     }
-  }, [user, projectsLoading, projectsLoaded, projects.length, showForm]);
+  }, [autoCreateDismissed, mode, user, projectsLoading, projectsLoaded, projects.length]);
 
   useEffect(() => {
     if (!createProjectRequestKey || createProjectRequestKey === lastHandledCreateRequestRef.current) {
@@ -136,13 +146,22 @@ export function ProjectsTab({ user, authLoading, createProjectRequestKey = 0 }: 
     }
 
     lastHandledCreateRequestRef.current = createProjectRequestKey;
-    setMode('list');
+    setMode('create');
+    setAutoCreateDismissed(false);
 
     if (canCreateProject(user)) {
-      setShowForm(true);
       setFormError(null);
     }
   }, [createProjectRequestKey, user]);
+
+  useEffect(() => {
+    if (!projectsPanelRequestKey || projectsPanelRequestKey === lastHandledProjectsRequestRef.current) {
+      return;
+    }
+
+    lastHandledProjectsRequestRef.current = projectsPanelRequestKey;
+    setMode('list');
+  }, [projectsPanelRequestKey]);
 
   const handleCreateProject = async () => {
     if (!user) return;
@@ -170,11 +189,12 @@ export function ProjectsTab({ user, authLoading, createProjectRequestKey = 0 }: 
           } : null
         }
       }));
-      setShowForm(false);
+      setMode('list');
       setName('');
       setDescription('');
       setGroupIds([]);
       await loadProjects(user.uid);
+      onCreateProjectClosed?.();
     } catch (e: any) {
       const msg = e?.message || 'failed to create';
       if (/name already taken/i.test(msg)) {
@@ -188,11 +208,13 @@ export function ProjectsTab({ user, authLoading, createProjectRequestKey = 0 }: 
   };
 
   const handleCancelForm = () => {
-    setShowForm(false);
+    setMode('list');
     setName('');
     setDescription('');
     setGroupIds([]);
     setFormError(null);
+    setAutoCreateDismissed(true);
+    onCreateProjectClosed?.();
   };
 
   const loadModeration = useCallback(async () => {
@@ -230,7 +252,7 @@ export function ProjectsTab({ user, authLoading, createProjectRequestKey = 0 }: 
     <section className="user-activity__section">
       <div className="user-activity__section-header" style={{ alignItems: 'center' }}>
         <h4 className="project-history-title card__title user-activity__section-title" style={{ lineHeight: 1.3, minHeight: '2.6em', display: 'flex', alignItems: 'center' }}>
-          {mode === 'list' ? 'my projects' : <>moderation<br />queue</>}
+          {mode === 'create' ? 'create project' : mode === 'list' ? 'my projects' : <>moderation<br />queue</>}
         </h4>
         <div className="user-activity__header-actions">
           {getProjectAllowance(user) && getProjectAllowance(user)!.limit !== Infinity && (
@@ -255,11 +277,11 @@ export function ProjectsTab({ user, authLoading, createProjectRequestKey = 0 }: 
               back to projects
             </button>
           )}
-          {canCreateProject(user) && (
+          {mode === 'list' && canCreateProject(user) && (
             <button
               className="user-activity__action-button user-activity__action-button--create"
               disabled={!user || authLoading}
-              onClick={() => setShowForm(v => !v)}
+              onClick={() => setMode('create')}
             >
               create project
             </button>
@@ -267,6 +289,93 @@ export function ProjectsTab({ user, authLoading, createProjectRequestKey = 0 }: 
         </div>
       </div>
       <div className="collab-list list user-activity__list">
+        {mode === 'create' && (
+          authLoading ? (
+            <div className="user-activity__loading">
+              <LoadingSpinner size={24} />
+            </div>
+          ) : !user ? (
+            <div className="user-activity__create-panel">
+              <p className="user-activity__create-title">Login to create projects</p>
+              <p className="user-activity__create-body">Project setup is available from your account workspace.</p>
+              <Link className="user-activity__cta-button" to="/auth?mode=login">Login</Link>
+            </div>
+          ) : !canCreateProject(user) ? (
+            <div className="user-activity__cta-card">
+              <p className="user-activity__cta-title">Want to create projects?</p>
+              <p className="user-activity__cta-body">
+                Request creator access to start hosting your own music collaborations.
+              </p>
+              <button
+                className="user-activity__cta-button"
+                onClick={() => useUIStore.getState().openFeedbackModal('creator_request')}
+              >
+                Request Creator Access
+              </button>
+            </div>
+          ) : (
+            <div className="user-activity__create-panel">
+              <div className="user-activity__create-header">
+                <p className="user-activity__create-kicker">project setup</p>
+                <p className="user-activity__create-title">Create a project shell</p>
+                <p className="user-activity__create-body">
+                  Projects collect collaborations, submissions, voting, and group access in one place.
+                </p>
+              </div>
+              <label className="user-activity__form-field">
+                <span>Project name</span>
+                <input
+                  placeholder="Project name"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  disabled={saving}
+                />
+              </label>
+              <label className="user-activity__form-field">
+                <span>Description</span>
+                <textarea
+                  placeholder="Description (optional)"
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  disabled={saving}
+                  rows={4}
+                />
+              </label>
+              {availableGroups.length > 0 && (
+                <div className="user-activity__form-field">
+                  <span>Groups</span>
+                  <div className="user-activity__group-options">
+                    {availableGroups.map(group => (
+                      <label key={group.id}>
+                        <input
+                          type="checkbox"
+                          checked={groupIds.includes(group.id)}
+                          disabled={saving}
+                          onChange={e => {
+                            setGroupIds(current => e.target.checked
+                              ? Array.from(new Set([...current, group.id])).slice(0, 5)
+                              : current.filter(id => id !== group.id));
+                          }}
+                        />
+                        {group.name}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {formError && <div className="user-activity__form-error">{formError}</div>}
+              <div className="user-activity__form-actions">
+                <button onClick={handleCancelForm} disabled={saving}>
+                  cancel
+                </button>
+                <button onClick={handleCreateProject} disabled={saving}>
+                  {saving ? 'creating...' : 'create project'}
+                </button>
+              </div>
+            </div>
+          )
+        )}
+
         {mode === 'moderate' && (
           <>
             {(authLoading || (user && !moderationLoaded)) && (
@@ -291,55 +400,6 @@ export function ProjectsTab({ user, authLoading, createProjectRequestKey = 0 }: 
               />
             ))}
           </>
-        )}
-
-        {mode === 'list' && showForm && (
-          <div className="collab-history-item list__item user-activity__form-card">
-            <input
-              placeholder="project name"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              disabled={!user || saving}
-            />
-            <textarea
-              placeholder="description (optional)"
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              disabled={!user || saving}
-              rows={3}
-            />
-            {availableGroups.length > 0 && (
-              <div className="user-activity__form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ color: 'var(--text-muted, #888)', fontSize: 12 }}>project groups</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {availableGroups.map(group => (
-                    <label key={group.id} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
-                      <input
-                        type="checkbox"
-                        checked={groupIds.includes(group.id)}
-                        disabled={saving}
-                        onChange={e => {
-                          setGroupIds(current => e.target.checked
-                            ? Array.from(new Set([...current, group.id])).slice(0, 5)
-                            : current.filter(id => id !== group.id));
-                        }}
-                      />
-                      {group.name}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-            {formError && <div className="user-activity__form-error">{formError}</div>}
-            <div className="user-activity__form-actions">
-              <button onClick={handleCancelForm} disabled={saving}>
-                cancel
-              </button>
-              <button onClick={handleCreateProject} disabled={!user || saving}>
-                {saving ? 'creating...' : 'create'}
-              </button>
-            </div>
-          </div>
         )}
 
         {mode === 'list' && (authLoading || (user && !projectsLoaded)) && (
