@@ -20,6 +20,9 @@ const DEBUG_LOGS = import.meta.env.DEV;
 
 export type DashboardCollaborationFeedMode = 'newest' | 'popular' | 'ending_soon';
 
+const DASHBOARD_OPEN_STATUSES = ['published', 'submission', 'voting'];
+const DASHBOARD_VISIBLE_STATUSES = [...DASHBOARD_OPEN_STATUSES, 'completed'];
+
 const mapDocsToCollaborations = (docs: Array<{ id: string; data: () => unknown }>) =>
   docs.map(d => ({ ...(d.data() as any), id: d.id } as Collaboration));
 
@@ -187,7 +190,7 @@ export class CollaborationService {
     if (options.mode === 'popular') {
       const snap = await getDocs(query(
         collection(db, COLLECTIONS.COLLABORATIONS),
-        where('status', 'in', ['published', 'submission', 'voting']),
+        where('status', 'in', DASHBOARD_OPEN_STATUSES),
         orderBy('publishedAt', 'desc'),
         firestoreLimit(pageSize * 3)
       ));
@@ -222,11 +225,34 @@ export class CollaborationService {
 
     const snap = await getDocs(query(
       collection(db, COLLECTIONS.COLLABORATIONS),
-      where('status', 'in', ['published', 'submission', 'voting']),
+      where('status', 'in', DASHBOARD_OPEN_STATUSES),
       orderBy('publishedAt', 'desc'),
       firestoreLimit(pageSize)
     ));
     return mapDocsToCollaborations(snap.docs);
+  }
+
+  static async listLatestProjectCollaborations(options: {
+    limit?: number;
+  } = {}): Promise<Collaboration[]> {
+    const pageSize = Math.max(1, Math.min(100, Number(options.limit) || 24));
+    const snap = await getDocs(query(
+      collection(db, COLLECTIONS.COLLABORATIONS),
+      where('status', 'in', DASHBOARD_VISIBLE_STATUSES),
+      orderBy('publishedAt', 'desc'),
+      firestoreLimit(Math.min(100, pageSize * 4))
+    ));
+    const collabs = mapDocsToCollaborations(snap.docs);
+    const latestByProject = new Map<string, Collaboration>();
+
+    for (const collab of collabs) {
+      const projectKey = collab.projectId || collab.id;
+      if (!latestByProject.has(projectKey)) {
+        latestByProject.set(projectKey, collab);
+      }
+    }
+
+    return Array.from(latestByProject.values()).slice(0, pageSize);
   }
 
   static async getUserCollaborations(userId: string): Promise<Collaboration[]> {

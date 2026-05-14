@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import './TagFilter.css';
 
 interface TagOption {
@@ -12,6 +13,8 @@ interface TagFilterProps {
   variant?: 'default' | 'slim';
   tags: TagOption[];
   loading?: boolean;
+  showHeader?: boolean;
+  searchable?: boolean;
 }
 
 export function TagFilter({
@@ -19,8 +22,20 @@ export function TagFilter({
   onTagsChange,
   variant = 'default',
   tags,
-  loading = false
+  loading = false,
+  showHeader = true,
+  searchable = false
 }: TagFilterProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const visibleTags = useMemo(() => {
+    const trimmedSearch = searchTerm.trim().toLowerCase();
+    if (!trimmedSearch) return tags;
+    return tags.filter(tag =>
+      tag.name.toLowerCase().includes(trimmedSearch) ||
+      tag.key.toLowerCase().includes(trimmedSearch)
+    );
+  }, [searchTerm, tags]);
 
   const toggleTag = (tagKey: string) => {
     if (selectedTags.includes(tagKey)) {
@@ -40,9 +55,46 @@ export function TagFilter({
 
   return (
     <div className={`tag-filter ${variant === 'slim' ? 'tag-filter--slim' : ''}`}>
-      <div className="tag-filter__header">
-        <h4>Filter by Tags</h4>
-        {!loading && selectedTags.length > 0 && (
+      {showHeader && (
+        <div className="tag-filter__header">
+          <h4>Filter by Tags</h4>
+          {!loading && selectedTags.length > 0 && (
+            <button
+              type="button"
+              className="tag-filter__clear"
+              onClick={clearAll}
+            >
+              Clear all
+            </button>
+          )}
+        </div>
+      )}
+
+      {searchable && (
+        <div className="tag-filter__search-row">
+          <input
+            className="tag-filter__search"
+            type="search"
+            value={searchTerm}
+            onChange={event => setSearchTerm(event.target.value)}
+            placeholder="Search tags"
+            aria-label="Search tags"
+            disabled={loading}
+          />
+          {!showHeader && !loading && selectedTags.length > 0 && (
+            <button
+              type="button"
+              className="tag-filter__clear tag-filter__clear--inline"
+              onClick={clearAll}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+
+      {!showHeader && !searchable && !loading && selectedTags.length > 0 && (
+        <div className="tag-filter__header tag-filter__header--actions-only">
           <button 
             type="button" 
             className="tag-filter__clear"
@@ -50,8 +102,8 @@ export function TagFilter({
           >
             Clear all
           </button>
-        )}
-      </div>
+        </div>
+      )}
       
       <div className={`tag-filter__tags ${loading ? 'tag-filter__tags--placeholder' : ''}`}>
         {loading
@@ -65,7 +117,7 @@ export function TagFilter({
                 <span className="tag-filter__placeholder-count" />
               </span>
             ))
-          : tags.map(tag => {
+          : visibleTags.map(tag => {
               const total = tag.count || 0;
               if (total <= 0) return null;
 
@@ -83,6 +135,9 @@ export function TagFilter({
                 </button>
               );
             })}
+        {!loading && visibleTags.length === 0 && (
+          <span className="tag-filter__empty">No tags match</span>
+        )}
       </div>
     </div>
   );

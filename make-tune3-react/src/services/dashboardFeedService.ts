@@ -170,8 +170,8 @@ const mapCollaborationItem = (
 
 const fallbackMeta = (selectedTags: string[]) => (
   selectedTags.length > 0
-    ? 'no recommended matches for the current tags. showing latest open collaborations.'
-    : 'no personalized picks yet. showing latest open collaborations.'
+    ? 'no recommended matches for the current tags. showing the latest collaboration from each project.'
+    : 'showing the latest collaboration from each project.'
 );
 
 export class DashboardFeedService {
@@ -210,7 +210,7 @@ export class DashboardFeedService {
         };
       }
 
-      const fallbackItems = await this.loadCollaborationFeed('newest', normalizedTags);
+      const fallbackItems = await this.loadLatestProjectFallback(normalizedTags);
       return {
         ...fallbackItems,
         metaLabel: fallbackMeta(normalizedTags),
@@ -243,6 +243,23 @@ export class DashboardFeedService {
         .slice(0, FEED_LIMIT),
       metaLabel: FEED_META[mode],
       resolvedMode: mode
+    };
+  }
+
+  private static async loadLatestProjectFallback(
+    selectedTags: string[]
+  ): Promise<Omit<DashboardFeedResult, 'requestedMode' | 'isFallback'>> {
+    const collabs = await CollaborationService.listLatestProjectCollaborations({
+      limit: FETCH_LIMIT
+    });
+
+    return {
+      items: collabs
+        .map(collab => mapCollaborationItem(collab, 'newest'))
+        .filter(item => matchesTags(item, selectedTags))
+        .slice(0, FEED_LIMIT),
+      metaLabel: FEED_META.newest,
+      resolvedMode: 'newest'
     };
   }
 }

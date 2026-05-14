@@ -4,6 +4,7 @@ import { DashboardFeedService } from '../../services/dashboardFeedService';
 const hoisted = vi.hoisted(() => ({
   listMyRecommendations: vi.fn(),
   listDashboardCollaborations: vi.fn(),
+  listLatestProjectCollaborations: vi.fn(),
   getCollaboration: vi.fn()
 }));
 
@@ -16,6 +17,7 @@ vi.mock('../../services/recommendationService', () => ({
 vi.mock('../../services/collaborationService', () => ({
   CollaborationService: {
     listDashboardCollaborations: hoisted.listDashboardCollaborations,
+    listLatestProjectCollaborations: hoisted.listLatestProjectCollaborations,
     getCollaboration: hoisted.getCollaboration
   }
 }));
@@ -24,6 +26,7 @@ describe('DashboardFeedService', () => {
   beforeEach(() => {
     hoisted.listMyRecommendations.mockReset();
     hoisted.listDashboardCollaborations.mockReset();
+    hoisted.listLatestProjectCollaborations.mockReset();
     hoisted.getCollaboration.mockReset();
   });
 
@@ -65,13 +68,13 @@ describe('DashboardFeedService', () => {
     expect(hoisted.getCollaboration).toHaveBeenCalledWith('collab-1');
   });
 
-  it('falls back to the latest feed when recommendations are empty', async () => {
+  it('falls back to latest project collaborations when recommendations are empty', async () => {
     hoisted.listMyRecommendations.mockResolvedValue([]);
-    hoisted.listDashboardCollaborations.mockResolvedValue([
+    hoisted.listLatestProjectCollaborations.mockResolvedValue([
       {
         id: 'collab-2',
         name: 'Fresh Take',
-        status: 'submission',
+        status: 'completed',
         description: 'open now',
         tags: ['garage'],
         tagsKey: ['garage'],
@@ -88,12 +91,12 @@ describe('DashboardFeedService', () => {
       mode: 'recommended'
     });
 
-    expect(hoisted.listDashboardCollaborations).toHaveBeenCalledWith({
-      mode: 'newest',
+    expect(hoisted.listLatestProjectCollaborations).toHaveBeenCalledWith({
       limit: 72
     });
     expect(result.isFallback).toBe(true);
     expect(result.resolvedMode).toBe('newest');
     expect(result.items[0].collaborationName).toBe('Fresh Take');
+    expect(result.items[0].collaborationStatus).toBe('completed');
   });
 });

@@ -73,7 +73,8 @@ describe('DashboardCollabsPanel', () => {
     );
 
     expect(screen.getByRole('heading', { name: /explore feed/i })).toBeInTheDocument();
-    expect(screen.getByText('Filter by Tags')).toBeInTheDocument();
+    expect(screen.queryByText('Filter by Tags')).not.toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: /search tags/i })).toBeInTheDocument();
     expect(screen.getByText('recommended')).toBeInTheDocument();
     expect(screen.getByText('newest')).toBeInTheDocument();
     expect(screen.getByText('popular')).toBeInTheDocument();
@@ -97,6 +98,27 @@ describe('DashboardCollabsPanel', () => {
 
     fireEvent.click(screen.getByText('newest'));
     expect(onFeedModeChange).toHaveBeenCalledWith('newest');
+  });
+
+  it('filters visible tag chips from the explore controls search', () => {
+    render(
+      <MemoryRouter>
+        <DashboardCollabsPanel
+          {...defaultProps}
+          availableTags={[
+            { key: 'house', name: 'House', count: 4 },
+            { key: 'techno', name: 'Techno', count: 2 }
+          ]}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.change(screen.getByRole('searchbox', { name: /search tags/i }), {
+      target: { value: 'tech' }
+    });
+
+    expect(screen.queryByText('House')).not.toBeInTheDocument();
+    expect(screen.getByText('Techno')).toBeInTheDocument();
   });
 
   it('shows a feed-specific empty state', () => {

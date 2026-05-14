@@ -91,6 +91,8 @@ export function DashboardCollabsPanel({
               variant="slim"
               tags={availableTags}
               loading={!hasLoaded && availableTags.length === 0}
+              showHeader={false}
+              searchable
             />
           </div>
 
@@ -123,9 +125,6 @@ export function DashboardCollabsPanel({
       <div id="collaboration-feed" className={`project-history ${styles.historyColumn}`}>
         <div className={styles.feedHeader}>
           <h4 className="project-history-title">Explore feed</h4>
-          <p className={styles.feedIntro}>
-            Default workbench. Use the fixed controls on the left to shape this list.
-          </p>
         </div>
 
         <div className={styles.historyPanel}>
