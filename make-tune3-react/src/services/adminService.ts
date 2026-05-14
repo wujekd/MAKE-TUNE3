@@ -136,6 +136,71 @@ export interface PaginatedFeedbackResult {
   hasMore: boolean;
 }
 
+export interface AdminGroupItem {
+  id: string;
+  name: string;
+  description: string;
+  visibility: 'public' | 'unlisted' | 'private';
+  joinPolicy: 'open' | 'invite_link' | 'approval_required';
+  externalLinks: Array<{ type: string; label?: string; url: string }>;
+  ownerId: string;
+  createdAt: number | null;
+  updatedAt: number | null;
+  memberCount: number;
+  pendingCount: number;
+  projectCount: number;
+  collaborationCount: number;
+}
+
+export interface AdminGroupMemberItem {
+  userId: string;
+  role: 'owner' | 'admin' | 'member';
+  status: 'active' | 'requested';
+  createdAt: number | null;
+  updatedAt: number | null;
+}
+
+export interface AdminGroupProjectItem {
+  id: string;
+  name: string;
+  ownerId: string;
+  createdAt: number | null;
+  updatedAt: number | null;
+}
+
+export interface AdminGroupCollaborationItem {
+  id: string;
+  projectId: string;
+  name: string;
+  status: string;
+  visibility: string;
+  submitAccess: string;
+  voteAccess: string;
+  createdAt: number | null;
+  updatedAt: number | null;
+}
+
+export interface PaginatedGroupsResult {
+  groups: AdminGroupItem[];
+  nextPageToken: string | null;
+  hasMore: boolean;
+}
+
+export interface AdminGroupDetailsResult {
+  group: AdminGroupItem;
+  members: AdminGroupMemberItem[];
+  projects: AdminGroupProjectItem[];
+  collaborations: AdminGroupCollaborationItem[];
+}
+
+export interface AdminGroupUpdateData {
+  name?: string;
+  description?: string;
+  visibility?: AdminGroupItem['visibility'];
+  joinPolicy?: AdminGroupItem['joinPolicy'];
+  externalLinks?: AdminGroupItem['externalLinks'];
+}
+
 export class AdminService {
   static async listUsers(pageSize?: number, pageToken?: string | null): Promise<PaginatedUsersResult> {
     const result = await callFirebaseFunction<
@@ -181,6 +246,45 @@ export class AdminService {
       PaginatedProjectsResult
     >('adminListProjects', { pageSize, pageToken });
     return result;
+  }
+
+  static async listGroups(
+    pageSize?: number,
+    pageToken?: string | null,
+    visibility?: string | null
+  ): Promise<PaginatedGroupsResult> {
+    return callFirebaseFunction<
+      { pageSize?: number; pageToken?: string | null; visibility?: string | null },
+      PaginatedGroupsResult
+    >('adminListGroups', { pageSize, pageToken, visibility });
+  }
+
+  static async getGroup(groupId: string): Promise<AdminGroupDetailsResult> {
+    return callFirebaseFunction<{ groupId: string }, AdminGroupDetailsResult>('adminGetGroup', { groupId });
+  }
+
+  static async updateGroup(groupId: string, updates: AdminGroupUpdateData): Promise<void> {
+    await callFirebaseFunction('adminUpdateGroup', { groupId, updates });
+  }
+
+  static async updateGroupMember(
+    groupId: string,
+    userId: string,
+    updates: { role?: AdminGroupMemberItem['role']; status?: AdminGroupMemberItem['status']; remove?: boolean }
+  ): Promise<void> {
+    await callFirebaseFunction('adminUpdateGroupMember', { groupId, userId, ...updates });
+  }
+
+  static async removeGroupAttachment(
+    groupId: string,
+    kind: 'project' | 'collaboration',
+    targetId: string
+  ): Promise<void> {
+    await callFirebaseFunction('adminRemoveGroupAttachment', { groupId, kind, targetId });
+  }
+
+  static async deleteGroup(groupId: string): Promise<void> {
+    await callFirebaseFunction('adminDeleteGroup', { groupId });
   }
 
   static async listPendingReports(pageSize?: number, pageToken?: string | null): Promise<PaginatedReportsResult> {

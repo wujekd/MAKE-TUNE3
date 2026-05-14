@@ -877,6 +877,7 @@
 .consoleHomeButton,
 .consolePrimaryButton,
 .workbenchToggle,
+.workbenchReturn,
 .workbenchPrimary,
 .inlineAction,
 .workbenchSecondaryLink {
@@ -904,6 +905,22 @@
   padding: 0 11px;
 }
 
+.workbenchReturn {
+  border: 1px solid rgba(129, 203, 205, 0.34);
+  background: linear-gradient(90deg, rgba(48, 112, 113, 0.18), rgba(11, 21, 23, 0.68));
+  color: rgba(220, 230, 230, 0.86);
+  padding: 0 13px;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.workbenchReturn::before {
+  content: "<-";
+  color: var(--dashboard-accent);
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
 .consolePrimaryButton,
 .consoleHomeButton,
 .workbenchPrimary,
@@ -925,6 +942,7 @@
 .consoleHomeButton:hover,
 .consolePrimaryButton:hover,
 .workbenchToggle:hover,
+.workbenchReturn:hover,
 .workbenchPrimary:hover,
 .inlineAction:hover,
 .workbenchSecondaryLink:hover,
@@ -1013,6 +1031,12 @@
 .workbenchToggle {
   box-sizing: border-box;
   justify-content: flex-start;
+  min-height: 34px;
+  width: 100%;
+}
+
+.workbenchReturn {
+  box-sizing: border-box;
   min-height: 34px;
   width: 100%;
 }
@@ -1227,6 +1251,223 @@
   margin-top: auto;
 }
 
+.groupList,
+.groupListWide,
+.groupStatusStack,
+.groupWorkbenchBody {
+  display: grid;
+  gap: 8px;
+}
+
+.groupList {
+  max-height: 280px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.groupListButton,
+.groupRow {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(48, 112, 113, 0.24);
+  border-radius: 8px;
+  background: rgba(4, 9, 10, 0.28);
+  color: var(--white);
+  text-align: left;
+  text-decoration: none;
+}
+
+.groupListButton {
+  padding: 10px;
+  cursor: pointer;
+}
+
+.groupListButton:hover,
+.groupListButtonActive,
+.groupRow:hover {
+  border-color: rgba(239, 123, 58, 0.48);
+  background: rgba(239, 123, 58, 0.1);
+}
+
+.groupListButton strong,
+.groupListButton span {
+  display: block;
+}
+
+.groupListButton strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.groupListButton span,
+.groupMessage,
+.groupHero p,
+.groupRow em {
+  color: var(--dashboard-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.groupForm {
+  display: grid;
+  gap: 12px;
+  max-width: 720px;
+}
+
+.groupForm label {
+  display: grid;
+  gap: 6px;
+  color: rgba(220, 230, 230, 0.62);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.groupForm input,
+.groupForm textarea,
+.groupForm select,
+.groupInviteField {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(48, 112, 113, 0.35);
+  border-radius: 8px;
+  background: rgba(4, 9, 10, 0.5);
+  color: var(--white);
+  padding: 10px 12px;
+}
+
+.groupForm textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.groupFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.groupError,
+.groupNotice,
+.groupEmptyState {
+  border-radius: 8px;
+  padding: 11px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.groupError {
+  border: 1px solid rgba(239, 82, 82, 0.38);
+  background: rgba(239, 82, 82, 0.1);
+  color: #ffd8d8;
+}
+
+.groupNotice {
+  border: 1px solid rgba(48, 112, 113, 0.42);
+  background: rgba(48, 112, 113, 0.14);
+  color: var(--primary1-100);
+}
+
+.groupEmptyState {
+  border: 1px solid rgba(48, 112, 113, 0.24);
+  background: rgba(4, 9, 10, 0.28);
+}
+
+.groupEmptyState strong,
+.groupEmptyState p {
+  display: block;
+  margin: 0 0 8px;
+}
+
+.groupEmptyState strong {
+  color: var(--white);
+  font-size: 15px;
+}
+
+.groupEmptyState p {
+  color: var(--dashboard-text-muted);
+}
+
+.groupHero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+  border: 1px solid rgba(48, 112, 113, 0.24);
+  border-radius: 8px;
+  background: rgba(4, 9, 10, 0.3);
+  padding: 14px;
+}
+
+.groupHero span,
+.groupSectionHeader span {
+  color: var(--dashboard-accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.groupHero h5 {
+  margin: 4px 0 6px;
+  color: var(--white);
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.groupHero p {
+  margin: 0;
+}
+
+.groupHeroActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.groupSection {
+  display: grid;
+  gap: 8px;
+}
+
+.groupSectionHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.groupSectionHeader strong {
+  color: var(--white);
+  font-size: 13px;
+}
+
+.groupRow {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.groupRow span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.groupRow em {
+  flex: 0 0 auto;
+  font-style: normal;
+}
+
 .mixerColumn {
   width: 140px;
   flex-shrink: 0;
@@ -1264,8 +1505,14 @@
   }
 
   .profileActionGrid,
-  .shellGrid {
+  .shellGrid,
+  .groupFormGrid,
+  .groupHero {
     grid-template-columns: 1fr;
+  }
+
+  .groupHeroActions {
+    justify-content: flex-start;
   }
 
   .mixerColumn {

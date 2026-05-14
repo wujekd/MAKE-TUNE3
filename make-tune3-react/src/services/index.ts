@@ -10,7 +10,21 @@ export { ReportService } from './reportService';
 export { FeedbackService } from './feedbackService';
 export type { FeedbackCategory, FeedbackStatus, Feedback, CreateFeedbackData } from './feedbackService';
 export { AdminService } from './adminService';
-export type { UserSearchResult, UserUpdateData, AdminProjectWithCollabs, PaginatedUsersResult, PaginatedProjectsResult, PaginatedReportsResult, PaginatedFeedbackResult } from './adminService';
+export type {
+  UserSearchResult,
+  UserUpdateData,
+  AdminProjectWithCollabs,
+  PaginatedUsersResult,
+  PaginatedProjectsResult,
+  PaginatedReportsResult,
+  PaginatedFeedbackResult,
+  AdminGroupItem,
+  AdminGroupMemberItem,
+  AdminGroupProjectItem,
+  AdminGroupCollaborationItem,
+  AdminGroupDetailsResult,
+  PaginatedGroupsResult
+} from './adminService';
 export { SettingsService } from './settingsService';
 export { WaveformService } from './waveformService';
 export { GroupService } from './groupService';

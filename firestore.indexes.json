@@ -113,16 +113,6 @@
       ]
     },
     {
-      "collectionGroup": "projects",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "groupIds",
-          "arrayConfig": "CONTAINS"
-        }
-      ]
-    },
-    {
       "collectionGroup": "collaborations",
       "queryScope": "COLLECTION",
       "fields": [

@@ -6,18 +6,24 @@ import { canCreateProject } from '../utils/permissions';
 import styles from '../views/DashboardView.module.css';
 
 export type DashboardWorkbench = 'explore' | 'projects' | 'account' | 'groups';
+export type DashboardProfileMode = 'account' | 'projects' | 'activity' | null;
 
 interface DashboardHeaderProps {
   totalCollabs: number;
   totalSubmissions: number;
   totalVotes: number;
   activeCollabs: number;
+  myGroupCount: number;
+  publicGroupCount: number;
   activeWorkbench: DashboardWorkbench;
+  profileMode: DashboardProfileMode;
   selectedTagCount: number;
   feedModeLabel: string;
   onWorkbenchChange: (workbench: DashboardWorkbench) => void;
   onCreateProjectRequest: () => void;
   onOpenProjectsRequest: () => void;
+  onOpenGroupsRequest: () => void;
+  onCreateGroupRequest: () => void;
 }
 
 const compactFormatter = new Intl.NumberFormat('en', {
@@ -35,12 +41,17 @@ export function DashboardHeader({
   totalSubmissions,
   totalVotes,
   activeCollabs,
+  myGroupCount,
+  publicGroupCount,
   activeWorkbench,
+  profileMode,
   selectedTagCount,
   feedModeLabel,
   onWorkbenchChange,
   onCreateProjectRequest,
-  onOpenProjectsRequest
+  onOpenProjectsRequest,
+  onOpenGroupsRequest,
+  onCreateGroupRequest
 }: DashboardHeaderProps) {
   const navigate = useNavigate();
   const user = useAppStore(state => state.auth.user);
@@ -48,6 +59,8 @@ export function DashboardHeader({
   const profileName = user?.username || user?.email || 'Guest profile';
   const projectCount = user?.projectCount ?? 0;
   const tierLabel = user?.tier || 'free';
+  const isAccountActive = activeWorkbench === 'account' && profileMode === 'account';
+  const isProjectsActive = activeWorkbench === 'projects' && profileMode === 'projects';
 
   const handleCreateProjectClick = () => {
     if (!user) {
@@ -90,7 +103,7 @@ export function DashboardHeader({
           type="button"
           className={styles.consoleStatus}
           onClick={() => onWorkbenchChange('account')}
-          aria-pressed={activeWorkbench === 'account'}
+          aria-pressed={isAccountActive}
         >
           <strong>{profileName}</strong>
           <span>{user ? `${tierLabel} tier - account and activity ready` : 'Login to use profile controls'}</span>
@@ -103,21 +116,21 @@ export function DashboardHeader({
         <div className={styles.profileActionGrid} aria-label="Profile actions">
           <button
             type="button"
-            className={`${styles.consolePrimaryButton} ${activeWorkbench === 'projects' ? styles.consoleButtonActive : ''}`}
+            className={`${styles.consolePrimaryButton} ${isProjectsActive ? styles.consoleButtonActive : ''}`}
             onClick={handleCreateProjectClick}
           >
             Create project
           </button>
           <button
             type="button"
-            className={`${styles.consoleButton} ${activeWorkbench === 'account' ? styles.consoleButtonActive : ''}`}
+            className={`${styles.consoleButton} ${isAccountActive ? styles.consoleButtonActive : ''}`}
             onClick={() => onWorkbenchChange('account')}
           >
             Account
           </button>
           <button
             type="button"
-            className={`${styles.consoleButton} ${activeWorkbench === 'projects' ? styles.consoleButtonActive : ''}`}
+            className={`${styles.consoleButton} ${isProjectsActive ? styles.consoleButtonActive : ''}`}
             onClick={handleOpenProjectsClick}
           >
             My projects
@@ -133,28 +146,28 @@ export function DashboardHeader({
           onClick={() => onWorkbenchChange('groups')}
           aria-pressed={activeWorkbench === 'groups'}
         >
-          <strong>Groups placeholder</strong>
-          <span>Lightweight contexts for external communities will live here.</span>
+          <strong>{user ? `${myGroupCount} joined groups` : `${publicGroupCount} public groups`}</strong>
+          <span>Music rooms for outside communities, wired into projects and collabs.</span>
         </button>
         <div className={styles.consoleMeterRow}>
-          <ConsoleMeter label="groups" value="--" />
-          <ConsoleMeter label="linked" value="--" />
-          <ConsoleMeter label="updates" value="--" />
+          <ConsoleMeter label="mine" value={user ? myGroupCount : 0} />
+          <ConsoleMeter label="public" value={publicGroupCount} />
+          <ConsoleMeter label="access" value="live" />
         </div>
         <div className={styles.consoleButtonRow}>
           <button
             type="button"
             className={`${styles.consoleButton} ${activeWorkbench === 'groups' ? styles.consoleButtonActive : ''}`}
-            onClick={() => onWorkbenchChange('groups')}
+            onClick={onOpenGroupsRequest}
           >
             Groups
           </button>
           <button
             type="button"
             className={`${styles.consoleButton} ${activeWorkbench === 'groups' ? styles.consoleButtonActive : ''}`}
-            onClick={() => onWorkbenchChange('groups')}
+            onClick={onCreateGroupRequest}
           >
-            Group activity
+            Create group
           </button>
         </div>
       </div>

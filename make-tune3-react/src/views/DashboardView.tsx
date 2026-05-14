@@ -1,12 +1,13 @@
-import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardService } from '../services/dashboardService';
 import { DashboardFeedService } from '../services/dashboardFeedService';
 import type { DashboardFeedItem, DashboardFeedMode } from '../services/dashboardFeedService';
+import { GroupService } from '../services/groupService';
 import { TagService } from '../services/tagService';
 import { UserActivityPanel } from '../components/UserActivityPanel';
 import { DashboardHeader } from '../components/DashboardHeader';
-import type { DashboardWorkbench } from '../components/DashboardHeader';
+import type { DashboardProfileMode, DashboardWorkbench } from '../components/DashboardHeader';
 import { DashboardCollabsPanel } from '../components/DashboardCollabsPanel';
 import { AudioRouteBoundary } from '../components/AudioRouteBoundary';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -15,6 +16,7 @@ import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { useAppStore } from '../stores/appStore';
 import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
 import { useCollabBackingsPrefetch } from '../hooks/useCollabBackingsPrefetch';
+import type { Collaboration, Group, GroupJoinPolicy, GroupMember, GroupVisibility, Project } from '../types/collaboration';
 import styles from './DashboardView.module.css';
 
 const Mixer1Channel = lazy(() =>
@@ -37,6 +39,8 @@ export function DashboardView() {
   const [projectWorkbenchMode, setProjectWorkbenchMode] = useState<'projects' | 'activity'>('projects');
   const [createProjectRequestKey, setCreateProjectRequestKey] = useState(0);
   const [projectsPanelRequestKey, setProjectsPanelRequestKey] = useState(0);
+  const [openGroupsRequestKey, setOpenGroupsRequestKey] = useState(0);
+  const [createGroupRequestKey, setCreateGroupRequestKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<Array<{ key: string; name: string; count: number }>>([]);
@@ -48,6 +52,11 @@ export function DashboardView() {
     totalVotes: 0,
     activeCollabs: 0
   });
+  const [myGroups, setMyGroups] = useState<Group[]>([]);
+  const [publicGroups, setPublicGroups] = useState<Group[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(false);
+  const [groupsError, setGroupsError] = useState<string | null>(null);
+  const [groupsRefreshKey, setGroupsRefreshKey] = useState(0);
   const audioState = useAudioStore(s => s.state);
   const isAudioReady = useAudioStore(s => Boolean(s.engine && s.state));
   const authLoading = useAppStore(state => state.auth.loading);
@@ -136,6 +145,41 @@ export function DashboardView() {
     }
 
     let mounted = true;
+    setGroupsLoading(true);
+    setGroupsError(null);
+
+    (async () => {
+      try {
+        const [publicRows, mineRows] = await Promise.all([
+          GroupService.listPublicGroups(),
+          userId ? GroupService.listMyGroups() : Promise.resolve([] as Group[])
+        ]);
+        if (!mounted) return;
+        setPublicGroups(publicRows);
+        setMyGroups(mineRows);
+      } catch (e: any) {
+        if (!mounted) return;
+        setPublicGroups([]);
+        setMyGroups([]);
+        setGroupsError(e?.message || 'Unable to load groups right now.');
+      } finally {
+        if (mounted) {
+          setGroupsLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [authLoading, groupsRefreshKey, userId]);
+
+  useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
+    let mounted = true;
     if (!hasLoadedFeedRef.current) {
       setHasLoaded(false);
     }
@@ -194,7 +238,26 @@ export function DashboardView() {
     setProjectWorkbenchMode('activity');
   };
 
+  const handleOpenAccountRequest = () => {
+    setActiveWorkbench('account');
+  };
+
+  const handleOpenGroupsRequest = () => {
+    setActiveWorkbench('groups');
+    setOpenGroupsRequestKey(key => key + 1);
+  };
+
+  const handleCreateGroupRequest = () => {
+    setActiveWorkbench('groups');
+    setCreateGroupRequestKey(key => key + 1);
+  };
+
   const feedModeLabel = feedMode.replace('_', ' ');
+  const activeProfileMode: DashboardProfileMode = activeWorkbench === 'account'
+    ? 'account'
+    : activeWorkbench === 'projects'
+      ? projectWorkbenchMode
+      : null;
 
   return (
     <div className={`view-container ${styles.container}`}>
@@ -203,12 +266,17 @@ export function DashboardView() {
         totalSubmissions={stats.totalSubmissions}
         totalVotes={stats.totalVotes}
         activeCollabs={stats.activeCollabs}
+        myGroupCount={myGroups.length}
+        publicGroupCount={publicGroups.length}
         activeWorkbench={activeWorkbench}
+        profileMode={activeProfileMode}
         selectedTagCount={selectedTags.length}
         feedModeLabel={feedModeLabel}
         onWorkbenchChange={setActiveWorkbench}
         onCreateProjectRequest={handleCreateProjectRequest}
         onOpenProjectsRequest={handleOpenProjectsRequest}
+        onOpenGroupsRequest={handleOpenGroupsRequest}
+        onCreateGroupRequest={handleCreateGroupRequest}
       />
 
       <div className={styles.content}>
@@ -229,56 +297,15 @@ export function DashboardView() {
 
           {activeWorkbench === 'projects' && (
             <>
-              <aside className={styles.controlColumn} aria-label="Project controls">
-                <h4 className={styles.panelTitle}>Project controls</h4>
-                <div className={styles.controlStack}>
-                  <div className={styles.controlGroup}>
-                    <div className={styles.controlLabel}>Mode</div>
-                    <button
-                      type="button"
-                      className={`${styles.workbenchToggle} ${projectWorkbenchMode === 'projects' ? styles.workbenchToggleActive : ''}`}
-                      onClick={handleOpenProjectsRequest}
-                    >
-                      My projects
-                    </button>
-                    <button
-                      type="button"
-                      className={`${styles.workbenchToggle} ${projectWorkbenchMode === 'activity' ? styles.workbenchToggleActive : ''}`}
-                      onClick={handleOpenActivityRequest}
-                    >
-                      My activity
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.workbenchToggle}
-                      onClick={() => setActiveWorkbench('account')}
-                    >
-                      Account
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.workbenchToggle}
-                      onClick={() => setActiveWorkbench('explore')}
-                    >
-                      Explore feed
-                    </button>
-                  </div>
-                  <div className={styles.controlGroup}>
-                    <div className={styles.controlLabel}>Quick action</div>
-                    <button
-                      type="button"
-                      className={styles.workbenchPrimary}
-                      onClick={handleCreateProjectRequest}
-                    >
-                      Create project
-                    </button>
-                  </div>
-                  <div className={styles.filterSummary}>
-                    <strong>{user ? 'Project workbench' : 'Login required'}</strong>
-                    <span>{user ? 'Your project list and creation form stay in the center bay.' : 'Sign in to create or manage projects.'}</span>
-                  </div>
-                </div>
-              </aside>
+              <ProfileControls
+                activeMode={projectWorkbenchMode}
+                isSignedIn={Boolean(user)}
+                onAccount={handleOpenAccountRequest}
+                onCreateProject={handleCreateProjectRequest}
+                onOpenProjects={handleOpenProjectsRequest}
+                onOpenActivity={handleOpenActivityRequest}
+                onExplore={() => setActiveWorkbench('explore')}
+              />
               <div className={`project-history ${styles.historyColumn}`}>
                 <UserActivityPanel
                   createProjectRequestKey={createProjectRequestKey}
@@ -291,18 +318,35 @@ export function DashboardView() {
           )}
 
           {activeWorkbench === 'account' && (
-            <AccountWorkbench
-              userName={user?.username || user?.email || 'Guest'}
-              isSignedIn={Boolean(user)}
-              onCreateProject={handleCreateProjectRequest}
-              onOpenProjects={handleOpenProjectsRequest}
-              onOpenActivity={handleOpenActivityRequest}
-              onExplore={() => setActiveWorkbench('explore')}
-            />
+            <>
+              <ProfileControls
+                activeMode="account"
+                isSignedIn={Boolean(user)}
+                onAccount={handleOpenAccountRequest}
+                onCreateProject={handleCreateProjectRequest}
+                onOpenProjects={handleOpenProjectsRequest}
+                onOpenActivity={handleOpenActivityRequest}
+                onExplore={() => setActiveWorkbench('explore')}
+              />
+              <AccountWorkbench
+                userName={user?.username || user?.email || 'Guest'}
+                isSignedIn={Boolean(user)}
+                onOpenProjects={handleOpenProjectsRequest}
+              />
+            </>
           )}
 
           {activeWorkbench === 'groups' && (
-            <GroupsWorkbench onExplore={() => setActiveWorkbench('explore')} />
+            <GroupsWorkbench
+              myGroups={myGroups}
+              publicGroups={publicGroups}
+              loading={groupsLoading}
+              error={groupsError}
+              openRequestKey={openGroupsRequestKey}
+              createRequestKey={createGroupRequestKey}
+              onGroupsChanged={() => setGroupsRefreshKey(key => key + 1)}
+              onExplore={() => setActiveWorkbench('explore')}
+            />
           )}
         </div>
         <div className={`mixer-theme ${styles.mixerColumn}`}>
@@ -322,105 +366,444 @@ export function DashboardView() {
   );
 }
 
-function AccountWorkbench({
-  userName,
+function ProfileControls({
+  activeMode,
   isSignedIn,
+  onAccount,
   onCreateProject,
   onOpenProjects,
   onOpenActivity,
   onExplore
 }: {
-  userName: string;
+  activeMode: NonNullable<DashboardProfileMode>;
   isSignedIn: boolean;
+  onAccount: () => void;
   onCreateProject: () => void;
   onOpenProjects: () => void;
   onOpenActivity: () => void;
   onExplore: () => void;
 }) {
-  return (
-    <>
-      <aside className={styles.controlColumn} aria-label="Account controls">
-        <h4 className={styles.panelTitle}>Profile controls</h4>
-        <div className={styles.controlStack}>
-          <div className={styles.controlGroup}>
-            <div className={styles.controlLabel}>Mode</div>
-            <button type="button" className={`${styles.workbenchToggle} ${styles.workbenchToggleActive}`}>
-              Account
-            </button>
-            <button type="button" className={styles.workbenchToggle} onClick={onOpenProjects}>
-              My projects
-            </button>
-            <button type="button" className={styles.workbenchToggle} onClick={onOpenActivity}>
-              My activity
-            </button>
-            <button type="button" className={styles.workbenchToggle} onClick={onExplore}>
-              Explore feed
-            </button>
-          </div>
-          <div className={styles.controlGroup}>
-            <div className={styles.controlLabel}>Quick action</div>
-            <button type="button" className={styles.workbenchPrimary} onClick={onCreateProject}>
-              Create project
-            </button>
-          </div>
-        </div>
-      </aside>
+  const summary = activeMode === 'account'
+    ? {
+        title: isSignedIn ? 'Account workbench' : 'Login required',
+        text: isSignedIn ? 'Profile settings stay in the center bay.' : 'Sign in to use profile controls.'
+      }
+    : activeMode === 'activity'
+      ? {
+          title: isSignedIn ? 'Activity workbench' : 'Login required',
+          text: isSignedIn ? 'Your recent activity stays in the center bay.' : 'Sign in to review your activity.'
+        }
+      : {
+          title: isSignedIn ? 'Project workbench' : 'Login required',
+          text: isSignedIn ? 'Your project list and creation form stay in the center bay.' : 'Sign in to create or manage projects.'
+        };
 
-      <section className={styles.workbenchPanel} aria-labelledby="account-workbench-title">
-        <div className={styles.workbenchPanelHeader}>
-          <div>
-            <h4 id="account-workbench-title" className={styles.workbenchTitle}>Account</h4>
-            <p className={styles.workbenchIntro}>
-              Profile settings stay available without disturbing the dashboard console.
-            </p>
-          </div>
-          {isSignedIn ? (
-            <Link className={styles.workbenchSecondaryLink} to="/account">Open full account</Link>
-          ) : (
-            <Link className={styles.workbenchSecondaryLink} to="/auth?mode=login">Login</Link>
-          )}
+  return (
+    <aside className={styles.controlColumn} aria-label="Profile controls">
+      <h4 className={styles.panelTitle}>Profile controls</h4>
+      <div className={styles.controlStack}>
+        <div className={styles.controlGroup}>
+          <div className={styles.controlLabel}>Mode</div>
+          <button
+            type="button"
+            className={`${styles.workbenchToggle} ${activeMode === 'account' ? styles.workbenchToggleActive : ''}`}
+            onClick={onAccount}
+          >
+            Account
+          </button>
+          <button
+            type="button"
+            className={`${styles.workbenchToggle} ${activeMode === 'projects' ? styles.workbenchToggleActive : ''}`}
+            onClick={onOpenProjects}
+          >
+            My projects
+          </button>
+          <button
+            type="button"
+            className={`${styles.workbenchToggle} ${activeMode === 'activity' ? styles.workbenchToggleActive : ''}`}
+            onClick={onOpenActivity}
+          >
+            My activity
+          </button>
         </div>
-        <div className={styles.shellGrid}>
-          <div className={styles.shellCard}>
-            <span>profile</span>
-            <strong>{userName}</strong>
-            <p>{isSignedIn ? 'Account details, visibility, and support live in the full account view.' : 'Login to manage profile settings.'}</p>
-          </div>
-          <div className={styles.shellCard}>
-            <span>projects</span>
-            <strong>My projects</strong>
-            <p>Use the project workbench for creation, moderation, and project history.</p>
-            <button type="button" className={styles.inlineAction} onClick={onOpenProjects}>
-              Open projects
-            </button>
-          </div>
+        <div className={styles.controlGroup}>
+          <div className={styles.controlLabel}>Return</div>
+          <button type="button" className={styles.workbenchReturn} onClick={onExplore}>
+            Back to Explore feed
+          </button>
         </div>
-      </section>
-    </>
+        <div className={styles.controlGroup}>
+          <div className={styles.controlLabel}>Quick action</div>
+          <button type="button" className={styles.workbenchPrimary} onClick={onCreateProject}>
+            Create project
+          </button>
+        </div>
+        <div className={styles.filterSummary}>
+          <strong>{summary.title}</strong>
+          <span>{summary.text}</span>
+        </div>
+      </div>
+    </aside>
   );
 }
 
-function GroupsWorkbench({ onExplore }: { onExplore: () => void }) {
+function AccountWorkbench({
+  userName,
+  isSignedIn,
+  onOpenProjects
+}: {
+  userName: string;
+  isSignedIn: boolean;
+  onOpenProjects: () => void;
+}) {
+  return (
+    <section className={styles.workbenchPanel} aria-labelledby="account-workbench-title">
+      <div className={styles.workbenchPanelHeader}>
+        <div>
+          <h4 id="account-workbench-title" className={styles.workbenchTitle}>Account</h4>
+          <p className={styles.workbenchIntro}>
+            Profile settings stay available without disturbing the dashboard console.
+          </p>
+        </div>
+        {isSignedIn ? (
+          <Link className={styles.workbenchSecondaryLink} to="/account">Open full account</Link>
+        ) : (
+          <Link className={styles.workbenchSecondaryLink} to="/auth?mode=login">Login</Link>
+        )}
+      </div>
+      <div className={styles.shellGrid}>
+        <div className={styles.shellCard}>
+          <span>profile</span>
+          <strong>{userName}</strong>
+          <p>{isSignedIn ? 'Account details, visibility, and support live in the full account view.' : 'Login to manage profile settings.'}</p>
+        </div>
+        <div className={styles.shellCard}>
+          <span>projects</span>
+          <strong>My projects</strong>
+          <p>Use the project workbench for creation, moderation, and project history.</p>
+          <button type="button" className={styles.inlineAction} onClick={onOpenProjects}>
+            Open projects
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function GroupsWorkbench({
+  myGroups,
+  publicGroups,
+  loading,
+  error,
+  openRequestKey,
+  createRequestKey,
+  onGroupsChanged,
+  onExplore
+}: {
+  myGroups: Group[];
+  publicGroups: Group[];
+  loading: boolean;
+  error: string | null;
+  openRequestKey: number;
+  createRequestKey: number;
+  onGroupsChanged: () => void;
+  onExplore: () => void;
+}) {
+  const user = useAppStore(state => state.auth.user);
+  const [mode, setMode] = useState<'mine' | 'public' | 'create'>('mine');
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+  const [membership, setMembership] = useState<GroupMember | null>(null);
+  const [canManage, setCanManage] = useState(false);
+  const [groupProjects, setGroupProjects] = useState<Project[]>([]);
+  const [groupCollaborations, setGroupCollaborations] = useState<Collaboration[]>([]);
+  const [members, setMembers] = useState<GroupMember[]>([]);
+  const [inviteUrl, setInviteUrl] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [visibility, setVisibility] = useState<GroupVisibility>('public');
+  const [joinPolicy, setJoinPolicy] = useState<GroupJoinPolicy>('open');
+  const [externalLabel, setExternalLabel] = useState('');
+  const [externalUrl, setExternalUrl] = useState('');
+
+  const visibleGroups = mode === 'public' ? publicGroups : myGroups;
+  const isActiveMember = membership?.status === 'active';
+  const pendingMembers = members.filter(member => member.status === 'requested');
+
+  useEffect(() => {
+    if (openRequestKey > 0) {
+      setMode('mine');
+    }
+  }, [openRequestKey]);
+
+  useEffect(() => {
+    if (createRequestKey > 0) {
+      setMode('create');
+    }
+  }, [createRequestKey]);
+
+  useEffect(() => {
+    if (mode === 'create') {
+      return;
+    }
+    if (selectedGroupId) {
+      return;
+    }
+    setSelectedGroupId(visibleGroups[0]?.id ?? null);
+  }, [mode, selectedGroupId, visibleGroups]);
+
+  useEffect(() => {
+    if (!selectedGroupId || mode === 'create') {
+      setSelectedGroup(null);
+      setMembership(null);
+      setCanManage(false);
+      setGroupProjects([]);
+      setGroupCollaborations([]);
+      setMembers([]);
+      return;
+    }
+
+    let mounted = true;
+    setDetailsLoading(true);
+    setDetailsError(null);
+    setInviteUrl('');
+    setActionError('');
+    setActionMessage('');
+
+    (async () => {
+      try {
+        const details = await GroupService.getGroup(selectedGroupId);
+        if (!mounted) return;
+        setSelectedGroup(details.group);
+        setMembership(details.membership);
+        setCanManage(details.canManage);
+
+        const [projects, collaborations, memberRows] = await Promise.all([
+          GroupService.listGroupProjects(selectedGroupId),
+          GroupService.listGroupCollaborations(selectedGroupId),
+          details.canManage ? GroupService.listGroupMembers(selectedGroupId) : Promise.resolve([] as GroupMember[])
+        ]);
+        if (!mounted) return;
+        setGroupProjects(projects);
+        setGroupCollaborations(collaborations);
+        setMembers(memberRows);
+      } catch (e: any) {
+        if (!mounted) return;
+        setSelectedGroup(null);
+        setMembership(null);
+        setCanManage(false);
+        setGroupProjects([]);
+        setGroupCollaborations([]);
+        setMembers([]);
+        setDetailsError(e?.message || 'Unable to load this group.');
+      } finally {
+        if (mounted) {
+          setDetailsLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [mode, selectedGroupId]);
+
+  const refreshSelectedGroup = () => {
+    const groupId = selectedGroupId;
+    setSelectedGroupId(null);
+    window.setTimeout(() => setSelectedGroupId(groupId), 0);
+  };
+
+  const handleCreateGroup = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!user) {
+      setActionError('Login to create a group.');
+      return;
+    }
+    if (!name.trim()) {
+      setActionError('Give the group a name.');
+      return;
+    }
+
+    setCreating(true);
+    setActionError('');
+    setActionMessage('');
+    try {
+      const links = externalUrl.trim()
+        ? [{
+            type: 'external',
+            label: externalLabel.trim() || 'Community home',
+            url: externalUrl.trim()
+          }]
+        : [];
+      const group = await GroupService.createGroup({
+        name: name.trim(),
+        description: description.trim(),
+        visibility,
+        joinPolicy,
+        externalLinks: links
+      });
+      setName('');
+      setDescription('');
+      setExternalLabel('');
+      setExternalUrl('');
+      setMode('mine');
+      setSelectedGroupId(group.id);
+      onGroupsChanged();
+      setActionMessage('Group created.');
+    } catch (e: any) {
+      setActionError(e?.message || 'Unable to create group.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleJoinOrRequest = async () => {
+    if (!selectedGroup) return;
+    if (!user) {
+      setActionError('Login to join or request access.');
+      return;
+    }
+
+    setActionError('');
+    setActionMessage('');
+    try {
+      if (selectedGroup.joinPolicy === 'open') {
+        await GroupService.joinOpenGroup(selectedGroup.id);
+        setActionMessage('Joined group.');
+      } else if (selectedGroup.joinPolicy === 'approval_required') {
+        await GroupService.requestGroupAccess(selectedGroup.id);
+        setActionMessage('Request sent.');
+      } else {
+        setActionError('This group uses admin invitation links.');
+        return;
+      }
+      onGroupsChanged();
+      refreshSelectedGroup();
+    } catch (e: any) {
+      setActionError(e?.message || 'Unable to update membership.');
+    }
+  };
+
+  const handleCreateInvite = async () => {
+    if (!selectedGroup) return;
+    setActionError('');
+    setActionMessage('');
+    try {
+      const invite = await GroupService.createGroupInvite(selectedGroup.id);
+      const origin = window.location.origin;
+      setInviteUrl(`${origin}/group/join/${encodeURIComponent(invite.inviteId)}`);
+      setActionMessage('Invite link created.');
+    } catch (e: any) {
+      setActionError(e?.message || 'Unable to create invite link.');
+    }
+  };
+
+  const handleApprove = async (member: GroupMember) => {
+    if (!selectedGroup) return;
+    setActionError('');
+    setActionMessage('');
+    try {
+      await GroupService.approveGroupMember(selectedGroup.id, member.userId);
+      setActionMessage('Member approved.');
+      onGroupsChanged();
+      refreshSelectedGroup();
+    } catch (e: any) {
+      setActionError(e?.message || 'Unable to approve member.');
+    }
+  };
+
+  const selectedSummary = selectedGroup
+    ? `${selectedGroup.visibility} group - ${selectedGroup.joinPolicy.replace('_', ' ')}`
+    : loading
+      ? 'Loading groups'
+      : mode === 'public'
+        ? `${publicGroups.length} public groups`
+        : `${myGroups.length} joined groups`;
+
+  const renderGroupList = () => {
+    if (loading) {
+      return <div className={styles.groupMessage}>Loading groups...</div>;
+    }
+    if (error) {
+      return <div className={styles.groupMessage}>{error}</div>;
+    }
+    if (!visibleGroups.length) {
+      return (
+        <div className={styles.groupMessage}>
+          {mode === 'public' ? 'No public groups yet.' : user ? 'You have not joined any groups yet.' : 'Login to see your groups.'}
+        </div>
+      );
+    }
+    return visibleGroups.map(group => (
+      <button
+        key={group.id}
+        type="button"
+        className={`${styles.groupListButton} ${group.id === selectedGroupId ? styles.groupListButtonActive : ''}`}
+        onClick={() => setSelectedGroupId(group.id)}
+      >
+        <strong>{group.name}</strong>
+        <span>{group.visibility} - {group.joinPolicy.replace('_', ' ')}</span>
+      </button>
+    ));
+  };
+
+  const collaborationRoute = (collaboration: Collaboration) => {
+    if (collaboration.status === 'submission') {
+      return `/collab/${encodeURIComponent(collaboration.id)}/submit`;
+    }
+    if (collaboration.status === 'completed') {
+      return `/collab/${encodeURIComponent(collaboration.id)}/completed`;
+    }
+    return `/collab/${encodeURIComponent(collaboration.id)}`;
+  };
+
   return (
     <>
       <aside className={styles.controlColumn} aria-label="Group controls">
         <h4 className={styles.panelTitle}>Group controls</h4>
         <div className={styles.controlStack}>
           <div className={styles.controlGroup}>
-            <div className={styles.controlLabel}>Group</div>
-            <button type="button" className={`${styles.workbenchToggle} ${styles.workbenchToggleActive}`}>
-              All groups
+            <div className={styles.controlLabel}>Mode</div>
+            <button
+              type="button"
+              className={`${styles.workbenchToggle} ${mode === 'mine' ? styles.workbenchToggleActive : ''}`}
+              onClick={() => setMode('mine')}
+            >
+              My groups
             </button>
-            <button type="button" className={styles.workbenchToggle}>
-              Active groups
+            <button
+              type="button"
+              className={`${styles.workbenchToggle} ${mode === 'public' ? styles.workbenchToggleActive : ''}`}
+              onClick={() => setMode('public')}
+            >
+              Public groups
             </button>
-            <button type="button" className={styles.workbenchToggle}>
-              Group settings
+            <button
+              type="button"
+              className={`${styles.workbenchToggle} ${mode === 'create' ? styles.workbenchToggleActive : ''}`}
+              onClick={() => setMode('create')}
+            >
+              Create group
+            </button>
+            <button type="button" className={styles.workbenchToggle} onClick={onExplore}>
+              Explore feed
             </button>
           </div>
+          {mode !== 'create' && (
+            <div className={styles.controlGroup}>
+              <div className={styles.controlLabel}>Groups</div>
+              <div className={styles.groupList}>{renderGroupList()}</div>
+            </div>
+          )}
           <div className={styles.filterSummary}>
-            <strong>Placeholder</strong>
-            <span>Groups are not implemented yet.</span>
+            <strong>{selectedSummary}</strong>
+            <span>Groups organize projects and collaborations without adding chat, posts, or another feed.</span>
           </div>
         </div>
       </aside>
@@ -430,25 +813,183 @@ function GroupsWorkbench({ onExplore }: { onExplore: () => void }) {
           <div>
             <h4 id="groups-workbench-title" className={styles.workbenchTitle}>Groups</h4>
             <p className={styles.workbenchIntro}>
-              Groups will be lightweight contexts for external communities, not a replacement social platform.
+              Create lightweight music rooms for existing communities and attach projects or collaborations to them.
             </p>
           </div>
-          <button type="button" className={styles.workbenchSecondaryLink} onClick={onExplore}>
-            Back to explore
-          </button>
+          {selectedGroup ? (
+            <Link className={styles.workbenchSecondaryLink} to={`/group/${encodeURIComponent(selectedGroup.id)}`}>
+              Open group page
+            </Link>
+          ) : (
+            <button type="button" className={styles.workbenchSecondaryLink} onClick={onExplore}>
+              Back to explore
+            </button>
+          )}
         </div>
-        <div className={styles.shellGrid}>
-          <div className={styles.shellCard}>
-            <span>context</span>
-            <strong>External communities</strong>
-            <p>Future group links can point project owners toward whichever real-world community fits the collaboration.</p>
+
+        {mode === 'create' ? (
+          <form className={styles.groupForm} onSubmit={handleCreateGroup}>
+            <label>
+              <span>Name</span>
+              <input value={name} onChange={event => setName(event.target.value)} placeholder="Sunday drummers" />
+            </label>
+            <label>
+              <span>Description</span>
+              <textarea value={description} onChange={event => setDescription(event.target.value)} placeholder="A room for collaborations from this community." />
+            </label>
+            <div className={styles.groupFormGrid}>
+              <label>
+                <span>Visibility</span>
+                <select value={visibility} onChange={event => setVisibility(event.target.value as GroupVisibility)}>
+                  <option value="public">Public</option>
+                  <option value="unlisted">Unlisted</option>
+                  <option value="private">Private</option>
+                </select>
+              </label>
+              <label>
+                <span>Joining</span>
+                <select value={joinPolicy} onChange={event => setJoinPolicy(event.target.value as GroupJoinPolicy)}>
+                  <option value="open">Open</option>
+                  <option value="approval_required">Approval required</option>
+                  <option value="invite_link">Invite link only</option>
+                </select>
+              </label>
+            </div>
+            <div className={styles.groupFormGrid}>
+              <label>
+                <span>External label</span>
+                <input value={externalLabel} onChange={event => setExternalLabel(event.target.value)} placeholder="Discord" />
+              </label>
+              <label>
+                <span>External URL</span>
+                <input value={externalUrl} onChange={event => setExternalUrl(event.target.value)} placeholder="https://..." />
+              </label>
+            </div>
+            {actionError && <div className={styles.groupError}>{actionError}</div>}
+            {actionMessage && <div className={styles.groupNotice}>{actionMessage}</div>}
+            <button type="submit" className={styles.workbenchPrimary} disabled={creating}>
+              {creating ? 'Creating...' : 'Create group'}
+            </button>
+          </form>
+        ) : (
+          <div className={styles.groupWorkbenchBody}>
+            {detailsLoading && <div className={styles.groupMessage}>Loading group...</div>}
+            {detailsError && <div className={styles.groupError}>{detailsError}</div>}
+            {!detailsLoading && !detailsError && !selectedGroup && (
+              <div className={styles.groupEmptyState}>
+                <strong>{mode === 'public' ? 'No public group selected' : 'No group selected'}</strong>
+                <p>Pick a group from the left, browse public groups, or create the first one for a community.</p>
+                <button type="button" className={styles.workbenchPrimary} onClick={() => setMode('create')}>
+                  Create group
+                </button>
+              </div>
+            )}
+            {selectedGroup && (
+              <>
+                <div className={styles.groupHero}>
+                  <div>
+                    <span>{selectedGroup.visibility} - {selectedGroup.joinPolicy.replace('_', ' ')}</span>
+                    <h5>{selectedGroup.name}</h5>
+                    <p>{selectedGroup.description || 'No description yet.'}</p>
+                  </div>
+                  <div className={styles.groupHeroActions}>
+                    {!isActiveMember && selectedGroup.joinPolicy !== 'invite_link' && (
+                      <button type="button" className={styles.workbenchPrimary} onClick={handleJoinOrRequest}>
+                        {selectedGroup.joinPolicy === 'open' ? 'Join group' : 'Request access'}
+                      </button>
+                    )}
+                    {canManage && (
+                      <button type="button" className={styles.inlineAction} onClick={handleCreateInvite}>
+                        Create invite
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {(actionError || actionMessage || inviteUrl) && (
+                  <div className={styles.groupStatusStack}>
+                    {actionError && <div className={styles.groupError}>{actionError}</div>}
+                    {actionMessage && <div className={styles.groupNotice}>{actionMessage}</div>}
+                    {inviteUrl && (
+                      <input className={styles.groupInviteField} readOnly value={inviteUrl} onFocus={event => event.currentTarget.select()} />
+                    )}
+                  </div>
+                )}
+
+                <div className={styles.shellGrid}>
+                  <div className={styles.shellCard}>
+                    <span>membership</span>
+                    <strong>{isActiveMember ? membership?.role || 'member' : membership?.status || 'not joined'}</strong>
+                    <p>{canManage ? `${pendingMembers.length} access request${pendingMembers.length === 1 ? '' : 's'} pending.` : 'Membership controls decide who can submit or vote when a collaboration uses group access.'}</p>
+                  </div>
+                  <div className={styles.shellCard}>
+                    <span>external home</span>
+                    <strong>{selectedGroup.externalLinks?.length ? selectedGroup.externalLinks[0].label || selectedGroup.externalLinks[0].type : 'Not linked'}</strong>
+                    <p>{selectedGroup.externalLinks?.length ? selectedGroup.externalLinks[0].url : 'Add community homes such as Discord, Facebook, Reddit, forums, or label sites when creating the group.'}</p>
+                    {selectedGroup.externalLinks?.[0]?.url && (
+                      <a className={styles.inlineAction} href={selectedGroup.externalLinks[0].url} target="_blank" rel="noreferrer">
+                        Open link
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {canManage && pendingMembers.length > 0 && (
+                  <div className={styles.groupSection}>
+                    <div className={styles.groupSectionHeader}>
+                      <span>requests</span>
+                      <strong>{pendingMembers.length} pending</strong>
+                    </div>
+                    <div className={styles.groupListWide}>
+                      {pendingMembers.map(member => (
+                        <div className={styles.groupRow} key={member.userId}>
+                          <span>{member.userId}</span>
+                          <button type="button" className={styles.inlineAction} onClick={() => handleApprove(member)}>
+                            Approve
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className={styles.groupSection}>
+                  <div className={styles.groupSectionHeader}>
+                    <span>collaborations</span>
+                    <strong>{groupCollaborations.length}</strong>
+                  </div>
+                  <div className={styles.groupListWide}>
+                    {groupCollaborations.length === 0 ? (
+                      <div className={styles.groupMessage}>No collaborations in this group yet.</div>
+                    ) : groupCollaborations.map(collaboration => (
+                      <Link key={collaboration.id} className={styles.groupRow} to={collaborationRoute(collaboration)}>
+                        <span>{collaboration.name}</span>
+                        <em>{collaboration.status}</em>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+
+                <div className={styles.groupSection}>
+                  <div className={styles.groupSectionHeader}>
+                    <span>projects</span>
+                    <strong>{groupProjects.length}</strong>
+                  </div>
+                  <div className={styles.groupListWide}>
+                    {groupProjects.length === 0 ? (
+                      <div className={styles.groupMessage}>No projects attached to this group yet.</div>
+                    ) : groupProjects.map(project => (
+                      <Link key={project.id} className={styles.groupRow} to={`/project/${encodeURIComponent(project.id)}`}>
+                        <span>{project.name}</span>
+                        <em>{project.currentCollaborationStatus || 'project'}</em>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
-          <div className={styles.shellCard}>
-            <span>status</span>
-            <strong>Not implemented</strong>
-            <p>This bay is intentionally a placeholder until the groups backend and product rules exist.</p>
-          </div>
-        </div>
+        )}
       </section>
     </>
   );

@@ -8,7 +8,9 @@ import { useAppStore } from '../../stores/appStore';
 const hoisted = vi.hoisted(() => ({
   getDashboardStats: vi.fn(),
   loadFeed: vi.fn(),
-  getActiveCollaborationTags: vi.fn()
+  getActiveCollaborationTags: vi.fn(),
+  listPublicGroups: vi.fn(),
+  listMyGroups: vi.fn()
 }));
 
 vi.mock('../../services/dashboardService', () => ({
@@ -26,6 +28,13 @@ vi.mock('../../services/dashboardFeedService', () => ({
 vi.mock('../../services/tagService', () => ({
   TagService: {
     getActiveCollaborationTags: hoisted.getActiveCollaborationTags
+  }
+}));
+
+vi.mock('../../services/groupService', () => ({
+  GroupService: {
+    listPublicGroups: hoisted.listPublicGroups,
+    listMyGroups: hoisted.listMyGroups
   }
 }));
 
@@ -72,6 +81,8 @@ describe('DashboardView console workbench', () => {
     hoisted.getDashboardStats.mockReset();
     hoisted.loadFeed.mockReset();
     hoisted.getActiveCollaborationTags.mockReset();
+    hoisted.listPublicGroups.mockReset();
+    hoisted.listMyGroups.mockReset();
 
     hoisted.getDashboardStats.mockResolvedValue({
       totalCollabs: 12,
@@ -81,6 +92,8 @@ describe('DashboardView console workbench', () => {
     });
     hoisted.loadFeed.mockResolvedValue({ items: [], metaLabel: 'ready' });
     hoisted.getActiveCollaborationTags.mockResolvedValue([]);
+    hoisted.listPublicGroups.mockResolvedValue([]);
+    hoisted.listMyGroups.mockResolvedValue([]);
 
     act(() => {
       useAppStore.setState(initialAppState, true);
@@ -157,6 +170,36 @@ describe('DashboardView console workbench', () => {
     fireEvent.click(screen.getByRole('button', { name: /my activity/i }));
 
     expect(screen.getByTestId('user-activity-workbench')).toHaveAttribute('data-active-tab', 'activity');
-    expect(within(screen.getByLabelText('Project controls')).getByRole('button', { name: /^my projects$/i })).toBeInTheDocument();
+    expect(within(screen.getByLabelText('Profile controls')).getByRole('button', { name: /^my projects$/i })).toBeInTheDocument();
+  });
+
+  it('keeps profile controls in a stable order across account, projects, and activity', async () => {
+    render(
+      <MemoryRouter>
+        <DashboardView />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(hoisted.loadFeed).toHaveBeenCalled();
+    });
+
+    const modeOrder = () => (
+      within(screen.getByLabelText('Profile controls'))
+        .getAllByRole('button')
+        .slice(0, 3)
+        .map(button => button.textContent)
+    );
+
+    fireEvent.click(within(screen.getByLabelText('Profile actions')).getByRole('button', { name: /^Account$/i }));
+    expect(modeOrder()).toEqual(['Account', 'My projects', 'My activity']);
+    expect(within(screen.getByLabelText('Profile controls')).getByRole('button', { name: /^back to explore feed$/i })).toBeInTheDocument();
+
+    fireEvent.click(within(screen.getByLabelText('Profile controls')).getByRole('button', { name: /^my projects$/i }));
+    expect(modeOrder()).toEqual(['Account', 'My projects', 'My activity']);
+
+    fireEvent.click(within(screen.getByLabelText('Profile controls')).getByRole('button', { name: /^my activity$/i }));
+    expect(modeOrder()).toEqual(['Account', 'My projects', 'My activity']);
+    expect(screen.getByTestId('user-activity-workbench')).toHaveAttribute('data-active-tab', 'activity');
   });
 });

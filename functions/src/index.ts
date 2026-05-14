@@ -5377,6 +5377,336 @@ export const adminListProjects = onCall({ cors: true }, async (request) => {
   };
 });
 
+const requireSiteAdmin = async (uid: string | null) => {
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "unauthenticated");
+  }
+  const adminSnap = await db.collection("users").doc(uid).get();
+  const adminData = adminSnap.data() as any;
+  if (!adminSnap.exists || !adminData?.isAdmin) {
+    throw new HttpsError("permission-denied", "Admin access required");
+  }
+  return adminData;
+};
+
+const timestampToMillis = (value: any) => value && typeof value.toMillis === "function"
+  ? value.toMillis()
+  : null;
+
+const serializeAdminGroup = async (docSnap: FirebaseFirestore.DocumentSnapshot) => {
+  const data = docSnap.data() as any;
+  const [membersSnap, projectsSnap, collaborationsSnap] = await Promise.all([
+    db.collection(GROUPS_COLLECTION).doc(docSnap.id).collection("members").get(),
+    db.collection("projects").where("groupIds", "array-contains", docSnap.id).limit(200).get(),
+    db.collection("collaborations").where("groupIds", "array-contains", docSnap.id).limit(200).get()
+  ]);
+  const pendingCount = membersSnap.docs.filter((memberDoc) => String((memberDoc.data() as any).status || "") === "requested").length;
+  return {
+    id: docSnap.id,
+    name: String(data.name || ""),
+    description: String(data.description || ""),
+    visibility: String(data.visibility || "private"),
+    joinPolicy: String(data.joinPolicy || "invite_link"),
+    externalLinks: Array.isArray(data.externalLinks) ? data.externalLinks : [],
+    ownerId: String(data.ownerId || ""),
+    createdAt: timestampToMillis(data.createdAt),
+    updatedAt: timestampToMillis(data.updatedAt),
+    memberCount: membersSnap.size,
+    pendingCount,
+    projectCount: projectsSnap.size,
+    collaborationCount: collaborationsSnap.size
+  };
+};
+
+const sanitizeAdminGroupUpdates = (rawUpdates: any) => {
+  const updates: Record<string, any> = {};
+  if (typeof rawUpdates?.name === "string") {
+    const name = rawUpdates.name.trim();
+    if (name.length < 3 || name.length > 100) {
+      throw new HttpsError("invalid-argument", "group name must be 3-100 characters");
+    }
+    updates.name = name;
+  }
+  if (typeof rawUpdates?.description === "string") {
+    const description = rawUpdates.description.trim();
+    if (description.length > 500) {
+      throw new HttpsError("invalid-argument", "description is too long");
+    }
+    updates.description = description;
+  }
+  if (typeof rawUpdates?.visibility === "string") {
+    if (!["public", "unlisted", "private"].includes(rawUpdates.visibility)) {
+      throw new HttpsError("invalid-argument", "invalid visibility");
+    }
+    updates.visibility = rawUpdates.visibility;
+  }
+  if (typeof rawUpdates?.joinPolicy === "string") {
+    if (!["open", "invite_link", "approval_required"].includes(rawUpdates.joinPolicy)) {
+      throw new HttpsError("invalid-argument", "invalid join policy");
+    }
+    updates.joinPolicy = rawUpdates.joinPolicy;
+  }
+  if (Array.isArray(rawUpdates?.externalLinks)) {
+    const links = rawUpdates.externalLinks.slice(0, 5).map((link: any) => ({
+      type: String(link?.type || "external").slice(0, 40),
+      label: String(link?.label || "").slice(0, 80),
+      url: String(link?.url || "").trim()
+    })).filter((link: any) => link.url);
+    updates.externalLinks = links;
+  }
+  return updates;
+};
+
+export const adminListGroups = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  await requireSiteAdmin(uid);
+
+  const pageSize = Math.max(1, Math.min(50, Number(request.data?.pageSize) || 25));
+  const pageToken = typeof request.data?.pageToken === "string" && request.data.pageToken ? request.data.pageToken : null;
+  const visibility = typeof request.data?.visibility === "string" && request.data.visibility ? request.data.visibility : null;
+
+  const visibilityFilter = visibility && ["public", "unlisted", "private"].includes(visibility) ? visibility : null;
+  const batchSize = visibilityFilter ? 100 : pageSize + 1;
+  let cursorSnap: FirebaseFirestore.DocumentSnapshot | null = null;
+  if (pageToken) {
+    const snap = await db.collection(GROUPS_COLLECTION).doc(pageToken).get();
+    if (snap.exists) cursorSnap = snap;
+  }
+
+  const matchingDocs: FirebaseFirestore.DocumentSnapshot[] = [];
+  let lastScannedDoc: FirebaseFirestore.DocumentSnapshot | null = null;
+  let exhausted = false;
+
+  for (let batchIndex = 0; batchIndex < 10 && matchingDocs.length <= pageSize; batchIndex += 1) {
+    let query = db.collection(GROUPS_COLLECTION).orderBy("createdAt", "desc").limit(batchSize) as any;
+    if (cursorSnap) query = query.startAfter(cursorSnap);
+    const snap = await query.get();
+    if (snap.empty) {
+      exhausted = true;
+      break;
+    }
+    snap.docs.forEach((docSnap: FirebaseFirestore.DocumentSnapshot) => {
+      const data = docSnap.data() as any;
+      if (!visibilityFilter || String(data.visibility || "") === visibilityFilter) {
+        matchingDocs.push(docSnap);
+      }
+    });
+    lastScannedDoc = snap.docs[snap.docs.length - 1] || lastScannedDoc;
+    cursorSnap = lastScannedDoc;
+    if (snap.docs.length < batchSize) {
+      exhausted = true;
+      break;
+    }
+  }
+
+  const hasMore = matchingDocs.length > pageSize || !exhausted;
+  const visibleDocs = matchingDocs.slice(0, pageSize);
+  const groups = await Promise.all(visibleDocs.map((docSnap: FirebaseFirestore.DocumentSnapshot) => serializeAdminGroup(docSnap)));
+
+  return {
+    groups,
+    nextPageToken: hasMore ? (visibleDocs[visibleDocs.length - 1]?.id || lastScannedDoc?.id || null) : null,
+    hasMore
+  };
+});
+
+export const adminGetGroup = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  await requireSiteAdmin(uid);
+  const groupId = String(request.data?.groupId || "").trim();
+  if (!groupId) throw new HttpsError("invalid-argument", "groupId required");
+
+  const groupRef = db.collection(GROUPS_COLLECTION).doc(groupId);
+  const groupSnap = await groupRef.get();
+  if (!groupSnap.exists) throw new HttpsError("not-found", "group not found");
+
+  const [membersSnap, projectsSnap, collaborationsSnap] = await Promise.all([
+    groupRef.collection("members").orderBy("createdAt", "desc").limit(200).get(),
+    db.collection("projects").where("groupIds", "array-contains", groupId).limit(200).get(),
+    db.collection("collaborations").where("groupIds", "array-contains", groupId).limit(200).get()
+  ]);
+
+  return {
+    group: await serializeAdminGroup(groupSnap),
+    members: membersSnap.docs.map((docSnap) => {
+      const data = docSnap.data() as any;
+      return {
+        userId: String(data.userId || docSnap.id),
+        role: String(data.role || "member"),
+        status: String(data.status || "active"),
+        createdAt: timestampToMillis(data.createdAt),
+        updatedAt: timestampToMillis(data.updatedAt)
+      };
+    }),
+    projects: projectsSnap.docs.map((docSnap) => {
+      const data = docSnap.data() as any;
+      return {
+        id: docSnap.id,
+        name: String(data.name || ""),
+        ownerId: String(data.ownerId || ""),
+        createdAt: timestampToMillis(data.createdAt),
+        updatedAt: timestampToMillis(data.updatedAt)
+      };
+    }),
+    collaborations: collaborationsSnap.docs.map((docSnap) => {
+      const data = docSnap.data() as any;
+      return {
+        id: docSnap.id,
+        projectId: String(data.projectId || ""),
+        name: String(data.name || ""),
+        status: String(data.status || ""),
+        visibility: String(data.visibility || "listed"),
+        submitAccess: String(data.submitAccess || "logged_in"),
+        voteAccess: String(data.voteAccess || "logged_in"),
+        createdAt: timestampToMillis(data.createdAt),
+        updatedAt: timestampToMillis(data.updatedAt)
+      };
+    })
+  };
+});
+
+export const adminUpdateGroup = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  const adminData = await requireSiteAdmin(uid);
+  const groupId = String(request.data?.groupId || "").trim();
+  if (!groupId) throw new HttpsError("invalid-argument", "groupId required");
+
+  const updates = sanitizeAdminGroupUpdates(request.data?.updates || {});
+  if (Object.keys(updates).length === 0) {
+    return { success: true, message: "No changes to apply" };
+  }
+  updates.updatedAt = Timestamp.now();
+
+  await db.collection(GROUPS_COLLECTION).doc(groupId).update(updates);
+  await db.collection("adminLogs").add({
+    adminUid: uid,
+    adminEmail: adminData.email || "unknown",
+    action: "update-group",
+    targetGroupId: groupId,
+    changes: updates,
+    createdAt: Timestamp.now()
+  });
+  return { success: true };
+});
+
+export const adminUpdateGroupMember = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  const adminData = await requireSiteAdmin(uid);
+  const groupId = String(request.data?.groupId || "").trim();
+  const userId = String(request.data?.userId || "").trim();
+  const remove = request.data?.remove === true;
+  const role = typeof request.data?.role === "string" ? request.data.role : null;
+  const status = typeof request.data?.status === "string" ? request.data.status : null;
+  if (!groupId || !userId) throw new HttpsError("invalid-argument", "groupId and userId required");
+  if (role && !["owner", "admin", "member"].includes(role)) throw new HttpsError("invalid-argument", "invalid role");
+  if (status && !["active", "requested"].includes(status)) throw new HttpsError("invalid-argument", "invalid status");
+
+  const memberRef = groupMemberRef(groupId, userId);
+  const now = Timestamp.now();
+  if (remove) {
+    await memberRef.delete();
+  } else {
+    const updates: Record<string, any> = { userId, updatedAt: now };
+    if (role) updates.role = role;
+    if (status) updates.status = status;
+    await memberRef.set(updates, { merge: true });
+  }
+
+  await db.collection("adminLogs").add({
+    adminUid: uid,
+    adminEmail: adminData.email || "unknown",
+    action: remove ? "remove-group-member" : "update-group-member",
+    targetGroupId: groupId,
+    targetUserId: userId,
+    changes: { role, status, remove },
+    createdAt: now
+  });
+  return { success: true };
+});
+
+export const adminRemoveGroupAttachment = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  const adminData = await requireSiteAdmin(uid);
+  const groupId = String(request.data?.groupId || "").trim();
+  const targetId = String(request.data?.targetId || "").trim();
+  const kind = String(request.data?.kind || "").trim();
+  if (!groupId || !targetId || !["project", "collaboration"].includes(kind)) {
+    throw new HttpsError("invalid-argument", "groupId, targetId and kind required");
+  }
+  const collectionName = kind === "project" ? "projects" : "collaborations";
+  const targetRef = db.collection(collectionName).doc(targetId);
+  const snap = await targetRef.get();
+  if (!snap.exists) throw new HttpsError("not-found", `${kind} not found`);
+  const data = snap.data() as any;
+  const groupIds = normalizeGroupIds(data.groupIds).filter((id) => id !== groupId);
+  const updates: Record<string, any> = { groupIds, updatedAt: Timestamp.now() };
+  if (kind === "collaboration" && groupIds.length === 0) {
+    updates.visibility = "unlisted";
+    if (normalizeParticipationAccess(data.submitAccess) === "group_members") updates.submitAccess = "logged_in";
+    if (normalizeParticipationAccess(data.voteAccess) === "group_members") updates.voteAccess = "logged_in";
+  }
+  await targetRef.update(updates);
+  await db.collection("adminLogs").add({
+    adminUid: uid,
+    adminEmail: adminData.email || "unknown",
+    action: "remove-group-attachment",
+    targetGroupId: groupId,
+    targetId,
+    kind,
+    createdAt: Timestamp.now()
+  });
+  return { success: true };
+});
+
+export const adminDeleteGroup = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  const adminData = await requireSiteAdmin(uid);
+  const groupId = String(request.data?.groupId || "").trim();
+  if (!groupId) throw new HttpsError("invalid-argument", "groupId required");
+
+  const groupRef = db.collection(GROUPS_COLLECTION).doc(groupId);
+  const groupSnap = await groupRef.get();
+  if (!groupSnap.exists) return { success: true };
+
+  const [membersSnap, projectsSnap, collaborationsSnap] = await Promise.all([
+    groupRef.collection("members").get(),
+    db.collection("projects").where("groupIds", "array-contains", groupId).limit(500).get(),
+    db.collection("collaborations").where("groupIds", "array-contains", groupId).limit(500).get()
+  ]);
+
+  const batch = db.batch();
+  membersSnap.docs.forEach((memberDoc) => batch.delete(memberDoc.ref));
+  projectsSnap.docs.forEach((projectDoc) => {
+    const data = projectDoc.data() as any;
+    batch.update(projectDoc.ref, {
+      groupIds: normalizeGroupIds(data.groupIds).filter((id) => id !== groupId),
+      updatedAt: Timestamp.now()
+    });
+  });
+  collaborationsSnap.docs.forEach((collabDoc) => {
+    const data = collabDoc.data() as any;
+    const groupIds = normalizeGroupIds(data.groupIds).filter((id) => id !== groupId);
+    const updates: Record<string, any> = { groupIds, updatedAt: Timestamp.now() };
+    if (groupIds.length === 0) {
+      updates.visibility = "unlisted";
+      if (normalizeParticipationAccess(data.submitAccess) === "group_members") updates.submitAccess = "logged_in";
+      if (normalizeParticipationAccess(data.voteAccess) === "group_members") updates.voteAccess = "logged_in";
+    }
+    batch.update(collabDoc.ref, updates);
+  });
+  batch.delete(groupRef);
+  await batch.commit();
+
+  await db.collection("adminLogs").add({
+    adminUid: uid,
+    adminEmail: adminData.email || "unknown",
+    action: "delete-group",
+    targetGroupId: groupId,
+    createdAt: Timestamp.now()
+  });
+  return { success: true };
+});
+
 export const adminListPendingReports = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   if (!uid) {

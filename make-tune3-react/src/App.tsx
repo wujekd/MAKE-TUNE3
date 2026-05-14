@@ -58,6 +58,9 @@ const AdminTagsView = lazy(() =>
 const AdminProjectsView = lazy(() =>
   import('./views/AdminProjectsView').then(module => ({ default: module.AdminProjectsView }))
 );
+const AdminGroupsView = lazy(() =>
+  import('./views/AdminGroupsView').then(module => ({ default: module.AdminGroupsView }))
+);
 const AdminReportedView = lazy(() =>
   import('./views/AdminReportedView').then(module => ({ default: module.AdminReportedView }))
 );
@@ -159,7 +162,6 @@ const router = createBrowserRouter([
               title: '',
               breadcrumb: 'home page',
               actions: ({ navigate }: any) => ([
-                { key: 'groups', label: 'Groups', onClick: () => navigate('/groups') },
                 { key: 'to-auth', label: 'Login', onClick: () => navigate('auth') }
               ])
             }
@@ -289,6 +291,15 @@ const router = createBrowserRouter([
             handle: {
               title: 'Manage Projects',
               breadcrumb: 'Projects',
+              actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
+            }
+          },
+          {
+            path: 'admin/groups',
+            element: <LazyAdminRoute><AdminGroupsView /></LazyAdminRoute>,
+            handle: {
+              title: 'Manage Groups',
+              breadcrumb: 'Groups',
               actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
             }
           },
