@@ -5354,8 +5354,21 @@ export const adminListProjects = onCall({ cors: true }, async (request) => {
             name: String(cd.name || ""),
             description: String(cd.description || ""),
             status: String(cd.status || ""),
+            visibility: String(cd.visibility || "listed"),
+            submitAccess: String(cd.submitAccess || "logged_in"),
+            voteAccess: String(cd.voteAccess || "logged_in"),
+            backingTrackPath: String(cd.backingTrackPath || ""),
             submissionDuration: typeof cd.submissionDuration === "number" ? cd.submissionDuration : null,
             votingDuration: typeof cd.votingDuration === "number" ? cd.votingDuration : null,
+            publishedAt: cd.publishedAt ? (cd.publishedAt as Timestamp).toMillis() : null,
+            submissionCloseAt: cd.submissionCloseAt ? (cd.submissionCloseAt as Timestamp).toMillis() : null,
+            votingCloseAt: cd.votingCloseAt ? (cd.votingCloseAt as Timestamp).toMillis() : null,
+            completedAt: cd.completedAt ? (cd.completedAt as Timestamp).toMillis() : null,
+            submissionsCount: typeof cd.submissionsCount === "number" ? cd.submissionsCount : 0,
+            reservedSubmissionsCount: typeof cd.reservedSubmissionsCount === "number" ? cd.reservedSubmissionsCount : 0,
+            votesCount: typeof cd.votesCount === "number" ? cd.votesCount : 0,
+            favoritesCount: typeof cd.favoritesCount === "number" ? cd.favoritesCount : 0,
+            participantCount: Array.isArray(cd.participantIds) ? cd.participantIds.length : 0,
             tags: Array.isArray(cd.tags) ? cd.tags : [],
             createdAt: cd.createdAt ? (cd.createdAt as Timestamp).toMillis() : null,
             updatedAt: cd.updatedAt ? (cd.updatedAt as Timestamp).toMillis() : null
@@ -5375,6 +5388,130 @@ export const adminListProjects = onCall({ cors: true }, async (request) => {
     nextPageToken: hasMore && visibleDocs.length > 0 ? visibleDocs[visibleDocs.length - 1].id : null,
     hasMore
   };
+});
+
+export const adminUpdateCollaborationStageDates = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  const adminData = await requireSiteAdmin(uid);
+  const collaborationId = String(request.data?.collaborationId || "").trim();
+  if (!collaborationId) {
+    throw new HttpsError("invalid-argument", "collaborationId required");
+  }
+
+  const rawUpdates = request.data?.updates || {};
+  const hasSubmissionCloseAt = Object.prototype.hasOwnProperty.call(rawUpdates, "submissionCloseAt");
+  const hasVotingCloseAt = Object.prototype.hasOwnProperty.call(rawUpdates, "votingCloseAt");
+  if (!hasSubmissionCloseAt && !hasVotingCloseAt) {
+    throw new HttpsError("invalid-argument", "submissionCloseAt or votingCloseAt required");
+  }
+
+  const parseDeadline = (value: unknown, field: string) => {
+    if (value === null) return null;
+    const millis = Number(value);
+    if (!Number.isFinite(millis) || millis <= 0) {
+      throw new HttpsError("invalid-argument", `${field} must be a valid timestamp`);
+    }
+    return Timestamp.fromMillis(millis);
+  };
+
+  const collabRef = db.collection("collaborations").doc(collaborationId);
+  const now = Timestamp.now();
+
+  await db.runTransaction(async (tx) => {
+    const collabSnap = await tx.get(collabRef);
+    if (!collabSnap.exists) {
+      throw new HttpsError("not-found", "collaboration not found");
+    }
+
+    const collabData = collabSnap.data() as any;
+    const updates: Record<string, any> = { updatedAt: now };
+    const changes: Record<string, { from: number | null; to: number | null }> = {};
+
+    const nextSubmissionCloseAt = hasSubmissionCloseAt
+      ? parseDeadline(rawUpdates.submissionCloseAt, "submissionCloseAt")
+      : collabData.submissionCloseAt ?? null;
+    const nextVotingCloseAt = hasVotingCloseAt
+      ? parseDeadline(rawUpdates.votingCloseAt, "votingCloseAt")
+      : collabData.votingCloseAt ?? null;
+
+    if (
+      nextSubmissionCloseAt &&
+      nextVotingCloseAt &&
+      nextVotingCloseAt.toMillis() < nextSubmissionCloseAt.toMillis()
+    ) {
+      throw new HttpsError("invalid-argument", "Voting end must be after submission end");
+    }
+
+    if (hasSubmissionCloseAt) {
+      updates.submissionCloseAt = nextSubmissionCloseAt;
+      changes.submissionCloseAt = {
+        from: toMillis(collabData.submissionCloseAt),
+        to: toMillis(nextSubmissionCloseAt),
+      };
+    }
+
+    if (hasVotingCloseAt) {
+      updates.votingCloseAt = nextVotingCloseAt;
+      changes.votingCloseAt = {
+        from: toMillis(collabData.votingCloseAt),
+        to: toMillis(nextVotingCloseAt),
+      };
+    }
+
+    const projectId = String(collabData.projectId || "");
+    const projectRef = projectId ? db.collection("projects").doc(projectId) : null;
+    const projectSnap = projectRef && String(collabData.status || "") === "completed"
+      ? await tx.get(projectRef)
+      : null;
+
+    tx.update(collabRef, updates);
+
+    if (projectId && ACTIVE_COLLAB_STATUSES.has(String(collabData.status || ""))) {
+      const activeStageEnd = collabData.status === "submission"
+        ? nextSubmissionCloseAt
+        : collabData.status === "voting"
+          ? nextVotingCloseAt
+          : null;
+      tx.set(projectRef!, {
+        currentCollaborationId: collaborationId,
+        currentCollaborationStatus: collabData.status,
+        currentCollaborationStageEndsAt: activeStageEnd ?? null,
+        updatedAt: now,
+      }, { merge: true });
+    }
+
+    if (projectRef && projectSnap && String(collabData.status || "") === "completed") {
+      if (projectSnap.exists) {
+        const projectData = projectSnap.data() as any;
+        const history = Array.isArray(projectData.pastCollaborations) ? projectData.pastCollaborations : [];
+        const nextHistory = history.map((entry: any) => {
+          if (entry?.collaborationId !== collaborationId) return entry;
+          return {
+            ...entry,
+            submissionCloseAt: nextSubmissionCloseAt,
+            votingCloseAt: nextVotingCloseAt,
+          };
+        });
+        tx.update(projectRef, {
+          pastCollaborations: nextHistory,
+          updatedAt: now,
+        });
+      }
+    }
+
+    const logRef = db.collection("adminLogs").doc();
+    tx.set(logRef, {
+      adminUid: uid,
+      adminEmail: adminData.email || "unknown",
+      action: "update-collaboration-stage-dates",
+      targetCollaborationId: collaborationId,
+      targetProjectId: projectId || null,
+      changes,
+      createdAt: now,
+    });
+  });
+
+  return { success: true };
 });
 
 const requireSiteAdmin = async (uid: string | null) => {

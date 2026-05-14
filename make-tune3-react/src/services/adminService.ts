@@ -84,8 +84,21 @@ export interface AdminCollaborationSummary {
   name: string;
   description: string;
   status: string;
+  visibility: string;
+  submitAccess: string;
+  voteAccess: string;
+  backingTrackPath: string;
   submissionDuration: number | null;
   votingDuration: number | null;
+  publishedAt: number | null;
+  submissionCloseAt: number | null;
+  votingCloseAt: number | null;
+  completedAt: number | null;
+  submissionsCount: number;
+  reservedSubmissionsCount: number;
+  votesCount: number;
+  favoritesCount: number;
+  participantCount: number;
   tags: string[];
   createdAt: number | null;
   updatedAt: number | null;
@@ -246,6 +259,13 @@ export class AdminService {
       PaginatedProjectsResult
     >('adminListProjects', { pageSize, pageToken });
     return result;
+  }
+
+  static async updateCollaborationStageDates(
+    collaborationId: string,
+    updates: { submissionCloseAt?: number | null; votingCloseAt?: number | null }
+  ): Promise<void> {
+    await callFirebaseFunction('adminUpdateCollaborationStageDates', { collaborationId, updates });
   }
 
   static async listGroups(
