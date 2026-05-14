@@ -13,3 +13,4 @@ export { AdminService } from './adminService';
 export type { UserSearchResult, UserUpdateData, AdminProjectWithCollabs, PaginatedUsersResult, PaginatedProjectsResult, PaginatedReportsResult, PaginatedFeedbackResult } from './adminService';
 export { SettingsService } from './settingsService';
 export { WaveformService } from './waveformService';
+export { GroupService } from './groupService';

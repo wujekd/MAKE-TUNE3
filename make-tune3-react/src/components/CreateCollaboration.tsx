@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Collaboration } from '../types/collaboration';
-import { CollaborationService } from '../services';
+import { CollaborationService, GroupService } from '../services';
 import { SubmissionService } from '../services/submissionService';
 import { FileService } from '../services/fileService';
 import { Potentiometer } from './Potentiometer';
@@ -22,6 +22,11 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [availableGroups, setAvailableGroups] = useState<Array<{ id: string; name: string }>>([]);
+  const [groupIds, setGroupIds] = useState<string[]>([]);
+  const [visibility, setVisibility] = useState<'listed' | 'unlisted'>('listed');
+  const [submitAccess, setSubmitAccess] = useState<'logged_in' | 'group_members'>('logged_in');
+  const [voteAccess, setVoteAccess] = useState<'logged_in' | 'group_members'>('logged_in');
   const [submissionDuration, setSubmissionDuration] = useState<number>(TimeUtils.clampDuration(604800));
   const [votingDuration, setVotingDuration] = useState<number>(TimeUtils.clampDuration(259200));
   const [backingFile, setBackingFile] = useState<File | null>(null);
@@ -48,12 +53,34 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
       setName(initial.name || '');
       setDescription(initial.description || '');
       setTags(initial.tags || []);
+      setGroupIds(initial.groupIds || []);
+      setVisibility(initial.visibility || 'listed');
+      setSubmitAccess(initial.submitAccess || 'logged_in');
+      setVoteAccess(initial.voteAccess || 'logged_in');
       setSubmissionDuration(initial.submissionDuration || 604800);
       setVotingDuration(initial.votingDuration || 259200);
 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, initial?.id]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setAvailableGroups([]);
+      return;
+    }
+    let mounted = true;
+    GroupService.listMyGroups()
+      .then(groups => {
+        if (mounted) setAvailableGroups(groups.map(group => ({ id: group.id, name: group.name })));
+      })
+      .catch(() => {
+        if (mounted) setAvailableGroups([]);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [user?.uid]);
   useEffect(() => {
     return () => {
       stopBackingPlayback();
@@ -79,7 +106,10 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
           name: trimmed,
           description,
           submissionDuration,
-          votingDuration
+          votingDuration,
+          visibility,
+          submitAccess,
+          voteAccess
         };
 
         if (!isPublished) {
@@ -114,6 +144,10 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
           tags: normalized.display,
           tagsKey: normalized.keys,
           backingTrackPath: '',
+          groupIds,
+          visibility,
+          submitAccess,
+          voteAccess,
           submissionDuration,
           votingDuration,
           status: 'unpublished',
@@ -141,6 +175,10 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
       setName('');
       setDescription('');
       setTags([]);
+      setGroupIds([]);
+      setVisibility('listed');
+      setSubmitAccess('logged_in');
+      setVoteAccess('logged_in');
       setSubmissionDuration(604800);
       setVotingDuration(259200);
       setBackingFile(null);
@@ -211,6 +249,68 @@ export function CreateCollaboration({ projectId, onCreated, mode = 'create', ini
       {mode === 'edit' && initial?.status !== 'unpublished' && (
         <div style={{ color: 'var(--white)', opacity: 0.6, fontSize: 11, fontStyle: 'italic', marginTop: -4 }}>
           Tags cannot be edited after publication
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, color: 'var(--primary1-100)', fontSize: 12 }}>
+          Discovery
+          <select
+            value={visibility}
+            onChange={e => setVisibility(e.target.value as 'listed' | 'unlisted')}
+            disabled={saving}
+            style={{ padding: 8, borderRadius: 6, background: 'var(--primary1-900)', color: 'var(--white)', border: '1px solid var(--primary1-600)' }}
+          >
+            <option value="listed">listed</option>
+            <option value="unlisted">unlisted</option>
+          </select>
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, color: 'var(--primary1-100)', fontSize: 12 }}>
+          Who can submit?
+          <select
+            value={submitAccess}
+            onChange={e => setSubmitAccess(e.target.value as 'logged_in' | 'group_members')}
+            disabled={saving}
+            style={{ padding: 8, borderRadius: 6, background: 'var(--primary1-900)', color: 'var(--white)', border: '1px solid var(--primary1-600)' }}
+          >
+            <option value="logged_in">any logged-in user</option>
+            <option value="group_members">attached group members</option>
+          </select>
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, color: 'var(--primary1-100)', fontSize: 12 }}>
+          Who can vote?
+          <select
+            value={voteAccess}
+            onChange={e => setVoteAccess(e.target.value as 'logged_in' | 'group_members')}
+            disabled={saving}
+            style={{ padding: 8, borderRadius: 6, background: 'var(--primary1-900)', color: 'var(--white)', border: '1px solid var(--primary1-600)' }}
+          >
+            <option value="logged_in">any logged-in user</option>
+            <option value="group_members">attached group members</option>
+          </select>
+        </label>
+      </div>
+
+      {availableGroups.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, color: 'var(--primary1-100)', fontSize: 12 }}>
+          <div>Extra groups</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {availableGroups.map(group => (
+              <label key={group.id} style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--white)', opacity: 0.85 }}>
+                <input
+                  type="checkbox"
+                  checked={groupIds.includes(group.id)}
+                  disabled={saving || mode === 'edit'}
+                  onChange={e => {
+                    setGroupIds(current => e.target.checked
+                      ? Array.from(new Set([...current, group.id])).slice(0, 5)
+                      : current.filter(id => id !== group.id));
+                  }}
+                />
+                {group.name}
+              </label>
+            ))}
+          </div>
         </div>
       )}
 

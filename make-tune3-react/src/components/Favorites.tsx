@@ -5,7 +5,7 @@ import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { LoadingSpinner } from './LoadingSpinner';
 import './Favorites.css';
 
-const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onToggleLike, isTrackLiked, onPlay, voteFor, finalVote, listenedRatio, pendingFavoriteActions, pendingLikeActions, pendingVotes }:
+const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onToggleLike, isTrackLiked, onPlay, voteFor, finalVote, listenedRatio, pendingFavoriteActions, pendingLikeActions, pendingVotes, votingDisabled = false }:
   {
     onRemoveFromFavorites: (trackId: string) => void,
     favorites: Track[],
@@ -18,7 +18,8 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onToggl
     listenedRatio: number,
     pendingFavoriteActions: Record<string, 'adding' | 'removing'>,
     pendingLikeActions: Record<string, 'adding' | 'removing'>,
-    pendingVotes: Record<string, boolean>
+    pendingVotes: Record<string, boolean>,
+    votingDisabled?: boolean
   }) => {
   // use favorites passed as prop
 
@@ -101,6 +102,7 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onToggl
               pendingFavoriteAction={pendingFavoriteActions[favorites[finalIndex].filePath]}
               pendingLikeAction={pendingLikeActions[favorites[finalIndex].filePath]}
               isVoting={!!pendingVotes[favorites[finalIndex].filePath]}
+              votingDisabled={votingDisabled}
             />
           ) : (
             <div style={{
@@ -153,6 +155,7 @@ const Favorites = ({ onRemoveFromFavorites, favorites, onAddToFavorites, onToggl
                   pendingFavoriteAction={pendingAction}
                   pendingLikeAction={pendingLikeActions[track.filePath]}
                   isVoting={!!pendingVotes[track.filePath]}
+                  votingDisabled={votingDisabled}
                 />
               </div>
             );

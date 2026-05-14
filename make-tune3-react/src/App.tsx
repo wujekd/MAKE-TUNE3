@@ -18,6 +18,9 @@ const importProjectEditView = () => import('./views/ProjectEditView');
 const importSubmissionView = () => import('./views/SubmissionView');
 const importCompletedView = () => import('./views/CompletedView');
 const importAuthRoute = () => import('./components/AuthRoute');
+const importGroupsView = () => import('./views/GroupsView');
+const importGroupView = () => import('./views/GroupView');
+const importGroupJoinView = () => import('./views/GroupJoinView');
 
 const VotingView = lazy(() =>
   importVotingView().then(module => ({ default: module.VotingView }))
@@ -33,6 +36,15 @@ const CompletedView = lazy(() =>
 );
 const AuthRoute = lazy(() =>
   importAuthRoute().then(module => ({ default: module.AuthRoute }))
+);
+const GroupsView = lazy(() =>
+  importGroupsView().then(module => ({ default: module.GroupsView }))
+);
+const GroupView = lazy(() =>
+  importGroupView().then(module => ({ default: module.GroupView }))
+);
+const GroupJoinView = lazy(() =>
+  importGroupJoinView().then(module => ({ default: module.GroupJoinView }))
 );
 const ModerationView = lazy(() =>
   import('./views/ModerationView').then(module => ({ default: module.ModerationView }))
@@ -146,7 +158,10 @@ const router = createBrowserRouter([
             handle: {
               title: '',
               breadcrumb: 'home page',
-              actions: ({ navigate }: any) => ([{ key: 'to-auth', label: 'Login', onClick: () => navigate('auth') }])
+              actions: ({ navigate }: any) => ([
+                { key: 'groups', label: 'Groups', onClick: () => navigate('/groups') },
+                { key: 'to-auth', label: 'Login', onClick: () => navigate('auth') }
+              ])
             }
           },
           {
@@ -162,6 +177,33 @@ const router = createBrowserRouter([
               title: 'Project',
               breadcrumb: 'Project',
               actions: createProjectRouteActions
+            }
+          },
+          {
+            path: 'groups',
+            element: <LazyRoute><GroupsView /></LazyRoute>,
+            handle: {
+              title: 'Groups',
+              breadcrumb: 'Groups',
+              actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/collabs') }])
+            }
+          },
+          {
+            path: 'group/:groupId',
+            element: <LazyRoute><GroupView /></LazyRoute>,
+            handle: {
+              title: 'Group',
+              breadcrumb: 'Group',
+              actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/groups') }])
+            }
+          },
+          {
+            path: 'group/join/:inviteId',
+            element: <LazyRoute><GroupJoinView /></LazyRoute>,
+            handle: {
+              title: 'Group invite',
+              breadcrumb: 'Group invite',
+              actions: ({ navigate }: any) => ([{ key: 'back', label: 'Back', onClick: () => navigate('/groups') }])
             }
           },
           {

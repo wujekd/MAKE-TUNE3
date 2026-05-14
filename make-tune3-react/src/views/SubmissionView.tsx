@@ -273,6 +273,21 @@ export function SubmissionView() {
       );
     }
 
+    if (!user || (requestedCollaboration as any)?.viewerCanSubmit === false) {
+      return (
+        <div className={styles.submissionPane}>
+          <div className={styles.statusCentered}>
+            <h4 className={styles.cardTitle}>{user ? 'Group members only' : 'Login required'}</h4>
+            <div className={styles.statusMessage}>
+              {user
+                ? 'Only active members of an attached group can submit to this collaboration.'
+                : 'Sign in to submit to this collaboration.'}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (status === 'ready' && user && requestedCollaboration?.backingTrackPath) {
       return (
         <DownloadBacking

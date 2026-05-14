@@ -60,13 +60,14 @@ export class ProjectService {
     return snap.docs.map(d => ({ ...(d.data() as any), id: d.id } as Project));
   }
 
-  static async createProjectWithUniqueName(params: { name: string; description?: string; ownerId: string }): Promise<Project> {
+  static async createProjectWithUniqueName(params: { name: string; description?: string; ownerId: string; groupIds?: string[] }): Promise<Project> {
     const data = await callFirebaseFunction<
-      { name: string; description?: string },
+      { name: string; description?: string; groupIds?: string[] },
       any
     >('createProjectWithUniqueName', {
       name: params.name,
-      description: params.description
+      description: params.description,
+      groupIds: params.groupIds || []
     });
 
     // Helper to restore timestamps from JSON representation if needed

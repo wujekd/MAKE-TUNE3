@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { DashboardService, ProjectService, CollaborationService } from '../services';
+import { DashboardService, ProjectService, CollaborationService, GroupService } from '../services';
 import type { ProjectOverviewItem } from '../services/dashboardService';
 import { LoadingSpinner } from './LoadingSpinner';
 import { ProjectListItem } from './ProjectListItem';
@@ -37,6 +37,8 @@ export function ProjectsTab({ user, authLoading, createProjectRequestKey = 0 }: 
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [availableGroups, setAvailableGroups] = useState<Array<{ id: string; name: string }>>([]);
+  const [groupIds, setGroupIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -112,9 +114,13 @@ export function ProjectsTab({ user, authLoading, createProjectRequestKey = 0 }: 
       setProjects([]);
       setProjectsLoaded(false);
       setShowForm(false);
+      setAvailableGroups([]);
       return;
     }
     void loadProjects(userId);
+    GroupService.listMyGroups()
+      .then(groups => setAvailableGroups(groups.map(group => ({ id: group.id, name: group.name }))))
+      .catch(() => setAvailableGroups([]));
   }, [userId, loadProjects]);
 
   useEffect(() => {
@@ -151,7 +157,8 @@ export function ProjectsTab({ user, authLoading, createProjectRequestKey = 0 }: 
       await ProjectService.createProjectWithUniqueName({
         name: trimmed,
         description,
-        ownerId: user.uid
+        ownerId: user.uid,
+        groupIds
       });
       // Update the user's projectCount in the auth store to reflect the new project
       useAppStore.setState(state => ({
@@ -166,6 +173,7 @@ export function ProjectsTab({ user, authLoading, createProjectRequestKey = 0 }: 
       setShowForm(false);
       setName('');
       setDescription('');
+      setGroupIds([]);
       await loadProjects(user.uid);
     } catch (e: any) {
       const msg = e?.message || 'failed to create';
@@ -183,6 +191,7 @@ export function ProjectsTab({ user, authLoading, createProjectRequestKey = 0 }: 
     setShowForm(false);
     setName('');
     setDescription('');
+    setGroupIds([]);
     setFormError(null);
   };
 
@@ -299,6 +308,28 @@ export function ProjectsTab({ user, authLoading, createProjectRequestKey = 0 }: 
               disabled={!user || saving}
               rows={3}
             />
+            {availableGroups.length > 0 && (
+              <div className="user-activity__form-group" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ color: 'var(--text-muted, #888)', fontSize: 12 }}>project groups</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {availableGroups.map(group => (
+                    <label key={group.id} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
+                      <input
+                        type="checkbox"
+                        checked={groupIds.includes(group.id)}
+                        disabled={saving}
+                        onChange={e => {
+                          setGroupIds(current => e.target.checked
+                            ? Array.from(new Set([...current, group.id])).slice(0, 5)
+                            : current.filter(id => id !== group.id));
+                        }}
+                      />
+                      {group.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             {formError && <div className="user-activity__form-error">{formError}</div>}
             <div className="user-activity__form-actions">
               <button onClick={handleCancelForm} disabled={saving}>

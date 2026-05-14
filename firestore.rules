@@ -25,6 +25,7 @@ service cloud.firestore {
         && data.updatedAt is timestamp
         && (!('tags' in data) || (data.tags is list && data.tags.size() <= 10))
         && (!('tagsKey' in data) || (data.tagsKey is list && data.tagsKey.size() <= 10))
+        && (!('groupIds' in data) || (data.groupIds is list && data.groupIds.size() <= 5))
         && (!('currentCollaborationId' in data) || data.currentCollaborationId == null || data.currentCollaborationId is string)
         && (!('currentCollaborationStatus' in data) || data.currentCollaborationStatus == null || data.currentCollaborationStatus is string)
         && (!('currentCollaborationStageEndsAt' in data) || data.currentCollaborationStageEndsAt == null || data.currentCollaborationStageEndsAt is timestamp)
@@ -35,10 +36,22 @@ service cloud.firestore {
       let validStatuses = ['draft', 'published', 'submission', 'voting', 'completed', 'unpublished'];
       return data.keys().hasAll(['projectId', 'name', 'status', 'createdAt', 'updatedAt'])
         && data.projectId is string
+        && (!('creatorId' in data) || data.creatorId is string)
         && data.name is string && data.name.size() >= 3 && data.name.size() <= 100
         && data.status is string && data.status in validStatuses
         && data.createdAt is timestamp
         && data.updatedAt is timestamp
+        && (!('groupIds' in data) || (data.groupIds is list && data.groupIds.size() <= 5))
+        && (!('visibility' in data) || data.visibility in ['listed', 'unlisted'])
+        && (!('submitAccess' in data) || data.submitAccess in ['logged_in', 'group_members'])
+        && (!('voteAccess' in data) || data.voteAccess in ['logged_in', 'group_members'])
+        && (
+          (
+            data.get('submitAccess', 'logged_in') != 'group_members'
+            && data.get('voteAccess', 'logged_in') != 'group_members'
+          )
+          || ('groupIds' in data && data.groupIds is list && data.groupIds.size() > 0)
+        )
         && (!('participantIds' in data) || data.participantIds is list)
         && (!('submissions' in data) || data.submissions is list)
         && (!('submissionPaths' in data) || data.submissionPaths is list)
@@ -78,7 +91,8 @@ service cloud.firestore {
       allow update: if isOwner(resource)
         && validateProjectData(request.resource.data)
         && request.resource.data.ownerId == resource.data.ownerId
-        && request.resource.data.createdAt == resource.data.createdAt;
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.get('groupIds', []) == resource.data.get('groupIds', []);
       allow delete: if isOwner(resource);
     }
 
@@ -103,6 +117,8 @@ service cloud.firestore {
         && request.resource.data.get('submissionsCount', 0) == resource.data.get('submissionsCount', 0)
         && request.resource.data.get('reservedSubmissionsCount', 0) == resource.data.get('reservedSubmissionsCount', 0)
         && request.resource.data.get('participantIds', []) == resource.data.get('participantIds', [])
+        && request.resource.data.get('groupIds', []) == resource.data.get('groupIds', [])
+        && request.resource.data.get('creatorId', null) == resource.data.get('creatorId', null)
         && request.resource.data.get('submissionLimitOverride', null) == resource.data.get('submissionLimitOverride', null)
         && request.resource.data.get('unmoderatedSubmissions', false) == resource.data.get('unmoderatedSubmissions', false);
 
@@ -291,6 +307,44 @@ service cloud.firestore {
     }
     
     match /backingUploadTokens/{tokenId} {
+      allow read, write: if false;
+    }
+
+    function isActiveGroupMember(groupId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid))
+        && get(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.status == 'active';
+    }
+
+    function isGroupAdmin(groupId) {
+      return isActiveGroupMember(groupId)
+        && get(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.role in ['owner', 'admin'];
+    }
+
+    function validGroupData(data) {
+      return data.name is string && data.name.size() >= 3 && data.name.size() <= 100
+        && (!('description' in data) || data.description is string && data.description.size() <= 500)
+        && data.visibility in ['public', 'unlisted', 'private']
+        && data.joinPolicy in ['open', 'invite_link', 'approval_required']
+        && data.ownerId is string
+        && data.externalLinks is list && data.externalLinks.size() <= 5
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /groups/{groupId} {
+      allow read: if resource.data.visibility in ['public', 'unlisted']
+        || isActiveGroupMember(groupId)
+        || isAdmin();
+      allow create, update, delete: if false;
+
+      match /members/{userId} {
+        allow read: if isAdmin() || isGroupAdmin(groupId) || (isSignedIn() && request.auth.uid == userId);
+        allow write: if false;
+      }
+    }
+
+    match /groupInvites/{inviteId} {
       allow read, write: if false;
     }
 

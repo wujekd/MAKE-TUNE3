@@ -24,6 +24,7 @@ interface SubmissionItemProps {
   pendingFavoriteAction?: 'adding' | 'removing' | null;
   pendingLikeAction?: 'adding' | 'removing' | null;
   isVoting?: boolean;
+  votingDisabled?: boolean;
   animationDelayMs?: number;
 }
 
@@ -44,6 +45,7 @@ export default function SubmissionItem({
   pendingFavoriteAction = null,
   pendingLikeAction = null,
   isVoting = false,
+  votingDisabled = false,
   animationDelayMs
 }: SubmissionItemProps) {
 
@@ -211,7 +213,7 @@ export default function SubmissionItem({
         <button
           className={`submission-primary-action ${favorite ? 'submission-primary-action--vote' : 'submission-primary-action--favorite'}`}
           onClick={favorite ? () => voteFor(track.filePath) : handleAddToFavorites}
-          disabled={favorite ? (isFinal || isVotePending || isFavoritePending) : (!listened || !user || isFavoritePending || isVotePending)}
+          disabled={favorite ? (votingDisabled || isFinal || isVotePending || isFavoritePending) : (!listened || !user || isFavoritePending || isVotePending)}
           aria-label={favorite ? (isFinal ? 'Voted' : 'Vote') : favoriteIconLabel}
           title={favorite ? (isFinal ? 'Voted' : 'Vote for this favorite') : favoriteLabel}
         >

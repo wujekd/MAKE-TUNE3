@@ -64,6 +64,7 @@ export function VotingView() {
       ? currentProject
       : null;
   const timelineStatus = requestedCollaboration?.status ?? 'voting';
+  const canVote = Boolean(user) && (requestedCollaboration as any)?.viewerCanVote !== false;
 
   useStageRedirect({
     expected: 'voting',
@@ -239,7 +240,15 @@ export function VotingView() {
                   pendingFavoriteActions={pendingFavoriteActions}
                   pendingLikeActions={pendingTrackLikeActions}
                   pendingVotes={pendingVotes}
+                  votingDisabled={!canVote}
                 />
+                {!canVote && (
+                  <div className={styles.loadingText} style={{ padding: '8px 0' }}>
+                    {user
+                      ? 'Only active members of an attached group can vote on this collaboration.'
+                      : 'Sign in to vote on this collaboration.'}
+                  </div>
+                )}
                 <div className={styles.audioPlayerTitle}>Submissions</div>
                 <div className={styles.submissionsScroll}>
                   {regularTracks
@@ -273,6 +282,7 @@ export function VotingView() {
                         pendingFavoriteAction={pendingFavoriteActions[track.filePath]}
                         pendingLikeAction={pendingTrackLikeActions[track.filePath]}
                         isVoting={!!pendingVotes[track.filePath]}
+                        votingDisabled={!canVote}
                       />
                     ))}
                 </div>

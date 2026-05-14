@@ -48,6 +48,7 @@ export interface Project {
   description: string;
   tags: string[];
   tagsKey: string[];
+  groupIds?: string[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
   ownerId: string;
@@ -61,10 +62,15 @@ export interface Project {
 export interface Collaboration {
   id: string;
   projectId: string;
+  creatorId?: string;
   name: string;
   description: string;
   tags: string[];
   tagsKey: string[];
+  groupIds?: string[];
+  visibility?: CollaborationVisibility;
+  submitAccess?: ParticipationAccess;
+  voteAccess?: ParticipationAccess;
   backingTrackPath: string;
   pdfPath?: string;
   resourcesZipPath?: string;
@@ -234,6 +240,48 @@ export interface UserProfile {
   };
 }
 
+export type GroupVisibility = 'public' | 'unlisted' | 'private';
+export type GroupJoinPolicy = 'open' | 'invite_link' | 'approval_required';
+export type GroupMemberRole = 'owner' | 'admin' | 'member';
+export type GroupMemberStatus = 'active' | 'requested';
+export type CollaborationVisibility = 'listed' | 'unlisted';
+export type ParticipationAccess = 'logged_in' | 'group_members';
+
+export interface GroupExternalLink {
+  type: string;
+  label?: string;
+  url: string;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  description?: string;
+  visibility: GroupVisibility;
+  joinPolicy: GroupJoinPolicy;
+  externalLinks: GroupExternalLink[];
+  ownerId: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface GroupMember {
+  userId: string;
+  role: GroupMemberRole;
+  status: GroupMemberStatus;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface GroupInvite {
+  id: string;
+  groupId: string;
+  createdBy: string;
+  revoked: boolean;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
 export interface CollaborationData {
   project: Project;
   userCollaboration: UserCollaboration;
@@ -282,6 +330,8 @@ export const COLLECTIONS = {
   USERS: 'users',
   SUBMISSION_USERS: 'submissionUsers',
   USER_DOWNLOADS: 'userDownloads',
+  GROUPS: 'groups',
+  GROUP_INVITES: 'groupInvites',
   PROJECT_NAME_INDEX: 'projectNameIndex',
   TAGS: 'tags',
   REPORTS: 'reports',

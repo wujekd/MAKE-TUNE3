@@ -196,6 +196,7 @@ export class DashboardFeedService {
           .map(collab => [collab.id, collab])
       );
       const mappedRecommendations = recItems
+        .filter(item => (recCollabMap.get(item.collaborationId)?.visibility || 'listed') === 'listed')
         .map(item => mapRecommendationItem(item, recCollabMap.get(item.collaborationId)))
         .filter(item => matchesTags(item, normalizedTags))
         .slice(0, FEED_LIMIT);
@@ -238,6 +239,7 @@ export class DashboardFeedService {
 
     return {
       items: collabs
+        .filter(collab => (collab.visibility || 'listed') === 'listed')
         .map(collab => mapCollaborationItem(collab, mode))
         .filter(item => matchesTags(item, selectedTags))
         .slice(0, FEED_LIMIT),

@@ -77,6 +77,8 @@ const SUBMISSION_RESERVATION_MINUTES = 20;
 const BACKING_UPLOAD_RESERVATION_MINUTES = 20;
 const SUBMISSION_TOKEN_COLLECTION = "submissionUploadTokens";
 const BACKING_TOKEN_COLLECTION = "backingUploadTokens";
+const GROUPS_COLLECTION = "groups";
+const GROUP_INVITES_COLLECTION = "groupInvites";
 const WAVEFORM_VERSION = 1;
 const BACKING_WAVEFORM_BUCKET_COUNT = 768;
 const SUBMISSION_WAVEFORM_BUCKET_COUNT = 512;
@@ -101,6 +103,13 @@ const DEFAULT_SUBMISSION_SETTINGS = {
   },
   volume: { gain: 1 }
 };
+
+const MAX_GROUPS_PER_ITEM = 5;
+const MAX_GROUP_EXTERNAL_LINKS = 5;
+const GROUP_VISIBILITIES = new Set(["public", "unlisted", "private"]);
+const GROUP_JOIN_POLICIES = new Set(["open", "invite_link", "approval_required"]);
+const COLLAB_VISIBILITIES = new Set(["listed", "unlisted"]);
+const PARTICIPATION_ACCESSES = new Set(["logged_in", "group_members"]);
 
 const buildSubmissionTokenId = (collabId: string, uid: string) => `${collabId}__${uid}`;
 const buildBackingTokenId = (collabId: string, uid: string) => `backing__${collabId}__${uid}`;
@@ -594,6 +603,141 @@ const normalizeStringArray = (value: unknown): string[] => {
     .map((item) => item.trim())
     .filter(Boolean);
 };
+
+const normalizeGroupIds = (value: unknown): string[] => {
+  const ids = normalizeStringArray(value);
+  return Array.from(new Set(ids)).slice(0, MAX_GROUPS_PER_ITEM);
+};
+
+const normalizeGroupVisibility = (value: unknown): string => {
+  const normalized = String(value || "public").trim();
+  return GROUP_VISIBILITIES.has(normalized) ? normalized : "public";
+};
+
+const normalizeGroupJoinPolicy = (value: unknown): string => {
+  const normalized = String(value || "open").trim();
+  return GROUP_JOIN_POLICIES.has(normalized) ? normalized : "open";
+};
+
+const normalizeCollaborationVisibility = (value: unknown): string => {
+  const normalized = String(value || "listed").trim();
+  return COLLAB_VISIBILITIES.has(normalized) ? normalized : "listed";
+};
+
+const normalizeParticipationAccess = (value: unknown): string => {
+  const normalized = String(value || "logged_in").trim();
+  return PARTICIPATION_ACCESSES.has(normalized) ? normalized : "logged_in";
+};
+
+const normalizeExternalLinks = (value: unknown): Array<{ type: string; label?: string; url: string }> => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .slice(0, MAX_GROUP_EXTERNAL_LINKS)
+    .map((item) => {
+      const row = item && typeof item === "object" ? item as Record<string, unknown> : {};
+      const type = String(row.type || "website").trim().slice(0, 40);
+      const label = String(row.label || "").trim().slice(0, 80);
+      const url = String(row.url || "").trim().slice(0, 500);
+      return { type, label: label || undefined, url };
+    })
+    .filter((item) => item.url && /^https?:\/\//i.test(item.url));
+};
+
+const groupMemberRef = (groupId: string, uid: string) =>
+  db.collection(GROUPS_COLLECTION).doc(groupId).collection("members").doc(uid);
+
+async function isGroupAdmin(uid: string, groupId: string): Promise<boolean> {
+  const memberSnap = await groupMemberRef(groupId, uid).get();
+  if (!memberSnap.exists) return false;
+  const data = memberSnap.data() as any;
+  return data.status === "active" && ["owner", "admin"].includes(String(data.role || ""));
+}
+
+async function getGroupMembership(uid: string | null, groupId: string): Promise<any | null> {
+  if (!uid) return null;
+  const snap = await groupMemberRef(groupId, uid).get();
+  return snap.exists ? snap.data() : null;
+}
+
+async function canViewGroup(uid: string | null, groupData: any, groupId: string): Promise<boolean> {
+  const visibility = String(groupData?.visibility || "public");
+  if (visibility !== "private") return true;
+  const membership = await getGroupMembership(uid, groupId);
+  return membership?.status === "active";
+}
+
+async function assertActiveMemberOfGroupsTx(
+  tx: FirebaseFirestore.Transaction,
+  uid: string,
+  groupIds: string[]
+): Promise<void> {
+  if (groupIds.length > MAX_GROUPS_PER_ITEM) {
+    throw new HttpsError("invalid-argument", "too many groups");
+  }
+  for (const groupId of groupIds) {
+    const [groupSnap, memberSnap] = await Promise.all([
+      tx.get(db.collection(GROUPS_COLLECTION).doc(groupId)),
+      tx.get(groupMemberRef(groupId, uid))
+    ]);
+    if (!groupSnap.exists) {
+      throw new HttpsError("not-found", "group not found");
+    }
+    const member = memberSnap.exists ? memberSnap.data() as any : null;
+    if (member?.status !== "active") {
+      throw new HttpsError("permission-denied", "only active group members can attach groups");
+    }
+  }
+}
+
+async function hasAnyActiveGroupMembershipTx(
+  tx: FirebaseFirestore.Transaction,
+  uid: string,
+  groupIds: string[]
+): Promise<boolean> {
+  for (const groupId of groupIds) {
+    const memberSnap = await tx.get(groupMemberRef(groupId, uid));
+    if (!memberSnap.exists) continue;
+    const data = memberSnap.data() as any;
+    if (data?.status === "active") return true;
+  }
+  return false;
+}
+
+async function hasAnyActiveGroupMembership(uid: string | null, groupIds: string[]): Promise<boolean> {
+  if (!uid) return false;
+  for (const groupId of groupIds) {
+    const memberSnap = await groupMemberRef(groupId, uid).get();
+    if (!memberSnap.exists) continue;
+    const data = memberSnap.data() as any;
+    if (data?.status === "active") return true;
+  }
+  return false;
+}
+
+async function canParticipate(uid: string | null, collabData: any, field: "submitAccess" | "voteAccess"): Promise<boolean> {
+  if (!uid) return false;
+  const access = normalizeParticipationAccess(collabData?.[field]);
+  if (access === "logged_in") return true;
+  return hasAnyActiveGroupMembership(uid, normalizeGroupIds(collabData?.groupIds));
+}
+
+async function enforceParticipationAccessTx(
+  tx: FirebaseFirestore.Transaction,
+  uid: string,
+  collabData: any,
+  field: "submitAccess" | "voteAccess"
+): Promise<void> {
+  const access = normalizeParticipationAccess(collabData?.[field]);
+  if (access !== "group_members") return;
+  const groupIds = normalizeGroupIds(collabData?.groupIds);
+  if (groupIds.length === 0) {
+    throw new HttpsError("failed-precondition", "collaboration has no attached groups");
+  }
+  const allowed = await hasAnyActiveGroupMembershipTx(tx, uid, groupIds);
+  if (!allowed) {
+    throw new HttpsError("permission-denied", "attached group membership required");
+  }
+}
 
 const getBearerToken = (headerValue: unknown): string | null => {
   if (typeof headerValue !== "string") return null;
@@ -1386,6 +1530,7 @@ export const reserveSubmissionSlot = onCall({ cors: true }, async (request) => {
     if (collabData.status !== "submission") {
       throw new HttpsError("failed-precondition", "collaboration not accepting submissions");
     }
+    await enforceParticipationAccessTx(tx, uid, collabData, "submitAccess");
 
     const now = Timestamp.now();
     const submissionCloseMillis = toMillis(collabData.submissionCloseAt);
@@ -1800,6 +1945,13 @@ export const finalizeSubmissionUpload = onObjectFinalized({ region: "europe-west
     if (submissionCloseMillis !== null && submissionCloseMillis <= now.toMillis()) {
       invalidReasonParts.push("submission-closed");
     }
+    if (collabData && normalizeParticipationAccess(collabData.submitAccess) === "group_members") {
+      const groupIds = normalizeGroupIds(collabData.groupIds);
+      const isMember = groupIds.length > 0
+        ? await hasAnyActiveGroupMembershipTx(tx, ownerUid, groupIds)
+        : false;
+      if (!isMember) invalidReasonParts.push("group-membership-required");
+    }
 
     if (invalidReasonParts.length > 0) {
       if (!tokenData.used) {
@@ -2054,6 +2206,364 @@ const buildNameKey = (name: string) =>
     .replace(/[^a-z0-9 ]/g, "")
     .replace(/\s/g, "-");
 
+export const createGroup = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+  await checkUserNotSuspended(uid);
+
+  const name = String(request.data?.name || "").trim();
+  const description = String(request.data?.description || "").trim();
+  if (name.length < 3 || name.length > 100) {
+    throw new HttpsError("invalid-argument", "group name must be 3-100 characters");
+  }
+  if (description.length > 500) {
+    throw new HttpsError("invalid-argument", "description too long");
+  }
+
+  const groupRef = db.collection(GROUPS_COLLECTION).doc();
+  const now = Timestamp.now();
+  const groupData = {
+    name,
+    description,
+    visibility: normalizeGroupVisibility(request.data?.visibility),
+    joinPolicy: normalizeGroupJoinPolicy(request.data?.joinPolicy),
+    externalLinks: normalizeExternalLinks(request.data?.externalLinks),
+    ownerId: uid,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  await db.runTransaction(async (tx) => {
+    tx.set(groupRef, groupData);
+    tx.set(groupMemberRef(groupRef.id, uid), {
+      userId: uid,
+      role: "owner",
+      status: "active",
+      createdAt: now,
+      updatedAt: now
+    });
+  });
+
+  return { id: groupRef.id, ...groupData };
+});
+
+export const listMyGroups = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) return { groups: [] };
+
+  const memberSnap = await db
+    .collectionGroup("members")
+    .where("userId", "==", uid)
+    .where("status", "==", "active")
+    .limit(50)
+    .get();
+
+  const groupIds = memberSnap.docs
+    .map((docSnap) => docSnap.ref.parent.parent?.id)
+    .filter((id): id is string => Boolean(id));
+  const groups = await Promise.all(groupIds.map(async (groupId) => {
+    const groupSnap = await db.collection(GROUPS_COLLECTION).doc(groupId).get();
+    return groupSnap.exists ? { id: groupSnap.id, ...(groupSnap.data() as any) } : null;
+  }));
+
+  return { groups: groups.filter(Boolean) };
+});
+
+export const getGroup = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  const groupId = String(request.data?.groupId || "").trim();
+  if (!groupId) throw new HttpsError("invalid-argument", "groupId required");
+
+  const groupSnap = await db.collection(GROUPS_COLLECTION).doc(groupId).get();
+  if (!groupSnap.exists) return { group: null, membership: null, canManage: false };
+  const groupData = groupSnap.data() as any;
+  if (!(await canViewGroup(uid, groupData, groupId))) {
+    return { group: null, membership: null, canManage: false };
+  }
+
+  const membership = await getGroupMembership(uid, groupId);
+  const canManage = membership?.status === "active" && ["owner", "admin"].includes(String(membership.role || ""));
+  return {
+    group: { id: groupSnap.id, ...groupData },
+    membership: membership || null,
+    canManage
+  };
+});
+
+export const joinOpenGroup = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+  await checkUserNotSuspended(uid);
+  const groupId = String(request.data?.groupId || "").trim();
+  if (!groupId) throw new HttpsError("invalid-argument", "groupId required");
+
+  await db.runTransaction(async (tx) => {
+    const groupRef = db.collection(GROUPS_COLLECTION).doc(groupId);
+    const groupSnap = await tx.get(groupRef);
+    if (!groupSnap.exists) throw new HttpsError("not-found", "group not found");
+    const groupData = groupSnap.data() as any;
+    if (String(groupData.joinPolicy || "") !== "open") {
+      throw new HttpsError("permission-denied", "group is not open");
+    }
+    const now = Timestamp.now();
+    tx.set(groupMemberRef(groupId, uid), {
+      userId: uid,
+      role: "member",
+      status: "active",
+      createdAt: now,
+      updatedAt: now
+    }, { merge: true });
+  });
+  return { joined: true };
+});
+
+export const requestGroupAccess = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+  await checkUserNotSuspended(uid);
+  const groupId = String(request.data?.groupId || "").trim();
+  if (!groupId) throw new HttpsError("invalid-argument", "groupId required");
+
+  await db.runTransaction(async (tx) => {
+    const groupRef = db.collection(GROUPS_COLLECTION).doc(groupId);
+    const memberRef = groupMemberRef(groupId, uid);
+    const [groupSnap, memberSnap] = await Promise.all([tx.get(groupRef), tx.get(memberRef)]);
+    if (!groupSnap.exists) throw new HttpsError("not-found", "group not found");
+    const groupData = groupSnap.data() as any;
+    if (String(groupData.joinPolicy || "") !== "approval_required") {
+      throw new HttpsError("failed-precondition", "group does not use approvals");
+    }
+    const existing = memberSnap.exists ? memberSnap.data() as any : null;
+    if (existing?.status === "active") return;
+    const now = Timestamp.now();
+    tx.set(memberRef, {
+      userId: uid,
+      role: "member",
+      status: "requested",
+      createdAt: existing?.createdAt || now,
+      updatedAt: now
+    }, { merge: true });
+  });
+  return { requested: true };
+});
+
+export const approveGroupMember = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+  const groupId = String(request.data?.groupId || "").trim();
+  const userId = String(request.data?.userId || "").trim();
+  if (!groupId || !userId) throw new HttpsError("invalid-argument", "groupId and userId required");
+  if (!(await isGroupAdmin(uid, groupId))) {
+    throw new HttpsError("permission-denied", "group admin required");
+  }
+  const now = Timestamp.now();
+  await groupMemberRef(groupId, userId).set({
+    userId,
+    role: "member",
+    status: "active",
+    updatedAt: now
+  }, { merge: true });
+  return { approved: true };
+});
+
+export const listGroupMembers = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+  const groupId = String(request.data?.groupId || "").trim();
+  if (!groupId) throw new HttpsError("invalid-argument", "groupId required");
+  if (!(await isGroupAdmin(uid, groupId))) {
+    throw new HttpsError("permission-denied", "group admin required");
+  }
+  const snap = await db.collection(GROUPS_COLLECTION).doc(groupId).collection("members").limit(200).get();
+  return {
+    members: snap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() as any) }))
+  };
+});
+
+export const createGroupInvite = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+  const groupId = String(request.data?.groupId || "").trim();
+  if (!groupId) throw new HttpsError("invalid-argument", "groupId required");
+  if (!(await isGroupAdmin(uid, groupId))) {
+    throw new HttpsError("permission-denied", "group admin required");
+  }
+  const inviteRef = db.collection(GROUP_INVITES_COLLECTION).doc();
+  const now = Timestamp.now();
+  await inviteRef.set({
+    groupId,
+    createdBy: uid,
+    revoked: false,
+    createdAt: now,
+    updatedAt: now
+  });
+  return { inviteId: inviteRef.id };
+});
+
+export const joinGroupWithInvite = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+  await checkUserNotSuspended(uid);
+  const inviteId = String(request.data?.inviteId || "").trim();
+  if (!inviteId) throw new HttpsError("invalid-argument", "inviteId required");
+
+  let joinedGroupId = "";
+  await db.runTransaction(async (tx) => {
+    const inviteRef = db.collection(GROUP_INVITES_COLLECTION).doc(inviteId);
+    const inviteSnap = await tx.get(inviteRef);
+    if (!inviteSnap.exists) throw new HttpsError("not-found", "invite not found");
+    const inviteData = inviteSnap.data() as any;
+    if (inviteData.revoked === true) throw new HttpsError("permission-denied", "invite revoked");
+    const groupId = String(inviteData.groupId || "");
+    const groupSnap = await tx.get(db.collection(GROUPS_COLLECTION).doc(groupId));
+    if (!groupSnap.exists) throw new HttpsError("not-found", "group not found");
+    const now = Timestamp.now();
+    tx.set(groupMemberRef(groupId, uid), {
+      userId: uid,
+      role: "member",
+      status: "active",
+      createdAt: now,
+      updatedAt: now
+    }, { merge: true });
+    joinedGroupId = groupId;
+  });
+
+  return { groupId: joinedGroupId };
+});
+
+export const listGroupCollaborations = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  const groupId = String(request.data?.groupId || "").trim();
+  if (!groupId) throw new HttpsError("invalid-argument", "groupId required");
+  const groupSnap = await db.collection(GROUPS_COLLECTION).doc(groupId).get();
+  if (!groupSnap.exists) return { collaborations: [] };
+  if (!(await canViewGroup(uid, groupSnap.data(), groupId))) {
+    throw new HttpsError("permission-denied", "group membership required");
+  }
+  const snap = await db.collection("collaborations")
+    .where("groupIds", "array-contains", groupId)
+    .limit(100)
+    .get();
+  return {
+    collaborations: snap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() as any) }))
+  };
+});
+
+export const listGroupProjects = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  const groupId = String(request.data?.groupId || "").trim();
+  if (!groupId) throw new HttpsError("invalid-argument", "groupId required");
+  const groupSnap = await db.collection(GROUPS_COLLECTION).doc(groupId).get();
+  if (!groupSnap.exists) return { projects: [] };
+  if (!(await canViewGroup(uid, groupSnap.data(), groupId))) {
+    throw new HttpsError("permission-denied", "group membership required");
+  }
+  const snap = await db.collection("projects")
+    .where("groupIds", "array-contains", groupId)
+    .limit(100)
+    .get();
+  return { projects: snap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() as any) })) };
+});
+
+export const removeCollaborationFromGroup = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+  const groupId = String(request.data?.groupId || "").trim();
+  const collaborationId = String(request.data?.collaborationId || "").trim();
+  if (!groupId || !collaborationId) throw new HttpsError("invalid-argument", "groupId and collaborationId required");
+  if (!(await isGroupAdmin(uid, groupId))) {
+    throw new HttpsError("permission-denied", "group admin required");
+  }
+
+  await db.runTransaction(async (tx) => {
+    const collabRef = db.collection("collaborations").doc(collaborationId);
+    const collabSnap = await tx.get(collabRef);
+    if (!collabSnap.exists) throw new HttpsError("not-found", "collaboration not found");
+    const data = collabSnap.data() as any;
+    const groupIds = normalizeGroupIds(data.groupIds).filter((id) => id !== groupId);
+    const updates: Record<string, unknown> = { groupIds, updatedAt: Timestamp.now() };
+    if (groupIds.length === 0) {
+      updates.visibility = "unlisted";
+      if (normalizeParticipationAccess(data.submitAccess) === "group_members") updates.submitAccess = "logged_in";
+      if (normalizeParticipationAccess(data.voteAccess) === "group_members") updates.voteAccess = "logged_in";
+    }
+    tx.update(collabRef, updates);
+  });
+  return { removed: true };
+});
+
+export const attachCollaborationToGroup = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+  await checkUserNotSuspended(uid);
+  const groupId = String(request.data?.groupId || "").trim();
+  const collaborationId = String(request.data?.collaborationId || "").trim();
+  if (!groupId || !collaborationId) throw new HttpsError("invalid-argument", "groupId and collaborationId required");
+
+  await db.runTransaction(async (tx) => {
+    const collabRef = db.collection("collaborations").doc(collaborationId);
+    const collabSnap = await tx.get(collabRef);
+    if (!collabSnap.exists) throw new HttpsError("not-found", "collaboration not found");
+    const data = collabSnap.data() as any;
+    const projectId = String(data.projectId || "");
+    const projectSnap = await tx.get(db.collection("projects").doc(projectId));
+    if (!projectSnap.exists) throw new HttpsError("not-found", "project not found");
+    if (String((projectSnap.data() as any).ownerId || "") !== uid) {
+      throw new HttpsError("permission-denied", "only the project owner can attach collaborations");
+    }
+    await assertActiveMemberOfGroupsTx(tx, uid, [groupId]);
+    const groupIds = Array.from(new Set([...normalizeGroupIds(data.groupIds), groupId])).slice(0, MAX_GROUPS_PER_ITEM);
+    tx.update(collabRef, { groupIds, updatedAt: Timestamp.now() });
+  });
+  return { attached: true };
+});
+
+export const removeProjectFromGroup = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+  const groupId = String(request.data?.groupId || "").trim();
+  const projectId = String(request.data?.projectId || "").trim();
+  if (!groupId || !projectId) throw new HttpsError("invalid-argument", "groupId and projectId required");
+  if (!(await isGroupAdmin(uid, groupId))) {
+    throw new HttpsError("permission-denied", "group admin required");
+  }
+
+  await db.runTransaction(async (tx) => {
+    const projectRef = db.collection("projects").doc(projectId);
+    const projectSnap = await tx.get(projectRef);
+    if (!projectSnap.exists) throw new HttpsError("not-found", "project not found");
+    const data = projectSnap.data() as any;
+    tx.update(projectRef, {
+      groupIds: normalizeGroupIds(data.groupIds).filter((id) => id !== groupId),
+      updatedAt: Timestamp.now()
+    });
+  });
+  return { removed: true };
+});
+
+export const attachProjectToGroup = onCall({ cors: true }, async (request) => {
+  const uid = request.auth?.uid || null;
+  if (!uid) throw new HttpsError("unauthenticated", "unauthenticated");
+  await checkUserNotSuspended(uid);
+  const groupId = String(request.data?.groupId || "").trim();
+  const projectId = String(request.data?.projectId || "").trim();
+  if (!groupId || !projectId) throw new HttpsError("invalid-argument", "groupId and projectId required");
+
+  await db.runTransaction(async (tx) => {
+    const projectRef = db.collection("projects").doc(projectId);
+    const projectSnap = await tx.get(projectRef);
+    if (!projectSnap.exists) throw new HttpsError("not-found", "project not found");
+    const data = projectSnap.data() as any;
+    if (String(data.ownerId || "") !== uid) {
+      throw new HttpsError("permission-denied", "only the project owner can attach projects");
+    }
+    await assertActiveMemberOfGroupsTx(tx, uid, [groupId]);
+    const groupIds = Array.from(new Set([...normalizeGroupIds(data.groupIds), groupId])).slice(0, MAX_GROUPS_PER_ITEM);
+    tx.update(projectRef, { groupIds, updatedAt: Timestamp.now() });
+  });
+  return { attached: true };
+});
+
 export const createProjectWithUniqueName = onCall(
   { secrets: [HSD_API_TOKEN, HSD_SERVICE_URL], cors: true },
   async (request) => {
@@ -2069,6 +2579,7 @@ export const createProjectWithUniqueName = onCall(
 
     const nameRaw = String(request.data?.name ?? "").trim();
     const descriptionRaw = String(request.data?.description ?? "");
+    const groupIds = normalizeGroupIds(request.data?.groupIds);
     // Project tags are deprecated for beta; projects inherit tags from collaborations.
     const tags: string[] = [];
     const tagsKey: string[] = [];
@@ -2108,6 +2619,7 @@ export const createProjectWithUniqueName = onCall(
 
       if (!userSnap.exists) throw new HttpsError("permission-denied", "user profile not found");
       if (idxSnap.exists) throw new HttpsError("already-exists", "name taken");
+      await assertActiveMemberOfGroupsTx(tx, uid, groupIds);
 
       const userData = userSnap.data() as any;
       if (!userData.isAdmin) {
@@ -2135,6 +2647,7 @@ export const createProjectWithUniqueName = onCall(
         nameKey,
         tags,
         tagsKey,
+        groupIds,
         currentCollaborationId: null,
         currentCollaborationStatus: null,
         currentCollaborationStageEndsAt: null,
@@ -2183,6 +2696,10 @@ export const createCollaborationWithHSD = onCall(
     const votingDuration = toNumber(request.data?.votingDuration, 259200);
     const statusRaw = String(request.data?.status ?? "unpublished").trim() || "unpublished";
     const backingTrackPath = String(request.data?.backingTrackPath ?? "").trim();
+    const requestedGroupIds = normalizeGroupIds(request.data?.groupIds);
+    const visibility = normalizeCollaborationVisibility(request.data?.visibility);
+    const submitAccess = normalizeParticipationAccess(request.data?.submitAccess);
+    const voteAccess = normalizeParticipationAccess(request.data?.voteAccess);
 
     if (!projectId) throw new HttpsError("invalid-argument", "projectId required");
     if (!nameRaw) throw new HttpsError("invalid-argument", "name required");
@@ -2234,14 +2751,25 @@ export const createCollaborationWithHSD = onCall(
       if (String(projectData.ownerId || "") !== uid) {
         throw new HttpsError("permission-denied", "only the project owner can create collaborations");
       }
+      const inheritedGroupIds = normalizeGroupIds(projectData.groupIds);
+      const groupIds = Array.from(new Set([...inheritedGroupIds, ...requestedGroupIds])).slice(0, MAX_GROUPS_PER_ITEM);
+      if ((submitAccess === "group_members" || voteAccess === "group_members") && groupIds.length === 0) {
+        throw new HttpsError("failed-precondition", "group member access requires at least one group");
+      }
+      await assertActiveMemberOfGroupsTx(tx, uid, groupIds);
 
       const now = Timestamp.now();
       const collaborationData = {
         projectId,
+        creatorId: uid,
         name: nameRaw,
         description: descriptionRaw,
         tags,
         tagsKey,
+        groupIds,
+        visibility,
+        submitAccess,
+        voteAccess,
         backingTrackPath,
         participantIds: [],
         submissionsCount: 0,
@@ -2434,6 +2962,10 @@ export const getCollaborationData = onCall({ cors: true }, async (request) => {
   const effectiveLimit = getEffectiveSubmissionLimit(collabData, settings);
   const submissionsUsedCount = toNumber(collabData.submissionsCount, 0)
     + toNumber(collabData.reservedSubmissionsCount, 0);
+  const [viewerCanSubmit, viewerCanVote] = await Promise.all([
+    canParticipate(uid, collabData, "submitAccess"),
+    canParticipate(uid, collabData, "voteAccess")
+  ]);
 
   // Get collaboration details (submissions)
   const detailRef = db.collection("collaborationDetails").doc(collaborationIdRaw);
@@ -2461,6 +2993,8 @@ export const getCollaborationData = onCall({ cors: true }, async (request) => {
     id: collabSnap.id,
     effectiveSubmissionLimit: effectiveLimit,
     submissionsUsedCount,
+    viewerCanSubmit,
+    viewerCanVote,
     submissions,
     submissionPaths,
     // Convert Timestamps to millis for client
@@ -3005,6 +3539,7 @@ export const voteForTrack = onCall({ cors: true }, async (request) => {
     if (status !== "voting") {
       throw new HttpsError("failed-precondition", "collaboration not accepting votes");
     }
+    await enforceParticipationAccessTx(tx, uid, collabData, "voteAccess");
     const votingCloseMillis = toMillis(collabData.votingCloseAt);
     if (votingCloseMillis !== null && votingCloseMillis <= now.toMillis()) {
       throw new HttpsError("failed-precondition", "voting closed");
