@@ -230,6 +230,8 @@ export function DashboardCollabsPanel({
                       duration={backingDuration}
                       isPlaying={isBackingPlaying}
                       animationDelayMs={Math.min(itemIndex, 12) * 160}
+                      underlayAlpha={0.46}
+                      waveformAlpha={1.22}
                     />
                   ) : undefined}
                   rightSlot={

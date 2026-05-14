@@ -6,17 +6,30 @@ import './MainView.css';
 import '../components/SubmissionItem.css';
 import '../components/ProjectHistory.css';
 import { Mixer } from '../components/Mixer';
-import { CollabData } from '../components/CollabData';
 import ProjectHistory from '../components/ProjectHistory';
 import { CompletedCollaborationTimeline } from '../components/CompletedCollaborationTimeline';
 import { AudioUrlUtils } from '../utils/audioUrlUtils';
 import { useCollaborationLoader } from '../hooks/useCollaborationLoader';
+import { useWaveformData } from '../hooks/useWaveformData';
 import { useStageRedirect } from '../hooks/useStageRedirect';
-import { WinnerCard } from '../components/WinnerCard';
+import { WaveformStrip } from '../components/WaveformStrip';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { MissingCollaborationState } from '../components/MissingCollaborationState';
 import { CollaborationPreferenceBar } from '../components/CollaborationPreferenceBar';
 import styles from './CompletedView.module.css';
+
+const compactCountFormatter = new Intl.NumberFormat('en', {
+  notation: 'compact',
+  maximumFractionDigits: 1
+});
+
+const standardCountFormatter = new Intl.NumberFormat('en');
+
+const formatCount = (value: number) => {
+  if (!Number.isFinite(value)) return '0';
+  if (Math.abs(value) >= 10000) return compactCountFormatter.format(value);
+  return standardCountFormatter.format(value);
+};
 
 export function CompletedView() {
   const { collabId } = useParams();
@@ -37,6 +50,7 @@ export function CompletedView() {
   const [isPlayingWinner, setIsPlayingWinner] = useState(false);
   const playInFlightRef = useRef(false);
   const winnerResolvedUrlRef = useRef<string | null>(null);
+  const backingResolvedUrlRef = useRef<string | null>(null);
   const loader = useCollaborationLoader(collaborationId);
   const requestedCollaboration = currentCollaboration?.id === collaborationId ? currentCollaboration : null;
   const requestedProject =
@@ -61,8 +75,51 @@ export function CompletedView() {
     if (!requestedCollaboration?.winnerPath) return null;
     const path = requestedCollaboration.winnerPath;
     const entry = requestedCollaboration.submissions?.find(s => s.path === path);
-    return { path, settings: entry?.settings };
+    return { path, entry, settings: entry?.settings };
   }, [requestedCollaboration]);
+
+  const backingWaveformMeta = useMemo(() => ({
+    path: requestedCollaboration?.backingWaveformPath ?? null,
+    status: requestedCollaboration?.backingWaveformStatus ?? (requestedCollaboration?.backingTrackPath ? 'pending' : null),
+    bucketCount: requestedCollaboration?.backingWaveformBucketCount ?? null,
+    version: requestedCollaboration?.backingWaveformVersion ?? null,
+    error: requestedCollaboration?.backingWaveformError ?? null
+  }), [
+    requestedCollaboration?.backingTrackPath,
+    requestedCollaboration?.backingWaveformBucketCount,
+    requestedCollaboration?.backingWaveformError,
+    requestedCollaboration?.backingWaveformPath,
+    requestedCollaboration?.backingWaveformStatus,
+    requestedCollaboration?.backingWaveformVersion
+  ]);
+
+  const winnerWaveformMeta = useMemo(() => ({
+    path: winner?.entry?.waveformPath ?? null,
+    status: winner?.entry?.waveformStatus ?? (winner?.entry?.waveformPath ? 'ready' : null),
+    bucketCount: winner?.entry?.waveformBucketCount ?? null,
+    version: winner?.entry?.waveformVersion ?? null,
+    error: winner?.entry?.waveformError ?? null
+  }), [
+    winner?.entry?.waveformBucketCount,
+    winner?.entry?.waveformError,
+    winner?.entry?.waveformPath,
+    winner?.entry?.waveformStatus,
+    winner?.entry?.waveformVersion
+  ]);
+
+  const { data: backingWaveformData, uiState: backingWaveformUiState } = useWaveformData({
+    initialMeta: backingWaveformMeta,
+    initialData: requestedCollaboration?.backingWaveformPreview ?? null,
+    enabled: Boolean(requestedCollaboration?.backingTrackPath || requestedCollaboration?.backingWaveformPreview),
+    deferLoad: Boolean(requestedCollaboration?.backingWaveformPreview)
+  });
+
+  const { data: winnerWaveformData, uiState: winnerWaveformUiState } = useWaveformData({
+    initialMeta: winnerWaveformMeta,
+    initialData: winner?.entry?.waveformPreview ?? null,
+    enabled: Boolean(winner?.entry?.waveformPath || winner?.entry?.waveformPreview),
+    deferLoad: Boolean(winner?.entry?.waveformPreview)
+  });
 
   useEffect(() => {
     if (!winner?.path || !requestedCollaboration?.backingTrackPath) return;
@@ -109,6 +166,7 @@ export function CompletedView() {
       const backUrl = await AudioUrlUtils.resolveAudioUrl(requestedCollaboration.backingTrackPath);
 
       winnerResolvedUrlRef.current = subUrl;
+      backingResolvedUrlRef.current = backUrl;
       engine.playSubmission(subUrl, backUrl, 0);
     } catch (err) {
       console.error('[CompletedView] Failed to play winner', err);
@@ -130,6 +188,12 @@ export function CompletedView() {
     }
   }, [audioCtx?.state.player1.source]);
 
+  useEffect(() => {
+    if (audioCtx?.state.player2.source !== backingResolvedUrlRef.current && backingResolvedUrlRef.current !== null) {
+      backingResolvedUrlRef.current = null;
+    }
+  }, [audioCtx?.state.player2.source]);
+
   if (loader.status === 'not_found') {
     return <MissingCollaborationState collaborationId={collaborationId} viewLabel="completed view" />;
   }
@@ -148,10 +212,47 @@ export function CompletedView() {
   }
 
   const state = audioCtx.state;
-  const winnerCardWrapperClass = [
-    styles.winnerCardWrapper,
+  const heroPlayClass = [
+    styles.heroPlayButton,
     isWinnerPlaying && audioCtx?.state.player1.isPlaying ? styles.playing : ''
   ].filter(Boolean).join(' ');
+  const backingWaveformState = backingWaveformUiState === 'ready' ? 'ready' : 'placeholder';
+  const winnerWaveformState = winnerWaveformUiState === 'ready' ? 'ready' : 'placeholder';
+  const isBackingPlaying = backingResolvedUrlRef.current !== null
+    && audioCtx.state.player2.source === backingResolvedUrlRef.current
+    && audioCtx.state.player2.isPlaying;
+  const backingProgress = backingResolvedUrlRef.current !== null && audioCtx.state.player2.duration > 0
+    ? audioCtx.state.player2.currentTime / audioCtx.state.player2.duration
+    : 0;
+  const submissionsArr = Array.isArray(requestedCollaboration.submissions)
+    ? requestedCollaboration.submissions
+    : [];
+  const results = Array.isArray((requestedCollaboration as any).results)
+    ? [...((requestedCollaboration as any).results as Array<{ path: string; votes: number }>)]
+        .sort((a, b) => (b?.votes || 0) - (a?.votes || 0))
+    : [];
+  const submissionsCount = typeof requestedCollaboration.submissionsCount === 'number'
+    ? requestedCollaboration.submissionsCount
+    : submissionsArr.length;
+  const participantsCount = Array.isArray(requestedCollaboration.participantIds)
+    ? requestedCollaboration.participantIds.length
+    : Math.max(submissionsCount, 0);
+  const favoritesCount = requestedCollaboration.favoritesCount || 0;
+  const resultVotesTotal = results.reduce((sum, result) => sum + (result?.votes || 0), 0);
+  const totalVotes = typeof requestedCollaboration.totalVotes === 'number'
+    ? requestedCollaboration.totalVotes
+    : (resultVotesTotal || requestedCollaboration.votesCount || 0);
+  const winnerVotes = typeof requestedCollaboration.winnerVotes === 'number'
+    ? requestedCollaboration.winnerVotes
+    : (results[0]?.votes || 0);
+  const winnerShare = totalVotes > 0 ? Math.round((winnerVotes / totalVotes) * 100) : 0;
+  const winnerName = requestedCollaboration.winnerUserName || 'Anonymous';
+  const stats = [
+    { label: 'participants', value: participantsCount },
+    { label: 'submissions', value: submissionsCount },
+    { label: 'favorites', value: favoritesCount },
+    { label: 'votes cast', value: totalVotes }
+  ];
 
   return (
     <div className={`view-container ${styles.container}`}>
@@ -204,21 +305,100 @@ export function CompletedView() {
 
       <div className={styles.content}>
         <div className={styles.resultsSection}>
-          <div className={styles.winnerSection}>
-            <h2 className={styles.sectionTitle}>Collaboration Results</h2>
-            <div className={winnerCardWrapperClass}>
-              <WinnerCard
-                name={requestedCollaboration?.winnerUserName || 'Anonymous'}
-                progressPercent={displayProgress}
-                isPlaying={isWinnerPlaying && audioCtx?.state.player1.isPlaying}
-                isLoading={isPlayingWinner}
-                disabled={!winner?.path}
-                onPlay={playWinner}
-              />
-            </div>
+          <div className={`${styles.waveformBackdrop} ${styles.waveformBackdropTop}`} aria-hidden="true">
+            <WaveformStrip
+              data={backingWaveformData}
+              state={backingWaveformState}
+              initialCascadeProgress={1}
+              repeatCascadeProgress={0}
+              progress={backingProgress}
+              currentTime={audioCtx.state.player2.currentTime}
+              duration={audioCtx.state.player2.duration}
+              isPlaying={isBackingPlaying}
+            />
           </div>
-          <div className={styles.collabDataSection}>
-            <CollabData collab={requestedCollaboration as any} />
+          <div className={`${styles.waveformBackdrop} ${styles.waveformBackdropBottom}`} aria-hidden="true">
+            <WaveformStrip
+              data={winnerWaveformData}
+              state={winnerWaveformState}
+              initialCascadeProgress={1}
+              repeatCascadeProgress={0}
+              progress={displayProgress / 100}
+              currentTime={audioCtx.state.player1.currentTime}
+              duration={audioCtx.state.player1.duration}
+              isPlaying={isWinnerPlaying && audioCtx.state.player1.isPlaying}
+            />
+          </div>
+          <div className={styles.resultsChrome}>
+            <div className={styles.stageKicker}>Collaboration Results</div>
+
+            <section className={styles.hero} aria-label="Winning submission">
+              <div className={styles.heroCopy}>
+                <div className={styles.heroEyebrow}>Winner</div>
+                <h2 className={styles.heroTitle}>{winnerName}</h2>
+                <div className={styles.heroMeta}>
+                  <span>{formatCount(winnerVotes)} winner votes</span>
+                  <span>{winnerShare}% vote share</span>
+                </div>
+              </div>
+
+              <button
+                onClick={playWinner}
+                disabled={!winner?.path}
+                className={heroPlayClass}
+                type="button"
+                aria-label={isWinnerPlaying && audioCtx.state.player1.isPlaying ? 'Pause winning submission' : 'Play winning submission'}
+              >
+                <span
+                  className={styles.heroPlayProgress}
+                  style={{ width: `${Math.max(0, Math.min(displayProgress, 100))}%` }}
+                  aria-hidden="true"
+                />
+                <span className={styles.heroPlayIcon} aria-hidden="true">
+                  {isPlayingWinner ? <LoadingSpinner size={16} /> : isWinnerPlaying && audioCtx.state.player1.isPlaying ? '❚❚' : '▶'}
+                </span>
+                <span className={styles.heroPlayText}>
+                  {isWinnerPlaying && audioCtx.state.player1.isPlaying ? 'Playing winner' : 'Play winner'}
+                </span>
+              </button>
+            </section>
+
+            <section className={styles.resultDetails} aria-label="Result details">
+              <div className={styles.metricGrid}>
+                {stats.map(stat => (
+                  <div className={styles.metricTile} key={stat.label}>
+                    <div className={styles.metricValue}>{formatCount(stat.value)}</div>
+                    <div className={styles.metricLabel}>{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className={styles.votePanel}>
+                <div className={styles.votePanelHeader}>
+                  <span>Vote ranking</span>
+                  <span>{totalVotes > 0 ? `${formatCount(totalVotes)} total` : 'no votes'}</span>
+                </div>
+                {results.length > 0 ? (
+                  <div className={styles.voteRows}>
+                    {results.slice(0, 5).map((result, index) => {
+                      const percent = totalVotes > 0 ? Math.round(((result?.votes || 0) / totalVotes) * 100) : 0;
+                      return (
+                        <div className={styles.voteRow} key={result.path || index}>
+                          <span className={styles.voteRank}>#{index + 1}</span>
+                          <span className={styles.voteBar} aria-hidden="true">
+                            <span style={{ width: `${percent}%` }} />
+                          </span>
+                          <span className={styles.voteCount}>{formatCount(result?.votes || 0)}</span>
+                          <span className={styles.votePercent}>{percent}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className={styles.emptyResults}>No ranked vote data yet.</div>
+                )}
+              </div>
+            </section>
           </div>
         </div>
 

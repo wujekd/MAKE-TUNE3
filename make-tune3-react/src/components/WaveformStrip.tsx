@@ -17,6 +17,8 @@ interface WaveformStripProps {
   duration?: number;
   isPlaying?: boolean;
   isInteractive?: boolean;
+  underlayAlpha?: number;
+  waveformAlpha?: number;
   onSeek?: (ratio: number) => void;
 }
 
@@ -51,6 +53,8 @@ export function WaveformStrip({
   duration = 0,
   isPlaying = false,
   isInteractive = false,
+  underlayAlpha = 1,
+  waveformAlpha = 1,
   onSeek
 }: WaveformStripProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -169,7 +173,8 @@ export function WaveformStrip({
         if (ratio === null) return -1;
         return Math.max(0, Math.min(minPeaks.length - 1, Math.floor(ratio * minPeaks.length)));
       })();
-      const baseAlpha = options.alpha * 0.16;
+      const layerAlpha = Math.max(0, Math.min(1.4, options.alpha));
+      const baseAlpha = layerAlpha * 0.16;
       const previousAlpha = ctx.globalAlpha;
 
       for (let i = 0; i < minPeaks.length; i += 1) {
@@ -243,14 +248,14 @@ export function WaveformStrip({
 
       if (underlayDataRef.current) {
         drawWaveformLayer(underlayDataRef.current, progressRatio, 1, {
-          alpha: 1,
+          alpha: underlayAlpha,
           minHeight: true
         });
       }
 
       if (renderedDataRef.current) {
         drawWaveformLayer(renderedDataRef.current, progressRatio, cascadeProgress, {
-          alpha: 1,
+          alpha: waveformAlpha,
           minHeight: true
         });
       }
@@ -313,7 +318,9 @@ export function WaveformStrip({
     initialUnderlayData,
     isPlaying,
     repeatCascadeProgress,
-    state
+    state,
+    underlayAlpha,
+    waveformAlpha
   ]);
 
   const updateHoverRatio = (event: MouseEvent<HTMLCanvasElement>) => {

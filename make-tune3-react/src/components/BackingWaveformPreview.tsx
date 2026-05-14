@@ -14,6 +14,8 @@ interface BackingWaveformPreviewProps {
   duration: number;
   isPlaying: boolean;
   animationDelayMs?: number;
+  underlayAlpha?: number;
+  waveformAlpha?: number;
 }
 
 const displayedWaveformIds = new Set<string>();
@@ -43,7 +45,9 @@ export function BackingWaveformPreview({
   currentTime,
   duration,
   isPlaying,
-  animationDelayMs = 0
+  animationDelayMs = 0,
+  underlayAlpha = 1,
+  waveformAlpha = 1
 }: BackingWaveformPreviewProps) {
   const seekBackingPreviewByRatio = usePlaybackStore(s => s.seekBackingPreviewByRatio);
   const playBackingTrack = usePlaybackStore(s => s.playBackingTrack);
@@ -74,6 +78,11 @@ export function BackingWaveformPreview({
     : uiState === 'loading'
       ? 'loading'
       : 'placeholder';
+  const isShowingPreviewData = Boolean(
+    data
+      && initialMeta.bucketCount
+      && data.bucketCount < initialMeta.bucketCount
+  );
 
   return (
     <WaveformStrip
@@ -88,6 +97,8 @@ export function BackingWaveformPreview({
       duration={duration}
       isPlaying={isPlaying}
       isInteractive={uiState === 'ready'}
+      underlayAlpha={underlayAlpha}
+      waveformAlpha={isShowingPreviewData ? underlayAlpha : waveformAlpha}
       onSeek={ratio => {
         if (isActive) {
           seekBackingPreviewByRatio(ratio);
