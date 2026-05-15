@@ -1,9 +1,10 @@
 import { useMemo, useCallback } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { useAudioStore } from '../stores';
+import type { PastCollaboration } from '../types/collaboration';
 import './ProjectHistory.css';
 
-const EMPTY_ARRAY: any[] = [];
+const EMPTY_ARRAY: PastCollaboration[] = [];
 
 const ProjectHistory = () => {
   const pastStageTracks = useAppStore(state => state.collaboration.pastStageTracks);
@@ -54,13 +55,23 @@ const ProjectHistory = () => {
   };
 
   return (
-    <div className={`project-history ${isPastStageActive ? 'active-playback' : ''}`}>
-      <h4 className="project-history-title">Collab History</h4>
-      <div className="collab-list">
+    <div
+      className={`project-history project-history--collab-history ${isPastStageActive ? 'project-history--active-playback active-playback' : ''}`}
+    >
+      <div className="project-history__header">
+        <h4 className="project-history-title">Collab History</h4>
+        {pastCollaborations.length > 0 && (
+          <span className="project-history__count" aria-label={`${pastCollaborations.length} past collaborations`}>
+            {pastCollaborations.length}
+          </span>
+        )}
+      </div>
+      <div className="project-history__list" role="list">
         {pastCollaborations.length === 0 && (
-          <div className="collab-history-item">
-            <div className="collab-info">
-              <span className="collab-name">No past collaborations yet</span>
+          <div className="project-history__empty" role="listitem">
+            <div className="project-history__empty-title">No past collaborations yet</div>
+            <div className="project-history__empty-copy">
+              Finished rounds will show up here.
             </div>
           </div>
         )}
@@ -73,48 +84,91 @@ const ProjectHistory = () => {
           const voteSummary = formatVotes(collab.winnerVotes, collab.totalVotes);
           const submissionClosed = formatDate(collab.submissionCloseAt);
           const votingClosed = formatDate(collab.votingCloseAt);
-          const stageSummary = [
-            submissionClosed ? `submission closed ${submissionClosed}` : '',
-            votingClosed ? `voting closed ${votingClosed}` : ''
-          ].filter(Boolean).join(' • ');
+          const stageMarkers: Array<{ key: string; label: string; date: string; title: string }> = [];
+          if (submissionClosed) {
+            stageMarkers.push({
+              key: 'submission',
+              label: 'sub',
+              date: submissionClosed,
+              title: `submission closed ${submissionClosed}`
+            });
+          }
+          if (votingClosed) {
+            stageMarkers.push({
+              key: 'voting',
+              label: 'vote',
+              date: votingClosed,
+              title: `voting closed ${votingClosed}`
+            });
+          }
           const participants = typeof collab.participationCount === 'number'
             ? `${collab.participationCount} participant${collab.participationCount === 1 ? '' : 's'}`
             : '';
+          const isPlayable = trackIndex !== null && trackIndex !== undefined;
+          const itemSummary = [
+            `winner ${winnerName}`,
+            voteSummary,
+            participants,
+            completedOn ? `completed ${completedOn}` : '',
+            ...stageMarkers.map(marker => marker.title)
+          ].filter(Boolean).join(', ');
 
           return (
-            <div
+            <button
+              type="button"
               key={collab.collaborationId}
-              className={`collab-history-item ${isActive ? 'currently-playing' : ''}`}
+              className={[
+                'project-history__item',
+                isPlayable ? 'project-history__item--playable' : 'project-history__item--static',
+                isActive ? 'project-history__item--playing currently-playing' : ''
+              ].filter(Boolean).join(' ')}
+              disabled={!isPlayable}
               onClick={() => {
-                if (trackIndex !== null && trackIndex !== undefined) {
+                if (isPlayable) {
                   playPastTrack(trackIndex);
                 }
               }}
-              style={{ cursor: trackIndex !== null && trackIndex !== undefined ? 'pointer' : 'default' }}
+              role="listitem"
+              aria-label={`${isPlayable ? 'Play' : 'Past collaboration'} ${collab.name}. ${itemSummary}`}
             >
-              <div className="collab-status-indicator">{trackIndex !== null && trackIndex !== undefined ? '●' : '○'}</div>
-              <div className="collab-info">
-                <span className="collab-name">{collab.name}</span>
-                <span className="collab-stage">
-                  winner: {winnerName} • {voteSummary}
+              <span className="project-history__status-dot" aria-hidden="true" />
+              <span className="project-history__body">
+                <span className="project-history__topline">
+                  <span className="project-history__name">{collab.name}</span>
+                  {completedOn && (
+                    <span className="project-history__date">{completedOn}</span>
+                  )}
                 </span>
-                {participants && (
-                  <span className="collab-stage">
-                    {participants}
+
+                <span className="project-history__meta-row">
+                  <span className="project-history__pill project-history__pill--winner">
+                    winner {winnerName}
+                  </span>
+                  <span className="project-history__pill">{voteSummary}</span>
+                  {participants && (
+                    <span className="project-history__pill">{participants}</span>
+                  )}
+                </span>
+
+                {stageMarkers.length > 0 && (
+                  <span
+                    className="project-history__stage-row"
+                    aria-label={stageMarkers.map(marker => marker.title).join(', ')}
+                  >
+                    {stageMarkers.map(marker => (
+                      <span
+                        key={marker.key}
+                        className={`project-history__stage-chip project-history__stage-chip--${marker.key}`}
+                        title={marker.title}
+                      >
+                        <span>{marker.label}</span>
+                        <span>{marker.date}</span>
+                      </span>
+                    ))}
                   </span>
                 )}
-                {completedOn && (
-                  <span className="collab-stage">
-                    completed {completedOn}
-                  </span>
-                )}
-                {stageSummary && (
-                  <span className="collab-stage">
-                    {stageSummary}
-                  </span>
-                )}
-              </div>
-            </div>
+              </span>
+            </button>
           );
         })}
       </div>

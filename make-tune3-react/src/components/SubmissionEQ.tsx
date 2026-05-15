@@ -16,16 +16,16 @@ interface SubmissionEQProps {
 const DEFAULT_HIGHPASS_Q = 0.7;
 const RESET_BUTTON_STYLE = {
   position: 'absolute',
-  top: -10,
-  right: -14,
-  width: 28,
-  height: 28,
+  top: -14,
+  right: -20,
+  width: 22,
+  height: 22,
   borderRadius: 999,
   border: '1px solid rgba(255, 255, 255, 0.22)',
   background: 'linear-gradient(180deg, rgba(48, 68, 68, 0.96), rgba(11, 20, 20, 0.98))',
-  boxShadow: '0 6px 14px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+  boxShadow: '0 4px 10px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
   color: 'var(--white)',
-  fontSize: 16,
+  fontSize: 12,
   lineHeight: 1,
   display: 'inline-flex',
   alignItems: 'center',
@@ -220,7 +220,7 @@ export function SubmissionEQ({ muted, onMuteChange, currentEq, trackKey, savedEq
           opacity: resetEnabled ? 1 : 0.35,
           transform: resetEnabled ? 'translateY(0)' : 'translateY(1px)',
           boxShadow: resetEnabled
-            ? '0 8px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.14)'
+            ? '0 5px 11px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.14)'
             : RESET_BUTTON_STYLE.boxShadow
         }}
       >

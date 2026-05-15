@@ -1,3 +1,4 @@
+import { useLocation } from 'react-router-dom';
 import { useUIStore } from '../stores/useUIStore';
 import { useAppStore } from '../stores/appStore';
 import './FeedbackButton.css';
@@ -5,8 +6,12 @@ import './FeedbackButton.css';
 export function FeedbackButton() {
   const user = useAppStore(state => state.auth.user);
   const openFeedbackModal = useUIStore(state => state.openFeedbackModal);
+  const location = useLocation();
 
   if (!user) return null;
+
+  const isHidden = /^\/collab\/[^/]+(\/(submit|completed))?$/.test(location.pathname);
+  if (isHidden) return null;
 
   return (
     <button

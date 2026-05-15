@@ -16,6 +16,7 @@ import { WaveformStrip } from '../components/WaveformStrip';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { MissingCollaborationState } from '../components/MissingCollaborationState';
 import { CollaborationPreferenceBar } from '../components/CollaborationPreferenceBar';
+import type { WaveformRenderData } from '../types/waveform';
 import styles from './CompletedView.module.css';
 
 const compactCountFormatter = new Intl.NumberFormat('en', {
@@ -29,6 +30,40 @@ const formatCount = (value: number) => {
   if (!Number.isFinite(value)) return '0';
   if (Math.abs(value) >= 10000) return compactCountFormatter.format(value);
   return standardCountFormatter.format(value);
+};
+
+const clipWaveformToRatio = (
+  data: WaveformRenderData | null,
+  ratio: number
+): WaveformRenderData | null => {
+  if (!data || ratio >= 1) {
+    return data;
+  }
+
+  const clippedRatio = Math.max(0, Math.min(1, ratio));
+  const bucketCount = Math.max(1, Math.round(data.peaks.max.length * clippedRatio));
+
+  return {
+    ...data,
+    bucketCount,
+    peaks: {
+      min: data.peaks.min.slice(0, bucketCount),
+      max: data.peaks.max.slice(0, bucketCount)
+    }
+  };
+};
+
+const getDurationClipRatio = (sourceDuration: number, targetDuration: number): number => {
+  if (sourceDuration <= 0 || targetDuration <= 0 || targetDuration >= sourceDuration) {
+    return 1;
+  }
+
+  return Math.max(0, Math.min(1, targetDuration / sourceDuration));
+};
+
+const getWaveformDuration = (data: WaveformRenderData | null): number => {
+  const duration = (data as { duration?: unknown } | null)?.duration;
+  return typeof duration === 'number' && Number.isFinite(duration) ? duration : 0;
 };
 
 export function CompletedView() {
@@ -51,6 +86,7 @@ export function CompletedView() {
   const playInFlightRef = useRef(false);
   const winnerResolvedUrlRef = useRef<string | null>(null);
   const backingResolvedUrlRef = useRef<string | null>(null);
+  const heroPlayProgressRef = useRef<HTMLSpanElement | null>(null);
   const loader = useCollaborationLoader(collaborationId);
   const requestedCollaboration = currentCollaboration?.id === collaborationId ? currentCollaboration : null;
   const requestedProject =
@@ -111,14 +147,14 @@ export function CompletedView() {
     initialMeta: backingWaveformMeta,
     initialData: requestedCollaboration?.backingWaveformPreview ?? null,
     enabled: Boolean(requestedCollaboration?.backingTrackPath || requestedCollaboration?.backingWaveformPreview),
-    deferLoad: Boolean(requestedCollaboration?.backingWaveformPreview)
+    deferLoad: false
   });
 
   const { data: winnerWaveformData, uiState: winnerWaveformUiState } = useWaveformData({
     initialMeta: winnerWaveformMeta,
     initialData: winner?.entry?.waveformPreview ?? null,
     enabled: Boolean(winner?.entry?.waveformPath || winner?.entry?.waveformPreview),
-    deferLoad: Boolean(winner?.entry?.waveformPreview)
+    deferLoad: false
   });
 
   useEffect(() => {
@@ -138,6 +174,45 @@ export function CompletedView() {
   const displayProgress = isWinnerPlaying && audioCtx?.state.player1.duration > 0
     ? (audioCtx.state.player1.currentTime / audioCtx.state.player1.duration) * 100
     : 0;
+
+  useEffect(() => {
+    const node = heroPlayProgressRef.current;
+    const player = audioCtx?.state.player1;
+    if (!node || !player) return;
+
+    const duration = Math.max(0, player.duration || 0);
+    const baseTime = Math.max(0, player.currentTime || 0);
+    const startedAt = typeof performance !== 'undefined' ? performance.now() : 0;
+    const isActiveWinner = isWinnerPlaying && duration > 0;
+    let frame = 0;
+
+    const setProgress = (ratio: number) => {
+      node.style.transform = `scaleX(${Math.max(0, Math.min(1, ratio))})`;
+    };
+
+    if (!isActiveWinner) {
+      setProgress(0);
+      return;
+    }
+
+    const tick = () => {
+      const now = typeof performance !== 'undefined' ? performance.now() : 0;
+      const elapsed = audioCtx.state.player1.isPlaying ? (now - startedAt) / 1000 : 0;
+      setProgress((baseTime + elapsed) / duration);
+      frame = window.requestAnimationFrame(tick);
+    };
+
+    tick();
+
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [
+    audioCtx?.state.player1.currentTime,
+    audioCtx?.state.player1.duration,
+    audioCtx?.state.player1.isPlaying,
+    isWinnerPlaying
+  ]);
 
   const playWinner = useCallback(async () => {
     if (!engine || !winner?.path || !requestedCollaboration?.backingTrackPath || playInFlightRef.current) return;
@@ -167,7 +242,7 @@ export function CompletedView() {
 
       winnerResolvedUrlRef.current = subUrl;
       backingResolvedUrlRef.current = backUrl;
-      engine.playSubmission(subUrl, backUrl, 0);
+      engine.playStandaloneSubmission(subUrl, backUrl);
     } catch (err) {
       console.error('[CompletedView] Failed to play winner', err);
     } finally {
@@ -216,14 +291,31 @@ export function CompletedView() {
     styles.heroPlayButton,
     isWinnerPlaying && audioCtx?.state.player1.isPlaying ? styles.playing : ''
   ].filter(Boolean).join(' ');
-  const backingWaveformState = backingWaveformUiState === 'ready' ? 'ready' : 'placeholder';
   const winnerWaveformState = winnerWaveformUiState === 'ready' ? 'ready' : 'placeholder';
   const isBackingPlaying = backingResolvedUrlRef.current !== null
     && audioCtx.state.player2.source === backingResolvedUrlRef.current
     && audioCtx.state.player2.isPlaying;
-  const backingProgress = backingResolvedUrlRef.current !== null && audioCtx.state.player2.duration > 0
-    ? audioCtx.state.player2.currentTime / audioCtx.state.player2.duration
-    : 0;
+  const winnerProgressRatio = displayProgress / 100;
+  const backingWaveformDuration = getWaveformDuration(backingWaveformData);
+  const winnerWaveformDuration = getWaveformDuration(winnerWaveformData);
+  const backingClipRatio = getDurationClipRatio(
+    backingWaveformDuration,
+    winnerWaveformDuration
+  );
+  const clippedBackingWaveformData = clipWaveformToRatio(backingWaveformData, backingClipRatio);
+  const clippedBackingWaveformPreview = clipWaveformToRatio(
+    requestedCollaboration.backingWaveformPreview ?? null,
+    backingClipRatio
+  );
+  const displayedBackingWaveformData = backingWaveformDuration > 0 && winnerWaveformDuration > 0
+    ? clippedBackingWaveformData
+    : null;
+  const displayedBackingWaveformState = displayedBackingWaveformData
+    ? 'ready'
+    : backingWaveformUiState === 'loading' || winnerWaveformUiState === 'loading'
+      ? 'loading'
+      : 'placeholder';
+  const winnerWaveformPreview = winner?.entry?.waveformPreview ?? null;
   const submissionsArr = Array.isArray(requestedCollaboration.submissions)
     ? requestedCollaboration.submissions
     : [];
@@ -265,28 +357,30 @@ export function CompletedView() {
           <div className={styles.headerCol}>
             <div className={styles.title}>{requestedCollaboration?.name || ''}</div>
             <div className={styles.subtitle}>{requestedCollaboration?.description || ''}</div>
-            <CollaborationPreferenceBar
-              disabled={!user}
-              liked={Boolean(userCollaboration?.likedCollaboration)}
-              favorited={Boolean(userCollaboration?.favoritedCollaboration)}
-              isUpdatingLike={isUpdatingCollaborationLike}
-              isUpdatingFavorite={isUpdatingCollaborationFavorite}
-              onToggleLike={() => {
-                if (userCollaboration?.likedCollaboration) {
-                  unlikeCollaboration();
-                } else {
-                  likeCollaboration();
-                }
-              }}
-              onToggleFavorite={() => {
-                if (userCollaboration?.favoritedCollaboration) {
-                  unfavoriteCollaboration();
-                } else {
-                  favoriteCollaboration();
-                }
-              }}
-            />
           </div>
+        </div>
+        <div className={styles.preferenceSlot}>
+          <CollaborationPreferenceBar
+            disabled={!user}
+            liked={Boolean(userCollaboration?.likedCollaboration)}
+            favorited={Boolean(userCollaboration?.favoritedCollaboration)}
+            isUpdatingLike={isUpdatingCollaborationLike}
+            isUpdatingFavorite={isUpdatingCollaborationFavorite}
+            onToggleLike={() => {
+              if (userCollaboration?.likedCollaboration) {
+                unlikeCollaboration();
+              } else {
+                likeCollaboration();
+              }
+            }}
+            onToggleFavorite={() => {
+              if (userCollaboration?.favoritedCollaboration) {
+                unfavoriteCollaboration();
+              } else {
+                favoriteCollaboration();
+              }
+            }}
+          />
         </div>
         <div className={styles.headerRight}>
           <ProjectHistory />
@@ -307,26 +401,32 @@ export function CompletedView() {
         <div className={styles.resultsSection}>
           <div className={`${styles.waveformBackdrop} ${styles.waveformBackdropTop}`} aria-hidden="true">
             <WaveformStrip
-              data={backingWaveformData}
-              state={backingWaveformState}
+              data={displayedBackingWaveformData}
+              state={displayedBackingWaveformState}
+              initialUnderlayData={clippedBackingWaveformPreview}
               initialCascadeProgress={1}
               repeatCascadeProgress={0}
-              progress={backingProgress}
-              currentTime={audioCtx.state.player2.currentTime}
-              duration={audioCtx.state.player2.duration}
+              progress={winnerProgressRatio}
+              currentTime={audioCtx.state.player1.currentTime}
+              duration={audioCtx.state.player1.duration}
               isPlaying={isBackingPlaying}
+              underlayAlpha={0.68}
+              waveformAlpha={1.2}
             />
           </div>
           <div className={`${styles.waveformBackdrop} ${styles.waveformBackdropBottom}`} aria-hidden="true">
             <WaveformStrip
               data={winnerWaveformData}
               state={winnerWaveformState}
+              initialUnderlayData={winnerWaveformPreview}
               initialCascadeProgress={1}
               repeatCascadeProgress={0}
-              progress={displayProgress / 100}
+              progress={winnerProgressRatio}
               currentTime={audioCtx.state.player1.currentTime}
               duration={audioCtx.state.player1.duration}
               isPlaying={isWinnerPlaying && audioCtx.state.player1.isPlaying}
+              underlayAlpha={0.68}
+              waveformAlpha={1.2}
             />
           </div>
           <div className={styles.resultsChrome}>
@@ -336,10 +436,11 @@ export function CompletedView() {
               <div className={styles.heroCopy}>
                 <div className={styles.heroEyebrow}>Winner</div>
                 <h2 className={styles.heroTitle}>{winnerName}</h2>
-                <div className={styles.heroMeta}>
-                  <span>{formatCount(winnerVotes)} winner votes</span>
-                  <span>{winnerShare}% vote share</span>
-                </div>
+              </div>
+
+              <div className={styles.heroMeta}>
+                <span>{formatCount(winnerVotes)} winner votes</span>
+                <span>{winnerShare}% vote share</span>
               </div>
 
               <button
@@ -350,8 +451,8 @@ export function CompletedView() {
                 aria-label={isWinnerPlaying && audioCtx.state.player1.isPlaying ? 'Pause winning submission' : 'Play winning submission'}
               >
                 <span
+                  ref={heroPlayProgressRef}
                   className={styles.heroPlayProgress}
-                  style={{ width: `${Math.max(0, Math.min(displayProgress, 100))}%` }}
                   aria-hidden="true"
                 />
                 <span className={styles.heroPlayIcon} aria-hidden="true">

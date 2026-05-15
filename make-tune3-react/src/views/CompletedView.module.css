@@ -62,6 +62,14 @@
     min-height: 0;
 }
 
+.preferenceSlot {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 2px;
+}
+
 /* ===== MAIN CONTENT AREA ===== */
 .content {
     position: relative;
@@ -99,8 +107,8 @@
     inset: 0;
     pointer-events: none;
     background:
-        linear-gradient(180deg, rgba(10, 18, 19, 0.34), transparent 30%, transparent 70%, rgba(10, 18, 19, 0.38)),
-        radial-gradient(circle at 50% 46%, rgba(10, 18, 19, 0.76) 0%, rgba(10, 18, 19, 0.42) 44%, transparent 78%);
+        linear-gradient(180deg, rgba(10, 18, 19, 0.18), transparent 30%, transparent 70%, rgba(10, 18, 19, 0.22)),
+        radial-gradient(circle at 50% 46%, rgba(10, 18, 19, 0.58) 0%, rgba(10, 18, 19, 0.26) 44%, transparent 78%);
     z-index: 1;
 }
 
@@ -110,8 +118,8 @@
     right: 18px;
     pointer-events: none;
     z-index: 0;
-    opacity: 0.46;
-    filter: saturate(1.18);
+    opacity: 0.74;
+    filter: saturate(1.35) brightness(1.22);
 }
 
 .waveformBackdropTop {
@@ -139,12 +147,11 @@
 }
 
 .waveformBackdrop :global(.waveform-strip__placeholder) {
-    background:
-        linear-gradient(180deg, rgba(116, 214, 193, 0.06), rgba(239, 123, 58, 0.03));
+    background: transparent;
 }
 
 .waveformBackdrop :global(.waveform-strip__placeholder)::after {
-    background: rgba(116, 214, 193, 0.18);
+    background: rgba(116, 214, 193, 0.34);
 }
 
 /* Desktop: keep vertical layout within results, remove panel overrides */
@@ -162,12 +169,17 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: center;
     gap: clamp(18px, 3vh, 34px);
     padding: clamp(10px, 1.7vw, 20px);
+    transform: translateY(-42px);
 }
 
 .stageKicker {
+    position: absolute;
+    top: clamp(10px, 1.7vw, 20px);
+    left: clamp(10px, 1.7vw, 20px);
+    pointer-events: none;
     font-size: 13px;
     font-weight: 600;
     color: var(--dashboard-accent);
@@ -178,17 +190,25 @@
 }
 
 .hero {
-    display: grid;
-    grid-template-columns: minmax(220px, 0.72fr) minmax(280px, 1fr);
-    align-items: end;
-    gap: clamp(20px, 3vw, 42px);
+    position: relative;
+    display: block;
     width: min(100%, 1160px);
-    margin: auto auto 0;
+    height: 158px;
+    min-height: 158px;
+    margin: 0 auto;
     box-sizing: border-box;
 }
 
 .heroCopy {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 72px;
     min-width: 0;
+    max-width: min(100%, 980px);
+    overflow: visible;
+    pointer-events: none;
 }
 
 .heroEyebrow {
@@ -202,13 +222,18 @@
 .heroTitle {
     margin: 6px 0 8px;
     color: var(--white);
-    font-size: clamp(30px, 4.2vw, 66px);
+    font-size: clamp(30px, 3.6vw, 56px);
     font-weight: 700;
-    line-height: 0.95;
+    line-height: 1;
     overflow-wrap: anywhere;
 }
 
 .heroMeta {
+    position: absolute;
+    left: 0;
+    right: calc(clamp(260px, 27vw, 380px) + clamp(18px, 2.4vw, 34px));
+    bottom: 0;
+    min-width: 0;
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
@@ -226,16 +251,20 @@
 }
 
 .heroPlayButton {
-    position: relative;
+    position: absolute;
+    right: 0;
+    bottom: 0;
     isolation: isolate;
-    min-height: 78px;
+    width: clamp(260px, 27vw, 380px);
+    min-height: 64px;
+    padding: 10px 20px 10px 12px;
     border: 1px solid rgba(116, 214, 193, 0.2);
     border-radius: 10px;
-    background: rgba(2, 9, 10, 0.62);
+    background: rgba(2, 9, 10, 0.58);
     color: var(--white);
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.05),
-        0 18px 46px rgba(0, 0, 0, 0.24);
+        0 14px 34px rgba(0, 0, 0, 0.2);
     overflow: hidden;
     display: flex;
     align-items: center;
@@ -245,10 +274,10 @@
 
 .heroPlayButton:not(:disabled):hover {
     border-color: rgba(239, 123, 58, 0.55);
-    background: rgba(5, 15, 16, 0.76);
+    background: rgba(5, 15, 16, 0.7);
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.08),
-        0 20px 50px rgba(0, 0, 0, 0.3),
+        0 16px 38px rgba(0, 0, 0, 0.26),
         0 0 36px rgba(239, 123, 58, 0.1);
 }
 
@@ -263,22 +292,24 @@
 
 .heroPlayProgress {
     position: absolute;
-    inset: 0 auto 0 0;
+    inset: 0;
     z-index: -1;
     background: linear-gradient(90deg, rgba(239, 123, 58, 0.22), rgba(116, 214, 193, 0.12));
-    transition: width 0.2s ease;
+    transform: scaleX(0);
+    transform-origin: left center;
+    will-change: transform;
 }
 
 .heroPlayIcon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     color: var(--white);
     background: rgba(255, 255, 255, 0.08);
-    font-size: 18px;
+    font-size: 17px;
 }
 
 .heroPlayText {
@@ -294,7 +325,7 @@
     gap: clamp(16px, 2vw, 28px);
     align-items: stretch;
     width: min(100%, 1160px);
-    margin: 0 auto auto;
+    margin: 0 auto;
     min-width: 0;
 }
 
@@ -392,13 +423,8 @@
 }
 
 @media (max-width: 1180px) {
-    .hero,
     .resultDetails {
         grid-template-columns: 1fr;
-    }
-
-    .hero {
-        align-items: stretch;
     }
 
     .votePanel {
@@ -418,7 +444,26 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .hero {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "copy"
+            "meta"
+            "play";
+        height: auto;
+        min-height: 0;
+        row-gap: 14px;
+    }
+
+    .heroCopy,
+    .heroMeta,
     .heroPlayButton {
+        position: static;
+    }
+
+    .heroPlayButton {
+        width: min(100%, 380px);
         min-height: 66px;
     }
 

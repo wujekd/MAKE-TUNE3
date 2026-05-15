@@ -253,9 +253,8 @@ const router = createBrowserRouter([
             handle: {
               title: 'Completed',
               breadcrumb: 'Completed',
-              actions: ({ navigate, params }: any) => ([
-                { key: 'back', label: 'Back', onClick: () => navigate('/collabs') },
-                { key: 'to-collab', label: 'Open collab', onClick: () => navigate(`/collab/${params.collabId}`) }
+              actions: ({ navigate }: any) => ([
+                { key: 'back', label: 'Back', onClick: () => navigate('/collabs') }
               ])
             }
           },

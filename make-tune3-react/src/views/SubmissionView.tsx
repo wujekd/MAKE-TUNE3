@@ -337,6 +337,8 @@ export function SubmissionView() {
             </div>
           )}
           <h2 className={styles.collabTitle}>{requestedCollaboration?.name || 'Submission'}</h2>
+        </div>
+        <div className={styles.preferenceSlot}>
           <CollaborationPreferenceBar
             disabled={!user}
             liked={Boolean(userCollaboration?.likedCollaboration)}

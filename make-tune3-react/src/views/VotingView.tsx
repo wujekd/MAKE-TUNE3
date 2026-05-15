@@ -177,28 +177,30 @@ export function VotingView() {
           <div className={styles.headerCol}>
             <div className={styles.title}>{requestedCollaboration?.name || ''}</div>
             <div className={styles.subtitle}>{requestedCollaboration?.description || ''}</div>
-            <CollaborationPreferenceBar
-              disabled={!user}
-              liked={Boolean(userCollaboration?.likedCollaboration)}
-              favorited={Boolean(userCollaboration?.favoritedCollaboration)}
-              isUpdatingLike={isUpdatingCollaborationLike}
-              isUpdatingFavorite={isUpdatingCollaborationFavorite}
-              onToggleLike={() => {
-                if (userCollaboration?.likedCollaboration) {
-                  unlikeCollaboration();
-                } else {
-                  likeCollaboration();
-                }
-              }}
-              onToggleFavorite={() => {
-                if (userCollaboration?.favoritedCollaboration) {
-                  unfavoriteCollaboration();
-                } else {
-                  favoriteCollaboration();
-                }
-              }}
-            />
           </div>
+        </div>
+        <div className={styles.preferenceSlot}>
+          <CollaborationPreferenceBar
+            disabled={!user}
+            liked={Boolean(userCollaboration?.likedCollaboration)}
+            favorited={Boolean(userCollaboration?.favoritedCollaboration)}
+            isUpdatingLike={isUpdatingCollaborationLike}
+            isUpdatingFavorite={isUpdatingCollaborationFavorite}
+            onToggleLike={() => {
+              if (userCollaboration?.likedCollaboration) {
+                unlikeCollaboration();
+              } else {
+                likeCollaboration();
+              }
+            }}
+            onToggleFavorite={() => {
+              if (userCollaboration?.favoritedCollaboration) {
+                unfavoriteCollaboration();
+              } else {
+                favoriteCollaboration();
+              }
+            }}
+          />
         </div>
         <div className={styles.headerRight}>
           <ProjectHistory />

@@ -1,27 +1,25 @@
 .collaboration-preference-bar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  flex-wrap: nowrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
 }
 
 .collaboration-preference-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   background: linear-gradient(180deg,
-      rgba(255, 255, 255, 0.08) 0%,
-      rgba(255, 255, 255, 0.03) 100%);
-  color: var(--white);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 10px;
+      rgba(116, 214, 193, 0.12) 0%,
+      rgba(48, 112, 113, 0.08) 100%);
+  color: var(--primary1-100);
+  border: 1px solid rgba(116, 214, 193, 0.22);
+  border-radius: 8px;
   padding: 0;
   cursor: pointer;
-  font-size: 1rem;
-  font-weight: 500;
   transition: all 0.15s ease;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
@@ -30,9 +28,10 @@
 
 .collaboration-preference-button:hover:not(:disabled) {
   background: linear-gradient(180deg,
-      rgba(255, 255, 255, 0.14) 0%,
-      rgba(255, 255, 255, 0.06) 100%);
-  border-color: rgba(255, 255, 255, 0.22);
+      rgba(116, 214, 193, 0.18) 0%,
+      rgba(48, 112, 113, 0.13) 100%);
+  border-color: rgba(239, 123, 58, 0.46);
+  color: var(--white);
   transform: translateY(-1px);
 }
 
@@ -52,6 +51,24 @@
   background: linear-gradient(180deg,
       rgba(213, 95, 33, 0.36) 0%,
       rgba(213, 95, 33, 0.2) 100%);
+}
+
+.collaboration-preference-button__icon {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.collaboration-preference-button__icon--heart {
+  fill: transparent;
+}
+
+.collaboration-preference-button--strong.is-active .collaboration-preference-button__icon--heart {
+  fill: currentColor;
 }
 
 .collaboration-preference-button:disabled {
