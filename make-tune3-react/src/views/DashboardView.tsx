@@ -1,21 +1,19 @@
 import { Suspense, lazy, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { DashboardService } from '../services/dashboardService';
-import { DashboardFeedService } from '../services/dashboardFeedService';
-import type { DashboardFeedItem, DashboardFeedMode } from '../services/dashboardFeedService';
 import { GroupService } from '../services/groupService';
-import { TagService } from '../services/tagService';
 import { UserActivityPanel } from '../components/UserActivityPanel';
 import { DashboardHeader } from '../components/DashboardHeader';
-import type { DashboardProfileMode, DashboardWorkbench } from '../components/DashboardHeader';
-import { DashboardCollabsPanel } from '../components/DashboardCollabsPanel';
+import type { DashboardProfileMode } from '../components/DashboardHeader';
+import { DashboardCollabsPanel, DashboardExploreControls, DashboardExploreFeed } from '../components/DashboardCollabsPanel';
 import { AudioRouteBoundary } from '../components/AudioRouteBoundary';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { SmallLEDMeter } from '../components/SmallLEDMeter';
 import { useAudioStore } from '../stores';
-import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { useAppStore } from '../stores/appStore';
-import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
-import { useCollabBackingsPrefetch } from '../hooks/useCollabBackingsPrefetch';
+import { usePlaybackStore } from '../stores/usePlaybackStore';
+import { useDashboardIsMobile } from '../hooks/useDashboardIsMobile';
+import { useDashboardViewModel, type DashboardViewModel } from '../hooks/useDashboardViewModel';
+import type { AudioState } from '../types';
 import type { Collaboration, Group, GroupJoinPolicy, GroupMember, GroupVisibility, Project } from '../types/collaboration';
 import styles from './DashboardView.module.css';
 
@@ -32,232 +30,50 @@ function MixerPlaceholder() {
 }
 
 export function DashboardView() {
-  const [items, setItems] = useState<DashboardFeedItem[]>([]);
-  const [hasLoaded, setHasLoaded] = useState(false);
-  const hasLoadedFeedRef = useRef(false);
-  const [activeWorkbench, setActiveWorkbench] = useState<DashboardWorkbench>('explore');
-  const [projectWorkbenchMode, setProjectWorkbenchMode] = useState<'projects' | 'activity' | 'create'>('projects');
-  const [createProjectRequestKey, setCreateProjectRequestKey] = useState(0);
-  const [projectsPanelRequestKey, setProjectsPanelRequestKey] = useState(0);
-  const [openGroupsRequestKey, setOpenGroupsRequestKey] = useState(0);
-  const [createGroupRequestKey, setCreateGroupRequestKey] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [availableTags, setAvailableTags] = useState<Array<{ key: string; name: string; count: number }>>([]);
-  const [feedMode, setFeedMode] = useState<DashboardFeedMode>('recommended');
-  const [feedMetaLabel, setFeedMetaLabel] = useState('');
-  const [stats, setStats] = useState({
-    totalCollabs: 0,
-    totalSubmissions: 0,
-    totalVotes: 0,
-    activeCollabs: 0
-  });
-  const [myGroups, setMyGroups] = useState<Group[]>([]);
-  const [publicGroups, setPublicGroups] = useState<Group[]>([]);
-  const [groupsLoading, setGroupsLoading] = useState(false);
-  const [groupsError, setGroupsError] = useState<string | null>(null);
-  const [groupsRefreshKey, setGroupsRefreshKey] = useState(0);
-  const audioState = useAudioStore(s => s.state);
-  const isAudioReady = useAudioStore(s => Boolean(s.engine && s.state));
-  const authLoading = useAppStore(state => state.auth.loading);
-  const user = useAppStore(state => state.auth.user);
-  const userId = useAppStore(state => state.auth.user?.uid);
-  const stopBackingPlayback = usePlaybackStore(s => s.stopBackingPlayback);
+  const viewModel = useDashboardViewModel();
+  const isMobile = useDashboardIsMobile();
 
-  const [prefetchEnabled, setPrefetchEnabled] = useState(false);
+  return isMobile
+    ? <DashboardMobileLayout viewModel={viewModel} />
+    : <DashboardDesktopLayout viewModel={viewModel} />;
+}
 
-  const connection = typeof navigator !== 'undefined'
-    ? (navigator as Navigator & {
-        connection?: { effectiveType?: string; saveData?: boolean };
-      }).connection
-    : undefined;
-  const effectiveType = connection?.effectiveType ?? '';
-  const saveData = connection?.saveData === true;
-  const prefetchLimit = saveData ? 0 : effectiveType === '3g' ? 1 : 3;
-
-  useEffect(() => {
-    if (!hasLoaded || authLoading || !isAudioReady || prefetchLimit <= 0) {
-      setPrefetchEnabled(false);
-      return;
-    }
-
-    let cancelled = false;
-    const enablePrefetch = () => {
-      if (!cancelled) {
-        setPrefetchEnabled(true);
-      }
-    };
-
-    const timeoutId = window.setTimeout(enablePrefetch, effectiveType === '4g' ? 1200 : 2000);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timeoutId);
-    };
-  }, [authLoading, effectiveType, hasLoaded, isAudioReady, prefetchLimit]);
-
-  const prefetchedUrls = useCollabBackingsPrefetch(items, prefetchLimit, prefetchEnabled);
-  usePrefetchAudio(prefetchedUrls[0], { enabled: prefetchEnabled });
-  usePrefetchAudio(prefetchedUrls[1], { enabled: prefetchEnabled });
-  usePrefetchAudio(prefetchedUrls[2], { enabled: prefetchEnabled });
-
-  useEffect(() => {
-    useAppStore.setState(state => ({
-      ...state,
-      collaboration: {
-        ...state.collaboration,
-        currentCollaboration: null,
-        currentProject: null
-      }
-    }));
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const [tagRows, dashboardStats] = await Promise.all([
-          TagService.getActiveCollaborationTags(),
-          DashboardService.getDashboardStats()
-        ]);
-        if (mounted) {
-          setAvailableTags(tagRows.map(tag => ({
-            key: tag.key,
-            name: tag.name,
-            count: tag.collaborationCount || 0
-          })));
-          setStats(dashboardStats);
-        }
-      } catch {
-        if (mounted) {
-          setAvailableTags([]);
-        }
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (authLoading) {
-      return;
-    }
-
-    let mounted = true;
-    setGroupsLoading(true);
-    setGroupsError(null);
-
-    (async () => {
-      try {
-        const [publicRows, mineRows] = await Promise.all([
-          GroupService.listPublicGroups(),
-          userId ? GroupService.listMyGroups() : Promise.resolve([] as Group[])
-        ]);
-        if (!mounted) return;
-        setPublicGroups(publicRows);
-        setMyGroups(mineRows);
-      } catch (e: any) {
-        if (!mounted) return;
-        setPublicGroups([]);
-        setMyGroups([]);
-        setGroupsError(e?.message || 'Unable to load groups right now.');
-      } finally {
-        if (mounted) {
-          setGroupsLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, [authLoading, groupsRefreshKey, userId]);
-
-  useEffect(() => {
-    if (authLoading) {
-      return;
-    }
-
-    let mounted = true;
-    if (!hasLoadedFeedRef.current) {
-      setHasLoaded(false);
-    }
-    setError(null);
-
-    (async () => {
-      try {
-        const feed = await DashboardFeedService.loadFeed({
-          mode: feedMode,
-          selectedTags
-        });
-        if (!mounted) return;
-        setItems(feed.items);
-        setFeedMetaLabel(feed.metaLabel);
-      } catch (e: any) {
-        if (!mounted) return;
-        setItems([]);
-        setFeedMetaLabel('');
-        setError(e?.message || 'Unable to load collaborations right now.');
-      } finally {
-        if (mounted) {
-          hasLoadedFeedRef.current = true;
-          setHasLoaded(true);
-        }
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, [authLoading, feedMode, selectedTags, userId]);
-
-  useEffect(() => {
-    return () => {
-      stopBackingPlayback();
-    };
-  }, [stopBackingPlayback]);
-
-  // removed direct navigate wrapper; using <Link to> below
-
-  // always render view; hydrate when data arrives
-  const handleCreateProjectRequest = () => {
-    setActiveWorkbench('projects');
-    setProjectWorkbenchMode('create');
-    setCreateProjectRequestKey(key => key + 1);
-  };
-
-  const handleOpenProjectsRequest = () => {
-    setActiveWorkbench('projects');
-    setProjectWorkbenchMode('projects');
-    setProjectsPanelRequestKey(key => key + 1);
-  };
-
-  const handleOpenActivityRequest = () => {
-    setActiveWorkbench('projects');
-    setProjectWorkbenchMode('activity');
-  };
-
-  const handleOpenAccountRequest = () => {
-    setActiveWorkbench('account');
-  };
-
-  const handleOpenGroupsRequest = () => {
-    setActiveWorkbench('groups');
-    setOpenGroupsRequestKey(key => key + 1);
-  };
-
-  const handleCreateGroupRequest = () => {
-    setActiveWorkbench('groups');
-    setCreateGroupRequestKey(key => key + 1);
-  };
-
-  const feedModeLabel = feedMode.replace('_', ' ');
-  const activeProfileMode: DashboardProfileMode = activeWorkbench === 'account'
-    ? 'account'
-    : activeWorkbench === 'projects'
-      ? projectWorkbenchMode
-      : null;
+function DashboardDesktopLayout({ viewModel }: { viewModel: DashboardViewModel }) {
+  const {
+    items,
+    hasLoaded,
+    activeWorkbench,
+    projectWorkbenchMode,
+    createProjectRequestKey,
+    projectsPanelRequestKey,
+    openGroupsRequestKey,
+    createGroupRequestKey,
+    error,
+    selectedTags,
+    availableTags,
+    feedMode,
+    feedMetaLabel,
+    feedModeLabel,
+    stats,
+    myGroups,
+    publicGroups,
+    groupsLoading,
+    groupsError,
+    audioState,
+    user,
+    activeProfileMode,
+    setActiveWorkbench,
+    setSelectedTags,
+    setFeedMode,
+    handleCreateProjectRequest,
+    handleOpenProjectsRequest,
+    handleOpenActivityRequest,
+    handleOpenAccountRequest,
+    handleOpenGroupsRequest,
+    handleCreateGroupRequest,
+    handleProjectCreateClosed,
+    handleGroupsChanged
+  } = viewModel;
 
   return (
     <div className={`view-container ${styles.container}`}>
@@ -312,7 +128,7 @@ export function DashboardView() {
                   projectsPanelRequestKey={projectsPanelRequestKey}
                   activeTabOverride={projectWorkbenchMode === 'activity' ? 'activity' : 'projects'}
                   hideTabs
-                  onProjectCreateClosed={() => setProjectWorkbenchMode('projects')}
+                  onProjectCreateClosed={handleProjectCreateClosed}
                 />
               </div>
             </>
@@ -345,7 +161,7 @@ export function DashboardView() {
               error={groupsError}
               openRequestKey={openGroupsRequestKey}
               createRequestKey={createGroupRequestKey}
-              onGroupsChanged={() => setGroupsRefreshKey(key => key + 1)}
+              onGroupsChanged={handleGroupsChanged}
               onExplore={() => setActiveWorkbench('explore')}
             />
           )}
@@ -363,6 +179,319 @@ export function DashboardView() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function DashboardMobileLayout({ viewModel }: { viewModel: DashboardViewModel }) {
+  const {
+    items,
+    hasLoaded,
+    activeWorkbench,
+    projectWorkbenchMode,
+    createProjectRequestKey,
+    projectsPanelRequestKey,
+    openGroupsRequestKey,
+    createGroupRequestKey,
+    error,
+    selectedTags,
+    availableTags,
+    feedMode,
+    feedModeLabel,
+    myGroups,
+    publicGroups,
+    groupsLoading,
+    groupsError,
+    audioState,
+    user,
+    setActiveWorkbench,
+    setSelectedTags,
+    setFeedMode,
+    handleCreateProjectRequest,
+    handleOpenProjectsRequest,
+    handleOpenActivityRequest,
+    handleOpenAccountRequest,
+    handleOpenGroupsRequest,
+    handleCreateGroupRequest,
+    handleProjectCreateClosed,
+    handleGroupsChanged
+  } = viewModel;
+  const [exploreControlsOpen, setExploreControlsOpen] = useState(false);
+  const profileName = user?.username || user?.email || 'Guest';
+
+  return (
+    <div className={`view-container ${styles.container} ${styles.mobileContainer}`}>
+      <nav className={styles.mobileTabBar} aria-label="Dashboard sections">
+        <button
+          type="button"
+          className={`${styles.mobileTab} ${activeWorkbench === 'explore' ? styles.mobileTabActive : ''}`}
+          onClick={() => setActiveWorkbench('explore')}
+        >
+          Explore
+        </button>
+        <button
+          type="button"
+          className={`${styles.mobileTab} ${activeWorkbench === 'projects' ? styles.mobileTabActive : ''}`}
+          onClick={handleOpenProjectsRequest}
+        >
+          Projects
+        </button>
+        <button
+          type="button"
+          className={`${styles.mobileTab} ${activeWorkbench === 'groups' ? styles.mobileTabActive : ''}`}
+          onClick={handleOpenGroupsRequest}
+        >
+          Groups
+        </button>
+        <button
+          type="button"
+          className={`${styles.mobileTab} ${activeWorkbench === 'account' ? styles.mobileTabActive : ''}`}
+          onClick={handleOpenAccountRequest}
+        >
+          Account
+        </button>
+      </nav>
+
+      <main className={styles.mobileContent}>
+        {activeWorkbench === 'explore' && (
+          <section className={styles.mobilePanel} aria-label="Explore workbench">
+            <div className={styles.mobilePanelHeader}>
+              <div>
+                <h4>Explore feed</h4>
+                <p>{items.length} loaded - {selectedTags.length || 'all'} tags - {feedModeLabel}</p>
+              </div>
+              <button
+                type="button"
+                className={styles.mobileUtilityButton}
+                aria-expanded={exploreControlsOpen}
+                onClick={() => setExploreControlsOpen(open => !open)}
+              >
+                Filters
+              </button>
+            </div>
+            {exploreControlsOpen && (
+              <div className={styles.mobileControlSheet}>
+                <DashboardExploreControls
+                  itemCount={items.length}
+                  hasLoaded={hasLoaded}
+                  selectedTags={selectedTags}
+                  onTagsChange={setSelectedTags}
+                  availableTags={availableTags}
+                  feedMode={feedMode}
+                  onFeedModeChange={setFeedMode}
+                />
+              </div>
+            )}
+            <DashboardExploreFeed
+              items={items}
+              hasLoaded={hasLoaded}
+              error={error}
+              selectedTags={selectedTags}
+            />
+          </section>
+        )}
+
+        {activeWorkbench === 'projects' && (
+          <section className={`${styles.mobilePanel} ${styles.mobileProjectPanel}`} aria-label="Projects workbench">
+            <MobileProfileActions
+              activeMode={projectWorkbenchMode}
+              isSignedIn={Boolean(user)}
+              onAccount={handleOpenAccountRequest}
+              onCreateProject={handleCreateProjectRequest}
+              onOpenProjects={handleOpenProjectsRequest}
+              onOpenActivity={handleOpenActivityRequest}
+              onExplore={() => setActiveWorkbench('explore')}
+            />
+            <div className={`project-history ${styles.historyColumn}`}>
+              <UserActivityPanel
+                createProjectRequestKey={createProjectRequestKey}
+                projectsPanelRequestKey={projectsPanelRequestKey}
+                activeTabOverride={projectWorkbenchMode === 'activity' ? 'activity' : 'projects'}
+                hideTabs
+                onProjectCreateClosed={handleProjectCreateClosed}
+              />
+            </div>
+          </section>
+        )}
+
+        {activeWorkbench === 'account' && (
+          <section className={styles.mobilePanel} aria-label="Account workbench">
+            <MobileProfileActions
+              activeMode="account"
+              isSignedIn={Boolean(user)}
+              onAccount={handleOpenAccountRequest}
+              onCreateProject={handleCreateProjectRequest}
+              onOpenProjects={handleOpenProjectsRequest}
+              onOpenActivity={handleOpenActivityRequest}
+              onExplore={() => setActiveWorkbench('explore')}
+            />
+            <AccountWorkbench
+              userName={profileName}
+              isSignedIn={Boolean(user)}
+              onOpenProjects={handleOpenProjectsRequest}
+            />
+          </section>
+        )}
+
+        {activeWorkbench === 'groups' && (
+          <section className={styles.mobilePanel} aria-label="Groups workbench">
+            <div className={styles.mobilePanelHeader}>
+              <div>
+                <h4>Groups</h4>
+                <p>{user ? `${myGroups.length} joined` : `${publicGroups.length} public`} - rooms and project spaces</p>
+              </div>
+              <button
+                type="button"
+                className={styles.mobileUtilityButton}
+                onClick={handleCreateGroupRequest}
+              >
+                Create
+              </button>
+            </div>
+            <GroupsWorkbench
+              myGroups={myGroups}
+              publicGroups={publicGroups}
+              loading={groupsLoading}
+              error={groupsError}
+              openRequestKey={openGroupsRequestKey}
+              createRequestKey={createGroupRequestKey}
+              onGroupsChanged={handleGroupsChanged}
+              onExplore={() => setActiveWorkbench('explore')}
+            />
+          </section>
+        )}
+      </main>
+
+      <div className={`mixer-theme ${styles.mobileMixerTray}`} aria-label="Mobile mixer">
+        <AudioRouteBoundary defer deferMs={200}>
+          {null}
+        </AudioRouteBoundary>
+        <MobileTransportBar state={audioState} />
+      </div>
+    </div>
+  );
+}
+
+function MobileTransportBar({ state }: { state: AudioState | null }) {
+  const audioEngine = useAudioStore(s => s.engine);
+  const [channelLevel, setChannelLevel] = useState(0);
+  const levelRef = useRef(0);
+  const levelLastTsRef = useRef<number | null>(null);
+  const togglePlayPause = useAppStore(s => s.playback.togglePlayPause);
+  const handleTimeSliderChange = useAppStore(s => s.playback.handleTimeSliderChange);
+  const getTimeSliderValue = useAppStore(s => s.playback.getTimeSliderValue);
+  const stopBackingPlayback = usePlaybackStore(s => s.stopBackingPlayback);
+
+  useEffect(() => {
+    if (!audioEngine) return;
+    const unsubscribe = audioEngine.onPlayer2Level(({ rms }) => {
+      const now = performance.now();
+      const last = levelLastTsRef.current ?? now;
+      const dt = Math.max(0, (now - last) / 1000);
+      levelLastTsRef.current = now;
+      const target = Math.max(0, Math.min(1, rms * 4.5));
+      const current = levelRef.current;
+      const tau = target > current ? 0.05 : 0.3;
+      const next = current + (target - current) * (1 - Math.exp(-dt / tau));
+      levelRef.current = next;
+      setChannelLevel(next);
+    });
+
+    return unsubscribe;
+  }, [audioEngine]);
+
+  const hasSource = Boolean(state?.player2.source);
+  const isPlaying = Boolean(state?.player2.isPlaying);
+  const sliderValue = state ? getTimeSliderValue(state) : 0;
+
+  return (
+    <div className={styles.mobileTransport}>
+      <button
+        type="button"
+        className={styles.mobileTransportButton}
+        onClick={togglePlayPause}
+        disabled={!hasSource}
+        aria-label={isPlaying ? 'Pause' : 'Play'}
+        title={isPlaying ? 'Pause' : 'Play'}
+      >
+        {isPlaying ? '⏸' : '▶'}
+      </button>
+      <button
+        type="button"
+        className={styles.mobileTransportButton}
+        onClick={() => stopBackingPlayback()}
+        disabled={!hasSource}
+        aria-label="Stop"
+        title="Stop"
+      >
+        ■
+      </button>
+      <input
+        type="range"
+        className={styles.mobileTransportSlider}
+        min="0"
+        max="100"
+        step="0.1"
+        value={sliderValue}
+        onChange={event => handleTimeSliderChange(parseFloat(event.target.value))}
+        disabled={!hasSource}
+        aria-label="Playback position"
+      />
+      <SmallLEDMeter value={channelLevel} min={0} max={1} vertical ledCount={3} />
+    </div>
+  );
+}
+
+function MobileProfileActions({
+  activeMode,
+  isSignedIn,
+  onAccount,
+  onCreateProject,
+  onOpenProjects,
+  onOpenActivity,
+  onExplore
+}: {
+  activeMode: NonNullable<DashboardProfileMode>;
+  isSignedIn: boolean;
+  onAccount: () => void;
+  onCreateProject: () => void;
+  onOpenProjects: () => void;
+  onOpenActivity: () => void;
+  onExplore: () => void;
+}) {
+  return (
+    <div className={styles.mobileActionDock} aria-label="Profile controls">
+      <button
+        type="button"
+        className={`${styles.mobileAction} ${activeMode === 'account' ? styles.mobileActionActive : ''}`}
+        onClick={onAccount}
+      >
+        Account
+      </button>
+      <button
+        type="button"
+        className={`${styles.mobileAction} ${activeMode === 'projects' ? styles.mobileActionActive : ''}`}
+        onClick={onOpenProjects}
+      >
+        My projects
+      </button>
+      <button
+        type="button"
+        className={`${styles.mobileAction} ${activeMode === 'activity' ? styles.mobileActionActive : ''}`}
+        onClick={onOpenActivity}
+      >
+        Activity
+      </button>
+      <button
+        type="button"
+        className={`${styles.mobileActionPrimary} ${activeMode === 'create' ? styles.mobileActionActive : ''}`}
+        onClick={onCreateProject}
+      >
+        {isSignedIn ? 'Create' : 'Login'}
+      </button>
+      <button type="button" className={styles.mobileActionWide} onClick={onExplore}>
+        Explore feed
+      </button>
     </div>
   );
 }

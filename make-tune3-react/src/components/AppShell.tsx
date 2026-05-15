@@ -54,8 +54,7 @@ function useToolbar() {
       { key: 'logout', label: 'Logout', onClick: async () => { try { await signOut(); } finally { navigate('/collabs'); } } }
     ]
     : [
-      { key: 'login', label: 'Login', onClick: () => navigate('/auth?mode=login') },
-      { key: 'register', label: 'Register', onClick: () => navigate('/auth?mode=register') }
+      { key: 'auth', label: 'Login', onClick: () => navigate('/auth') }
     ];
 
   return { title, crumbs, actions: [...routeActions, ...authActions] };

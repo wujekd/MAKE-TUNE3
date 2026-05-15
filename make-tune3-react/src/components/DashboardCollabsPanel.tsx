@@ -22,6 +22,23 @@ interface DashboardCollabsPanelProps {
   metaLabel: string;
 }
 
+interface DashboardExploreControlsProps {
+  itemCount: number;
+  hasLoaded: boolean;
+  selectedTags: string[];
+  onTagsChange: (tagKeys: string[]) => void;
+  availableTags: Array<{ key: string; name: string; count: number }>;
+  feedMode: DashboardFeedMode;
+  onFeedModeChange: (mode: DashboardFeedMode) => void;
+}
+
+interface DashboardExploreFeedProps {
+  items: DashboardFeedItem[];
+  hasLoaded: boolean;
+  error: string | null;
+  selectedTags: string[];
+}
+
 const getTrackLabel = (path: string | null): string | null => {
   if (!path) return null;
   const fileName = path.split('/').filter(Boolean).pop() || path;
@@ -67,61 +84,100 @@ export function DashboardCollabsPanel({
   onFeedModeChange,
   metaLabel: _metaLabel
 }: DashboardCollabsPanelProps) {
-  const audioState = useAudioStore(s => s.state);
-  const playBackingTrack = usePlaybackStore(s => s.playBackingTrack);
-  const backingPreview = usePlaybackStore(s => s.backingPreview);
-  const togglePlayPause = useAppStore(s => s.playback.togglePlayPause);
+  return (
+    <>
+      <DashboardExploreControls
+        itemCount={items.length}
+        hasLoaded={hasLoaded}
+        selectedTags={selectedTags}
+        onTagsChange={onTagsChange}
+        availableTags={availableTags}
+        feedMode={feedMode}
+        onFeedModeChange={onFeedModeChange}
+      />
+      <DashboardExploreFeed
+        items={items}
+        hasLoaded={hasLoaded}
+        error={error}
+        selectedTags={selectedTags}
+      />
+    </>
+  );
+}
+
+export function DashboardExploreControls({
+  itemCount,
+  hasLoaded,
+  selectedTags,
+  onTagsChange,
+  availableTags,
+  feedMode,
+  onFeedModeChange
+}: DashboardExploreControlsProps) {
   const feedSummary = selectedTags.length > 0
     ? `${selectedTags.length} tag${selectedTags.length === 1 ? '' : 's'} selected`
     : 'All tags selected';
   const loadedSummary = hasLoaded
-    ? `${items.length} collaboration${items.length === 1 ? '' : 's'} loaded`
+    ? `${itemCount} collaboration${itemCount === 1 ? '' : 's'} loaded`
     : 'Loading collaborations';
 
   return (
-    <>
-      <aside className={styles.controlColumn} aria-label="Explore controls">
-        <h4 className={styles.panelTitle}>Explore controls</h4>
-        <div className={styles.controlStack}>
-          <div className={styles.controlGroup}>
-            <div className={styles.controlLabel}>Tags</div>
-            <TagFilter
-              selectedTags={selectedTags}
-              onTagsChange={onTagsChange}
-              variant="slim"
-              tags={availableTags}
-              loading={!hasLoaded && availableTags.length === 0}
-              showHeader={false}
-              searchable
-            />
-          </div>
+    <aside className={styles.controlColumn} aria-label="Explore controls">
+      <h4 className={styles.panelTitle}>Explore controls</h4>
+      <div className={styles.controlStack}>
+        <div className={styles.controlGroup}>
+          <div className={styles.controlLabel}>Tags</div>
+          <TagFilter
+            selectedTags={selectedTags}
+            onTagsChange={onTagsChange}
+            variant="slim"
+            tags={availableTags}
+            loading={!hasLoaded && availableTags.length === 0}
+            showHeader={false}
+            searchable
+          />
+        </div>
 
-          <div className={styles.controlGroup}>
-            <div className={styles.controlLabel}>Sort</div>
-            <div className={styles.feedOptions} aria-label="Collaboration feed options">
-              {feedOptions.map(option => (
-                <button
-                  key={option.mode}
-                  type="button"
-                  className={`${styles.feedOption} ${feedMode === option.mode ? styles.feedOptionActive : ''}`}
-                  onClick={() => onFeedModeChange(option.mode)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className={styles.controlGroup}>
-            <div className={styles.controlLabel}>Feed status</div>
-            <div className={styles.filterSummary} role="status">
-              <strong>{loadedSummary}</strong>
-              <span>{feedSummary}</span>
-            </div>
+        <div className={styles.controlGroup}>
+          <div className={styles.controlLabel}>Sort</div>
+          <div className={styles.feedOptions} aria-label="Collaboration feed options">
+            {feedOptions.map(option => (
+              <button
+                key={option.mode}
+                type="button"
+                className={`${styles.feedOption} ${feedMode === option.mode ? styles.feedOptionActive : ''}`}
+                onClick={() => onFeedModeChange(option.mode)}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
         </div>
-      </aside>
 
+        <div className={styles.controlGroup}>
+          <div className={styles.controlLabel}>Feed status</div>
+          <div className={styles.filterSummary} role="status">
+            <strong>{loadedSummary}</strong>
+            <span>{feedSummary}</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+export function DashboardExploreFeed({
+  items,
+  hasLoaded,
+  error,
+  selectedTags
+}: DashboardExploreFeedProps) {
+  const audioState = useAudioStore(s => s.state);
+  const playBackingTrack = usePlaybackStore(s => s.playBackingTrack);
+  const backingPreview = usePlaybackStore(s => s.backingPreview);
+  const togglePlayPause = useAppStore(s => s.playback.togglePlayPause);
+
+  return (
       <div id="collaboration-feed" className={`project-history ${styles.historyColumn}`}>
         <div className={styles.feedHeader}>
           <h4 className="project-history-title">Explore feed</h4>
@@ -280,6 +336,5 @@ export function DashboardCollabsPanel({
           </div>
         </div>
       </div>
-    </>
   );
 }

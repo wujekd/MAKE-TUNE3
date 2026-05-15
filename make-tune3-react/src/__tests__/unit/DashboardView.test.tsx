@@ -39,7 +39,9 @@ vi.mock('../../services/groupService', () => ({
 }));
 
 vi.mock('../../components/DashboardCollabsPanel', () => ({
-  DashboardCollabsPanel: () => <div data-testid="explore-workbench">Explore workbench</div>
+  DashboardCollabsPanel: () => <div data-testid="explore-workbench">Explore workbench</div>,
+  DashboardExploreControls: () => <div data-testid="mobile-explore-controls">Mobile explore controls</div>,
+  DashboardExploreFeed: () => <div data-testid="mobile-explore-feed">Mobile explore feed</div>
 }));
 
 vi.mock('../../components/UserActivityPanel', () => ({
@@ -76,8 +78,25 @@ vi.mock('../../components/LoadingSpinner', () => ({
 
 const initialAppState = useAppStore.getState();
 
+const mockDashboardViewport = (matches: boolean) => {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn()
+    }))
+  });
+};
+
 describe('DashboardView console workbench', () => {
   beforeEach(() => {
+    mockDashboardViewport(false);
     hoisted.getDashboardStats.mockReset();
     hoisted.loadFeed.mockReset();
     hoisted.getActiveCollaborationTags.mockReset();
@@ -201,5 +220,28 @@ describe('DashboardView console workbench', () => {
     fireEvent.click(within(screen.getByLabelText('Profile controls')).getByRole('button', { name: /^my activity$/i }));
     expect(modeOrder()).toEqual(['Account', 'My projects', 'My activity']);
     expect(screen.getByTestId('user-activity-workbench')).toHaveAttribute('data-active-tab', 'activity');
+  });
+
+  it('uses the mobile layout when the dashboard media query matches', async () => {
+    mockDashboardViewport(true);
+
+    render(
+      <MemoryRouter>
+        <DashboardView />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByLabelText('Dashboard sections')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Dashboard console')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Mobile dashboard summary')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mobile-explore-feed')).toBeInTheDocument();
+    expect(screen.getByLabelText('Mobile mixer')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Filters$/i }));
+    expect(screen.getByTestId('mobile-explore-controls')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Projects$/i }));
+    expect(screen.getByTestId('user-activity-workbench')).toHaveAttribute('data-active-tab', 'projects');
+    expect(screen.getByLabelText('Profile controls')).toBeInTheDocument();
   });
 });

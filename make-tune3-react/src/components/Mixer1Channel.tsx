@@ -111,7 +111,7 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
   const hasSource = Boolean(state.player2.source);
   const isCompactMode = windowHeight < COMPACT_WINDOW_HEIGHT;
   const shouldShowOscilloscope = windowHeight >= OSCILLOSCOPE_MIN_WINDOW_HEIGHT;
-  const isExtraCompact = windowHeight < 705;
+  const isExtraCompact = windowHeight < 772;
   const scopeHeight = Math.min(48, Math.max(28, Math.round(28 + (windowHeight - 655) * 0.04)));
   const faderHeight = Math.min(170, Math.max(132, Math.round(132 + (windowHeight - COMPACT_WINDOW_HEIGHT) * 0.32)));
   const compactVolumeEncoderSize = isExtraCompact ? 34 : 64;
