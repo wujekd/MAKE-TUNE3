@@ -14,11 +14,22 @@ interface Mixer1ChannelProps {
   state: AudioState | null;
 }
 
+const COMPACT_WINDOW_HEIGHT = 826;
+const OSCILLOSCOPE_MIN_WINDOW_HEIGHT = 872;
+
+function getWindowHeight() {
+  if (typeof window === 'undefined') {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  return window.innerHeight;
+}
+
 export function Mixer1Channel({ state }: Mixer1ChannelProps) {
   const audioEngine = useAudioStore(s => s.engine);
   const [masterLevel, setMasterLevel] = useState(0);
   const [channelLevel, setChannelLevel] = useState(0);
-  const [isCompactMode, setIsCompactMode] = useState(window.innerHeight < 700);
+  const [windowHeight, setWindowHeight] = useState(getWindowHeight);
   const masterLevelRef = useRef(0);
   const channelLevelRef = useRef(0);
   const masterLastTsRef = useRef<number | null>(null);
@@ -36,8 +47,9 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
   // Window height responsive behavior
   useEffect(() => {
     const handleResize = () => {
-      setIsCompactMode(window.innerHeight < 700);
+      setWindowHeight(getWindowHeight());
     };
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -97,6 +109,39 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
 
   const isPlaying = state.player2.isPlaying;
   const hasSource = Boolean(state.player2.source);
+  const isCompactMode = windowHeight < COMPACT_WINDOW_HEIGHT;
+  const shouldShowOscilloscope = windowHeight >= OSCILLOSCOPE_MIN_WINDOW_HEIGHT;
+  const isExtraCompact = windowHeight < 705;
+  const scopeHeight = Math.min(48, Math.max(28, Math.round(28 + (windowHeight - 655) * 0.04)));
+  const faderHeight = Math.min(170, Math.max(132, Math.round(132 + (windowHeight - COMPACT_WINDOW_HEIGHT) * 0.32)));
+  const compactVolumeEncoderSize = isExtraCompact ? 34 : 64;
+  const meterLedCount = isExtraCompact ? 3 : 6;
+  const lowerAreaStyle: React.CSSProperties = {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    minHeight: 0,
+    justifyContent: 'flex-end'
+  };
+  const faderStackStyle: React.CSSProperties = {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 0,
+    flexShrink: 0
+  };
+  const scopeSlotStyle: React.CSSProperties = {
+    width: '100%',
+    minHeight: scopeHeight + 32,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 14,
+    boxSizing: 'border-box',
+    flexShrink: 0
+  };
 
   // Brightness effect strength controls
   const brightnessMultiplier = 0.1;  // How much brighter (0.4 = up to 1.4x at peak)
@@ -191,8 +236,8 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
             <MasterSpectrogramCanvas
               engine={audioEngine}
               style={{
-                height: isCompactMode ? 56 : 72,
-                minHeight: isCompactMode ? 56 : 72
+                height: 72,
+                minHeight: 72
               }}
             />
           </div>
@@ -202,23 +247,28 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
             style={{
               width: '100%',
               height: 1,
-              margin: '8px 0 6px',
+              margin: '4px 0',
               background: 'rgba(255, 255, 255, 0.14)',
               flexShrink: 0
             }}
           />
 
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flex: 1, minHeight: 0, justifyContent: 'flex-end' }}>
-            <ChannelScopeCanvas
-              engine={audioEngine}
-              source="backing"
-              ariaLabel="Backing waveform scope"
-              style={{
-                height: isCompactMode ? 28 : 36,
-                minHeight: isCompactMode ? 28 : 36,
-                marginBottom: 8
-              }}
-            />
+          <div style={lowerAreaStyle}>
+            {shouldShowOscilloscope && (
+              <div style={scopeSlotStyle}>
+                <ChannelScopeCanvas
+                  engine={audioEngine}
+                  source="backing"
+                  ariaLabel="Backing waveform scope"
+                  style={{
+                    height: scopeHeight,
+                    minHeight: 28,
+                    marginBottom: 0
+                  }}
+                />
+              </div>
+            )}
+            <div style={faderStackStyle}>
             <div
               style={{
                 position: 'relative',
@@ -227,7 +277,7 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
                 justifyContent: 'center',
                 flex: 0,
                 width: '100%',
-                minHeight: isCompactMode ? 96 : 184
+                minHeight: isCompactMode ? 98 : faderHeight
               }}
             >
               {isCompactMode ? (
@@ -237,7 +287,7 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
                   min={0}
                   max={1}
                   step={0.01}
-                  size={64}
+                  size={compactVolumeEncoderSize}
                   onChange={handleBackingVolumeChange}
                   onInput={handleBackingVolumeChange}
                   showValue={false}
@@ -251,6 +301,7 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
                   max={1}
                   step={0.01}
                   exponent={2}
+                  style={{ width: faderHeight }}
                   onChange={handleBackingVolumeChange}
                 />
               )}
@@ -264,10 +315,11 @@ export function Mixer1Channel({ state }: Mixer1ChannelProps) {
                   alignItems: 'center'
                 }}
               >
-                <SmallLEDMeter value={channelLevel} min={0} max={1} vertical={true} />
+                <SmallLEDMeter value={channelLevel} min={0} max={1} vertical={true} ledCount={meterLedCount} />
               </div>
             </div>
-            <span className="mixer1-channel-label mixer1-channel-label--bottom">Backing</span>
+            <span className="mixer1-channel-label mixer1-channel-label--bottom" style={{ marginTop: 0 }}>Backing</span>
+            </div>
           </div>
         </div>
       </div>

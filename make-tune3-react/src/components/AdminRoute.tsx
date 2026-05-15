@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
+import { PageLoadingFallback } from './PageLoadingFallback';
 
 export function AdminRoute({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -22,17 +23,7 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
   }, [user, loading, navigate]);
 
   if (loading) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        color: 'var(--white)'
-      }}>
-        Loading...
-      </div>
-    );
+    return <PageLoadingFallback />;
   }
 
   if (!user || !user.isAdmin) {

@@ -15,6 +15,8 @@ interface WeightedFaderProps {
     onChange: (value: number) => void;
     /** CSS class name for the input element */
     className?: string;
+    /** Inline style for the input element */
+    style?: React.CSSProperties;
     /** HTML id for the input element */
     id?: string;
     /** Whether the slider is disabled */
@@ -39,6 +41,7 @@ export function WeightedFader({
     exponent = 2,
     onChange,
     className = 'vertical-slider mixer1-fader',
+    style,
     id,
     disabled = false
 }: WeightedFaderProps) {
@@ -176,6 +179,7 @@ export function WeightedFader({
             value={sliderPosition}
             onChange={handleChange}
             onMouseDown={handleMouseDown}
+            style={style}
             disabled={disabled}
         />
     );

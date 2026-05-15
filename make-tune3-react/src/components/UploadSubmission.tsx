@@ -5,7 +5,7 @@ import { useAppStore } from '../stores/appStore';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { SubmissionService } from '../services/submissionService';
 import { ListPlayButton } from './ListPlayButton';
-import { WaveformStrip } from './WaveformStrip';
+import { SubmissionWaveformFrame } from './SubmissionWaveformFrame';
 import type { WaveformRenderData } from '../types/waveform';
 import './UploadSubmission.css';
 
@@ -263,36 +263,25 @@ export function UploadSubmission({
   ];
 
   return (
-    <div className="submission-upload">
-      <div className="submission-upload__waveform-backdrop submission-upload__waveform-backdrop--top" aria-hidden="true">
-        <WaveformStrip
-          data={backingWaveformData}
-          state={backingWaveformState}
-          progress={playbackProgress / 100}
-          currentTime={backingCurrentTime}
-          duration={backingDuration}
-          isPlaying={isBackingPlaying}
-          underlayAlpha={0.68}
-          waveformAlpha={1.2}
-        />
-      </div>
-      <div className="submission-upload__waveform-backdrop submission-upload__waveform-backdrop--bottom" aria-hidden="true">
-        <WaveformStrip
-          data={analysis?.waveformData ?? null}
-          state={uploadWaveformState}
-          initialCascadeProgress={1}
-          repeatCascadeProgress={0}
-          progress={uploadProgress}
-          currentTime={uploadCurrentTime}
-          duration={uploadDuration}
-          isPlaying={isUploadPreviewPlaying}
-          underlayAlpha={0.68}
-          waveformAlpha={1.2}
-        />
-      </div>
-
-      <div className="submission-upload__chrome">
-        <section className="submission-upload__zone submission-upload__zone--collab">
+    <SubmissionWaveformFrame
+      backingWaveformData={backingWaveformData}
+      backingWaveformState={backingWaveformState}
+      uploadWaveformData={analysis?.waveformData ?? null}
+      uploadWaveformState={uploadWaveformState}
+      backingPlayback={{
+        progress: playbackProgress / 100,
+        currentTime: backingCurrentTime,
+        duration: backingDuration,
+        isPlaying: isBackingPlaying
+      }}
+      uploadPlayback={{
+        progress: uploadProgress,
+        currentTime: uploadCurrentTime,
+        duration: uploadDuration,
+        isPlaying: isUploadPreviewPlaying
+      }}
+    >
+      <section className="submission-upload__zone submission-upload__zone--collab">
           <div className="submission-upload__panel-head">
             <div>
               <div className="submission-upload__eyebrow">Backing</div>
@@ -314,9 +303,9 @@ export function UploadSubmission({
               aria-hidden="true"
             />
           )}
-        </section>
+      </section>
 
-        <section className="submission-upload__zone submission-upload__zone--user">
+      <section className="submission-upload__zone submission-upload__zone--user">
           <div className="submission-upload__panel-head">
             <div>
               <div className="submission-upload__eyebrow">Your upload</div>
@@ -443,8 +432,7 @@ export function UploadSubmission({
             {!user && <div className="submission-upload__login-required">login required</div>}
           </div>
           {error && <div className="submission-pane__error">{error}</div>}
-        </section>
-      </div>
-    </div>
+      </section>
+    </SubmissionWaveformFrame>
   );
 }

@@ -1,4 +1,5 @@
 import { useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { useAppStore } from '../stores/appStore';
 import { useAudioStore } from '../stores';
@@ -12,6 +13,7 @@ import { UserService, ProjectService } from '../services';
 import { SubmissionService } from '../services/submissionService';
 import { DownloadBacking } from '../components/DownloadBacking';
 import { UploadSubmission } from '../components/UploadSubmission';
+import { SubmissionWaveformFrame } from '../components/SubmissionWaveformFrame';
 import { resolveStorageDownloadUrl } from '../services/storageService';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
@@ -261,53 +263,62 @@ export function SubmissionView() {
   }
 
   const renderPane = () => {
-    if (status === 'submitted' && user) {
-      return (
-        <div className={styles.submissionPane}>
-          <div className={styles.statusCentered}>
-            <h4 className={styles.cardTitle}>Submission complete</h4>
-            <div className={styles.statusMessage}>
-              You have already submitted to this collaboration.
+    const renderStatusFrame = (
+      title: string,
+      message: string,
+      action?: ReactNode
+    ) => (
+      <SubmissionWaveformFrame
+        backingWaveformData={backingWaveformData}
+        backingWaveformState={backingWaveformState}
+      >
+        <section className="submission-upload__zone submission-upload__zone--collab">
+          <div className="submission-upload__panel-head">
+            <div>
+              <div className="submission-upload__eyebrow">Backing</div>
+              <h4 className="submission-upload__title">{requestedCollaboration?.name || 'Collaboration backing'}</h4>
             </div>
           </div>
-        </div>
+        </section>
+        <section className="submission-upload__zone submission-upload__zone--user">
+          <div className="submission-upload__status-panel">
+            <h4 className={styles.cardTitle}>{title}</h4>
+            <div className={styles.statusMessage}>{message}</div>
+            {action}
+          </div>
+        </section>
+      </SubmissionWaveformFrame>
+    );
+
+    if (status === 'submitted' && user) {
+      return renderStatusFrame(
+        'Submission complete',
+        'You have already submitted to this collaboration.'
       );
     }
 
     if (limitReached) {
-      return (
-        <div className={styles.submissionPane}>
-          <div className={styles.statusCentered}>
-            <h4 className={styles.cardTitle}>Submissions full</h4>
-            <div className={styles.statusMessage}>
-              This collaboration has reached its submission limit.
-            </div>
-          </div>
-        </div>
+      return renderStatusFrame(
+        'Submissions full',
+        'This collaboration has reached its submission limit.'
       );
     }
 
     if (!user || (requestedCollaboration as any)?.viewerCanSubmit === false) {
-      return (
-        <div className={styles.submissionPane}>
-          <div className={styles.statusCentered}>
-            <h4 className={styles.cardTitle}>{user ? 'Group members only' : 'Login required'}</h4>
-            <div className={styles.statusMessage}>
-              {user
-                ? 'Only active members of an attached group can submit to this collaboration.'
-                : 'Sign in to submit to this collaboration.'}
-            </div>
-            {!user && (
-              <button
-                type="button"
-                className={styles.authCta}
-                onClick={() => navigate('/auth?mode=login')}
-              >
-                Log in
-              </button>
-            )}
-          </div>
-        </div>
+      return renderStatusFrame(
+        user ? 'Group members only' : 'Login required',
+        user
+          ? 'Only active members of an attached group can submit to this collaboration.'
+          : 'Sign in to submit to this collaboration.',
+        !user ? (
+          <button
+            type="button"
+            className={styles.authCta}
+            onClick={() => navigate('/auth?mode=login')}
+          >
+            Log in
+          </button>
+        ) : null
       );
     }
 
@@ -319,6 +330,9 @@ export function SubmissionView() {
           backingPath={requestedCollaboration.backingTrackPath}
           pdfPath={requestedCollaboration.pdfPath}
           resourcesZipPath={requestedCollaboration.resourcesZipPath}
+          collaborationName={requestedCollaboration.name}
+          backingWaveformData={backingWaveformData}
+          backingWaveformState={backingWaveformState}
           onDownloaded={() => setStatus('downloaded')}
         />
       );

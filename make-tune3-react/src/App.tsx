@@ -11,7 +11,7 @@ import { UsernameOnboarding } from './views/UsernameOnboarding';
 import { AccessDeniedView } from './views/AccessDeniedView';
 import { ProjectService } from './services';
 import { RootErrorView } from './components/RootErrorView';
-import { LoadingSpinner } from './components/LoadingSpinner';
+import { PageLoadingFallback } from './components/PageLoadingFallback';
 
 const importVotingView = () => import('./views/VotingView');
 const importProjectEditView = () => import('./views/ProjectEditView');
@@ -84,11 +84,7 @@ const AdminHsdTestView = lazy(() =>
 );
 
 function RouteLoadingFallback() {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 16px' }}>
-      <LoadingSpinner size={24} />
-    </div>
-  );
+  return <PageLoadingFallback />;
 }
 
 function LazyAdminRoute({ children }: { children: React.ReactNode }) {

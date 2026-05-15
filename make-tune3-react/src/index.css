@@ -51,7 +51,7 @@ body,
 @keyframes app-fade-in {
   from {
     opacity: 0;
-    transform: translateY(2px);
+    transform: translateY(0);
   }
 
   to {

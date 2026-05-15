@@ -1,15 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
-import { LoadingSpinner } from './LoadingSpinner';
 import { needsUsernameOnboarding } from '../utils/onboarding';
-
-function GateLoadingFallback() {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 16px' }}>
-      <LoadingSpinner size={24} />
-    </div>
-  );
-}
+import { PageLoadingFallback } from './PageLoadingFallback';
 
 export function OnboardingGate() {
   const location = useLocation();
@@ -17,7 +9,7 @@ export function OnboardingGate() {
   const loading = useAppStore(state => state.auth.loading);
 
   if (loading) {
-    return <GateLoadingFallback />;
+    return <PageLoadingFallback />;
   }
 
   if (needsUsernameOnboarding(user)) {
