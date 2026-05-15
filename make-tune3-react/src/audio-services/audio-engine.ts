@@ -448,6 +448,17 @@ export class AudioEngine {
     }
     this.synchronizePlayers(1500, 0.005);
   }
+
+  async playStandaloneSubmission(submissionSrc: string, backingSrc: string): Promise<void> {
+    await this.playSubmission(submissionSrc, backingSrc, -1);
+    this.state.playerController.pastStagePlayback = false;
+    this.state.playerController.playingFavourite = false;
+    this.state.playerController.currentTrackId = -1;
+    this.updateState({
+      playerController: { ...this.state.playerController }
+    });
+  }
+
   async playPastStage(submissionSrc: string, backingSrc: string, index: number): Promise<void> {
     this.initAudioContext();
     await this.resumeIfSuspended();
@@ -911,11 +922,22 @@ export class AudioEngine {
       }
     });
     this.player1.addEventListener('ended', () => {
+      if (this.state.player2.isPlaying || !this.player2.paused) {
+        this.player2.pause();
+      }
       this.updateState({
         player1: {
           ...this.state.player1,
           isPlaying: false,
+          currentTime: this.player1.currentTime,
+          duration: this.player1.duration || this.state.player1.duration,
           hasEnded: true
+        },
+        player2: {
+          ...this.state.player2,
+          isPlaying: false,
+          currentTime: this.player2.currentTime,
+          duration: this.player2.duration || this.state.player2.duration
         }
       });
     });

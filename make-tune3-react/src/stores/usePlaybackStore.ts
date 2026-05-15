@@ -91,6 +91,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => {
 
       const pastStagePlayback = audioState.playerController.pastStagePlayback;
       const currentTrackIndex = audioState.playerController.currentTrackId;
+      if (currentTrackIndex < 0) return;
 
       if (pastStagePlayback) {
         (async () => {
@@ -137,6 +138,7 @@ export const usePlaybackStore = create<PlaybackState>((set, get) => {
 
       const pastStagePlayback = audioState.playerController.pastStagePlayback;
       const currentTrackIndex = audioState.playerController.currentTrackId;
+      if (currentTrackIndex < 0) return;
 
       if (pastStagePlayback) {
         (async () => {

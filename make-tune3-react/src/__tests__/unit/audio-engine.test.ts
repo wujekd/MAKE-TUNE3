@@ -2,18 +2,38 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AudioEngine } from '../../audio-services/audio-engine';
 
 // Mock HTML Audio Elements
-const createMockAudioElement = () => ({
-  src: '',
-  currentTime: 0,
-  duration: 0,
-  volume: 1,
-  paused: true,
-  play: vi.fn().mockResolvedValue(undefined),
-  pause: vi.fn(),
-  load: vi.fn(),
-  addEventListener: vi.fn(),
-  removeEventListener: vi.fn()
-});
+const createMockAudioElement = () => {
+  const listeners = new Map<string, EventListenerOrEventListenerObject[]>();
+  const element = {
+    src: '',
+    currentTime: 0,
+    duration: 0,
+    volume: 1,
+    paused: true,
+    play: vi.fn().mockImplementation(() => {
+      element.paused = false;
+      return Promise.resolve();
+    }),
+    pause: vi.fn().mockImplementation(() => {
+      element.paused = true;
+    }),
+    load: vi.fn(),
+    addEventListener: vi.fn((eventName: string, listener: EventListenerOrEventListenerObject) => {
+      listeners.set(eventName, [...(listeners.get(eventName) || []), listener]);
+    }),
+    removeEventListener: vi.fn(),
+    dispatchAudioEvent: (eventName: string) => {
+      for (const listener of listeners.get(eventName) || []) {
+        if (typeof listener === 'function') {
+          listener(new Event(eventName));
+        } else {
+          listener.handleEvent(new Event(eventName));
+        }
+      }
+    }
+  };
+  return element;
+};
 
 describe('AudioEngine', () => {
   let audioEngine: AudioEngine;
@@ -115,6 +135,34 @@ describe('AudioEngine', () => {
       await audioEngine.playSubmission('/test-audio/submission.mp3', '/test-audio/backing.mp3', 0);
       
       const state = audioEngine.getState();
+      expect(state.player1.isPlaying).toBe(true);
+      expect(state.player2.isPlaying).toBe(true);
+    });
+
+    it('should stop the backing when the submission ends first', async () => {
+      await audioEngine.playSubmission('/test-audio/submission.mp3', '/test-audio/backing.mp3', 0);
+      mockPlayer1.duration = 3;
+      mockPlayer1.currentTime = 3;
+      mockPlayer2.duration = 12;
+      mockPlayer2.currentTime = 3;
+
+      mockPlayer1.dispatchAudioEvent('ended');
+
+      const state = audioEngine.getState();
+      expect(mockPlayer2.pause).toHaveBeenCalled();
+      expect(state.player1.isPlaying).toBe(false);
+      expect(state.player1.hasEnded).toBe(true);
+      expect(state.player2.isPlaying).toBe(false);
+      expect(state.player2.currentTime).toBe(3);
+    });
+
+    it('should play standalone submissions outside navigable track lists', async () => {
+      await audioEngine.playStandaloneSubmission('/test-audio/winner.mp3', '/test-audio/backing.mp3');
+
+      const state = audioEngine.getState();
+      expect(state.playerController.currentTrackId).toBe(-1);
+      expect(state.playerController.playingFavourite).toBe(false);
+      expect(state.playerController.pastStagePlayback).toBe(false);
       expect(state.player1.isPlaying).toBe(true);
       expect(state.player2.isPlaying).toBe(true);
     });
