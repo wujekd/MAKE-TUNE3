@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { AudioEngineContext } from '../audio-services/AudioEngineContext';
 import { useAppStore } from '../stores/appStore';
 import { useAudioStore } from '../stores';
@@ -17,6 +17,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { usePrefetchAudio } from '../hooks/usePrefetchAudio';
 import { useCollaborationLoader } from '../hooks/useCollaborationLoader';
 import { useStageRedirect } from '../hooks/useStageRedirect';
+import { useWaveformData } from '../hooks/useWaveformData';
 import '../components/Favorites.css';
 import styles from './SubmissionView.module.css';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -37,6 +38,7 @@ export function SubmissionView() {
   const unfavoriteCollaboration = useAppStore(s => s.collaboration.unfavoriteCollaboration);
   const isUpdatingCollaborationLike = useAppStore(s => s.collaboration.isUpdatingCollaborationLike);
   const isUpdatingCollaborationFavorite = useAppStore(s => s.collaboration.isUpdatingCollaborationFavorite);
+  const isLoadingCollaboration = useAppStore(s => s.collaboration.isLoadingCollaboration);
   const { collabId } = useParams();
   const collaborationId = collabId;
   const loader = useCollaborationLoader(collaborationId);
@@ -59,6 +61,34 @@ export function SubmissionView() {
     ? requestedCollaboration.submissionsUsedCount
     : (typeof requestedCollaboration?.submissionsCount === 'number' ? requestedCollaboration.submissionsCount : 0);
   const limitReached = effectiveSubmissionLimit !== null && submissionsUsed >= effectiveSubmissionLimit;
+
+  const backingWaveformMeta = useMemo(() => ({
+    path: requestedCollaboration?.backingWaveformPath ?? null,
+    status: requestedCollaboration?.backingWaveformStatus ?? (requestedCollaboration?.backingTrackPath ? 'pending' : null),
+    bucketCount: requestedCollaboration?.backingWaveformBucketCount ?? null,
+    version: requestedCollaboration?.backingWaveformVersion ?? null,
+    error: requestedCollaboration?.backingWaveformError ?? null
+  }), [
+    requestedCollaboration?.backingTrackPath,
+    requestedCollaboration?.backingWaveformBucketCount,
+    requestedCollaboration?.backingWaveformError,
+    requestedCollaboration?.backingWaveformPath,
+    requestedCollaboration?.backingWaveformStatus,
+    requestedCollaboration?.backingWaveformVersion
+  ]);
+
+  const { data: backingWaveformData, uiState: backingWaveformUiState } = useWaveformData({
+    initialMeta: backingWaveformMeta,
+    initialData: requestedCollaboration?.backingWaveformPreview ?? null,
+    enabled: Boolean(requestedCollaboration?.backingTrackPath || requestedCollaboration?.backingWaveformPreview),
+    deferLoad: false
+  });
+
+  const backingWaveformState = backingWaveformData
+    ? 'ready'
+    : backingWaveformUiState === 'loading'
+      ? 'loading'
+      : 'placeholder';
 
   useStageRedirect({
     expected: 'submission',
@@ -213,40 +243,24 @@ export function SubmissionView() {
   const isCollabReady = Boolean(collaborationId && requestedCollaboration?.id === collaborationId);
   const statusKey = `${user?.uid ?? 'anon'}:${collaborationId ?? 'none'}`;
   const isStatusResolved = isCollabReady && !authLoading && resolvedStatusKey === statusKey;
+  const isSubmissionLoading = isLoadingCollaboration
+    || loader.status === 'loading'
+    || !isCollabReady
+    || !isStatusResolved
+    || status === 'loading';
 
-  if (loader.status === 'loading' || !isCollabReady) {
+  if (isSubmissionLoading) {
     return (
       <div className={`view-container ${styles.container}`}>
-        <div className={styles.content}>
-          <div className={styles.submissionsSection}>
-            <div className={styles.submissionPaneWrapper}>
-              <div className={styles.submissionPane}>
-                <div className={styles.loadingSpinnerWrap}>
-                  <LoadingSpinner size={32} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className={`mixer-theme ${styles.mixerSection}`}>
-            {state && <Mixer state={state} />}
-          </div>
+        <div className={styles.loadingState}>
+          <LoadingSpinner size={36} />
+          <div className={styles.loadingText}>Loading submission view...</div>
         </div>
       </div>
     );
   }
 
   const renderPane = () => {
-    if (!isStatusResolved || status === 'loading') {
-      return (
-        <div className={styles.submissionPane}>
-          <div className={styles.loadingSpinnerWrap}>
-            <LoadingSpinner size={32} />
-          </div>
-        </div>
-      );
-    }
-
     if (status === 'submitted' && user) {
       return (
         <div className={styles.submissionPane}>
@@ -283,6 +297,15 @@ export function SubmissionView() {
                 ? 'Only active members of an attached group can submit to this collaboration.'
                 : 'Sign in to submit to this collaboration.'}
             </div>
+            {!user && (
+              <button
+                type="button"
+                className={styles.authCta}
+                onClick={() => navigate('/auth?mode=login')}
+              >
+                Log in
+              </button>
+            )}
           </div>
         </div>
       );
@@ -306,6 +329,8 @@ export function SubmissionView() {
         <UploadSubmission
           collaborationId={collaborationId}
           backingUrl={backingUrl}
+          backingWaveformData={backingWaveformData}
+          backingWaveformState={backingWaveformState}
           onSubmitSuccess={() => setStatus('submitted')}
         />
       );
@@ -316,6 +341,8 @@ export function SubmissionView() {
         <UploadSubmission
           collaborationId={collaborationId}
           backingUrl={backingUrl}
+          backingWaveformData={backingWaveformData}
+          backingWaveformState={backingWaveformState}
           onSubmitSuccess={() => setStatus('submitted')}
         />
       );

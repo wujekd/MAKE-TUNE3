@@ -93,6 +93,7 @@
 
 /* ===== SUBMISSION SECTION (LEFT) ===== */
 .submissionsSection {
+  position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
@@ -109,12 +110,17 @@
 }
 
 .submissionsHeader {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  z-index: 4;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 12px 18px;
-  border-bottom: 1px solid var(--dashboard-panel-border);
-  background: linear-gradient(135deg, rgba(48, 112, 113, 0.08), rgba(10, 18, 19, 0.5));
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
+  pointer-events: none;
 }
 
 .submissionsCounter {
@@ -122,6 +128,12 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--dashboard-text-muted);
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(2, 9, 10, 0.38);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .submissionPaneWrapper {
@@ -129,8 +141,8 @@
   flex: 1;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  padding: 24px;
+  align-items: stretch;
+  padding: 0;
   box-sizing: border-box;
   overflow-y: auto;
 }
@@ -180,6 +192,24 @@
   flex: 1;
 }
 
+.loadingState {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--white);
+}
+
+.loadingText {
+  color: var(--dashboard-text-muted);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .statusCentered {
   display: flex;
   flex: 1;
@@ -188,6 +218,26 @@
   justify-content: center;
   text-align: center;
   gap: 8px;
+}
+
+.authCta {
+  margin-top: 8px;
+  min-height: 38px;
+  padding: 9px 16px;
+  border: 1px solid rgba(239, 123, 58, 0.5);
+  border-radius: 8px;
+  background: rgba(239, 123, 58, 0.14);
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.authCta:hover {
+  border-color: rgba(239, 123, 58, 0.76);
+  background: rgba(239, 123, 58, 0.2);
 }
 
 /* ===== MIXER SECTION (RIGHT) ===== */

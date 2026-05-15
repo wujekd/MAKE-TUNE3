@@ -79,6 +79,16 @@ vi.mock('../../hooks/usePrefetchAudio', () => ({
   usePrefetchAudio: vi.fn()
 }));
 
+vi.mock('../../hooks/useWaveformData', () => ({
+  useWaveformData: () => ({
+    data: null,
+    uiState: 'idle',
+    meta: {},
+    isLoading: false,
+    timedOut: false
+  })
+}));
+
 const initialAppState = useAppStore.getState();
 
 describe('SubmissionView', () => {
@@ -131,7 +141,7 @@ describe('SubmissionView', () => {
     });
   });
 
-  it('shows upload pane for anonymous users once status resolves', async () => {
+  it('shows a login affordance for anonymous users once status resolves', async () => {
     const engine = {
       preloadBacking: vi.fn(),
       unlock: vi.fn().mockResolvedValue(undefined),
@@ -150,8 +160,10 @@ describe('SubmissionView', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('upload-submission')).toHaveTextContent('collab-1');
+      expect(screen.getByRole('heading', { name: /login required/i })).toBeInTheDocument();
     });
+    expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
+    expect(screen.queryByTestId('upload-submission')).not.toBeInTheDocument();
 
     expect(hoisted.hasDownloadedBacking).not.toHaveBeenCalled();
     expect(hoisted.hasUserSubmitted).not.toHaveBeenCalled();
