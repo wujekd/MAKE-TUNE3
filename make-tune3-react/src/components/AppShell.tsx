@@ -4,7 +4,6 @@ import { useAudioStore } from '../stores';
 import './AppShell.css';
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { SHOW_DEBUG_TOOLS } from '../config';
-import { FeedbackButton } from './FeedbackButton';
 import { LoadingSpinner } from './LoadingSpinner';
 
 type Action = { key: string; label: string; onClick: () => void; visible?: boolean; disabled?: boolean };
@@ -242,7 +241,6 @@ export function AppShell() {
           <Outlet />
         )}
       </div>
-      <FeedbackButton />
       <Suspense fallback={null}>
         <FeedbackModal />
       </Suspense>

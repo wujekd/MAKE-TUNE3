@@ -8,6 +8,7 @@ import { BackingWaveformPreview } from './BackingWaveformPreview';
 import { useAudioStore } from '../stores';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { useAppStore } from '../stores/appStore';
+import { useUIStore } from '../stores/useUIStore';
 import { computeStageInfo } from '../utils/stageUtils';
 import styles from '../views/DashboardView.module.css';
 
@@ -24,7 +25,6 @@ interface DashboardCollabsPanelProps {
 }
 
 interface DashboardExploreControlsProps {
-  itemCount: number;
   hasLoaded: boolean;
   selectedTags: string[];
   onTagsChange: (tagKeys: string[]) => void;
@@ -96,10 +96,11 @@ const getStageDetail = (status: string, label?: string | null): string => {
 
 const loadingPlaceholders = [0, 1, 2];
 const feedOptions: Array<{ mode: DashboardFeedMode; label: string }> = [
-  { mode: 'recommended', label: 'recommended' },
-  { mode: 'newest', label: 'newest' },
-  { mode: 'popular', label: 'popular' },
-  { mode: 'ending_soon', label: 'ending soon' }
+  { mode: 'balanced', label: 'balanced' },
+  { mode: 'for_you', label: 'for you' },
+  { mode: 'fresh', label: 'fresh' },
+  { mode: 'active', label: 'active' },
+  { mode: 'closing', label: 'closing soon' }
 ];
 
 export function DashboardCollabsPanel({
@@ -116,7 +117,6 @@ export function DashboardCollabsPanel({
   return (
     <>
       <DashboardExploreControls
-        itemCount={items.length}
         hasLoaded={hasLoaded}
         selectedTags={selectedTags}
         onTagsChange={onTagsChange}
@@ -135,7 +135,6 @@ export function DashboardCollabsPanel({
 }
 
 export function DashboardExploreControls({
-  itemCount,
   hasLoaded,
   selectedTags,
   onTagsChange,
@@ -143,12 +142,7 @@ export function DashboardExploreControls({
   feedMode,
   onFeedModeChange
 }: DashboardExploreControlsProps) {
-  const feedSummary = selectedTags.length > 0
-    ? `${selectedTags.length} tag${selectedTags.length === 1 ? '' : 's'} selected`
-    : 'All tags selected';
-  const loadedSummary = hasLoaded
-    ? `${itemCount} collaboration${itemCount === 1 ? '' : 's'} loaded`
-    : 'Loading collaborations';
+  const openFeedbackModal = useUIStore(state => state.openFeedbackModal);
 
   return (
     <aside className={styles.controlColumn} aria-label="Explore controls">
@@ -168,8 +162,8 @@ export function DashboardExploreControls({
         </div>
 
         <div className={styles.controlGroup}>
-          <div className={styles.controlLabel}>Sort</div>
-          <div className={styles.feedOptions} aria-label="Collaboration feed options">
+          <div className={styles.controlLabel}>Priority</div>
+          <div className={styles.feedOptions} aria-label="Collaboration feed priorities">
             {feedOptions.map(option => (
               <button
                 key={option.mode}
@@ -183,13 +177,25 @@ export function DashboardExploreControls({
           </div>
         </div>
 
-        <div className={styles.controlGroup}>
-          <div className={styles.controlLabel}>Feed status</div>
-          <div className={styles.filterSummary} role="status">
-            <strong>{loadedSummary}</strong>
-            <span>{feedSummary}</span>
-          </div>
-        </div>
+        <button
+          type="button"
+          className={styles.giveFeedbackButton}
+          onClick={() => openFeedbackModal()}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          Give feedback
+        </button>
       </div>
     </aside>
   );

@@ -10,6 +10,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { SmallLEDMeter } from '../components/SmallLEDMeter';
 import { useAudioStore } from '../stores';
 import { useAppStore } from '../stores/appStore';
+import { useUIStore } from '../stores/useUIStore';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { useDashboardIsMobile } from '../hooks/useDashboardIsMobile';
 import { useDashboardViewModel, type DashboardViewModel } from '../hooks/useDashboardViewModel';
@@ -258,7 +259,7 @@ function DashboardMobileLayout({ viewModel }: { viewModel: DashboardViewModel })
             <div className={styles.mobilePanelHeader}>
               <div>
                 <h4>Explore feed</h4>
-                <p>{items.length} loaded - {selectedTags.length || 'all'} tags - {feedModeLabel}</p>
+                <p>{selectedTags.length || 'all'} tags - {feedModeLabel}</p>
               </div>
               <button
                 type="button"
@@ -272,7 +273,6 @@ function DashboardMobileLayout({ viewModel }: { viewModel: DashboardViewModel })
             {exploreControlsOpen && (
               <div className={styles.mobileControlSheet}>
                 <DashboardExploreControls
-                  itemCount={items.length}
                   hasLoaded={hasLoaded}
                   selectedTags={selectedTags}
                   onTagsChange={setSelectedTags}
@@ -498,9 +498,9 @@ function MobileProfileActions({
 
 function ProfileControls({
   activeMode,
-  isSignedIn,
+  isSignedIn: _isSignedIn,
   onAccount,
-  onCreateProject,
+  onCreateProject: _onCreateProject,
   onOpenProjects,
   onOpenActivity,
   onExplore
@@ -513,25 +513,7 @@ function ProfileControls({
   onOpenActivity: () => void;
   onExplore: () => void;
 }) {
-  const summary = activeMode === 'account'
-    ? {
-        title: isSignedIn ? 'Account workbench' : 'Login required',
-        text: isSignedIn ? 'Profile settings stay in the center bay.' : 'Sign in to use profile controls.'
-      }
-    : activeMode === 'activity'
-      ? {
-          title: isSignedIn ? 'Activity workbench' : 'Login required',
-          text: isSignedIn ? 'Your recent activity stays in the center bay.' : 'Sign in to review your activity.'
-        }
-      : activeMode === 'create'
-        ? {
-            title: isSignedIn ? 'Create project' : 'Login required',
-            text: isSignedIn ? 'Set up a project in the center bay.' : 'Sign in to create projects.'
-          }
-      : {
-          title: isSignedIn ? 'Project workbench' : 'Login required',
-          text: isSignedIn ? 'Your project list stays in the center bay.' : 'Sign in to create or manage projects.'
-        };
+  const openFeedbackModal = useUIStore(state => state.openFeedbackModal);
 
   return (
     <aside className={styles.controlColumn} aria-label="Profile controls">
@@ -567,20 +549,25 @@ function ProfileControls({
             Back to Explore feed
           </button>
         </div>
-        <div className={styles.controlGroup}>
-          <div className={styles.controlLabel}>Quick action</div>
-          <button
-            type="button"
-            className={`${styles.workbenchPrimary} ${activeMode === 'create' ? styles.workbenchPrimaryActive : ''}`}
-            onClick={onCreateProject}
+        <button
+          type="button"
+          className={styles.giveFeedbackButton}
+          onClick={() => openFeedbackModal()}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            Create project
-          </button>
-        </div>
-        <div className={styles.filterSummary}>
-          <strong>{summary.title}</strong>
-          <span>{summary.text}</span>
-        </div>
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          Give feedback
+        </button>
       </div>
     </aside>
   );
@@ -925,7 +912,7 @@ function GroupsWorkbench({
             </button>
             <button
               type="button"
-              className={`${styles.workbenchToggle} ${mode === 'create' ? styles.workbenchToggleActive : ''}`}
+              className={`${styles.workbenchPrimary} ${mode === 'create' ? styles.workbenchPrimaryActive : ''}`}
               onClick={() => setMode('create')}
             >
               Create group

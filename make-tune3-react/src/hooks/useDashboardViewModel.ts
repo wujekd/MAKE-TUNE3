@@ -25,6 +25,14 @@ type DashboardStats = {
   activeCollabs: number;
 };
 
+const FEED_PRIORITY_LABELS: Record<DashboardFeedMode, string> = {
+  balanced: 'balanced',
+  for_you: 'for you',
+  fresh: 'fresh',
+  active: 'active',
+  closing: 'closing soon'
+};
+
 export function useDashboardViewModel() {
   const [items, setItems] = useState<DashboardFeedItem[]>([]);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -38,7 +46,7 @@ export function useDashboardViewModel() {
   const [error, setError] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<DashboardTagOption[]>([]);
-  const [feedMode, setFeedMode] = useState<DashboardFeedMode>('recommended');
+  const [feedMode, setFeedMode] = useState<DashboardFeedMode>('balanced');
   const [feedMetaLabel, setFeedMetaLabel] = useState('');
   const [stats, setStats] = useState<DashboardStats>({
     totalCollabs: 0,
@@ -181,13 +189,29 @@ export function useDashboardViewModel() {
 
     (async () => {
       try {
-        const feed = await DashboardFeedService.loadFeed({
+        const baseFeed = await DashboardFeedService.loadFeed({
           mode: feedMode,
-          selectedTags
+          selectedTags,
+          includeRecommendations: false
         });
         if (!mounted) return;
-        setItems(feed.items);
-        setFeedMetaLabel(feed.metaLabel);
+        setItems(baseFeed.items);
+        setFeedMetaLabel(baseFeed.metaLabel);
+        setHasLoaded(true);
+        hasLoadedFeedRef.current = true;
+
+        if (!userId) {
+          return;
+        }
+
+        const personalizedFeed = await DashboardFeedService.loadFeed({
+          mode: feedMode,
+          selectedTags,
+          includeRecommendations: true
+        });
+        if (!mounted) return;
+        setItems(personalizedFeed.items);
+        setFeedMetaLabel(personalizedFeed.metaLabel);
       } catch (e: any) {
         if (!mounted) return;
         setItems([]);
@@ -243,7 +267,7 @@ export function useDashboardViewModel() {
     setCreateGroupRequestKey(key => key + 1);
   };
 
-  const feedModeLabel = feedMode.replace('_', ' ');
+  const feedModeLabel = FEED_PRIORITY_LABELS[feedMode];
   const activeProfileMode: DashboardProfileMode = activeWorkbench === 'account'
     ? 'account'
     : activeWorkbench === 'projects'

@@ -197,19 +197,6 @@ export function DashboardHeader({
           >
             Explore feed
           </button>
-          <button
-            type="button"
-            className={styles.consoleButton}
-            onClick={() => {
-              if (user) {
-                openFeedbackModal();
-              } else {
-                navigate('/auth');
-              }
-            }}
-          >
-            Feedback
-          </button>
         </div>
       </div>
     </section>

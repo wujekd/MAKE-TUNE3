@@ -45,7 +45,7 @@ const defaultProps = {
   selectedTags: [],
   onTagsChange: vi.fn(),
   availableTags: [{ key: 'house', name: 'House', count: 4 }],
-  feedMode: 'recommended' as const,
+  feedMode: 'balanced' as const,
   onFeedModeChange: vi.fn(),
   metaLabel: 'updated recently'
 };
@@ -75,10 +75,11 @@ describe('DashboardCollabsPanel', () => {
     expect(screen.getByRole('heading', { name: /explore feed/i })).toBeInTheDocument();
     expect(screen.queryByText('Filter by Tags')).not.toBeInTheDocument();
     expect(screen.getByRole('searchbox', { name: /search tags/i })).toBeInTheDocument();
-    expect(screen.getByText('recommended')).toBeInTheDocument();
-    expect(screen.getByText('newest')).toBeInTheDocument();
-    expect(screen.getByText('popular')).toBeInTheDocument();
-    expect(screen.getByText('ending soon')).toBeInTheDocument();
+    expect(screen.getByText('balanced')).toBeInTheDocument();
+    expect(screen.getByText('for you')).toBeInTheDocument();
+    expect(screen.getByText('fresh')).toBeInTheDocument();
+    expect(screen.getByText('active')).toBeInTheDocument();
+    expect(screen.getByText('closing soon')).toBeInTheDocument();
     expect(screen.getByText('Night Shift')).toBeInTheDocument();
     expect(screen.getByText('Moonlight Project')).toBeInTheDocument();
     expect(screen.getByText('highlight lead.wav')).toBeInTheDocument();
@@ -96,8 +97,8 @@ describe('DashboardCollabsPanel', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByText('newest'));
-    expect(onFeedModeChange).toHaveBeenCalledWith('newest');
+    fireEvent.click(screen.getByText('fresh'));
+    expect(onFeedModeChange).toHaveBeenCalledWith('fresh');
   });
 
   it('filters visible tag chips from the explore controls search', () => {
