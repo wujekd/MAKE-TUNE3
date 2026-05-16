@@ -1,5 +1,6 @@
 .admin-events {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 16px;
   min-height: 0;
@@ -54,8 +55,12 @@
 
 .admin-events__list {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 
 .admin-events__card {

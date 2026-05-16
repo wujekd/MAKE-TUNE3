@@ -5390,6 +5390,34 @@ export const adminListProjects = onCall({ cors: true }, async (request) => {
   };
 });
 
+const ADMIN_COLLAB_DATE_FIELDS = [
+  "publishedAt",
+  "submissionCloseAt",
+  "votingCloseAt",
+  "completedAt",
+] as const;
+
+const shiftTimestamp = (value: any, offsetMs: number) => {
+  const millis = toMillis(value);
+  return millis === null ? null : Timestamp.fromMillis(millis + offsetMs);
+};
+
+const addDurationSeconds = (base: any, seconds: unknown) => {
+  const baseMillis = toMillis(base);
+  const durationSeconds = typeof seconds === "number" && Number.isFinite(seconds) ? seconds : 0;
+  if (baseMillis === null || durationSeconds <= 0) return null;
+  return Timestamp.fromMillis(baseMillis + durationSeconds * 1000);
+};
+
+const shiftSubmissionEntryDates = (entry: any, offsetMs: number) => {
+  const shifted = { ...entry };
+  for (const field of ["createdAt", "moderatedAt"] as const) {
+    const value = shiftTimestamp(shifted[field], offsetMs);
+    if (value) shifted[field] = value;
+  }
+  return shifted;
+};
+
 export const adminUpdateCollaborationStageDates = onCall({ cors: true }, async (request) => {
   const uid = request.auth?.uid || null;
   const adminData = await requireSiteAdmin(uid);
@@ -5399,10 +5427,15 @@ export const adminUpdateCollaborationStageDates = onCall({ cors: true }, async (
   }
 
   const rawUpdates = request.data?.updates || {};
-  const hasSubmissionCloseAt = Object.prototype.hasOwnProperty.call(rawUpdates, "submissionCloseAt");
-  const hasVotingCloseAt = Object.prototype.hasOwnProperty.call(rawUpdates, "votingCloseAt");
-  if (!hasSubmissionCloseAt && !hasVotingCloseAt) {
-    throw new HttpsError("invalid-argument", "submissionCloseAt or votingCloseAt required");
+  const changedFields = ADMIN_COLLAB_DATE_FIELDS.filter((field) =>
+    Object.prototype.hasOwnProperty.call(rawUpdates, field)
+  );
+  const hasShiftDays = Object.prototype.hasOwnProperty.call(request.data || {}, "shiftDays");
+  if (changedFields.length === 0 && !hasShiftDays) {
+    throw new HttpsError("invalid-argument", "date updates or shiftDays required");
+  }
+  if (changedFields.length > 0 && hasShiftDays) {
+    throw new HttpsError("invalid-argument", "Use date updates or shiftDays, not both");
   }
 
   const parseDeadline = (value: unknown, field: string) => {
@@ -5417,99 +5450,197 @@ export const adminUpdateCollaborationStageDates = onCall({ cors: true }, async (
   const collabRef = db.collection("collaborations").doc(collaborationId);
   const now = Timestamp.now();
 
-  await db.runTransaction(async (tx) => {
-    const collabSnap = await tx.get(collabRef);
-    if (!collabSnap.exists) {
-      throw new HttpsError("not-found", "collaboration not found");
+  const collabSnap = await collabRef.get();
+  if (!collabSnap.exists) {
+    throw new HttpsError("not-found", "collaboration not found");
+  }
+
+  const collabData = collabSnap.data() as any;
+  const updates: Record<string, any> = { updatedAt: now };
+  const changes: Record<string, { from: number | null; to: number | null }> = {};
+  const projectId = String(collabData.projectId || "");
+  const projectRef = projectId ? db.collection("projects").doc(projectId) : null;
+
+  let shiftDays: number | null = null;
+  if (hasShiftDays) {
+    shiftDays = Number(request.data?.shiftDays);
+    if (!Number.isInteger(shiftDays) || shiftDays === 0 || Math.abs(shiftDays) > 3650) {
+      throw new HttpsError("invalid-argument", "shiftDays must be a non-zero whole number between -3650 and 3650");
     }
 
-    const collabData = collabSnap.data() as any;
-    const updates: Record<string, any> = { updatedAt: now };
-    const changes: Record<string, { from: number | null; to: number | null }> = {};
+    const offsetMs = shiftDays * 24 * 60 * 60 * 1000;
+    const effectiveSubmissionCloseAt = collabData.submissionCloseAt
+      ?? addDurationSeconds(collabData.publishedAt, collabData.submissionDuration);
+    const effectiveVotingBase = effectiveSubmissionCloseAt ?? collabData.publishedAt;
+    const effectiveVotingCloseAt = collabData.votingCloseAt
+      ?? addDurationSeconds(effectiveVotingBase, collabData.votingDuration);
 
-    const nextSubmissionCloseAt = hasSubmissionCloseAt
-      ? parseDeadline(rawUpdates.submissionCloseAt, "submissionCloseAt")
-      : collabData.submissionCloseAt ?? null;
-    const nextVotingCloseAt = hasVotingCloseAt
-      ? parseDeadline(rawUpdates.votingCloseAt, "votingCloseAt")
-      : collabData.votingCloseAt ?? null;
+    const shiftSources: Record<string, any> = {
+      publishedAt: collabData.publishedAt ?? null,
+      submissionCloseAt: effectiveSubmissionCloseAt,
+      votingCloseAt: effectiveVotingCloseAt,
+      completedAt: collabData.completedAt ?? null,
+    };
 
-    if (
-      nextSubmissionCloseAt &&
-      nextVotingCloseAt &&
-      nextVotingCloseAt.toMillis() < nextSubmissionCloseAt.toMillis()
-    ) {
-      throw new HttpsError("invalid-argument", "Voting end must be after submission end");
-    }
-
-    if (hasSubmissionCloseAt) {
-      updates.submissionCloseAt = nextSubmissionCloseAt;
-      changes.submissionCloseAt = {
-        from: toMillis(collabData.submissionCloseAt),
-        to: toMillis(nextSubmissionCloseAt),
-      };
-    }
-
-    if (hasVotingCloseAt) {
-      updates.votingCloseAt = nextVotingCloseAt;
-      changes.votingCloseAt = {
-        from: toMillis(collabData.votingCloseAt),
-        to: toMillis(nextVotingCloseAt),
-      };
-    }
-
-    const projectId = String(collabData.projectId || "");
-    const projectRef = projectId ? db.collection("projects").doc(projectId) : null;
-    const projectSnap = projectRef && String(collabData.status || "") === "completed"
-      ? await tx.get(projectRef)
-      : null;
-
-    tx.update(collabRef, updates);
-
-    if (projectId && ACTIVE_COLLAB_STATUSES.has(String(collabData.status || ""))) {
-      const activeStageEnd = collabData.status === "submission"
-        ? nextSubmissionCloseAt
-        : collabData.status === "voting"
-          ? nextVotingCloseAt
-          : null;
-      tx.set(projectRef!, {
-        currentCollaborationId: collaborationId,
-        currentCollaborationStatus: collabData.status,
-        currentCollaborationStageEndsAt: activeStageEnd ?? null,
-        updatedAt: now,
-      }, { merge: true });
-    }
-
-    if (projectRef && projectSnap && String(collabData.status || "") === "completed") {
-      if (projectSnap.exists) {
-        const projectData = projectSnap.data() as any;
-        const history = Array.isArray(projectData.pastCollaborations) ? projectData.pastCollaborations : [];
-        const nextHistory = history.map((entry: any) => {
-          if (entry?.collaborationId !== collaborationId) return entry;
-          return {
-            ...entry,
-            submissionCloseAt: nextSubmissionCloseAt,
-            votingCloseAt: nextVotingCloseAt,
-          };
-        });
-        tx.update(projectRef, {
-          pastCollaborations: nextHistory,
-          updatedAt: now,
-        });
+    for (const field of ADMIN_COLLAB_DATE_FIELDS) {
+      const shifted = shiftTimestamp(shiftSources[field], offsetMs);
+      if (shifted) {
+        updates[field] = shifted;
+        changes[field] = {
+          from: toMillis(collabData[field]),
+          to: shifted.toMillis(),
+        };
       }
     }
 
-    const logRef = db.collection("adminLogs").doc();
-    tx.set(logRef, {
-      adminUid: uid,
-      adminEmail: adminData.email || "unknown",
-      action: "update-collaboration-stage-dates",
-      targetCollaborationId: collaborationId,
-      targetProjectId: projectId || null,
-      changes,
-      createdAt: now,
+    const shiftedResultsComputedAt = shiftTimestamp(collabData.resultsComputedAt, offsetMs);
+    if (shiftedResultsComputedAt) {
+      updates.resultsComputedAt = shiftedResultsComputedAt;
+      changes.resultsComputedAt = {
+        from: toMillis(collabData.resultsComputedAt),
+        to: shiftedResultsComputedAt.toMillis(),
+      };
+    }
+  } else {
+    for (const field of changedFields) {
+      const parsed = parseDeadline(rawUpdates[field], field);
+      updates[field] = parsed;
+      changes[field] = {
+        from: toMillis(collabData[field]),
+        to: toMillis(parsed),
+      };
+    }
+  }
+
+  const nextPublishedAt = Object.prototype.hasOwnProperty.call(updates, "publishedAt")
+    ? updates.publishedAt
+    : collabData.publishedAt ?? null;
+  const nextSubmissionCloseAt = Object.prototype.hasOwnProperty.call(updates, "submissionCloseAt")
+    ? updates.submissionCloseAt
+    : collabData.submissionCloseAt ?? null;
+  const nextVotingCloseAt = Object.prototype.hasOwnProperty.call(updates, "votingCloseAt")
+    ? updates.votingCloseAt
+    : collabData.votingCloseAt ?? null;
+  const nextCompletedAt = Object.prototype.hasOwnProperty.call(updates, "completedAt")
+    ? updates.completedAt
+    : collabData.completedAt ?? null;
+
+  if (
+    nextPublishedAt &&
+    nextSubmissionCloseAt &&
+    nextSubmissionCloseAt.toMillis() < nextPublishedAt.toMillis()
+  ) {
+    throw new HttpsError("invalid-argument", "Submission end must be after publish date");
+  }
+  if (
+    nextSubmissionCloseAt &&
+    nextVotingCloseAt &&
+    nextVotingCloseAt.toMillis() < nextSubmissionCloseAt.toMillis()
+  ) {
+    throw new HttpsError("invalid-argument", "Voting end must be after submission end");
+  }
+  if (
+    nextVotingCloseAt &&
+    nextCompletedAt &&
+    nextCompletedAt.toMillis() < nextVotingCloseAt.toMillis()
+  ) {
+    throw new HttpsError("invalid-argument", "Completed date must be after voting end");
+  }
+
+  const [
+    detailSnap,
+    projectSnap,
+    submissionUsersSnap,
+  ] = await Promise.all([
+    shiftDays !== null ? db.collection("collaborationDetails").doc(collaborationId).get() : Promise.resolve(null),
+    projectRef && String(collabData.status || "") === "completed" ? projectRef.get() : Promise.resolve(null),
+    shiftDays !== null
+      ? db.collection("submissionUsers").where("collaborationId", "==", collaborationId).get()
+      : Promise.resolve(null),
+  ]);
+
+  const extraWrites = (detailSnap?.exists ? 1 : 0)
+    + (submissionUsersSnap?.size || 0)
+    + 3;
+  if (extraWrites > 450) {
+    throw new HttpsError("resource-exhausted", "Too many related submission documents to update safely");
+  }
+
+  const batch = db.batch();
+  batch.update(collabRef, updates);
+
+  if (projectRef && ACTIVE_COLLAB_STATUSES.has(String(collabData.status || ""))) {
+    const activeStageEnd = collabData.status === "submission"
+      ? nextSubmissionCloseAt
+      : collabData.status === "voting"
+        ? nextVotingCloseAt
+        : null;
+    batch.set(projectRef, {
+      currentCollaborationId: collaborationId,
+      currentCollaborationStatus: collabData.status,
+      currentCollaborationStageEndsAt: activeStageEnd ?? null,
+      updatedAt: now,
+    }, { merge: true });
+  }
+
+  if (projectRef && projectSnap?.exists && String(collabData.status || "") === "completed") {
+    const projectData = projectSnap.data() as any;
+    const history = Array.isArray(projectData.pastCollaborations) ? projectData.pastCollaborations : [];
+    const nextHistory = history.map((entry: any) => {
+      if (entry?.collaborationId !== collaborationId) return entry;
+      return {
+        ...entry,
+        publishedAt: nextPublishedAt,
+        submissionCloseAt: nextSubmissionCloseAt,
+        votingCloseAt: nextVotingCloseAt,
+        completedAt: nextCompletedAt,
+      };
     });
+    batch.update(projectRef, {
+      pastCollaborations: nextHistory,
+      updatedAt: now,
+    });
+  }
+
+  if (shiftDays !== null) {
+    const offsetMs = shiftDays * 24 * 60 * 60 * 1000;
+    if (detailSnap?.exists) {
+      const detailData = detailSnap.data() as any;
+      const submissions = Array.isArray(detailData?.submissions)
+        ? detailData.submissions.map((entry: any) => shiftSubmissionEntryDates(entry, offsetMs))
+        : [];
+      batch.set(detailSnap.ref, {
+        collaborationId,
+        submissions,
+        submissionPaths: submissions.map((entry: any) => entry?.path).filter(Boolean),
+        updatedAt: now,
+        createdAt: detailData?.createdAt || now,
+      }, { merge: true });
+    }
+
+    submissionUsersSnap?.docs.forEach((docSnap) => {
+      const submissionData = docSnap.data() as any;
+      const createdAt = shiftTimestamp(submissionData.createdAt, offsetMs);
+      if (createdAt) {
+        batch.update(docSnap.ref, { createdAt });
+      }
+    });
+  }
+
+  const logRef = db.collection("adminLogs").doc();
+  batch.set(logRef, {
+    adminUid: uid,
+    adminEmail: adminData.email || "unknown",
+    action: shiftDays !== null ? "shift-collaboration-dates" : "update-collaboration-dates",
+    targetCollaborationId: collaborationId,
+    targetProjectId: projectId || null,
+    changes,
+    shiftDays,
+    relatedSubmissionUsersUpdated: submissionUsersSnap?.size || 0,
+    createdAt: now,
   });
+
+  await batch.commit();
 
   return { success: true };
 });

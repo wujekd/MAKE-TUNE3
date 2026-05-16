@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import type { DashboardFeedItem, DashboardFeedMode } from '../services/dashboardFeedService';
 import { TagFilter } from './TagFilter';
 import { ListPlayButton } from './ListPlayButton';
@@ -38,6 +39,34 @@ interface DashboardExploreFeedProps {
   error: string | null;
   selectedTags: string[];
 }
+
+type FeedStageInfo = {
+  status: string;
+  startAt: number | null;
+  endAt: number | null;
+  label?: string;
+} | null;
+
+type FeedRow = {
+  item: DashboardFeedItem;
+  route: string;
+  hasBacking: boolean;
+  backingPath?: string;
+  stageInfo: FeedStageInfo;
+  trackLabel: string | null;
+  stageDetail: string;
+  animationDelayMs: number;
+  backingCollaboration: {
+    id: string;
+    name: string;
+    backingTrackPath: DashboardFeedItem['backingTrackPath'];
+    backingWaveformPath: DashboardFeedItem['backingWaveformPath'];
+    backingWaveformStatus: DashboardFeedItem['backingWaveformStatus'];
+    backingWaveformBucketCount: DashboardFeedItem['backingWaveformBucketCount'];
+    backingWaveformVersion: DashboardFeedItem['backingWaveformVersion'];
+    backingWaveformPreview: DashboardFeedItem['backingWaveformPreview'];
+  };
+};
 
 const getTrackLabel = (path: string | null): string | null => {
   if (!path) return null;
@@ -176,6 +205,53 @@ export function DashboardExploreFeed({
   const playBackingTrack = usePlaybackStore(s => s.playBackingTrack);
   const backingPreview = usePlaybackStore(s => s.backingPreview);
   const togglePlayPause = useAppStore(s => s.playback.togglePlayPause);
+  const rows = useMemo(() => items.map((item, itemIndex): FeedRow => {
+    const rawStageInfo = computeStageInfo({
+      status: item.collaborationStatus,
+      submissionCloseAt: item.submissionCloseAt,
+      votingCloseAt: item.votingCloseAt,
+      submissionDurationMs:
+        typeof item.submissionDurationSeconds === 'number'
+          ? item.submissionDurationSeconds * 1000
+          : null,
+      votingDurationMs:
+        typeof item.votingDurationSeconds === 'number'
+          ? item.votingDurationSeconds * 1000
+          : null,
+      publishedAt: item.publishedAt,
+      updatedAt: item.updatedAt
+    });
+    const stageInfo = rawStageInfo
+      ? {
+          status: rawStageInfo.status,
+          startAt: rawStageInfo.startAt ?? null,
+          endAt: rawStageInfo.endAt ?? null,
+          label: rawStageInfo.label ?? undefined
+        }
+      : null;
+    const trackLabel = getTrackLabel(item.highlightedTrackPath);
+
+    return {
+      item,
+      route: getCollaborationRoute(item),
+      hasBacking: Boolean(item.backingTrackPath),
+      backingPath: item.backingTrackPath || undefined,
+      stageInfo,
+      trackLabel,
+      stageDetail: getStageDetail(stageInfo?.status || item.collaborationStatus, stageInfo?.label),
+      animationDelayMs: Math.min(itemIndex, 12) * 160,
+      backingCollaboration: {
+        id: item.collaborationId,
+        name: item.collaborationName,
+        backingTrackPath: item.backingTrackPath,
+        backingWaveformPath: item.backingWaveformPath,
+        backingWaveformStatus: item.backingWaveformStatus,
+        backingWaveformBucketCount: item.backingWaveformBucketCount,
+        backingWaveformVersion: item.backingWaveformVersion,
+        backingWaveformPreview: item.backingWaveformPreview
+      }
+    };
+  }), [items]);
 
   return (
       <div id="collaboration-feed" className={`project-history ${styles.historyColumn}`}>
@@ -212,10 +288,8 @@ export function DashboardExploreFeed({
                 </div>
               </div>
             )}
-            {items.map((item, itemIndex) => {
-              const hasBacking = Boolean(item.backingTrackPath);
-              const backingPath = item.backingTrackPath || undefined;
-              const isCurrentBacking = hasBacking && backingPreview?.path === backingPath;
+            {rows.map(row => {
+              const isCurrentBacking = row.hasBacking && backingPreview?.path === row.backingPath;
               const displayProgress = isCurrentBacking && audioState?.player2.duration && audioState.player2.duration > 0
                 ? ((audioState?.player2.currentTime ?? 0) / audioState.player2.duration) * 100
                 : 0;
@@ -223,114 +297,18 @@ export function DashboardExploreFeed({
               const backingDuration = isCurrentBacking ? (audioState?.player2.duration ?? 0) : 0;
               const isBackingPlaying = isCurrentBacking ? Boolean(audioState?.player2.isPlaying) : false;
 
-              const rawStageInfo = computeStageInfo({
-                status: item.collaborationStatus,
-                submissionCloseAt: item.submissionCloseAt,
-                votingCloseAt: item.votingCloseAt,
-                submissionDurationMs:
-                  typeof item.submissionDurationSeconds === 'number'
-                    ? item.submissionDurationSeconds * 1000
-                    : null,
-                votingDurationMs:
-                  typeof item.votingDurationSeconds === 'number'
-                    ? item.votingDurationSeconds * 1000
-                    : null,
-                publishedAt: item.publishedAt,
-                updatedAt: item.updatedAt
-              });
-              const stageInfo = rawStageInfo
-                ? {
-                    status: rawStageInfo.status,
-                    startAt: rawStageInfo.startAt ?? null,
-                    endAt: rawStageInfo.endAt ?? null,
-                    label: rawStageInfo.label ?? undefined
-                  }
-                : null;
-              const trackLabel = getTrackLabel(item.highlightedTrackPath);
-              const stageDetail = getStageDetail(stageInfo?.status || item.collaborationStatus, stageInfo?.label);
-
               return (
-                <CollabListItem
-                  key={`${item.collaborationId}-${item.source}`}
-                  to={getCollaborationRoute(item)}
-                  title={(
-                    <span className={styles.feedTitleLine}>
-                      <span className={styles.feedCollabName}>
-                        {item.collaborationName || 'untitled collaboration'}
-                      </span>
-                      {item.projectName && (
-                        <span className={styles.feedProjectInline}>{item.projectName}</span>
-                      )}
-                    </span>
-                  )}
-                  subtitle={item.collaborationStatus}
-                  isActive={isCurrentBacking}
-                  progressPercent={isCurrentBacking ? displayProgress : undefined}
-                  listVariant
-                  stageInfo={stageInfo}
-                  footerSlot={hasBacking ? (
-                    <BackingWaveformPreview
-                      collaboration={{
-                        id: item.collaborationId,
-                        name: item.collaborationName,
-                        backingTrackPath: item.backingTrackPath,
-                        backingWaveformPath: item.backingWaveformPath,
-                        backingWaveformStatus: item.backingWaveformStatus,
-                        backingWaveformBucketCount: item.backingWaveformBucketCount,
-                        backingWaveformVersion: item.backingWaveformVersion,
-                        backingWaveformPreview: item.backingWaveformPreview
-                      } as any}
-                      isActive={isCurrentBacking}
-                      progress={displayProgress / 100}
-                      currentTime={backingCurrentTime}
-                      duration={backingDuration}
-                      isPlaying={isBackingPlaying}
-                      animationDelayMs={Math.min(itemIndex, 12) * 160}
-                      underlayAlpha={0.46}
-                      waveformAlpha={1.22}
-                    />
-                  ) : undefined}
-                  rightSlot={
-                    <ListPlayButton
-                      isPlaying={audioState?.player2.isPlaying || false}
-                      isCurrentTrack={isCurrentBacking}
-                      disabled={!hasBacking}
-                      onPlay={() => {
-                        if (!hasBacking || !backingPath) return;
-                        if (isCurrentBacking) {
-                          togglePlayPause();
-                        } else {
-                          playBackingTrack(backingPath, item.collaborationName || 'backing');
-                        }
-                      }}
-                    />
-                  }
-                  footerMetaSlot={item.collaborationTags.length > 0 ? (
-                    <div className={styles.tagRow}>
-                      {item.collaborationTags.map((tag, index) => (
-                        <span key={`${item.collaborationId}-${tag}-${index}`} className={styles.tagChip}>
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  ) : undefined}
-                >
-                  {(stageDetail || item.rank || item.collaborationDescription || trackLabel) && (
-                    <div className={styles.feedItemMetaBlock}>
-                      <div className={styles.feedMetaRow}>
-                        {trackLabel && (
-                          <span className={styles.feedPill}>{trackLabel}</span>
-                        )}
-                        {!trackLabel && item.collaborationDescription && (
-                          <span className={styles.feedDescription}>{item.collaborationDescription}</span>
-                        )}
-                        {stageDetail && (
-                          <span className={styles.feedStageDetail}>{stageDetail}</span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </CollabListItem>
+                <DashboardExploreFeedRow
+                  key={`${row.item.collaborationId}-${row.item.source}`}
+                  row={row}
+                  isCurrentBacking={isCurrentBacking}
+                  displayProgress={displayProgress}
+                  backingCurrentTime={backingCurrentTime}
+                  backingDuration={backingDuration}
+                  isBackingPlaying={isBackingPlaying}
+                  onTogglePlayPause={togglePlayPause}
+                  onPlayBackingTrack={playBackingTrack}
+                />
               );
             })}
           </div>
@@ -338,3 +316,99 @@ export function DashboardExploreFeed({
       </div>
   );
 }
+
+const DashboardExploreFeedRow = memo(function DashboardExploreFeedRow({
+  row,
+  isCurrentBacking,
+  displayProgress,
+  backingCurrentTime,
+  backingDuration,
+  isBackingPlaying,
+  onTogglePlayPause,
+  onPlayBackingTrack
+}: {
+  row: FeedRow;
+  isCurrentBacking: boolean;
+  displayProgress: number;
+  backingCurrentTime: number;
+  backingDuration: number;
+  isBackingPlaying: boolean;
+  onTogglePlayPause: () => void;
+  onPlayBackingTrack: (filePath: string, label?: string, startRatio?: number) => void;
+}) {
+  const { item } = row;
+
+  return (
+    <CollabListItem
+      to={row.route}
+      title={(
+        <span className={styles.feedTitleLine}>
+          <span className={styles.feedCollabName}>
+            {item.collaborationName || 'untitled collaboration'}
+          </span>
+          {item.projectName && (
+            <span className={styles.feedProjectInline}>{item.projectName}</span>
+          )}
+        </span>
+      )}
+      subtitle={item.collaborationStatus}
+      isActive={isCurrentBacking}
+      progressPercent={isCurrentBacking ? displayProgress : undefined}
+      listVariant
+      stageInfo={row.stageInfo}
+      footerSlot={row.hasBacking ? (
+        <BackingWaveformPreview
+          collaboration={row.backingCollaboration as any}
+          isActive={isCurrentBacking}
+          progress={displayProgress / 100}
+          currentTime={backingCurrentTime}
+          duration={backingDuration}
+          isPlaying={isBackingPlaying}
+          animationDelayMs={row.animationDelayMs}
+          underlayAlpha={0.46}
+          waveformAlpha={1.22}
+        />
+      ) : undefined}
+      rightSlot={
+        <ListPlayButton
+          isPlaying={isBackingPlaying}
+          isCurrentTrack={isCurrentBacking}
+          disabled={!row.hasBacking}
+          onPlay={() => {
+            if (!row.hasBacking || !row.backingPath) return;
+            if (isCurrentBacking) {
+              onTogglePlayPause();
+            } else {
+              onPlayBackingTrack(row.backingPath, item.collaborationName || 'backing');
+            }
+          }}
+        />
+      }
+      footerMetaSlot={item.collaborationTags.length > 0 ? (
+        <div className={styles.tagRow}>
+          {item.collaborationTags.map((tag, index) => (
+            <span key={`${item.collaborationId}-${tag}-${index}`} className={styles.tagChip}>
+              {tag}
+            </span>
+          ))}
+        </div>
+      ) : undefined}
+    >
+      {(row.stageDetail || item.rank || item.collaborationDescription || row.trackLabel) && (
+        <div className={styles.feedItemMetaBlock}>
+          <div className={styles.feedMetaRow}>
+            {row.trackLabel && (
+              <span className={styles.feedPill}>{row.trackLabel}</span>
+            )}
+            {!row.trackLabel && item.collaborationDescription && (
+              <span className={styles.feedDescription}>{item.collaborationDescription}</span>
+            )}
+            {row.stageDetail && (
+              <span className={styles.feedStageDetail}>{row.stageDetail}</span>
+            )}
+          </div>
+        </div>
+      )}
+    </CollabListItem>
+  );
+});

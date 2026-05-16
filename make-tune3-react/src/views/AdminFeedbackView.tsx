@@ -156,191 +156,195 @@ export function AdminFeedbackView() {
 
   return (
     <AdminLayout title="User Feedback">
-      <div className="admin-feedback__filters">
-        <div className="admin-feedback__filter">
-          <label>Category</label>
-          <select
-            value={filterCategory}
-            onChange={e => setFilterCategory(e.target.value as FeedbackCategory | '')}
-          >
-            <option value="">All Categories</option>
-            {(Object.keys(CATEGORY_LABELS) as FeedbackCategory[]).map(cat => (
-              <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
-            ))}
-          </select>
+      <div className="admin-feedback">
+        <div className="admin-feedback__filters">
+          <div className="admin-feedback__filter">
+            <label>Category</label>
+            <select
+              value={filterCategory}
+              onChange={e => setFilterCategory(e.target.value as FeedbackCategory | '')}
+            >
+              <option value="">All Categories</option>
+              {(Object.keys(CATEGORY_LABELS) as FeedbackCategory[]).map(cat => (
+                <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
+              ))}
+            </select>
+          </div>
+          <div className="admin-feedback__filter">
+            <label>Status</label>
+            <select
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value as FeedbackStatus | '')}
+            >
+              <option value="">All Statuses</option>
+              {(Object.keys(STATUS_LABELS) as FeedbackStatus[]).map(status => (
+                <option key={status} value={status}>{STATUS_LABELS[status]}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className="admin-feedback__filter">
-          <label>Status</label>
-          <select
-            value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value as FeedbackStatus | '')}
-          >
-            <option value="">All Statuses</option>
-            {(Object.keys(STATUS_LABELS) as FeedbackStatus[]).map(status => (
-              <option key={status} value={status}>{STATUS_LABELS[status]}</option>
-            ))}
-          </select>
+
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          color: 'var(--white)',
+          opacity: 0.7,
+          fontSize: 14,
+          marginBottom: 8
+        }}>
+          <span>
+            {loading ? 'Loading...' : `Page ${currentPage + 1}`}
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 0 || loading}
+              style={{ padding: '4px 12px', fontSize: 12, backgroundColor: 'var(--primary1-600)', border: '1px solid var(--primary1-500)', borderRadius: 4, color: 'var(--white)', cursor: 'pointer' }}
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={!hasMore || loading}
+              style={{ padding: '4px 12px', fontSize: 12, backgroundColor: 'var(--primary1-600)', border: '1px solid var(--primary1-500)', borderRadius: 4, color: 'var(--white)', cursor: 'pointer' }}
+            >
+              Next
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        color: 'var(--white)',
-        opacity: 0.7,
-        fontSize: 14,
-        marginBottom: 8
-      }}>
-        <span>
-          {loading ? 'Loading...' : `Page ${currentPage + 1}`}
-        </span>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            onClick={() => goToPage(currentPage - 1)}
-            disabled={currentPage === 0 || loading}
-            style={{ padding: '4px 12px', fontSize: 12, backgroundColor: 'var(--primary1-600)', border: '1px solid var(--primary1-500)', borderRadius: 4, color: 'var(--white)', cursor: 'pointer' }}
-          >
-            Previous
-          </button>
-          <button
-            onClick={() => goToPage(currentPage + 1)}
-            disabled={!hasMore || loading}
-            style={{ padding: '4px 12px', fontSize: 12, backgroundColor: 'var(--primary1-600)', border: '1px solid var(--primary1-500)', borderRadius: 4, color: 'var(--white)', cursor: 'pointer' }}
-          >
-            Next
-          </button>
-        </div>
-      </div>
+        <div className="admin-feedback__scroll">
+          {loading ? (
+            <p className="admin-feedback__loading">Loading feedback...</p>
+          ) : feedback.length === 0 ? (
+            <p className="admin-feedback__empty">No feedback found.</p>
+          ) : (
+            <div className="admin-feedback__list">
+              {feedback.map(item => {
+                const isExpanded = expandedId === item.id;
+                const isProcessing = processing === item.id;
 
-      {loading ? (
-        <p className="admin-feedback__loading">Loading feedback...</p>
-      ) : feedback.length === 0 ? (
-        <p className="admin-feedback__empty">No feedback found.</p>
-      ) : (
-        <div className="admin-feedback__list">
-          {feedback.map(item => {
-            const isExpanded = expandedId === item.id;
-            const isProcessing = processing === item.id;
-
-            return (
-              <div key={item.id} className="admin-feedback__card">
-                <div
-                  className="admin-feedback__card-header"
-                  onClick={() => setExpandedId(isExpanded ? null : item.id)}
-                >
-                  <div className="admin-feedback__card-meta">
-                    <span className={`admin-feedback__badge admin-feedback__badge--${item.category}`}>
-                      {CATEGORY_LABELS[item.category as FeedbackCategory] || item.category}
-                    </span>
-                    <span className={`admin-feedback__status admin-feedback__status--${item.status}`}>
-                      {STATUS_LABELS[item.status as FeedbackStatus] || item.status}
-                    </span>
-                  </div>
-                  <p className="admin-feedback__preview">
-                    {item.message.length > 100 ? `${item.message.slice(0, 100)}...` : item.message}
-                  </p>
-                  <div className="admin-feedback__card-info">
-                    <span>Route: {item.route}</span>
-                    <span>{formatDate(item.createdAt)}</span>
-                  </div>
-                </div>
-
-                {isExpanded && (
-                  <div className="admin-feedback__card-detail">
-                    <div className="admin-feedback__detail-section">
-                      <label>User ID</label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <code>{item.uid}</code>
-                        <button
-                          onClick={() => handleCopyUid(item.uid)}
-                          className="admin-feedback__btn admin-feedback__btn--secondary"
-                          style={{ padding: '4px 10px', fontSize: 12 }}
-                        >
-                          {copiedUid === item.uid ? 'Copied!' : 'Copy'}
-                        </button>
+                return (
+                  <div key={item.id} className="admin-feedback__card">
+                    <div
+                      className="admin-feedback__card-header"
+                      onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                    >
+                      <div className="admin-feedback__card-meta">
+                        <span className={`admin-feedback__badge admin-feedback__badge--${item.category}`}>
+                          {CATEGORY_LABELS[item.category as FeedbackCategory] || item.category}
+                        </span>
+                        <span className={`admin-feedback__status admin-feedback__status--${item.status}`}>
+                          {STATUS_LABELS[item.status as FeedbackStatus] || item.status}
+                        </span>
+                      </div>
+                      <p className="admin-feedback__preview">
+                        {item.message.length > 100 ? `${item.message.slice(0, 100)}...` : item.message}
+                      </p>
+                      <div className="admin-feedback__card-info">
+                        <span>Route: {item.route}</span>
+                        <span>{formatDate(item.createdAt)}</span>
                       </div>
                     </div>
 
-                    <div className="admin-feedback__detail-section">
-                      <label>Full Message</label>
-                      <div className="admin-feedback__message-box">{item.message}</div>
-                    </div>
+                    {isExpanded && (
+                      <div className="admin-feedback__card-detail">
+                        <div className="admin-feedback__detail-section">
+                          <label>User ID</label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <code>{item.uid}</code>
+                            <button
+                              onClick={() => handleCopyUid(item.uid)}
+                              className="admin-feedback__btn admin-feedback__btn--secondary"
+                              style={{ padding: '4px 10px', fontSize: 12 }}
+                            >
+                              {copiedUid === item.uid ? 'Copied!' : 'Copy'}
+                            </button>
+                          </div>
+                        </div>
 
-                    {item.answers && (
-                      <div className="admin-feedback__detail-section">
-                        <label>Creator Request Answers</label>
-                        <div className="admin-feedback__answers">
-                          <div className="admin-feedback__answer">
-                            <strong>What kind of project would you create?</strong>
-                            <p>{item.answers.q1}</p>
+                        <div className="admin-feedback__detail-section">
+                          <label>Full Message</label>
+                          <div className="admin-feedback__message-box">{item.message}</div>
+                        </div>
+
+                        {item.answers && (
+                          <div className="admin-feedback__detail-section">
+                            <label>Creator Request Answers</label>
+                            <div className="admin-feedback__answers">
+                              <div className="admin-feedback__answer">
+                                <strong>What kind of project would you create?</strong>
+                                <p>{item.answers.q1}</p>
+                              </div>
+                              <div className="admin-feedback__answer">
+                                <strong>Do you have experience with music production?</strong>
+                                <p>{item.answers.q2}</p>
+                              </div>
+                              <div className="admin-feedback__answer">
+                                <strong>How did you hear about us?</strong>
+                                <p>{item.answers.q3}</p>
+                              </div>
+                            </div>
                           </div>
-                          <div className="admin-feedback__answer">
-                            <strong>Do you have experience with music production?</strong>
-                            <p>{item.answers.q2}</p>
+                        )}
+
+                        {item.adminNote && (
+                          <div className="admin-feedback__detail-section">
+                            <label>Admin Note</label>
+                            <div className="admin-feedback__note-display">{item.adminNote}</div>
                           </div>
-                          <div className="admin-feedback__answer">
-                            <strong>How did you hear about us?</strong>
-                            <p>{item.answers.q3}</p>
-                          </div>
+                        )}
+
+                        <div className="admin-feedback__detail-section">
+                          <label>Add/Update Note</label>
+                          <textarea
+                            className="admin-feedback__note-input"
+                            placeholder="Add an admin note..."
+                            value={noteInputs[item.id] || ''}
+                            onChange={e => setNoteInputs(prev => ({ ...prev, [item.id]: e.target.value }))}
+                            disabled={isProcessing}
+                          />
+                        </div>
+
+                        <div className="admin-feedback__actions">
+                          {item.status === 'new' && (
+                            <button
+                              className="admin-feedback__btn admin-feedback__btn--secondary"
+                              onClick={() => handleUpdateStatus(item.id, 'reviewed')}
+                              disabled={isProcessing}
+                            >
+                              {isProcessing ? 'Processing...' : 'Mark Reviewed'}
+                            </button>
+                          )}
+                          {item.status !== 'resolved' && (
+                            <button
+                              className="admin-feedback__btn admin-feedback__btn--secondary"
+                              onClick={() => handleUpdateStatus(item.id, 'resolved')}
+                              disabled={isProcessing}
+                            >
+                              {isProcessing ? 'Processing...' : 'Mark Resolved'}
+                            </button>
+                          )}
+                          {item.category === 'creator_request' && item.status !== 'resolved' && (
+                            <button
+                              className="admin-feedback__btn admin-feedback__btn--primary"
+                              onClick={() => handleGrantAccess(item)}
+                              disabled={isProcessing}
+                            >
+                              {isProcessing ? 'Processing...' : 'Grant Creator Access'}
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}
-
-                    {item.adminNote && (
-                      <div className="admin-feedback__detail-section">
-                        <label>Admin Note</label>
-                        <div className="admin-feedback__note-display">{item.adminNote}</div>
-                      </div>
-                    )}
-
-                    <div className="admin-feedback__detail-section">
-                      <label>Add/Update Note</label>
-                      <textarea
-                        className="admin-feedback__note-input"
-                        placeholder="Add an admin note..."
-                        value={noteInputs[item.id] || ''}
-                        onChange={e => setNoteInputs(prev => ({ ...prev, [item.id]: e.target.value }))}
-                        disabled={isProcessing}
-                      />
-                    </div>
-
-                    <div className="admin-feedback__actions">
-                      {item.status === 'new' && (
-                        <button
-                          className="admin-feedback__btn admin-feedback__btn--secondary"
-                          onClick={() => handleUpdateStatus(item.id, 'reviewed')}
-                          disabled={isProcessing}
-                        >
-                          {isProcessing ? 'Processing...' : 'Mark Reviewed'}
-                        </button>
-                      )}
-                      {item.status !== 'resolved' && (
-                        <button
-                          className="admin-feedback__btn admin-feedback__btn--secondary"
-                          onClick={() => handleUpdateStatus(item.id, 'resolved')}
-                          disabled={isProcessing}
-                        >
-                          {isProcessing ? 'Processing...' : 'Mark Resolved'}
-                        </button>
-                      )}
-                      {item.category === 'creator_request' && item.status !== 'resolved' && (
-                        <button
-                          className="admin-feedback__btn admin-feedback__btn--primary"
-                          onClick={() => handleGrantAccess(item)}
-                          disabled={isProcessing}
-                        >
-                          {isProcessing ? 'Processing...' : 'Grant Creator Access'}
-                        </button>
-                      )}
-                    </div>
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </AdminLayout>
   );
 }

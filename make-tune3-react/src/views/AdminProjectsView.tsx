@@ -6,8 +6,14 @@ import { AdminLayout } from '../components/AdminLayout';
 import { useAppStore } from '../stores/appStore';
 import './AdminProjectsView.css';
 
-type StageDateField = 'submissionCloseAt' | 'votingCloseAt';
+type CollabDateField = 'publishedAt' | 'submissionCloseAt' | 'votingCloseAt' | 'completedAt';
 type StageDateSource = 'saved' | 'estimated' | 'missing';
+type DateModalState = {
+  projectId: string;
+  collab: AdminCollaborationSummary;
+};
+
+const DATE_FIELDS: CollabDateField[] = ['publishedAt', 'submissionCloseAt', 'votingCloseAt', 'completedAt'];
 
 const statusLabel = (status: string) => {
   const normalized = String(status || 'unknown').replace(/[_-]/g, ' ');
@@ -19,16 +25,6 @@ const formatDate = (millis: number | null) => {
   const date = new Date(millis);
   if (Number.isNaN(date.getTime())) return 'Not set';
   return date.toLocaleString();
-};
-
-const formatDuration = (seconds: number | null) => {
-  if (!seconds || seconds <= 0) return 'Not set';
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  if (days > 0 && hours > 0) return `${days}d ${hours}h`;
-  if (days > 0) return `${days}d`;
-  if (hours > 0) return `${hours}h`;
-  return `${Math.floor(seconds / 60)}m`;
 };
 
 const formatDateInput = (millis: number | null) => {
@@ -45,8 +41,18 @@ const parseDateInput = (value: string) => {
   return Number.isFinite(millis) ? millis : null;
 };
 
-const fieldLabel = (field: StageDateField) =>
-  field === 'submissionCloseAt' ? 'Submission ends' : 'Voting ends';
+const fieldLabel = (field: CollabDateField) => {
+  switch (field) {
+    case 'publishedAt':
+      return 'Published';
+    case 'submissionCloseAt':
+      return 'Submission ends';
+    case 'votingCloseAt':
+      return 'Voting ends';
+    case 'completedAt':
+      return 'Completed';
+  }
+};
 
 const addSeconds = (millis: number | null, seconds: number | null) => {
   if (!millis || !seconds || seconds <= 0) return null;
@@ -62,12 +68,15 @@ const getVotingEnd = (collab: AdminCollaborationSummary) => {
   return addSeconds(submissionEnd ?? collab.publishedAt, collab.votingDuration);
 };
 
-const getStageDateValue = (collab: AdminCollaborationSummary, field: StageDateField) =>
-  field === 'submissionCloseAt' ? getSubmissionEnd(collab) : getVotingEnd(collab);
+const getDateValue = (collab: AdminCollaborationSummary, field: CollabDateField) => {
+  if (field === 'submissionCloseAt') return getSubmissionEnd(collab);
+  if (field === 'votingCloseAt') return getVotingEnd(collab);
+  return collab[field] ?? null;
+};
 
-const getStageDateSource = (collab: AdminCollaborationSummary, field: StageDateField): StageDateSource => {
+const getDateSource = (collab: AdminCollaborationSummary, field: CollabDateField): StageDateSource => {
   if (collab[field]) return 'saved';
-  return getStageDateValue(collab, field) ? 'estimated' : 'missing';
+  return getDateValue(collab, field) ? 'estimated' : 'missing';
 };
 
 const getActiveDeadline = (collab: AdminCollaborationSummary) => {
@@ -82,7 +91,14 @@ export function AdminProjectsView() {
   const [error, setError] = useState<string | null>(null);
   const [actionTarget, setActionTarget] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [dateDrafts, setDateDrafts] = useState<Record<string, string>>({});
+  const [dateModal, setDateModal] = useState<DateModalState | null>(null);
+  const [dateDrafts, setDateDrafts] = useState<Record<CollabDateField, string>>({
+    publishedAt: '',
+    submissionCloseAt: '',
+    votingCloseAt: '',
+    completedAt: ''
+  });
+  const [shiftDays, setShiftDays] = useState('7');
 
   const [pageTokens, setPageTokens] = useState<(string | null)[]>([null]);
   const [currentPage, setCurrentPage] = useState(0);
@@ -102,7 +118,7 @@ export function AdminProjectsView() {
       const result = await AdminService.listProjects(25, tokens[page] ?? null);
       setItems(result.items);
       setHasMore(result.hasMore);
-      setDateDrafts({});
+      setDateModal(null);
 
       const newTokens = [...tokens];
       if (result.nextPageToken) {
@@ -142,58 +158,122 @@ export function AdminProjectsView() {
     navigate(`/project/${projectId}?collab=${collaborationId}`);
   };
 
-  const handleDateDraftChange = (collabId: string, field: StageDateField, value: string) => {
-    setDateDrafts(prev => ({
-      ...prev,
-      [`${collabId}:${field}`]: value
+  const openDateModal = (projectId: string, collab: AdminCollaborationSummary) => {
+    setDateModal({ projectId, collab });
+    setDateDrafts({
+      publishedAt: formatDateInput(collab.publishedAt),
+      submissionCloseAt: formatDateInput(getSubmissionEnd(collab)),
+      votingCloseAt: formatDateInput(getVotingEnd(collab)),
+      completedAt: formatDateInput(collab.completedAt)
+    });
+    setShiftDays('7');
+    setActionError(null);
+  };
+
+  const updateCollabInState = (
+    projectId: string,
+    collabId: string,
+    updater: (collab: AdminCollaborationSummary) => AdminCollaborationSummary
+  ) => {
+    setItems(prev => prev.map(item => {
+      if (item.project.id !== projectId) return item;
+      return {
+        ...item,
+        collaborations: item.collaborations.map(existing =>
+          existing.id === collabId ? updater(existing) : existing
+        )
+      };
     }));
   };
 
-  const handleSaveStageDate = async (
-    projectId: string,
-    collab: AdminCollaborationSummary,
-    field: StageDateField
-  ) => {
-    const draftKey = `${collab.id}:${field}`;
-    const rawValue = dateDrafts[draftKey] ?? formatDateInput(getStageDateValue(collab, field));
-    const nextMillis = parseDateInput(rawValue);
-    if (!nextMillis) {
-      setActionError(`${fieldLabel(field)} needs a valid date and time.`);
+  const validateDateOrder = (values: Partial<Record<CollabDateField, number | null>>) => {
+    const publishedAt = values.publishedAt ?? null;
+    const submissionCloseAt = values.submissionCloseAt ?? null;
+    const votingCloseAt = values.votingCloseAt ?? null;
+    const completedAt = values.completedAt ?? null;
+    if (publishedAt && submissionCloseAt && submissionCloseAt < publishedAt) {
+      return 'Submission end must be after the publish date.';
+    }
+    if (submissionCloseAt && votingCloseAt && votingCloseAt < submissionCloseAt) {
+      return 'Voting end must be after submission end.';
+    }
+    if (votingCloseAt && completedAt && completedAt < votingCloseAt) {
+      return 'Completed date must be after voting end.';
+    }
+    return null;
+  };
+
+  const handleSaveCollaborationDates = async () => {
+    if (!dateModal) return;
+
+    const updates = DATE_FIELDS.reduce((acc, field) => {
+      const value = dateDrafts[field];
+      const millis = parseDateInput(value);
+      acc[field] = millis;
+      return acc;
+    }, {} as Record<CollabDateField, number | null>);
+
+    const invalidField = DATE_FIELDS.find(field => dateDrafts[field] && !updates[field]);
+    if (invalidField) {
+      setActionError(`${fieldLabel(invalidField)} needs a valid date and time.`);
       return;
     }
 
-    const siblingEnd = field === 'submissionCloseAt' ? getVotingEnd(collab) : getSubmissionEnd(collab);
-    if (field === 'submissionCloseAt' && siblingEnd && nextMillis > siblingEnd) {
-      setActionError('Submission end must be before voting end.');
-      return;
-    }
-    if (field === 'votingCloseAt' && siblingEnd && nextMillis < siblingEnd) {
-      setActionError('Voting end must be after submission end.');
+    const orderError = validateDateOrder(updates);
+    if (orderError) {
+      setActionError(orderError);
       return;
     }
 
-    setActionTarget(`date:${collab.id}:${field}`);
+    const { projectId, collab } = dateModal;
+    setActionTarget(`dates:${collab.id}`);
     setActionError(null);
     try {
-      await AdminService.updateCollaborationStageDates(collab.id, { [field]: nextMillis });
-      setItems(prev => prev.map(item => {
-        if (item.project.id !== projectId) return item;
-        return {
-          ...item,
-          collaborations: item.collaborations.map(existing =>
-            existing.id === collab.id
-              ? { ...existing, [field]: nextMillis, updatedAt: Date.now() }
-              : existing
-          )
-        };
+      await AdminService.updateCollaborationStageDates(collab.id, updates);
+      updateCollabInState(projectId, collab.id, existing => ({
+        ...existing,
+        ...updates,
+        updatedAt: Date.now()
       }));
-      setDateDrafts(prev => {
-        const next = { ...prev };
-        delete next[draftKey];
-        return next;
-      });
+      setDateModal(null);
     } catch (err: any) {
-      setActionError(err?.message || 'Failed to update stage date');
+      setActionError(err?.message || 'Failed to update collaboration dates');
+    } finally {
+      setActionTarget(null);
+    }
+  };
+
+  const handleShiftCollaborationDates = async () => {
+    if (!dateModal) return;
+
+    const days = Number(shiftDays);
+    if (!Number.isInteger(days) || days === 0) {
+      setActionError('Shift needs a whole number of days, such as 7 or -3.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Shift "${dateModal.collab.name || 'Untitled collaboration'}" and its submission dates by ${days} day(s)?`
+    );
+    if (!confirmed) return;
+
+    const { projectId, collab } = dateModal;
+    const offset = days * 24 * 60 * 60 * 1000;
+    setActionTarget(`shift:${collab.id}`);
+    setActionError(null);
+    try {
+      await AdminService.shiftCollaborationDates(collab.id, days);
+      updateCollabInState(projectId, collab.id, existing => ({
+        ...existing,
+        publishedAt: existing.publishedAt ? existing.publishedAt + offset : existing.publishedAt,
+        submissionCloseAt: getSubmissionEnd(existing) ? getSubmissionEnd(existing)! + offset : existing.submissionCloseAt,
+        votingCloseAt: getVotingEnd(existing) ? getVotingEnd(existing)! + offset : existing.votingCloseAt,
+        completedAt: existing.completedAt ? existing.completedAt + offset : existing.completedAt,
+        updatedAt: Date.now()
+      }));
+      setDateModal(null);
+    } catch (err: any) {
+      setActionError(err?.message || 'Failed to shift collaboration dates');
     } finally {
       setActionTarget(null);
     }
@@ -358,9 +438,7 @@ export function AdminProjectsView() {
                           collab={collab}
                           projectId={project.id}
                           actionTarget={actionTarget}
-                          dateDrafts={dateDrafts}
-                          onDateDraftChange={handleDateDraftChange}
-                          onSaveStageDate={handleSaveStageDate}
+                          onOpenDates={openDateModal}
                           onEdit={handleEditCollaboration}
                           onDelete={handleDeleteCollaboration}
                         />
@@ -375,6 +453,24 @@ export function AdminProjectsView() {
 
         {!loading && items.length === 0 && !error && (
           <div className="admin-projects__empty">No projects found.</div>
+        )}
+
+        {dateModal && (
+          <CollaborationDatesModal
+            collab={dateModal.collab}
+            dateDrafts={dateDrafts}
+            shiftDays={shiftDays}
+            saving={actionTarget === `dates:${dateModal.collab.id}`}
+            shifting={actionTarget === `shift:${dateModal.collab.id}`}
+            onDateDraftChange={(field, value) => setDateDrafts(prev => ({ ...prev, [field]: value }))}
+            onShiftDaysChange={setShiftDays}
+            onSave={handleSaveCollaborationDates}
+            onShift={handleShiftCollaborationDates}
+            onClose={() => {
+              if (actionTarget) return;
+              setDateModal(null);
+            }}
+          />
         )}
       </div>
     </AdminLayout>
@@ -403,18 +499,14 @@ function CollaborationAdminRow({
   collab,
   projectId,
   actionTarget,
-  dateDrafts,
-  onDateDraftChange,
-  onSaveStageDate,
+  onOpenDates,
   onEdit,
   onDelete
 }: {
   collab: AdminCollaborationSummary;
   projectId: string;
   actionTarget: string | null;
-  dateDrafts: Record<string, string>;
-  onDateDraftChange: (collabId: string, field: StageDateField, value: string) => void;
-  onSaveStageDate: (projectId: string, collab: AdminCollaborationSummary, field: StageDateField) => void;
+  onOpenDates: (projectId: string, collab: AdminCollaborationSummary) => void;
   onEdit: (projectId: string, collaborationId: string) => void;
   onDelete: (projectId: string, collaborationId: string) => void;
 }) {
@@ -443,25 +535,9 @@ function CollaborationAdminRow({
           <MetaItem label="Signals" value={`${collab.favoritesCount} favorites · ${collab.participantCount} participants`} />
         </dl>
 
-        <div className="admin-collab__stages">
-          <StageEditor
-            collab={collab}
-            field="submissionCloseAt"
-            duration={collab.submissionDuration}
-            actionTarget={actionTarget}
-            dateDrafts={dateDrafts}
-            onDateDraftChange={onDateDraftChange}
-            onSave={() => onSaveStageDate(projectId, collab, 'submissionCloseAt')}
-          />
-          <StageEditor
-            collab={collab}
-            field="votingCloseAt"
-            duration={collab.votingDuration}
-            actionTarget={actionTarget}
-            dateDrafts={dateDrafts}
-            onDateDraftChange={onDateDraftChange}
-            onSave={() => onSaveStageDate(projectId, collab, 'votingCloseAt')}
-          />
+        <div className="admin-collab__dates">
+          <DateSummaryItem label="Submission ends" value={getSubmissionEnd(collab)} source={getDateSource(collab, 'submissionCloseAt')} />
+          <DateSummaryItem label="Voting ends" value={getVotingEnd(collab)} source={getDateSource(collab, 'votingCloseAt')} />
         </div>
 
         {collab.tags && collab.tags.length > 0 && (
@@ -474,6 +550,7 @@ function CollaborationAdminRow({
       </div>
 
       <div className="admin-collab__actions">
+        <button onClick={() => onOpenDates(projectId, collab)}>Adjust dates</button>
         <button onClick={() => onEdit(projectId, collab.id)}>Edit</button>
         <button
           className="admin-projects__danger"
@@ -487,52 +564,111 @@ function CollaborationAdminRow({
   );
 }
 
-function StageEditor({
+function DateSummaryItem({ label, value, source }: { label: string; value: number | null; source: StageDateSource }) {
+  return (
+    <div className="admin-date-summary">
+      <span>{label}</span>
+      <strong>{formatDate(value)}</strong>
+      {source === 'estimated' && <em>Estimated</em>}
+    </div>
+  );
+}
+
+function CollaborationDatesModal({
   collab,
-  field,
-  duration,
-  actionTarget,
   dateDrafts,
+  shiftDays,
+  saving,
+  shifting,
   onDateDraftChange,
-  onSave
+  onShiftDaysChange,
+  onSave,
+  onShift,
+  onClose
 }: {
   collab: AdminCollaborationSummary;
-  field: StageDateField;
-  duration: number | null;
-  actionTarget: string | null;
-  dateDrafts: Record<string, string>;
-  onDateDraftChange: (collabId: string, field: StageDateField, value: string) => void;
+  dateDrafts: Record<CollabDateField, string>;
+  shiftDays: string;
+  saving: boolean;
+  shifting: boolean;
+  onDateDraftChange: (field: CollabDateField, value: string) => void;
+  onShiftDaysChange: (value: string) => void;
   onSave: () => void;
+  onShift: () => void;
+  onClose: () => void;
 }) {
-  const draftKey = `${collab.id}:${field}`;
-  const displayedMillis = getStageDateValue(collab, field);
-  const source = getStageDateSource(collab, field);
-  const currentValue = formatDateInput(displayedMillis);
-  const value = dateDrafts[draftKey] ?? currentValue;
-  const isDirty = value !== currentValue;
-  const saving = actionTarget === `date:${collab.id}:${field}`;
-  const sourceLabel = source === 'estimated' ? 'Estimated current value' : 'Current value';
-  const helperText = source === 'missing'
-    ? `No current date available · planned ${formatDuration(duration)}`
-    : `${sourceLabel}: ${formatDate(displayedMillis)} · planned ${formatDuration(duration)}`;
+  const busy = saving || shifting;
+  const hasChanges = DATE_FIELDS.some(field => dateDrafts[field] !== formatDateInput(getDateValue(collab, field)));
 
   return (
-    <div className="admin-stage-editor">
-      <div className="admin-stage-editor__copy">
-        <strong>{fieldLabel(field)}</strong>
-        <span>{helperText}</span>
-      </div>
-      <div className="admin-stage-editor__controls">
-        <input
-          type="datetime-local"
-          value={value}
-          placeholder={displayedMillis ? formatDate(displayedMillis) : 'Choose date and time'}
-          onChange={event => onDateDraftChange(collab.id, field, event.target.value)}
-          aria-label={`${fieldLabel(field)} for ${collab.name}`}
-        />
-        <button onClick={onSave} disabled={saving || !isDirty || !value}>
-          {saving ? 'Saving...' : 'Save'}
-        </button>
+    <div className="admin-date-modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <div
+        className="admin-date-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="admin-date-modal-title"
+        onMouseDown={event => event.stopPropagation()}
+      >
+        <header className="admin-date-modal__header">
+          <div>
+            <span className="admin-project-card__eyebrow">Collaboration dates</span>
+            <h3 id="admin-date-modal-title">{collab.name || 'Untitled collaboration'}</h3>
+          </div>
+          <button className="admin-date-modal__close" onClick={onClose} disabled={busy} aria-label="Close date editor">
+            x
+          </button>
+        </header>
+
+        <div className="admin-date-modal__grid">
+          {DATE_FIELDS.map(field => {
+            const source = getDateSource(collab, field);
+            const helper = source === 'estimated'
+              ? `Estimated from duration · ${formatDate(getDateValue(collab, field))}`
+              : source === 'missing'
+                ? 'No current date'
+                : `Current value · ${formatDate(getDateValue(collab, field))}`;
+
+            return (
+              <label key={field} className="admin-date-field">
+                <span>{fieldLabel(field)}</span>
+                <input
+                  type="datetime-local"
+                  value={dateDrafts[field]}
+                  onChange={event => onDateDraftChange(field, event.target.value)}
+                  disabled={busy}
+                />
+                <small>{helper}</small>
+              </label>
+            );
+          })}
+        </div>
+
+        <section className="admin-date-modal__shift" aria-label="Shift all dates">
+          <div>
+            <strong>Shift all dates</strong>
+            <span>Moves collaboration dates and submitted-track timestamps together.</span>
+          </div>
+          <div className="admin-date-modal__shift-controls">
+            <input
+              type="number"
+              step="1"
+              value={shiftDays}
+              onChange={event => onShiftDaysChange(event.target.value)}
+              disabled={busy}
+              aria-label="Days to shift"
+            />
+            <button onClick={onShift} disabled={busy || !shiftDays}>
+              {shifting ? 'Shifting...' : 'Shift'}
+            </button>
+          </div>
+        </section>
+
+        <footer className="admin-date-modal__footer">
+          <button onClick={onClose} disabled={busy}>Cancel</button>
+          <button onClick={onSave} disabled={busy || !hasChanges}>
+            {saving ? 'Saving...' : 'Save dates'}
+          </button>
+        </footer>
       </div>
     </div>
   );

@@ -104,6 +104,13 @@ export interface AdminCollaborationSummary {
   updatedAt: number | null;
 }
 
+export interface AdminCollaborationDateUpdates {
+  publishedAt?: number | null;
+  submissionCloseAt?: number | null;
+  votingCloseAt?: number | null;
+  completedAt?: number | null;
+}
+
 export interface AdminProjectWithCollabs {
   project: AdminProjectItem;
   collaborations: AdminCollaborationSummary[];
@@ -263,9 +270,16 @@ export class AdminService {
 
   static async updateCollaborationStageDates(
     collaborationId: string,
-    updates: { submissionCloseAt?: number | null; votingCloseAt?: number | null }
+    updates: AdminCollaborationDateUpdates
   ): Promise<void> {
     await callFirebaseFunction('adminUpdateCollaborationStageDates', { collaborationId, updates });
+  }
+
+  static async shiftCollaborationDates(
+    collaborationId: string,
+    shiftDays: number
+  ): Promise<void> {
+    await callFirebaseFunction('adminUpdateCollaborationStageDates', { collaborationId, shiftDays });
   }
 
   static async listGroups(
